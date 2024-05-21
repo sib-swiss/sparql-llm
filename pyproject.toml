@@ -28,6 +28,8 @@ dependencies = [
     "SPARQLWrapper",
     "pandas",
     "ipykernel",
+    "openai",
+    "bs4",
 ]
 
 
