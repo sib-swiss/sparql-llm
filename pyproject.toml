@@ -30,6 +30,9 @@ dependencies = [
     "ipykernel",
     "openai",
     "bs4",
+    "onnxruntime-gpu",
+    "fastembed-gpu",
+    "qdrant_client",
 ]
 
 
@@ -46,6 +49,10 @@ Documentation = "https://github.com/sib-swiss/expasy4-scripts"
 History = "https://github.com/sib-swiss/expasy4-scripts/releases"
 Tracker = "https://github.com/sib-swiss/expasy4-scripts/issues"
 Source = "https://github.com/sib-swiss/expasy4-scripts"
+
+# Required for onnxruntime-gpu on CUDA 12
+[tool.hatch.envs.default.env-vars]
+PIP_EXTRA_INDEX_URL = "https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/"
 
 
 # ENVIRONMENTS AND SCRIPTS
