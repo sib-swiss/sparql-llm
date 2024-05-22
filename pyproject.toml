@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 requires-python = ">=3.8"
 version = "0.0.1"
-name = "expasy-scripts"
+name = "expasy-api"
 description = "Scripts for Expasy 4, prepare data, train models, etc."
 license = "MIT"
 authors = [
@@ -30,9 +30,13 @@ dependencies = [
     "ipykernel",
     "openai",
     "bs4",
-    "onnxruntime-gpu",
-    "fastembed-gpu",
+    # "onnxruntime-gpu",
+    # "fastembed-gpu",
+    "fastembed",
     "qdrant_client",
+    "fastapi",
+    "pydantic >=2.0.0",
+    # "pydantic-settings",
 ]
 
 
@@ -40,6 +44,13 @@ dependencies = [
 test = [
     "ruff",
     "pip-tools",
+]
+cpu = [
+    "fastembed",
+]
+gpu = [
+    "fastembed-gpu",
+    "onnxruntime-gpu",
 ]
 
 
@@ -72,7 +83,7 @@ compile = "pip-compile -o requirements.txt pyproject.toml"
 
 ## TOOLS
 [tool.hatch.build.targets.wheel]
-packages = ["src/expasy_scripts"]
+packages = ["src/expasy_api"]
 
 # If you need to import packages from git URLs:
 # [tool.hatch.metadata]

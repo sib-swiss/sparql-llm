@@ -1,22 +1,5 @@
 services:
 
-  workspace:
-    image: ghcr.io/vemonet/gpu-workspace:main
-    # Enable GPUs in this container:
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              capabilities: [gpu]
-              count: 1
-    # Shared memory size for the container
-    shm_size: '16g'
-    volumes:
-    - ./:/app
-    environment:
-      TZ: Europe/Amsterdam
-
   qdrant:
     # https://hub.docker.com/r/qdrant/qdrant/tags
     image: qdrant/qdrant:v1.9.2
@@ -32,3 +15,31 @@ services:
     #   - 6334:6334
     # command:
     #   - ./qdrant --config-path /qdrant/config/production.yaml
+
+  api:
+    build: .
+    volumes:
+      - .:/app
+      # - ./data/cache:/tmp/fastembed_cache/models--qdrant--bge-large-en-v1.5-onnx/
+    ports:
+      - 8000:80
+    env_file:
+      - .env
+    entrypoint: /start-reload.sh
+
+  # workspace:
+  #   image: ghcr.io/vemonet/gpu-workspace:main
+  #   # Enable GPUs in this container:
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             capabilities: [gpu]
+  #             count: 1
+  #   # Shared memory size for the container
+  #   shm_size: '16g'
+  #   volumes:
+  #   - ./:/app
+  #   environment:
+  #     TZ: Europe/Amsterdam
