@@ -12,9 +12,23 @@ Add the OpenAI API key to a `.env` file at the root of the repository:
 echo "OPENAI_API_KEY=sk-proj-XXX" > .env
 ```
 
-Start the stack:
+Start the API + similarity search engine:
 
 ```bash
 docker compose up
+```
+
+## 🧑‍💻 Development
+
+Start the workspace + similarity search engine:
+
+```bash
+docker compose -f docker-compose.dev.yml up
+```
+
+Inside the workspace container install the dependencies:
+
+```bash
+pip install -e ".[cpu,test]"
 ```
 

@@ -1,39 +1,21 @@
-import re
-from typing import Annotated, Dict, List, Union
+from typing import Annotated
 
-from bs4 import BeautifulSoup
-from fastapi import Body, Depends, FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import FastAPI, Query
 from fastapi.responses import RedirectResponse
-from fastembed import TextEmbedding
-from pydantic import BaseModel, conint
-from qdrant_client import QdrantClient, models
-from qdrant_client.http.models import (
-    Distance,
-    VectorParams,
-)
-from SPARQLWrapper import JSON, SPARQLWrapper
-from starlette.middleware.cors import CORSMiddleware
 from openai import OpenAI
+from pydantic import BaseModel
+from qdrant_client.models import FieldCondition, Filter, ScoredPoint, MatchValue
+from starlette.middleware.cors import CORSMiddleware
 
-from expasy_api.vectordb import vectordb, QUERIES_COLLECTION
+from expasy_api.embed import QUERIES_COLLECTION, embedding_model, vectordb
 
-# Initialize FastEmbed and Qdrant Client
-embedding_model = TextEmbedding("BAAI/bge-large-en-v1.5")
-embedding_dimensions = 1024
-
-system_prompt = """You are Expasy, an assistant that helps users to query the databases from the Swiss Institute of Bioinformatics, such as UniProt or Bgee.
-When writing the SPARQL query try to factorize the predicates/objects of a subject as much as possible, so that the user can understand the query and the results.
+system_prompt = """You are Expasy, an assistant that helps users to query the databases from the Swiss Institute of Bioinformatics, such as UniProt, OMA and Bgee.
+When writing the query try to make it as efficient as possible, to avoid timeout due to how large the datasets are.
+Use federated queries when needed, but be careful to use the right xref when going from an endpoint to another, and think to indicate on which endpoint the query should be executed.
 """
+# When writing the SPARQL query try to factorize the predicates/objects of a subject as much as possible, so that the user can understand the query and the results.
 STARTUP_PROMPT = "Here are a list of questions and queries that Expasy has learned to answer, use them as base when answering the question from the user:"
 INTRO_USER_QUESTION_PROMPT = "The question from the user is:"
-
-# vectordb = QdrantClient(
-#     host="qdrant",
-#     prefer_grpc=True,
-# )
-# QUERIES_COLLECTION="expasy-queries"
-# print(f"VectorDB loaded with {vectordb.get_collection(QUERIES_COLLECTION).points_count} vectors")
-# init_queries_vectordb()
 
 client = OpenAI()
 
@@ -52,7 +34,9 @@ app.add_middleware(
 )
 
 class SearchResult(BaseModel):
-    response:str
+    response: str
+    hits_sparql: list[ScoredPoint]
+    full_prompt: str
 
 SUMMARY = "Ask a question about SIB resources."
 DESCRIPTION = "Returns a response explaining how to use the Swiss Institute of Bioinformatics resources."
@@ -90,13 +74,22 @@ async def ask_expasy(question: str) -> SearchResult:
     hits = vectordb.search(
         collection_name=QUERIES_COLLECTION,
         query_vector=query_embeddings,
-        limit=50,
+        query_filter=Filter(
+            must=[
+                FieldCondition(
+                    key="doc_type",
+                    match=MatchValue(value="sparql"),
+                )
+            ]
+        ),
+        limit=20,
     )
-    print(len(hits))
+    # print(len(hits))
+    # print(hits)
 
     full_prompt = f"{STARTUP_PROMPT}\n\n"
     for hit in hits:
-        full_prompt += f"{hit.payload['comment']}\n{hit.payload['query']}\n\n"
+        full_prompt += f"{hit.payload['comment']}\nIn SPARQL endpoint <{hit.payload['endpoint']}>\n{hit.payload['example']}\n\n"
         # hit.payload["comment"]
 
     full_prompt += f"\n{INTRO_USER_QUESTION_PROMPT}\n{question}"
@@ -111,7 +104,11 @@ async def ask_expasy(question: str) -> SearchResult:
     )
     # print(response.choices[0].message.content)
 
-    return {"response": response.choices[0].message.content}
+    return {
+        "response": response.choices[0].message.content,
+        "hits_sparql": hits,
+        "full_prompt": full_prompt,
+    }
 
 
 

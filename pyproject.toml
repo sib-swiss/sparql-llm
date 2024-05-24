@@ -21,17 +21,12 @@ classifiers = [
 ]
 
 dependencies = [
-    "python-dotenv",
-    "tqdm",
     "requests",
     "rdflib",
     "SPARQLWrapper",
     "pandas",
-    "ipykernel",
     "openai",
     "bs4",
-    # "onnxruntime-gpu",
-    # "fastembed-gpu",
     "fastembed",
     "qdrant_client",
     "fastapi",
@@ -44,13 +39,17 @@ dependencies = [
 test = [
     "ruff",
     "pip-tools",
+    # "tqdm",
+    "ipykernel",
+    # "jupyter",
+    # "ipywidgets",
 ]
 cpu = [
     "fastembed",
 ]
 gpu = [
-    "fastembed-gpu",
     "onnxruntime-gpu",
+    "fastembed-gpu",
 ]
 
 

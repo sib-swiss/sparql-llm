@@ -1,1 +1,1 @@
-python src/expasy_api/vectordb.py
+python src/expasy_api/embed.py

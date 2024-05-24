@@ -1,0 +1,38 @@
+services:
+
+  search-engine:
+    extends:
+      file: docker-compose.yml
+      service: search-engine
+    ports:
+      - 6333:6333
+      - 6334:6334
+
+  api:
+    extends:
+      file: docker-compose.yml
+      service: api
+    ports:
+      - 8000:80
+    volumes:
+      - ./src:/app/src
+      - ./data/fastembed_cache:/tmp/fastembed_cache
+    entrypoint: /start-reload.sh
+
+  # workspace:
+  #   image: ghcr.io/vemonet/gpu-workspace:main
+  #   # Enable GPUs in this container:
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             capabilities: [gpu]
+  #             count: 1
+  #   # Shared memory size for the container
+  #   shm_size: '8g'
+  #   volumes:
+  #   - ./:/app
+  #   # - /tmp/fastembed_cache/models--qdrant--bge-large-en-v1.5-onnx/:/tmp/fastembed_cache/models--qdrant--bge-large-en-v1.5-onnx/
+  #   environment:
+  #     TZ: Europe/Amsterdam
