@@ -26,6 +26,11 @@ endpoints = {
     "UniProt": "https://sparql.uniprot.org/sparql/",
     "Bgee": "https://www.bgee.org/sparql/",
     "Ortholog MAtrix (OMA)": "https://sparql.omabrowser.org/sparql/",
+    "Rhea reactions": "https://sparql.rhea-db.org/sparql/",
+    "GlyConnect": "https://glyconnect.expasy.org/sparql",
+    "MetaNetx": "https://rdf.metanetx.org/sparql/",
+    "NextProt": "https://sparql.nextprot.org",
+    # "SwissLipids": "https://sparql.swisslipids.org/sparql/",
 }
 
 get_queries = """PREFIX sh: <http://www.w3.org/ns/shacl#>
@@ -64,33 +69,36 @@ def init_vectordb(vectordb_host: str = "search-engine")-> None:
     )
     queries = []
     for endpoint_name, endpoint_url in endpoints.items():
-        sparql_endpoint = SPARQLWrapper(endpoint_url)
-        sparql_endpoint.setReturnFormat(JSON)
+        try:
+            sparql_endpoint = SPARQLWrapper(endpoint_url)
+            sparql_endpoint.setReturnFormat(JSON)
 
-        # Add SPARQL queries examples to the vectordb
-        sparql_endpoint.setQuery(get_prefixes)
-        results = sparql_endpoint.query().convert()
-        prefix_map = {}
-        for row in results["results"]["bindings"]:
-            prefix_map[row["prefix"]["value"]] = row["namespace"]["value"]
+            # Add SPARQL queries examples to the vectordb
+            sparql_endpoint.setQuery(get_prefixes)
+            results = sparql_endpoint.query().convert()
+            prefix_map = {}
+            for row in results["results"]["bindings"]:
+                prefix_map[row["prefix"]["value"]] = row["namespace"]["value"]
 
-        sparql_endpoint.setQuery(get_queries)
-        results = sparql_endpoint.query().convert()
-        print(f"Found {len(results['results']['bindings'])} examples queries for {endpoint_url}")
+            sparql_endpoint.setQuery(get_queries)
+            results = sparql_endpoint.query().convert()
+            print(f"Found {len(results['results']['bindings'])} examples queries for {endpoint_url}")
 
-        for row in results["results"]["bindings"]:
-            query = row["query"]["value"]
-            # Add prefixes to queries
-            for prefix, namespace in prefix_map.items():
-                prefix_str = f"PREFIX {prefix}: <{namespace}>"
-                if not re.search(prefix_str, query) and re.search(f"[(| |\u00a0|/]{prefix}:", query):
-                    query = f"{prefix_str}\n{query}"
-            queries.append({
-                "endpoint": endpoint_url,
-                "comment": f"{endpoint_name}: {remove_a_tags(row['comment']['value'])}",
-                "example": query,
-                "doc_type": "sparql",
-            })
+            for row in results["results"]["bindings"]:
+                query = row["query"]["value"]
+                # Add prefixes to queries
+                for prefix, namespace in prefix_map.items():
+                    prefix_str = f"PREFIX {prefix}: <{namespace}>"
+                    if not re.search(prefix_str, query) and re.search(f"[(| |\u00a0|/]{prefix}:", query):
+                        query = f"{prefix_str}\n{query}"
+                queries.append({
+                    "endpoint": endpoint_url,
+                    "comment": f"{endpoint_name}: {remove_a_tags(row['comment']['value'])}",
+                    "example": query,
+                    "doc_type": "sparql",
+                })
+        except Exception as e:
+            print(f"Error while fetching queries from {endpoint_name}: {e}")
 
         # sparql_endpoint.setQuery(get_queries)
         # results = sparql_endpoint.query().convert()

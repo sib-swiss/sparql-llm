@@ -1,21 +1,31 @@
-from typing import Annotated
+import asyncio
+import json
+import time
+from typing import Annotated, Any, AsyncGenerator, Optional
 
-from fastapi import FastAPI, Query
-from fastapi.responses import RedirectResponse
-from openai import OpenAI
+from fastapi import FastAPI, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from openai import OpenAI, Stream
 from pydantic import BaseModel
-from qdrant_client.models import FieldCondition, Filter, ScoredPoint, MatchValue
+from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 from starlette.middleware.cors import CORSMiddleware
 
 from expasy_api.embed import QUERIES_COLLECTION, embedding_model, vectordb
 
 system_prompt = """You are Expasy, an assistant that helps users to query the databases from the Swiss Institute of Bioinformatics, such as UniProt, OMA and Bgee.
 When writing the query try to make it as efficient as possible, to avoid timeout due to how large the datasets are.
-Use federated queries when needed, but be careful to use the right xref when going from an endpoint to another, and think to indicate on which endpoint the query should be executed.
+Use federated queries when needed, but be careful to use the right crossref (xref) when using an identifier from an endpoint in another endpoint, and indicate on which endpoint the query should be executed.
 """
 # When writing the SPARQL query try to factorize the predicates/objects of a subject as much as possible, so that the user can understand the query and the results.
-STARTUP_PROMPT = "Here are a list of questions and queries that Expasy has learned to answer, use them as base when answering the question from the user:"
+STARTUP_PROMPT = "Here are a list of questions and SPARQL queries that can be used on various SPARQL endpoints and might help you answer the user question, use them as base when answering the question from the user:"
 INTRO_USER_QUESTION_PROMPT = "The question from the user is:"
+
+# API endpoints metadata
+SUMMARY = "Ask a question about SIB resources."
+DESCRIPTION = "Returns a response explaining how to use the Swiss Institute of Bioinformatics resources."
+ARG_DESCRIPTION = "The question to search for."
 
 client = OpenAI()
 
@@ -23,6 +33,17 @@ app = FastAPI(
     title="Expasy API",
     description="""This service helps users to use resources from the Swiss Institute of Bioinformatics,
 such as SPARQL endpoints, to get information about proteins, genes, and other biological entities.""",
+)
+
+templates = Jinja2Templates(
+    # directory=pkg_resources.resource_filename("libre_chat", "templates")
+    directory="src/expasy_api/templates"
+)
+
+app.mount(
+    "/static",
+    StaticFiles(directory="src/expasy_api/static"),
+    name="static",
 )
 
 app.add_middleware(
@@ -38,39 +59,54 @@ class SearchResult(BaseModel):
     hits_sparql: list[ScoredPoint]
     full_prompt: str
 
-SUMMARY = "Ask a question about SIB resources."
-DESCRIPTION = "Returns a response explaining how to use the Swiss Institute of Bioinformatics resources."
-ARG_DESCRIPTION = "The question to search for."
 
-@app.get(
-    "/ask",
-    summary=SUMMARY,
-    description=DESCRIPTION,
-    response_model=SearchResult,
-    tags=["search"],
-)
-async def ask_get(
-    question: Annotated[str, Query(description=ARG_DESCRIPTION)],
-) -> SearchResult:
-    return await ask_expasy(question)
+class Message(BaseModel):
+    role: str
+    content: str
 
 
-@app.post(
-    "/ask",
-    summary=SUMMARY,
-    description=DESCRIPTION,
-    response_model=SearchResult,
-    tags=["search"],
-)
-async def ask_post(
-    question: Annotated[str, Query(description=ARG_DESCRIPTION)],
-) -> SearchResult:
-    return await ask_expasy(question)
+class ChatCompletionRequest(BaseModel):
+    model: Optional[str] = "mock-gpt-model"
+    messages: list[Message]
+    max_tokens: Optional[int] = 512
+    temperature: Optional[float] = 0.1
+    stream: Optional[bool] = False
+    # docs: list[ScoredPoint]
 
 
-async def ask_expasy(question: str) -> SearchResult:
+# TODO: make OpenAI compatible endpoint https://towardsdatascience.com/how-to-build-an-openai-compatible-api-87c8edea2f06
+
+async def stream_openai(response: Stream[Any], docs, full_prompt) -> AsyncGenerator[str, None]:
+    """Stream the response from OpenAI"""
+
+    first_chunk = {
+        "docs": [hit.dict() for hit in docs],
+        "full_prompt": full_prompt,
+    }
+    yield f"data: {json.dumps(first_chunk)}\n\n"
+
+    for chunk in response:
+        print(chunk)
+        if chunk.choices[0].finish_reason:
+            break
+        # ChatCompletionChunk(id='chatcmpl-9UxmYAx6E5Y3BXdI7YEVDmbOh9S2X',
+        # choices=[Choice(delta=ChoiceDelta(content='', function_call=None, role='assistant', tool_calls=None), finish_reason=None, index=0, logprobs=None)],
+        # created=1717166670, model='gpt-4o-2024-05-13', object='chat.completion.chunk', system_fingerprint='fp_319be4768e', usage=None)
+        resp_chunk = {
+            "id": chunk.id,
+            "object": "chat.completion.chunk",
+            "created": chunk.created,
+            "model": chunk.model,
+            "choices": [{"delta": {"content": chunk.choices[0].delta.content}}],
+        }
+        yield f"data: {json.dumps(resp_chunk)}\n\n"
+
+
+@app.post("/chat")
+async def chat_completions(request: ChatCompletionRequest):
+    question: str = request.messages[-1].content if request.messages else ""
+
     query_embeddings = next(iter(embedding_model.embed([question])))
-
     hits = vectordb.search(
         collection_name=QUERIES_COLLECTION,
         query_vector=query_embeddings,
@@ -82,39 +118,64 @@ async def ask_expasy(question: str) -> SearchResult:
                 )
             ]
         ),
-        limit=20,
+        limit=10,
     )
-    # print(len(hits))
-    # print(hits)
 
-    full_prompt = f"{STARTUP_PROMPT}\n\n"
+    # Either we build a big prompt with the relevant queries retrieved from similarity search engine
+    big_prompt = f"{STARTUP_PROMPT}\n\n"
+
+    # Or we provide the example queries as previous messages to the LLM
+    example_messages = [{"role": "system", "content": system_prompt}]
     for hit in hits:
-        full_prompt += f"{hit.payload['comment']}\nIn SPARQL endpoint <{hit.payload['endpoint']}>\n{hit.payload['example']}\n\n"
-        # hit.payload["comment"]
+        big_prompt += f"{hit.payload['comment']}\nTo run in SPARQL endpoint <{hit.payload['endpoint']}>\n\n{hit.payload['example']}\n\n"
+        example_messages.append({"role": "user", "content": hit.payload["comment"]})
+        example_messages.append({"role": "assistant", "content": f"To run in SPARQL endpoint {hit.payload['endpoint']}\n\n```sparql\n{hit.payload['example']}\n```\n"})
 
-    full_prompt += f"\n{INTRO_USER_QUESTION_PROMPT}\n{question}"
+    example_messages.append({"role": "user", "content": question})
+    big_prompt += f"\n{INTRO_USER_QUESTION_PROMPT}\n{question}"
 
+    # Send the prompt to OpenAI to get a response
     response = client.chat.completions.create(
         model="gpt-4o",
+        messages=example_messages,
+        # messages=[
+        #     {"role": "system", "content": system_prompt},
+        #     {"role": "user", "content": full_prompt},
+        # ],
+        stream=request.stream,
         #   response_format={ "type": "json_object" },
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": full_prompt},
-        ]
     )
-    # print(response.choices[0].message.content)
+    # TODO: get response as JSON object with SPARQL query separated from explanation?
+    # https://github.com/jxnl/instructor or https://github.com/outlines-dev/outlines
+
+    if request.stream:
+        return StreamingResponse(
+            stream_openai(response, hits, big_prompt), media_type="application/x-ndjson"
+        )
 
     return {
-        "response": response.choices[0].message.content,
-        "hits_sparql": hits,
-        "full_prompt": full_prompt,
+        "id": response.id,
+        "object": "chat.completion",
+        "created": response.created,
+        "model": response.model,
+        "choices": [{"message": Message(role="assistant", content=response.choices[0].message.content)}],
+        "docs": hits,
+        "full_prompt": big_prompt,
     }
 
 
-
-@app.get("/", include_in_schema=False)
-async def docs_redirect():
-    """
-    Redirect requests to `/` (where we don't have any content) to `/docs` (which is our Swagger interface).
-    """
-    return RedirectResponse(url="/docs")
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+def chat_ui(request: Request) -> Any:
+    """Render the chat UI using jinja2 + HTML"""
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "title": "Expasy query helper",
+            "description": "This service helps users to use resources from the Swiss Institute of Bioinformatics, such as SPARQL endpoints, to get information about proteins, genes, and other biological entities.",
+            "short_description": "Ask a question about SIB resources.",
+            "repository_url": "https://github.com/sib-swiss/expasy-api",
+            "examples": ["Which are the genes, expressed in the rat, corresponding to human genes associated with cancer?", "What is the gene associated with the protein P12345?"],
+            "favicon": "https://www.expasy.org/favicon.ico",
+        },
+    )
