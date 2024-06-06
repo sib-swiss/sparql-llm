@@ -21,6 +21,9 @@ services:
     depends_on:
       - search-engine
     ports:
-      - 8000:80
+      - 443:80
+    volumes:
+      - ./data/fastembed_cache:/tmp/fastembed_cache
+      - ./src:/app/src
     env_file:
       - .env
