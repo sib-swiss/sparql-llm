@@ -34,12 +34,12 @@ such as SPARQL endpoints, to get information about proteins, genes, and other bi
 
 templates = Jinja2Templates(
     # directory=pkg_resources.resource_filename("libre_chat", "templates")
-    directory="src/expasy_api/templates"
+    directory="src/expasy_chat/templates"
 )
 
 app.mount(
     "/static",
-    StaticFiles(directory="src/expasy_api/static"),
+    StaticFiles(directory="src/expasy_chat/static"),
     name="static",
 )
 
