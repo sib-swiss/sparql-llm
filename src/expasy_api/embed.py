@@ -9,17 +9,25 @@ from qdrant_client.http.models import (
 )
 from SPARQLWrapper import JSON, SPARQLWrapper
 
+
 # https://qdrant.github.io/fastembed/examples/Supported_Models/
 # TextEmbedding.list_supported_models()
-embedding_model = TextEmbedding("BAAI/bge-large-en-v1.5")
+def get_embedding_model() -> TextEmbedding:
+    return TextEmbedding("BAAI/bge-large-en-v1.5")
+
+
 # embedding_model = TextEmbedding("BAAI/bge-base-en-v1.5")
 embedding_dimensions = 1024
 
-vectordb = QdrantClient(
-    host="search-engine",
-    prefer_grpc=True,
-)
-QUERIES_COLLECTION="expasy-queries"
+
+def get_vectordb(host="search-engine") -> QdrantClient:
+    return QdrantClient(
+        host=host,
+        prefer_grpc=True,
+    )
+
+
+QUERIES_COLLECTION = "expasy-queries"
 
 
 endpoints = {
@@ -47,7 +55,7 @@ WHERE
 get_prefixes = """PREFIX sh: <http://www.w3.org/ns/shacl#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-SELECT ?prefix ?namespace
+SELECT DISTINCT ?prefix ?namespace
 WHERE {
     [] sh:namespace ?namespace ;
         sh:prefix ?prefix .
@@ -62,11 +70,9 @@ def remove_a_tags(html_text: str) -> str:
     return soup.get_text()
 
 
-def init_vectordb(vectordb_host: str = "search-engine")-> None:
-    vectordb = QdrantClient(
-        host=vectordb_host,
-        prefer_grpc=True,
-    )
+def init_vectordb(vectordb_host: str = "search-engine") -> None:
+    vectordb = get_vectordb(vectordb_host)
+    embedding_model = get_embedding_model()
     queries = []
     for endpoint_name, endpoint_url in endpoints.items():
         try:
@@ -91,12 +97,14 @@ def init_vectordb(vectordb_host: str = "search-engine")-> None:
                     prefix_str = f"PREFIX {prefix}: <{namespace}>"
                     if not re.search(prefix_str, query) and re.search(f"[(| |\u00a0|/]{prefix}:", query):
                         query = f"{prefix_str}\n{query}"
-                queries.append({
-                    "endpoint": endpoint_url,
-                    "comment": f"{endpoint_name}: {remove_a_tags(row['comment']['value'])}",
-                    "example": query,
-                    "doc_type": "sparql",
-                })
+                queries.append(
+                    {
+                        "endpoint": endpoint_url,
+                        "comment": f"{endpoint_name}: {remove_a_tags(row['comment']['value'])}",
+                        "example": query,
+                        "doc_type": "sparql",
+                    }
+                )
         except Exception as e:
             print(f"Error while fetching queries from {endpoint_name}: {e}")
 
@@ -130,8 +138,6 @@ def init_vectordb(vectordb_host: str = "search-engine")-> None:
     # }
     # } ORDER BY DESC(?pp1triples)
 
-
-
     if not vectordb.collection_exists(QUERIES_COLLECTION):
         vectordb.create_collection(
             collection_name=QUERIES_COLLECTION,
@@ -151,6 +157,7 @@ def init_vectordb(vectordb_host: str = "search-engine")-> None:
         ),
     )
 
+
 if __name__ == "__main__":
     init_vectordb()
-    print(f"VectorDB initialized with {vectordb.get_collection(QUERIES_COLLECTION).points_count} vectors")
+    print(f"VectorDB initialized with {get_vectordb().get_collection(QUERIES_COLLECTION).points_count} vectors")

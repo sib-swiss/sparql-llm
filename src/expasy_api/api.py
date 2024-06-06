@@ -1,10 +1,9 @@
-import asyncio
 import json
-import time
-from typing import Annotated, Any, AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
+from typing import Any, Optional
 
-from fastapi import FastAPI, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from openai import OpenAI, Stream
@@ -12,22 +11,19 @@ from pydantic import BaseModel
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 from starlette.middleware.cors import CORSMiddleware
 
-from expasy_api.embed import QUERIES_COLLECTION, embedding_model, vectordb
+from expasy_api.embed import QUERIES_COLLECTION, get_embedding_model, get_vectordb
 
 system_prompt = """You are Expasy, an assistant that helps users to query the databases from the Swiss Institute of Bioinformatics, such as UniProt, OMA and Bgee.
 When writing the query try to make it as efficient as possible, to avoid timeout due to how large the datasets are.
-Use federated queries when needed, but be careful to use the right crossref (xref) when using an identifier from an endpoint in another endpoint, and indicate on which endpoint the query should be executed.
+You can deconstruct complex queries in many smaller queries, but always propose one final query to the user (federated if needed), but be careful to use the right crossref (xref) when using an identifier from an endpoint in another endpoint, and indicate on which endpoint the query should be executed.
 """
 # When writing the SPARQL query try to factorize the predicates/objects of a subject as much as possible, so that the user can understand the query and the results.
-STARTUP_PROMPT = "Here are a list of questions and SPARQL queries that can be used on various SPARQL endpoints and might help you answer the user question, use them as base when answering the question from the user:"
+STARTUP_PROMPT = "Here is a list of questions and SPARQL queries relevant to the user question that can be used on various SPARQL endpoints and might help you answer the user question, use them as inspiration when answering the question from the user:"
 INTRO_USER_QUESTION_PROMPT = "The question from the user is:"
 
-# API endpoints metadata
-SUMMARY = "Ask a question about SIB resources."
-DESCRIPTION = "Returns a response explaining how to use the Swiss Institute of Bioinformatics resources."
-ARG_DESCRIPTION = "The question to search for."
-
 client = OpenAI()
+vectordb = get_vectordb()
+embedding_model = get_embedding_model()
 
 app = FastAPI(
     title="Expasy API",
@@ -54,6 +50,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 class SearchResult(BaseModel):
     response: str
     hits_sparql: list[ScoredPoint]
@@ -75,6 +72,7 @@ class ChatCompletionRequest(BaseModel):
 
 
 # TODO: make OpenAI compatible endpoint https://towardsdatascience.com/how-to-build-an-openai-compatible-api-87c8edea2f06
+
 
 async def stream_openai(response: Stream[Any], docs, full_prompt) -> AsyncGenerator[str, None]:
     """Stream the response from OpenAI"""
@@ -126,13 +124,21 @@ async def chat_completions(request: ChatCompletionRequest):
 
     # Or we provide the example queries as previous messages to the LLM
     example_messages = [{"role": "system", "content": system_prompt}]
-    for hit in hits:
-        big_prompt += f"{hit.payload['comment']}\nTo run in SPARQL endpoint <{hit.payload['endpoint']}>\n\n{hit.payload['example']}\n\n"
-        example_messages.append({"role": "user", "content": hit.payload["comment"]})
-        example_messages.append({"role": "assistant", "content": f"To run in SPARQL endpoint {hit.payload['endpoint']}\n\n```sparql\n{hit.payload['example']}\n```\n"})
+    for hit in hits[:3]:
+        big_prompt += f"{hit.payload['comment']}\nQuery to run in SPARQL endpoint <{hit.payload['endpoint']}>\n\n{hit.payload['example']}\n\n"
 
-    example_messages.append({"role": "user", "content": question})
+    # Reverse the order of the hits to show the most relevant closest to the user question
+    for hit in hits[::-1]:
+        example_messages.append({"role": "user", "content": hit.payload["comment"]})
+        example_messages.append(
+            {
+                "role": "assistant",
+                "content": f"Query to run in SPARQL endpoint {hit.payload['endpoint']}\n\n```sparql\n{hit.payload['example']}\n```\n",
+            }
+        )
+
     big_prompt += f"\n{INTRO_USER_QUESTION_PROMPT}\n{question}"
+    example_messages.append({"role": "user", "content": big_prompt})
 
     # Send the prompt to OpenAI to get a response
     response = client.chat.completions.create(
@@ -149,9 +155,7 @@ async def chat_completions(request: ChatCompletionRequest):
     # https://github.com/jxnl/instructor or https://github.com/outlines-dev/outlines
 
     if request.stream:
-        return StreamingResponse(
-            stream_openai(response, hits, big_prompt), media_type="application/x-ndjson"
-        )
+        return StreamingResponse(stream_openai(response, hits, big_prompt), media_type="application/x-ndjson")
 
     return {
         "id": response.id,
@@ -175,7 +179,10 @@ def chat_ui(request: Request) -> Any:
             "description": "This service helps users to use resources from the Swiss Institute of Bioinformatics, such as SPARQL endpoints, to get information about proteins, genes, and other biological entities.",
             "short_description": "Ask a question about SIB resources.",
             "repository_url": "https://github.com/sib-swiss/expasy-api",
-            "examples": ["Which are the genes, expressed in the rat, corresponding to human genes associated with cancer?", "What is the gene associated with the protein P12345?"],
+            "examples": [
+                "Which are the genes, expressed in the rat, corresponding to human genes associated with cancer?",
+                "What is the gene associated with the protein P12345?",
+            ],
             "favicon": "https://www.expasy.org/favicon.ico",
         },
     )
