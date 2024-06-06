@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 requires-python = ">=3.8"
 version = "0.0.1"
-name = "expasy-api"
+name = "expasy-chat"
 description = "Scripts for Expasy 4, prepare data, train models, etc."
 license = "MIT"
 authors = [
@@ -54,11 +54,11 @@ gpu = [
 
 
 [project.urls]
-Homepage = "https://github.com/sib-swiss/expasy4-scripts"
-Documentation = "https://github.com/sib-swiss/expasy4-scripts"
-History = "https://github.com/sib-swiss/expasy4-scripts/releases"
-Tracker = "https://github.com/sib-swiss/expasy4-scripts/issues"
-Source = "https://github.com/sib-swiss/expasy4-scripts"
+Homepage = "https://github.com/sib-swiss/expasy-chat"
+Documentation = "https://github.com/sib-swiss/expasy-chat"
+History = "https://github.com/sib-swiss/expasy-chat/releases"
+Tracker = "https://github.com/sib-swiss/expasy-chat/issues"
+Source = "https://github.com/sib-swiss/expasy-chat"
 
 # Required for onnxruntime-gpu on CUDA 12
 [tool.hatch.envs.default.env-vars]
@@ -82,7 +82,7 @@ compile = "pip-compile -o requirements.txt pyproject.toml"
 
 ## TOOLS
 [tool.hatch.build.targets.wheel]
-packages = ["src/expasy_api"]
+packages = ["src/expasy_chat"]
 
 # If you need to import packages from git URLs:
 # [tool.hatch.metadata]

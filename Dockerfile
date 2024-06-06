@@ -16,5 +16,5 @@ COPY . /app/
 RUN pip install -e ".[cpu]"
 
 ENV PYTHONPATH=/app
-ENV MODULE_NAME=src.expasy_api.api
+ENV MODULE_NAME=src.expasy_chat.api
 # ENV VARIABLE_NAME=app

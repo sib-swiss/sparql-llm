@@ -299,6 +299,7 @@
                         model: "gpt-4o",
                         max_tokens: 50,
                         stream: true,
+                        api_key: "{{ expasy_key }}",
                     });
 
                     const response = await fetch(url, {

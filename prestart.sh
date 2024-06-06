@@ -1,1 +1,1 @@
-python src/expasy_api/embed.py
+python src/expasy_chat/embed.py

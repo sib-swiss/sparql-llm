@@ -1,5 +1,6 @@
 import json
 from collections.abc import AsyncGenerator
+import os
 from typing import Any, Optional
 
 from fastapi import FastAPI, Request
@@ -11,7 +12,7 @@ from pydantic import BaseModel
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 from starlette.middleware.cors import CORSMiddleware
 
-from expasy_api.embed import QUERIES_COLLECTION, get_embedding_model, get_vectordb
+from expasy_chat.embed import QUERIES_COLLECTION, get_embedding_model, get_vectordb
 
 system_prompt = """You are Expasy, an assistant that helps users to query the databases from the Swiss Institute of Bioinformatics, such as UniProt, OMA and Bgee.
 When writing the query try to make it as efficient as possible, to avoid timeout due to how large the datasets are.
@@ -68,6 +69,7 @@ class ChatCompletionRequest(BaseModel):
     max_tokens: Optional[int] = 512
     temperature: Optional[float] = 0.1
     stream: Optional[bool] = False
+    api_key: Optional[str] = None
     # docs: list[ScoredPoint]
 
 
@@ -102,6 +104,11 @@ async def stream_openai(response: Stream[Any], docs, full_prompt) -> AsyncGenera
 
 @app.post("/chat")
 async def chat_completions(request: ChatCompletionRequest):
+    expasy_key = os.getenv("EXPASY_API_KEY", None)
+    if expasy_key and request.api_key != expasy_key:
+        return {"error": "Invalid API key"}
+
+
     question: str = request.messages[-1].content if request.messages else ""
 
     query_embeddings = next(iter(embedding_model.embed([question])))
@@ -178,11 +185,12 @@ def chat_ui(request: Request) -> Any:
             "title": "Expasy query helper",
             "description": "This service helps users to use resources from the Swiss Institute of Bioinformatics, such as SPARQL endpoints, to get information about proteins, genes, and other biological entities.",
             "short_description": "Ask a question about SIB resources.",
-            "repository_url": "https://github.com/sib-swiss/expasy-api",
+            "repository_url": "https://github.com/sib-swiss/expasy-chat",
             "examples": [
                 "Which are the genes, expressed in the rat, corresponding to human genes associated with cancer?",
                 "What is the gene associated with the protein P12345?",
             ],
             "favicon": "https://www.expasy.org/favicon.ico",
+            "expasy_key": os.getenv("EXPASY_API_KEY", None),
         },
     )
