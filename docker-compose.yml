@@ -25,5 +25,6 @@ services:
     volumes:
       - ./data/fastembed_cache:/tmp/fastembed_cache
       - ./src:/app/src
+    entrypoint: uvicorn src.expasy_api.api:app --host 0.0.0.0 --port 80
     env_file:
       - .env
