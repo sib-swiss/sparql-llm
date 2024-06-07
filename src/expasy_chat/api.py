@@ -2,6 +2,8 @@ import json
 from collections.abc import AsyncGenerator
 import os
 from typing import Any, Optional
+import logging
+from datetime import datetime
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -27,10 +29,12 @@ vectordb = get_vectordb()
 embedding_model = get_embedding_model()
 
 app = FastAPI(
-    title="Expasy API",
+    title="Expasy Chat",
     description="""This service helps users to use resources from the Swiss Institute of Bioinformatics,
 such as SPARQL endpoints, to get information about proteins, genes, and other biological entities.""",
 )
+
+logging.basicConfig(filename="/logs/user_questions.log", level=logging.INFO, format="%(asctime)s - %(message)s")
 
 templates = Jinja2Templates(
     # directory=pkg_resources.resource_filename("libre_chat", "templates")
@@ -64,16 +68,12 @@ class Message(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
-    model: Optional[str] = "mock-gpt-model"
+    model: Optional[str] = "expasy"
     messages: list[Message]
     max_tokens: Optional[int] = 512
     temperature: Optional[float] = 0.1
     stream: Optional[bool] = False
     api_key: Optional[str] = None
-    # docs: list[ScoredPoint]
-
-
-# TODO: make OpenAI compatible endpoint https://towardsdatascience.com/how-to-build-an-openai-compatible-api-87c8edea2f06
 
 
 async def stream_openai(response: Stream[Any], docs, full_prompt) -> AsyncGenerator[str, None]:
@@ -106,10 +106,11 @@ async def stream_openai(response: Stream[Any], docs, full_prompt) -> AsyncGenera
 async def chat_completions(request: ChatCompletionRequest):
     expasy_key = os.getenv("EXPASY_API_KEY", None)
     if expasy_key and request.api_key != expasy_key:
-        return {"error": "Invalid API key"}
-
+        raise ValueError("Invalid API key")
 
     question: str = request.messages[-1].content if request.messages else ""
+
+    logging.info(question)
 
     query_embeddings = next(iter(embedding_model.embed([question])))
     hits = vectordb.search(
@@ -187,8 +188,9 @@ def chat_ui(request: Request) -> Any:
             "short_description": "Ask a question about SIB resources.",
             "repository_url": "https://github.com/sib-swiss/expasy-chat",
             "examples": [
+                "Which resources are available at the SIB?",
                 "Which are the genes, expressed in the rat, corresponding to human genes associated with cancer?",
-                "What is the gene associated with the protein P12345?",
+                # "What is the gene associated with the protein P68871?",
             ],
             "favicon": "https://www.expasy.org/favicon.ico",
             "expasy_key": os.getenv("EXPASY_API_KEY", None),

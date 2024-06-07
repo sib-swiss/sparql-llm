@@ -27,6 +27,7 @@ services:
       # cf. https://github.com/tiangolo/uvicorn-gunicorn-docker/blob/master/docker-images/gunicorn_conf.py
     volumes:
       - ./data/fastembed_cache:/tmp/fastembed_cache
+      - ./data/logs:/logs
       - ./src:/app/src
     # entrypoint: uvicorn src.expasy_chat.api:app --host 0.0.0.0 --port 80
     env_file:

@@ -37,12 +37,12 @@
                             <i id="sun-icon" class="fas fa-sun"></i>
                             <i id="moon-icon" class="fas fa-moon hidden"></i>
                         </button>
-                        <a href="/docs" target="_blank" rel="noopener noreferrer" data-tooltip="OpenAPI documentation"
+                        <!-- <a href="/docs" target="_blank" rel="noopener noreferrer" data-tooltip="OpenAPI documentation"
                             class="text-black hover:text-black dark:text-white">
                             <button class="px-4 py-3 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500">
                                 <img class="h-5" src="https://raw.github.com/vemonet/libre-chat/main/docs/docs/assets/openapi_logo.svg">
                             </button>
-                        </a>
+                        </a> -->
                         <a href="{{ repository_url }}" target="_blank" rel="noopener noreferrer"
                             class="text-black hover:text-black dark:text-white">
                             <button data-tooltip="Source code" class="px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500">
@@ -217,7 +217,7 @@
                             <pre><code class="language-sparql hljs">${doc.payload.example.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`;
                     }
                     // <pre><code>${doc.payload.example.replace(/<&lt;/g, '<').replace(/&gt;/g, '>')}</code></pre>`;
-                    sourcesBtnHtml += `<button id="source-btn-${msgCount}" class="my-3 px-3 py-1 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg">See source examples</button>&nbsp;&nbsp;`
+                    sourcesBtnHtml += `<button id="source-btn-${msgCount}" class="my-3 px-3 py-1 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg">See relevant reference examples</button>&nbsp;&nbsp;`
                     sourcesHtml += `<dialog id="source-dialog-${msgCount}" class="bg-white dark:bg-gray-800 m-3 rounded-lg shadow-md w-full">
                         <article class="prose dark:prose-invert p-3 w-full max-w-full">
                             ${sourcesCardHtml}
@@ -267,6 +267,7 @@
                 loadingSpinner.classList.add("hidden");
                 sendIcon.classList.remove("hidden");
                 submitBtn.disabled = false;
+                hideWarning();
             }
 
             // Send the user input to the chat API
