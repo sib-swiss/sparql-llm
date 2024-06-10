@@ -18,7 +18,10 @@ from expasy_chat.embed import QUERIES_COLLECTION, get_embedding_model, get_vecto
 
 system_prompt = """You are Expasy, an assistant that helps users to query the databases from the Swiss Institute of Bioinformatics, such as UniProt, OMA and Bgee.
 When writing the query try to make it as efficient as possible, to avoid timeout due to how large the datasets are.
-You can deconstruct complex queries in many smaller queries, but always propose one final query to the user (federated if needed), but be careful to use the right crossref (xref) when using an identifier from an endpoint in another endpoint, and indicate on which endpoint the query should be executed.
+You can deconstruct complex queries in many smaller queries, but always propose one final query to the user (federated if needed), but be careful to use the right crossref (xref) when using an identifier from an endpoint in another endpoint.
+Always provide one final complete query.
+Always indicate the URL of the endpoint on which the query should be executed in a comment in the codeblocks at the start of the query. No additional text, just the endpoint URL directly as comment.
+Do not put service call to the endpoint the query is run on.
 """
 # When writing the SPARQL query try to factorize the predicates/objects of a subject as much as possible, so that the user can understand the query and the results.
 STARTUP_PROMPT = "Here is a list of questions and SPARQL queries relevant to the user question that can be used on various SPARQL endpoints and might help you answer the user question, use them as inspiration when answering the question from the user:"
@@ -86,7 +89,7 @@ async def stream_openai(response: Stream[Any], docs, full_prompt) -> AsyncGenera
     yield f"data: {json.dumps(first_chunk)}\n\n"
 
     for chunk in response:
-        print(chunk)
+        # print(chunk)
         if chunk.choices[0].finish_reason:
             break
         # ChatCompletionChunk(id='chatcmpl-9UxmYAx6E5Y3BXdI7YEVDmbOh9S2X',
@@ -101,6 +104,7 @@ async def stream_openai(response: Stream[Any], docs, full_prompt) -> AsyncGenera
         }
         yield f"data: {json.dumps(resp_chunk)}\n\n"
 
+DOCS_COUNT = 10
 
 @app.post("/chat")
 async def chat_completions(request: ChatCompletionRequest):
@@ -110,7 +114,7 @@ async def chat_completions(request: ChatCompletionRequest):
 
     question: str = request.messages[-1].content if request.messages else ""
 
-    logging.info(question)
+    logging.info(f"User question: {question}")
 
     query_embeddings = next(iter(embedding_model.embed([question])))
     hits = vectordb.search(
@@ -124,34 +128,40 @@ async def chat_completions(request: ChatCompletionRequest):
                 )
             ]
         ),
-        limit=10,
+        limit=DOCS_COUNT,
     )
 
-    # Either we build a big prompt with the relevant queries retrieved from similarity search engine
+    # We build a big prompt with the 3 most relevant queries retrieved from similarity search engine (could be increased)
     big_prompt = f"{STARTUP_PROMPT}\n\n"
 
-    # Or we provide the example queries as previous messages to the LLM
-    example_messages = [{"role": "system", "content": system_prompt}]
-    for hit in hits[:3]:
+    # We also provide the example queries as previous messages to the LLM
+    example_messages: list[Message] = [{"role": "system", "content": system_prompt}]
+    for hit in hits:
         big_prompt += f"{hit.payload['comment']}\nQuery to run in SPARQL endpoint <{hit.payload['endpoint']}>\n\n{hit.payload['example']}\n\n"
 
     # Reverse the order of the hits to show the most relevant closest to the user question
-    for hit in hits[::-1]:
-        example_messages.append({"role": "user", "content": hit.payload["comment"]})
-        example_messages.append(
-            {
-                "role": "assistant",
-                "content": f"Query to run in SPARQL endpoint {hit.payload['endpoint']}\n\n```sparql\n{hit.payload['example']}\n```\n",
-            }
-        )
+    # NOTE: this breaks the memory
+    # for hit in hits[::-1]:
+    #     example_messages.append({"role": "user", "content": hit.payload["comment"]})
+    #     example_messages.append(
+    #         {
+    #             "role": "assistant",
+    #             "content": f"Query to run in SPARQL endpoint {hit.payload['endpoint']}\n\n```sparql\n{hit.payload['example']}\n```\n",
+    #         }
+    #     )
 
     big_prompt += f"\n{INTRO_USER_QUESTION_PROMPT}\n{question}"
-    example_messages.append({"role": "user", "content": big_prompt})
+
+    request.messages[-1].content = big_prompt
+    all_messages = example_messages + request.messages
+    # all_messages.append({"role": "user", "content": big_prompt})
+
+    # print(all_messages)
 
     # Send the prompt to OpenAI to get a response
     response = client.chat.completions.create(
         model="gpt-4o",
-        messages=example_messages,
+        messages=all_messages,
         # messages=[
         #     {"role": "system", "content": system_prompt},
         #     {"role": "user", "content": full_prompt},
@@ -165,6 +175,7 @@ async def chat_completions(request: ChatCompletionRequest):
     if request.stream:
         return StreamingResponse(stream_openai(response, hits, big_prompt), media_type="application/x-ndjson")
 
+    # NOTE: the response is similar to OpenAI API, but we add the list of hits and the full prompt used to ask the question
     return {
         "id": response.id,
         "object": "chat.completion",

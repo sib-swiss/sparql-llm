@@ -12,6 +12,8 @@
     <!-- <link href="https://unpkg.com/tailwindcss@^3.0/dist/tailwind.min.css" rel="stylesheet"> -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/default.min.css">
     <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
     <script src="static/turtle.js"></script>
@@ -37,12 +39,6 @@
                             <i id="sun-icon" class="fas fa-sun"></i>
                             <i id="moon-icon" class="fas fa-moon hidden"></i>
                         </button>
-                        <!-- <a href="/docs" target="_blank" rel="noopener noreferrer" data-tooltip="OpenAPI documentation"
-                            class="text-black hover:text-black dark:text-white">
-                            <button class="px-4 py-3 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500">
-                                <img class="h-5" src="https://raw.github.com/vemonet/libre-chat/main/docs/docs/assets/openapi_logo.svg">
-                            </button>
-                        </a> -->
                         <a href="{{ repository_url }}" target="_blank" rel="noopener noreferrer"
                             class="text-black hover:text-black dark:text-white">
                             <button data-tooltip="Source code" class="px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500">
@@ -94,10 +90,10 @@
         <!-- User input border-t border-slate-400 dark:border-slate-500 -->
         <form class="p-2 flex" id="chat-form">
             <div class="container flex mx-auto max-w-5xl">
-                <div id="user-input" contenteditable="true" style="height: max-content;"
-                    class="flex-grow px-4 py-2 border border-slate-400 dark:border-slate-500 rounded-lg focus:outline-none focus:ring focus:ring-blue-200 dark:focus:ring-blue-400"
-                    placeholder="Send a message..."
-                ></div>
+                <textarea id="user-input" style="height: max-content;"
+                    class="flex-grow px-4 py-2 border border-slate-400 bg-slate-200 dark:bg-slate-700 dark:border-slate-500 rounded-lg focus:outline-none focus:ring focus:ring-blue-200 dark:focus:ring-blue-400 overflow-y-hidden resize-none"
+                    placeholder="Ask Expasy..." rows="1"
+                ></textarea>
                 <button type="submit" id="submit-btn" class="ml-2 px-4 py-2 rounded-lg text-slate-500 bg-slate-200 hover:bg-slate-300 dark:text-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600">
                     <i id="send-icon" class="fas fa-paper-plane"></i>
                     <i id="loading-spinner" class="hidden fas fa-spinner fa-spin"></i>
@@ -107,7 +103,7 @@
     </div>
 
     <script type="module">
-        import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
+        // import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
 
         tailwind.config = {
             darkMode: 'class',
@@ -140,7 +136,7 @@
 
         hljs.registerLanguage('ttl', window.hljsDefineTurtle);
         hljs.registerLanguage('sparql', window.hljsDefineSparql);
-        // TODO: those highlights are horrible, move to use YASGUI?
+        // TODO: those highlights are not great, move to use YASGUI?
 
         document.addEventListener("DOMContentLoaded", function() {
             const description = document.getElementById("description");
@@ -150,6 +146,7 @@
             const loadingSpinner = document.getElementById("loading-spinner");
             description.innerHTML = marked.parse(description.innerHTML.trim());
 
+            const messages = []
 
             // Warning card to send users messages
             const warningCard = document.getElementById("warning-card");
@@ -160,7 +157,6 @@
             function hideWarning() {
                 warningCard.style.display = "none";
             }
-
 
             // Generate example buttons dynamically
             const exampleButtons = document.getElementById("example-buttons");
@@ -189,14 +185,11 @@
             function appendMessage(message, sender) {
                 msgCount += 1
                 const messageElement = document.createElement("div");
-                const iconHtml = sender === "user" ?
-                    '<i class="fas fa-user-astronaut text-xl mr-4"></i>' : // fa-comment fa-user-secret fa-user-astronaut
-                    '<i class="fas fa-robot text-xl mr-4"></i>';
                 messageElement.className = `border-b border-slate-400 ${sender === "user" ? "bg-gray-100 dark:bg-gray-700" : "bg-gray-200 dark:bg-gray-600 hidden"}`;
                 messageElement.innerHTML = `<div class="px-2 py-8 mx-auto max-w-5xl">
                     <div class="container flex items-center">
                         <article class="prose dark:prose-invert max-w-full">
-                            ${marked(message)}
+                            ${marked.parse(message)}
                         </article>
                     </div>
                 </div>`;
@@ -212,17 +205,16 @@
                 let sourcesHtml = ""
                 if (source_documents && source_documents.length > 0) {
                     for (const [i, doc] of source_documents.entries()) {
-                        sourcesCardHtml += `
-                            <code>${i + 1} - ${Math.round(doc.score*1000)/1000}</code> ${doc.payload.comment} (${doc.payload.endpoint})<br/>
-                            <pre><code class="language-sparql hljs">${doc.payload.example.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`;
+                        sourcesCardHtml += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` ${doc.payload.comment} (${doc.payload.endpoint})\n\n${doc.payload.example}\n`;
+                            // <pre><code class="language-sparql hljs">${doc.payload.example.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`;
                     }
                     // <pre><code>${doc.payload.example.replace(/<&lt;/g, '<').replace(/&gt;/g, '>')}</code></pre>`;
                     sourcesBtnHtml += `<button id="source-btn-${msgCount}" class="my-3 px-3 py-1 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg">See relevant reference examples</button>&nbsp;&nbsp;`
                     sourcesHtml += `<dialog id="source-dialog-${msgCount}" class="bg-white dark:bg-gray-800 m-3 rounded-lg shadow-md w-full">
+                        <button id="close-dialog-${msgCount}" class="fixed top-2 right-8 m-3 px-2 text-xl bg-gray-200 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-full"><i class="fas fa-times"></i></button>
                         <article class="prose dark:prose-invert p-3 w-full max-w-full">
-                            ${sourcesCardHtml}
+                            ${DOMPurify.sanitize(marked.parse(sourcesCardHtml))}
                         </article>
-                        <button id="close-dialog-${msgCount}" class="m-3 px-3 py-1 text-sm bg-gray-200 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg">Close</button>
                     </dialog>`
                 }
                 messageElement.lastElementChild.innerHTML += sourcesBtnHtml;
@@ -276,13 +268,15 @@
                     showWarning("⏳ Thinking...");
                     return
                 }
-                const prompt = userInput.innerText;
+                exampleButtons.style.display = "none";
+                const prompt = userInput.value;
+                messages.push({role: "user", content: prompt})
                 if (prompt.trim() !== "") {
                     appendMessage(prompt, "user");
-                    userInput.innerText = "";
+                    userInput.value = "";
                     enableLoading();
 
-                    appendMessage("", "bot");
+                    appendMessage("", "assistant");
                     const lastMsg = chatThread.lastElementChild
                     if (lastMsg.classList.contains("hidden")) chatThread.lastElementChild.classList.remove("hidden")
                     const responseContainer = lastMsg.lastElementChild.lastElementChild.lastElementChild;
@@ -296,7 +290,7 @@
                         // 'Authorization': `Bearer ${apiKey}`,
                     };
                     const body = JSON.stringify({
-                        messages: [{"role": "user", "content": prompt}],
+                        messages: messages,
                         model: "gpt-4o",
                         max_tokens: 50,
                         stream: true,
@@ -361,8 +355,9 @@
                             console.warn('Failed to parse remaining JSON', error);
                         }
                     }
-                    // responseContainer.innerHTML = marked.parse(responseContainer.innerHTML.trim());
-                    responseContainer.innerHTML = marked.parse(responseContainer.innerHTML.trim().replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
+                    messages.push({role: "assistant", content: responseContainer.innerHTML.trim()})
+                    // console.log(messages)
+                    responseContainer.innerHTML = DOMPurify.sanitize(marked.parse(responseContainer.innerHTML.trim().replace(/&lt;/g, '<').replace(/&gt;/g, '>')));
                     appendSources(docs)
                     hljs.highlightAll();
                     disableLoading();
@@ -382,12 +377,12 @@
                 event.preventDefault();
                 submitInput(userInput)
             });
-            // Add a placeholder when empty
-            function togglePlaceholder() {
-                if (userInput.textContent.trim() === "") userInput.innerHTML = "";
-            }
-            userInput.addEventListener("input", togglePlaceholder);
-            togglePlaceholder();
+
+            // Fix input height to fit content
+            userInput.addEventListener("input", function(event) {
+                userInput.style.height = 'auto';
+                userInput.style.height = userInput.scrollHeight + 'px';
+            });
 
 
             // Light/dark theme setup, default to dark if nothing found
@@ -431,12 +426,6 @@
         }
         a:hover {
             color: #0056b3;
-        }
-        /* Add placeholder in text input */
-        [placeholder]:empty:before {
-            content: attr(placeholder);
-            opacity: 0.6;
-            pointer-events: none;
         }
 
         /* Add tooltip for top nav on desktop */

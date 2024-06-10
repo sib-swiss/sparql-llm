@@ -2,7 +2,7 @@ services:
 
   search-engine:
     extends:
-      file: docker-compose.yml
+      file: compose.yml
       service: search-engine
     ports:
       - 6333:6333
@@ -10,7 +10,7 @@ services:
 
   api:
     extends:
-      file: docker-compose.yml
+      file: compose.yml
       service: api
     ports:
       - 8000:80

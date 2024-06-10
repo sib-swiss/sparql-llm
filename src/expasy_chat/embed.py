@@ -101,7 +101,7 @@ def init_vectordb(vectordb_host: str = "search-engine") -> None:
                     {
                         "endpoint": endpoint_url,
                         "comment": f"{endpoint_name}: {remove_a_tags(row['comment']['value'])}",
-                        "example": query,
+                        "example": f"```sparql\n{query}\n```",
                         "doc_type": "sparql",
                     }
                 )
@@ -114,6 +114,7 @@ def init_vectordb(vectordb_host: str = "search-engine") -> None:
     # OMA ontology:
     # https://github.com/qfo/OrthologyOntology/blob/master/orthOntology_v2.ttl
     # For each class get the vann:example provided which is an example of the class as turtle?
+    # UniProt ontology: https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl
 
     ## Query to get VoID metadata from the SPARQL endpoint:
     # PREFIX sh: <http://www.w3.org/ns/shacl#>

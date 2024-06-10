@@ -23,7 +23,7 @@ docker compose up
 Start the workspace + similarity search engine:
 
 ```bash
-docker compose -f docker-compose.dev.yml up
+docker compose -f compose.dev.yml up
 ```
 
 Inside the workspace container install the dependencies:
