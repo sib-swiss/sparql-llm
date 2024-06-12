@@ -205,7 +205,7 @@
                 let sourcesHtml = ""
                 if (source_documents && source_documents.length > 0) {
                     for (const [i, doc] of source_documents.entries()) {
-                        sourcesCardHtml += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` ${doc.payload.comment} (${doc.payload.endpoint})\n\n${doc.payload.example}\n`;
+                        sourcesCardHtml += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` ${doc.payload.question} (${doc.payload.endpoint})\n\n${doc.payload.answer}\n\n`;
                             // <pre><code class="language-sparql hljs">${doc.payload.example.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`;
                     }
                     // <pre><code>${doc.payload.example.replace(/<&lt;/g, '<').replace(/&gt;/g, '>')}</code></pre>`;

@@ -1,5 +1,7 @@
+import json
 import re
 
+import requests
 from bs4 import BeautifulSoup
 from fastembed import TextEmbedding
 from qdrant_client import QdrantClient, models
@@ -7,6 +9,7 @@ from qdrant_client.http.models import (
     Distance,
     VectorParams,
 )
+from rdflib import Graph, Namespace, RDF, ConjunctiveGraph
 from SPARQLWrapper import JSON, SPARQLWrapper
 
 
@@ -29,17 +32,45 @@ def get_vectordb(host="search-engine") -> QdrantClient:
 
 QUERIES_COLLECTION = "expasy-queries"
 
+endpoints = [
+    {
+        "label": "UniProt",
+        "endpoint": "https://sparql.uniprot.org/sparql/",
+        "homepage": "https://www.uniprot.org/",
+    },
+    {
+        "label": "Bgee",
+        "endpoint": "https://www.bgee.org/sparql/",
+        "homepage": "https://www.bgee.org/",
+    },
+    {
+        "label": "Orthology MAtrix (OMA)",
+        "endpoint": "https://sparql.omabrowser.org/sparql/",
+        "homepage": "https://omabrowser.org/",
+    },
+    {
+        "label": "Rhea reactions",
+        "endpoint": "https://sparql.rhea-db.org/sparql/",
+        "homepage": "https://www.rhea-db.org/",
+    },
+    {
+        "label": "MetaNetx",
+        "endpoint": "https://rdf.metanetx.org/sparql/",
+        "homepage": "https://www.metanetx.org/",
+    },
+    {
+        "label": "NextProt",
+        # "endpoint": "https://api.nextprot.org/sparql",
+        "endpoint": "https://sparql.nextprot.org",
+        "homepage": "https://www.nextprot.org/",
+    },
+    {
+        "label": "GlyConnect",
+        "endpoint": "https://glyconnect.expasy.org/sparql",
+        "homepage": "https://glyconnect.expasy.org/",
+    },
+]
 
-endpoints = {
-    "UniProt": "https://sparql.uniprot.org/sparql/",
-    "Bgee": "https://www.bgee.org/sparql/",
-    "Ortholog MAtrix (OMA)": "https://sparql.omabrowser.org/sparql/",
-    "Rhea reactions": "https://sparql.rhea-db.org/sparql/",
-    "GlyConnect": "https://glyconnect.expasy.org/sparql",
-    "MetaNetx": "https://rdf.metanetx.org/sparql/",
-    "NextProt": "https://sparql.nextprot.org",
-    # "SwissLipids": "https://sparql.swisslipids.org/sparql/",
-}
 
 get_queries = """PREFIX sh: <http://www.w3.org/ns/shacl#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -62,6 +93,8 @@ WHERE {
 } ORDER BY ?prefix"""
 
 
+SCHEMA = Namespace("http://schema.org/")
+
 def remove_a_tags(html_text: str) -> str:
     """Remove all <a> tags from the queries descriptions"""
     soup = BeautifulSoup(html_text, "html.parser")
@@ -70,74 +103,108 @@ def remove_a_tags(html_text: str) -> str:
     return soup.get_text()
 
 
+def get_example_queries(endpoint: dict[str, str]) -> list[dict]:
+    """Retrieve example SPARQL queries from a SPARQL endpoint"""
+    queries = []
+    endpoint_name = endpoint["label"]
+    endpoint_url = endpoint["endpoint"]
+    try:
+        sparql_endpoint = SPARQLWrapper(endpoint_url)
+        sparql_endpoint.setReturnFormat(JSON)
+
+        # Add SPARQL queries examples to the vectordb
+        sparql_endpoint.setQuery(get_prefixes)
+        results = sparql_endpoint.query().convert()
+        prefix_map = {}
+        for row in results["results"]["bindings"]:
+            prefix_map[row["prefix"]["value"]] = row["namespace"]["value"]
+
+        sparql_endpoint.setQuery(get_queries)
+        results = sparql_endpoint.query().convert()
+        print(f"Found {len(results['results']['bindings'])} examples queries for {endpoint_url}")
+
+        for row in results["results"]["bindings"]:
+            query = row["query"]["value"]
+            # Add prefixes to queries
+            for prefix, namespace in prefix_map.items():
+                prefix_str = f"PREFIX {prefix}: <{namespace}>"
+                if not re.search(prefix_str, query) and re.search(f"[(| |\u00a0|/]{prefix}:", query):
+                    query = f"{prefix_str}\n{query}"
+            queries.append(
+                {
+                    "endpoint": endpoint_url,
+                    "question": f"{endpoint_name}: {remove_a_tags(row['comment']['value'])}",
+                    "answer": f"```sparql\n{query}\n```",
+                    "doc_type": "sparql",
+                }
+            )
+    except Exception as e:
+        print(f"Error while fetching queries from {endpoint_name}: {e}")
+    return queries
+
+
+def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
+    """Extract datasets descriptions from the schema.org metadata in homepage of the endpoint"""
+    docs = []
+    try:
+        resp = requests.get(
+            endpoint["homepage"],
+            headers={
+                # "User-Agent": "BgeeBot/1.0",
+                "User-Agent": "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.96 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html) X-Middleton/1",
+            },
+            timeout=10
+        )
+        if resp.status_code != 200:
+            raise Exception(f"Failed to fetch the webpage: {resp.status_code}")
+        # print(resp.text)
+
+        # Parse HTML and find the JSON-LD script tag
+        soup = BeautifulSoup(resp.content, "html.parser")
+        json_ld_tags = soup.find_all("script", type="application/ld+json")
+        if not json_ld_tags:
+            raise Exception("No JSON-LD script tags found")
+
+        g = ConjunctiveGraph()
+        for json_ld_tag in json_ld_tags:
+            json_ld_content = json_ld_tag.string
+            if json_ld_content:
+                g.parse(data=json_ld_content, format="json-ld")
+
+        # Concat all schema:description of all classes in the graph
+        descs = set()
+        # print(len(g))
+        # print(g.serialize(format="turtle"))
+        for s, _p, _o in g.triples((None, RDF.type, None)):
+            desc = g.value(subject=s, predicate=SCHEMA.description)
+            if desc:
+                descs.add(str(desc))
+
+        if len(descs) == 0:
+            raise Exception("No schema:description found in the JSON-LD script tag")
+        docs.append(
+            {
+                "endpoint": endpoint["endpoint"],
+                "question": f"What is the SIB resource {endpoint['label']} about?",
+                "answer": "\n".join(descs),
+                "doc_type": "schemaorg_description",
+            }
+        )
+        print("\n".join(descs))
+    except Exception as e:
+        print(f"Error while fetching schema.org metadata from {endpoint['homepage']}: {e}")
+    return docs
+
+
 def init_vectordb(vectordb_host: str = "search-engine") -> None:
     vectordb = get_vectordb(vectordb_host)
     embedding_model = get_embedding_model()
-    queries = []
-    for endpoint_name, endpoint_url in endpoints.items():
-        try:
-            sparql_endpoint = SPARQLWrapper(endpoint_url)
-            sparql_endpoint.setReturnFormat(JSON)
+    docs = []
+    for endpoint in endpoints:
+        print(endpoint["label"])
+        docs += get_example_queries(endpoint)
+        docs += get_schemaorg_description(endpoint)
 
-            # Add SPARQL queries examples to the vectordb
-            sparql_endpoint.setQuery(get_prefixes)
-            results = sparql_endpoint.query().convert()
-            prefix_map = {}
-            for row in results["results"]["bindings"]:
-                prefix_map[row["prefix"]["value"]] = row["namespace"]["value"]
-
-            sparql_endpoint.setQuery(get_queries)
-            results = sparql_endpoint.query().convert()
-            print(f"Found {len(results['results']['bindings'])} examples queries for {endpoint_url}")
-
-            for row in results["results"]["bindings"]:
-                query = row["query"]["value"]
-                # Add prefixes to queries
-                for prefix, namespace in prefix_map.items():
-                    prefix_str = f"PREFIX {prefix}: <{namespace}>"
-                    if not re.search(prefix_str, query) and re.search(f"[(| |\u00a0|/]{prefix}:", query):
-                        query = f"{prefix_str}\n{query}"
-                queries.append(
-                    {
-                        "endpoint": endpoint_url,
-                        "comment": f"{endpoint_name}: {remove_a_tags(row['comment']['value'])}",
-                        "example": f"```sparql\n{query}\n```",
-                        "doc_type": "sparql",
-                    }
-                )
-        except Exception as e:
-            print(f"Error while fetching queries from {endpoint_name}: {e}")
-
-        # sparql_endpoint.setQuery(get_queries)
-        # results = sparql_endpoint.query().convert()
-
-    # OMA ontology:
-    # https://github.com/qfo/OrthologyOntology/blob/master/orthOntology_v2.ttl
-    # For each class get the vann:example provided which is an example of the class as turtle?
-    # UniProt ontology: https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl
-
-    ## Query to get VoID metadata from the SPARQL endpoint:
-    # PREFIX sh: <http://www.w3.org/ns/shacl#>
-    # PREFIX void: <http://rdfs.org/ns/void#>
-
-    # SELECT DISTINCT ?class1 ?prop ?class2 ?pp1triples ?graph
-    # FROM <https://sparql.uniprot.org/.well-known/void>
-    # FROM <https://sparql.uniprot.org/.well-known/sparql-examples>
-    # WHERE {
-    # {
-    #     ?s <http://www.w3.org/ns/sparql-service-description#graph> ?graph .
-    #     ?graph void:classPartition ?cp1 .
-    #     ?cp1 void:class ?class1 ;
-    #         void:propertyPartition ?pp1 .
-    #     ?pp1 void:property ?prop ;
-    #         void:triples ?pp1triples ;
-    #         void:classPartition ?cp2 .
-    #     ?cp2 void:class ?class2 .
-
-    # #    ?graph void:classPartition ?cp3 .
-    # #    ?cp3 void:class ?class2 .
-    # }
-    # } ORDER BY DESC(?pp1triples)
 
     if not vectordb.collection_exists(QUERIES_COLLECTION):
         vectordb.create_collection(
@@ -145,20 +212,80 @@ def init_vectordb(vectordb_host: str = "search-engine") -> None:
             vectors_config=VectorParams(size=embedding_dimensions, distance=Distance.COSINE),
         )
 
-    questions = [q["comment"] for q in queries]
+    questions = [q["question"] for q in docs]
     output = embedding_model.embed(questions)
     print(f"Done generating embeddings for {len(questions)} queries")
 
     vectordb.upsert(
         collection_name=QUERIES_COLLECTION,
         points=models.Batch(
-            ids=list(range(1, len(queries) + 1)),
+            ids=list(range(1, len(docs) + 1)),
             vectors=[embeddings.tolist() for embeddings in output],
-            payloads=queries,
+            payloads=docs,
         ),
     )
 
 
+# Get general infos from JSON-LD schema.org
+# https://validator.schema.org/#url=http%3A%2F%2Fbgee.org
+
 if __name__ == "__main__":
     init_vectordb()
     print(f"VectorDB initialized with {get_vectordb().get_collection(QUERIES_COLLECTION).points_count} vectors")
+
+
+## TODO: get ontology infos from the SPARQL endpoint
+# OMA ontology:
+# https://github.com/qfo/OrthologyOntology/blob/master/orthOntology_v2.ttl
+# For each class get the vann:example provided which is an example of the class as turtle?
+# UniProt ontology: https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl
+
+# PREFIX dct: <http://purl.org/dc/terms/>
+# PREFIX owl: <http://www.w3.org/2002/07/owl#>
+# PREFIX up: <http://purl.uniprot.org/core/>
+# PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+# PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+# PREFIX rh: <http://rdf.rhea-db.org/>
+# PREFIX widoco: <https://w3id.org/widoco/vocab#>
+# SELECT DISTINCT *
+# WHERE {
+#     ?ont a owl:Ontology .
+#     OPTIONAL {
+#         ?ont dct:title|rdfs:label ?title .
+#     }
+#     OPTIONAL {
+#         ?ont dct:description ?desc
+#     }
+#     OPTIONAL {
+#         ?ont dct:abstract ?abstract
+#     }
+#     OPTIONAL {
+#         ?ont widoco:introduction ?widocoIntro
+#     }
+# }
+
+
+
+## TODO: Query to get VoID metadata from the SPARQL endpoint:
+# PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+# PREFIX sh: <http://www.w3.org/ns/shacl#>
+# PREFIX void: <http://rdfs.org/ns/void#>
+# SELECT DISTINCT ?class1 ?class1Label ?prop ?class2Label ?class2 ?pp1triples ?graph
+# WHERE {
+#     ?s <http://www.w3.org/ns/sparql-service-description#graph> ?graph .
+#     ?graph void:classPartition ?cp1 .
+#     ?cp1 void:class ?class1 ;
+#         void:propertyPartition ?pp1 .
+#     ?pp1 void:property ?prop ;
+#         void:triples ?pp1triples ;
+#         void:classPartition ?cp2 .
+#     ?cp2 void:class ?class2 .
+#     OPTIONAL{
+# 	    ?class1 rdfs:label ?class1Label .
+#     }
+#     OPTIONAL {
+#     	?class2 rdfs:label ?class2Label .
+#     }
+# #    ?graph void:classPartition ?cp3 .
+# #    ?cp3 void:class ?class2 .
+# } ORDER BY DESC(?pp1triples)
