@@ -191,12 +191,12 @@ def chat_ui(request: Request) -> Any:
         {
             "request": request,
             "title": "Ask Expasy",
-            "description": "This service helps users to navigate resources from the Swiss Institute of Bioinformatics.",
+            "description": "Assistant to navigate resources from the Swiss Institute of Bioinformatics.",
             "short_description": "Ask a question about SIB resources.",
             "repository_url": "https://github.com/sib-swiss/expasy-chat",
             "examples": [
                 "Which resources are available at the SIB?",
-                "How can I get the HGNC ID for the protein P68871?",
+                "How can I get the HGNC symbol for the protein P68871?",
                 # "Which are the genes, expressed in the rat, corresponding to human genes associated with cancer?",
                 # "What is the gene associated with the protein P68871?",
             ],

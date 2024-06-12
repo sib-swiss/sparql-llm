@@ -176,8 +176,9 @@ def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
         # print(len(g))
         # print(g.serialize(format="turtle"))
         for s, _p, _o in g.triples((None, RDF.type, None)):
-            desc = g.value(subject=s, predicate=SCHEMA.description)
-            if desc:
+            for _sd, _pd, desc in g.triples((s, SCHEMA.description, None)):
+                # desc = g.value(subject=s, predicate=SCHEMA.description)
+                # if desc:
                 descs.add(str(desc))
 
         if len(descs) == 0:

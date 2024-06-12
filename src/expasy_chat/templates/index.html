@@ -171,7 +171,7 @@
                 button.className = "px-4 py-1 bg-slate-300 text-slate-600 rounded-lg hover:bg-gray-400";
                 button.dataset.example = example;
                 button.addEventListener("click", function() {
-                    userInput.textContent = example;
+                    userInput.value = example;
                     submitInput(userInput);
                 });
                 exampleButtons.appendChild(button);
@@ -274,6 +274,7 @@
                 if (prompt.trim() !== "") {
                     appendMessage(prompt, "user");
                     userInput.value = "";
+                    fixInputHeight();
                     enableLoading();
 
                     appendMessage("", "assistant");
@@ -379,10 +380,14 @@
             });
 
             // Fix input height to fit content
-            userInput.addEventListener("input", function(event) {
+            function fixInputHeight() {
                 userInput.style.height = 'auto';
                 userInput.style.height = userInput.scrollHeight + 'px';
+            }
+            userInput.addEventListener("input", function(event) {
+                fixInputHeight()
             });
+            fixInputHeight()
 
 
             // Light/dark theme setup, default to dark if nothing found
