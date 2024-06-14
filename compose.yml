@@ -1,6 +1,6 @@
 services:
 
-  search-engine:
+  vectordb:
     # https://hub.docker.com/r/qdrant/qdrant/tags
     image: qdrant/qdrant:v1.9.2
     # image: qdrant/qdrant:v1.9.2-unprivileged # Unprivileged don't work when mounting a volume
@@ -19,7 +19,7 @@ services:
   api:
     build: .
     depends_on:
-      - search-engine
+      - vectordb
     ports:
       - 443:80
     environment:

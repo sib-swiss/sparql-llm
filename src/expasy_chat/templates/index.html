@@ -98,13 +98,15 @@
                     <i id="send-icon" class="fas fa-paper-plane"></i>
                     <i id="loading-spinner" class="hidden fas fa-spinner fa-spin"></i>
                 </button>
+                <div class="ml-4 tooltip-top" data-tooltip="⚠️ Time-consuming, no streaming response, can take a few dozen of seconds">
+                    <input type="checkbox" id="checks-checkbox" class="mr-2">
+                    <label for="checks-checkbox">Run additional checks</label>
+                </div>
             </div>
         </form>
     </div>
 
     <script type="module">
-        // import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
-
         tailwind.config = {
             darkMode: 'class',
             theme: {
@@ -144,6 +146,7 @@
             const submitBtn = document.getElementById("submit-btn");
             const sendIcon = document.getElementById("send-icon");
             const loadingSpinner = document.getElementById("loading-spinner");
+            const addChecks = document.getElementById("checks-checkbox");
             description.innerHTML = marked.parse(description.innerHTML.trim());
 
             const messages = []
@@ -181,11 +184,12 @@
             const chatContainer = document.getElementById("chat-container");
             const chatThread = document.getElementById("chat-thread");
             const chatForm = document.getElementById("chat-form");
-            let msgCount = 0
+            let msgCount = 0;
             function appendMessage(message, sender) {
                 msgCount += 1
                 const messageElement = document.createElement("div");
-                messageElement.className = `border-b border-slate-400 ${sender === "user" ? "bg-gray-100 dark:bg-gray-700" : "bg-gray-200 dark:bg-gray-600 hidden"}`;
+                messageElement.className = `border-b border-slate-400 ${sender === "user" ? "bg-gray-100 dark:bg-gray-700" : "bg-gray-200 dark:bg-gray-600"}`;
+                // messageElement.className = `border-b border-slate-400 ${sender === "user" ? "bg-gray-100 dark:bg-gray-700" : "bg-gray-200 dark:bg-gray-600 hidden"}`;
                 messageElement.innerHTML = `<div class="px-2 py-8 mx-auto max-w-5xl">
                     <div class="container flex items-center">
                         <article class="prose dark:prose-invert max-w-full">
@@ -205,8 +209,11 @@
                 let sourcesHtml = ""
                 if (source_documents && source_documents.length > 0) {
                     for (const [i, doc] of source_documents.entries()) {
-                        sourcesCardHtml += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` ${doc.payload.question} (${doc.payload.endpoint})\n\n${doc.payload.answer}\n\n`;
-                            // <pre><code class="language-sparql hljs">${doc.payload.example.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`;
+                        if (doc.payload.doc_type === "ontology") {
+                            sourcesCardHtml += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` Ontology for ${doc.payload.endpoint}\n\n\`\`\`turtle\n${doc.payload.question}\n\`\`\`\n\n`;
+                        } else {
+                            sourcesCardHtml += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` ${doc.payload.question} (${doc.payload.endpoint})\n\n${doc.payload.answer}\n\n`;
+                        }
                     }
                     // <pre><code>${doc.payload.example.replace(/<&lt;/g, '<').replace(/&gt;/g, '>')}</code></pre>`;
                     sourcesBtnHtml += `<button id="source-btn-${msgCount}" class="my-3 px-3 py-1 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg">See relevant references</button>&nbsp;&nbsp;`
@@ -262,52 +269,54 @@
                 hideWarning();
             }
 
+            // https://api.openai.com/v1/chat/completions
+            // const url = 'https://api.openai.com/v1/chat/completions';
+            const url = `${window.location}chat`
+
             // Send the user input to the chat API
-            async function submitInput(userInput) {
+            async function submitInput(inputElem) {
                 if (!loadingSpinner.classList.contains("hidden")) {
                     showWarning("⏳ Thinking...");
                     return
                 }
+                const userMsg = inputElem.value.trim();
+                if (userMsg === "") {
+                    showWarning("Please enter a question.");
+                    return;
+                }
                 exampleButtons.style.display = "none";
-                const prompt = userInput.value;
-                messages.push({role: "user", content: prompt})
-                if (prompt.trim() !== "") {
-                    appendMessage(prompt, "user");
-                    userInput.value = "";
-                    fixInputHeight();
-                    enableLoading();
+                messages.push({role: "user", content: userMsg})
+                appendMessage(userMsg, "user");
+                inputElem.value = "";
+                fixInputHeight();
+                enableLoading();
+                const headers = {
+                    'Content-Type': 'application/json',
+                    // 'Authorization': `Bearer ${apiKey}`,
+                };
+                const body = JSON.stringify({
+                    messages: messages,
+                    model: "gpt-4o",
+                    max_tokens: 50,
+                    stream: !addChecks.checked,
+                    api_key: "{{ expasy_key }}",
+                });
 
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: headers,
+                    body: body,
+                });
+                let docs = null;
+                if (!addChecks.checked) {
                     appendMessage("", "assistant");
                     const lastMsg = chatThread.lastElementChild
-                    if (lastMsg.classList.contains("hidden")) chatThread.lastElementChild.classList.remove("hidden")
+                    // if (lastMsg.classList.contains("hidden")) chatThread.lastElementChild.classList.remove("hidden")
                     const responseContainer = lastMsg.lastElementChild.lastElementChild.lastElementChild;
 
-                    // https://api.openai.com/v1/chat/completions
-                    // const url = 'https://api.openai.com/v1/chat/completions';
-                    const url = `${window.location}chat`
-
-                    const headers = {
-                        'Content-Type': 'application/json',
-                        // 'Authorization': `Bearer ${apiKey}`,
-                    };
-                    const body = JSON.stringify({
-                        messages: messages,
-                        model: "gpt-4o",
-                        max_tokens: 50,
-                        stream: true,
-                        api_key: "{{ expasy_key }}",
-                    });
-
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: headers,
-                        body: body,
-                    });
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder('utf-8');
                     let buffer = '';
-                    let docs = null;
-
                     // Iterate stream response
                     while (true) {
                         const { value, done } = await reader.read();
@@ -330,7 +339,6 @@
                                             // appendSources(json.docs)
                                             docs = json.docs;
                                             console.log(json.full_prompt)
-                                            // TODO: also add full_prompt somewhere?
                                         } else {
                                             const content = json.choices[0].delta?.content;
                                             if (content) {
@@ -357,12 +365,18 @@
                         }
                     }
                     messages.push({role: "assistant", content: responseContainer.innerHTML.trim()})
-                    // console.log(messages)
                     responseContainer.innerHTML = DOMPurify.sanitize(marked.parse(responseContainer.innerHTML.trim().replace(/&lt;/g, '<').replace(/&gt;/g, '>')));
-                    appendSources(docs)
-                    hljs.highlightAll();
-                    disableLoading();
+                } else {
+                    // Don't stream, await full response with additional checks done on the server
+                    const data = await response.json();
+                    const respMsg = data.choices[0].message.content;
+                    messages.push({role: "assistant", content: respMsg})
+                    appendMessage(respMsg, "assistant");
+                    docs = data.docs;
                 }
+                appendSources(docs)
+                hljs.highlightAll();
+                disableLoading();
             }
 
 
@@ -431,6 +445,10 @@
         }
         a:hover {
             color: #0056b3;
+        }
+
+        [data-tooltip].tooltip-top:before {
+            bottom: 50px;
         }
 
         /* Add tooltip for top nav on desktop */

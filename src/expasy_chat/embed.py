@@ -4,12 +4,13 @@ import re
 import requests
 from bs4 import BeautifulSoup
 from fastembed import TextEmbedding
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from qdrant_client import QdrantClient, models
 from qdrant_client.http.models import (
     Distance,
     VectorParams,
 )
-from rdflib import Graph, Namespace, RDF, ConjunctiveGraph
+from rdflib import RDF, ConjunctiveGraph, Graph, Namespace
 from SPARQLWrapper import JSON, SPARQLWrapper
 
 
@@ -23,7 +24,7 @@ def get_embedding_model() -> TextEmbedding:
 embedding_dimensions = 1024
 
 
-def get_vectordb(host="search-engine") -> QdrantClient:
+def get_vectordb(host="vectordb") -> QdrantClient:
     return QdrantClient(
         host=host,
         prefer_grpc=True,
@@ -37,19 +38,22 @@ endpoints = [
         "label": "UniProt",
         "endpoint": "https://sparql.uniprot.org/sparql/",
         "homepage": "https://www.uniprot.org/",
+        "ontology": "https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl",
     },
     {
         "label": "Bgee",
         "endpoint": "https://www.bgee.org/sparql/",
         "homepage": "https://www.bgee.org/",
+        # "ontology": "https://raw.githubusercontent.com/biosoda/genex/master/genex_v0_2.owl",
     },
     {
         "label": "Orthology MAtrix (OMA)",
         "endpoint": "https://sparql.omabrowser.org/sparql/",
         "homepage": "https://omabrowser.org/",
+        # "ontology": "https://raw.githubusercontent.com/qfo/OrthologyOntology/master/orthOntology_v2.ttl",
     },
     {
-        "label": "Rhea reactions",
+        "label": "Rhea",
         "endpoint": "https://sparql.rhea-db.org/sparql/",
         "homepage": "https://www.rhea-db.org/",
     },
@@ -151,6 +155,7 @@ def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
             endpoint["homepage"],
             headers={
                 # "User-Agent": "BgeeBot/1.0",
+                # Adding a user-agent to make it look like we are a google bot to trigger SSR
                 "User-Agent": "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.96 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html) X-Middleton/1",
             },
             timeout=10
@@ -197,7 +202,33 @@ def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
     return docs
 
 
-def init_vectordb(vectordb_host: str = "search-engine") -> None:
+def get_ontology(endpoint: dict[str, str]) -> list[dict]:
+    if "ontology" not in endpoint:
+        return []
+    # g = ConjunctiveGraph(store="Oxigraph")
+    g = ConjunctiveGraph()
+    g.parse(endpoint["ontology"], format="xml")
+    # try:
+    #     g.parse(endpoint["ontology"], format="ttl")
+    # except Exception as e:
+    #     g.parse(endpoint["ontology"], format="xml")
+
+    # NOTE: chunking the ontology is done here
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200)
+    splits = text_splitter.create_documents([g.serialize(format="ttl")])
+
+    docs = [
+        {
+            "endpoint": endpoint["endpoint"],
+            "question": split.page_content,
+            "answer": split.page_content,
+            "doc_type": "ontology",
+        } for split in splits
+    ]
+    # print(len(docs))
+    return docs
+
+def init_vectordb(vectordb_host: str = "vectordb") -> None:
     vectordb = get_vectordb(vectordb_host)
     embedding_model = get_embedding_model()
     docs = []
@@ -205,6 +236,7 @@ def init_vectordb(vectordb_host: str = "search-engine") -> None:
         print(endpoint["label"])
         docs += get_example_queries(endpoint)
         docs += get_schemaorg_description(endpoint)
+        docs += get_ontology(endpoint)
 
 
     if not vectordb.collection_exists(QUERIES_COLLECTION):
@@ -215,7 +247,7 @@ def init_vectordb(vectordb_host: str = "search-engine") -> None:
 
     questions = [q["question"] for q in docs]
     output = embedding_model.embed(questions)
-    print(f"Done generating embeddings for {len(questions)} queries")
+    print(f"Done generating embeddings for {len(questions)} documents")
 
     vectordb.upsert(
         collection_name=QUERIES_COLLECTION,
@@ -225,6 +257,7 @@ def init_vectordb(vectordb_host: str = "search-engine") -> None:
             payloads=docs,
         ),
     )
+    print("Done inserting documents into the vectordb")
 
 
 # Get general infos from JSON-LD schema.org
@@ -236,10 +269,7 @@ if __name__ == "__main__":
 
 
 ## TODO: get ontology infos from the SPARQL endpoint
-# OMA ontology:
-# https://github.com/qfo/OrthologyOntology/blob/master/orthOntology_v2.ttl
 # For each class get the vann:example provided which is an example of the class as turtle?
-# UniProt ontology: https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl
 
 # PREFIX dct: <http://purl.org/dc/terms/>
 # PREFIX owl: <http://www.w3.org/2002/07/owl#>
@@ -289,4 +319,46 @@ if __name__ == "__main__":
 #     }
 # #    ?graph void:classPartition ?cp3 .
 # #    ?cp3 void:class ?class2 .
+# } ORDER BY DESC(?pp1triples)
+
+# Generate OWL ontology from VoID profile:
+# PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+# PREFIX sh: <http://www.w3.org/ns/shacl#>
+# PREFIX void: <http://rdfs.org/ns/void#>
+# PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+# CONSTRUCT {
+#     ?class1 a owl:Class ;
+#             rdfs:label ?class1Label ;
+#             rdfs:subClassOf ?superClass1 .
+
+#     ?prop a owl:ObjectProperty ;
+#           rdfs:domain ?class1 ;
+#           rdfs:range ?class2 ;
+#           rdfs:label ?propLabel ;
+#           rdfs:subPropertyOf ?superProp .
+
+#     ?class2 a owl:Class ;
+#             rdfs:label ?class2Label ;
+#             rdfs:subClassOf ?superClass2 .
+
+#     ?graph a owl:Ontology .
+# } WHERE {
+#     ?s <http://www.w3.org/ns/sparql-service-description#graph> ?graph .
+#     ?graph void:classPartition ?cp1 .
+#     ?cp1 void:class ?class1 ;
+#           void:propertyPartition ?pp1 .
+#     ?pp1 void:property ?prop ;
+#           void:triples ?pp1triples ;
+#           void:classPartition ?cp2 .
+#     ?cp2 void:class ?class2 .
+
+#     OPTIONAL { ?class1 rdfs:label ?class1Label . }
+#     OPTIONAL { ?class2 rdfs:label ?class2Label . }
+#     OPTIONAL { ?prop rdfs:label ?propLabel . }
+
+#     # These are optional, as they may not exist in the dataset
+#     OPTIONAL { ?class1 rdfs:subClassOf ?superClass1 . }
+#     OPTIONAL { ?prop rdfs:subPropertyOf ?superProp . }
+#     OPTIONAL { ?class2 rdfs:subClassOf ?superClass2 . }
 # } ORDER BY DESC(?pp1triples)

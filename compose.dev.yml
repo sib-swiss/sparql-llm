@@ -1,9 +1,9 @@
 services:
 
-  search-engine:
+  vectordb:
     extends:
       file: compose.yml
-      service: search-engine
+      service: vectordb
     ports:
       - 6333:6333
       - 6334:6334

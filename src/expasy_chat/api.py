@@ -100,7 +100,7 @@ async def stream_openai(response: Stream[Any], docs, full_prompt) -> AsyncGenera
         }
         yield f"data: {json.dumps(resp_chunk)}\n\n"
 
-DOCS_COUNT = 10
+DOCS_COUNT = 20
 
 @app.post("/chat")
 async def chat_completions(request: ChatCompletionRequest):
@@ -133,7 +133,10 @@ async def chat_completions(request: ChatCompletionRequest):
     # We also provide the example queries as previous messages to the LLM
     example_messages: list[Message] = [{"role": "system", "content": system_prompt}]
     for hit in hits:
-        big_prompt += f"{hit.payload['question']}\nQuery to run in SPARQL endpoint {hit.payload['endpoint']}\n\n{hit.payload['answer']}\n\n"
+        if hit.payload["doc_type"] == "ontology":
+            big_prompt += f"Relevant part of the ontology for {hit.payload['endpoint']}:\n```turtle\n{hit.payload['question']}\n```\n\n"
+        else:
+            big_prompt += f"{hit.payload['question']}\nQuery to run in SPARQL endpoint {hit.payload['endpoint']}\n\n{hit.payload['answer']}\n\n"
 
     # Reverse the order of the hits to show the most relevant closest to the user question
     # NOTE: this breaks the memory
@@ -158,10 +161,6 @@ async def chat_completions(request: ChatCompletionRequest):
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=all_messages,
-        # messages=[
-        #     {"role": "system", "content": system_prompt},
-        #     {"role": "user", "content": full_prompt},
-        # ],
         stream=request.stream,
         #   response_format={ "type": "json_object" },
     )
@@ -171,7 +170,9 @@ async def chat_completions(request: ChatCompletionRequest):
     if request.stream:
         return StreamingResponse(stream_openai(response, hits, big_prompt), media_type="application/x-ndjson")
 
-    # NOTE: the response is similar to OpenAI API, but we add the list of hits and the full prompt used to ask the question
+    # TODO: add checks when streaming disabled: extract the provided SPARQL queries, check if they are valid, and return them in the response
+    # response.choices[0].message.content
+
     return {
         "id": response.id,
         "object": "chat.completion",
@@ -181,6 +182,7 @@ async def chat_completions(request: ChatCompletionRequest):
         "docs": hits,
         "full_prompt": big_prompt,
     }
+    # NOTE: the response is similar to OpenAI API, but we add the list of hits and the full prompt used to ask the question
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
@@ -197,6 +199,7 @@ def chat_ui(request: Request) -> Any:
             "examples": [
                 "Which resources are available at the SIB?",
                 "How can I get the HGNC symbol for the protein P68871?",
+                # "Say hi",
                 # "Which are the genes, expressed in the rat, corresponding to human genes associated with cancer?",
                 # "What is the gene associated with the protein P68871?",
             ],

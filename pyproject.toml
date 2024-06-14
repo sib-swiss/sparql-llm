@@ -23,6 +23,7 @@ classifiers = [
 dependencies = [
     "requests",
     "rdflib",
+    "oxrdflib",
     "SPARQLWrapper",
     "pandas",
     "openai",
@@ -31,6 +32,8 @@ dependencies = [
     "qdrant_client",
     "fastapi",
     "pydantic >=2.0.0",
+    "langchain",
+    "langchain-community",
     # "pydantic-settings",
 ]
 
