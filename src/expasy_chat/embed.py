@@ -44,13 +44,13 @@ endpoints = [
         "label": "Bgee",
         "endpoint": "https://www.bgee.org/sparql/",
         "homepage": "https://www.bgee.org/",
-        # "ontology": "https://raw.githubusercontent.com/biosoda/genex/master/genex_v0_2.owl",
+        "ontology": "http://purl.org/genex",
     },
     {
         "label": "Orthology MAtrix (OMA)",
         "endpoint": "https://sparql.omabrowser.org/sparql/",
         "homepage": "https://omabrowser.org/",
-        # "ontology": "https://raw.githubusercontent.com/qfo/OrthologyOntology/master/orthOntology_v2.ttl",
+        "ontology": "http://purl.org/net/orth",
     },
     {
         "label": "Rhea",
@@ -196,7 +196,7 @@ def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
                 "doc_type": "schemaorg_description",
             }
         )
-        print("\n".join(descs))
+        # print("\n".join(descs))
     except Exception as e:
         print(f"Error while fetching schema.org metadata from {endpoint['homepage']}: {e}")
     return docs
@@ -207,7 +207,10 @@ def get_ontology(endpoint: dict[str, str]) -> list[dict]:
         return []
     # g = ConjunctiveGraph(store="Oxigraph")
     g = ConjunctiveGraph()
-    g.parse(endpoint["ontology"], format="xml")
+    if endpoints["label"] == "UniProt":
+        g.parse(endpoint["ontology"], format="xml")
+    else:
+        g.parse(endpoint["ontology"], format="ttl")
     # try:
     #     g.parse(endpoint["ontology"], format="ttl")
     # except Exception as e:
@@ -221,7 +224,7 @@ def get_ontology(endpoint: dict[str, str]) -> list[dict]:
         {
             "endpoint": endpoint["endpoint"],
             "question": split.page_content,
-            "answer": split.page_content,
+            "answer": "",
             "doc_type": "ontology",
         } for split in splits
     ]
@@ -258,10 +261,6 @@ def init_vectordb(vectordb_host: str = "vectordb") -> None:
         ),
     )
     print("Done inserting documents into the vectordb")
-
-
-# Get general infos from JSON-LD schema.org
-# https://validator.schema.org/#url=http%3A%2F%2Fbgee.org
 
 if __name__ == "__main__":
     init_vectordb()

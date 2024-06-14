@@ -4,11 +4,13 @@ import os
 from typing import Any, Optional
 import logging
 from datetime import datetime
+import re
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.security.api_key import APIKey
 from openai import OpenAI, Stream
 from pydantic import BaseModel
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
@@ -37,7 +39,8 @@ app = FastAPI(
 such as SPARQL endpoints, to get information about proteins, genes, and other biological entities.""",
 )
 
-logging.basicConfig(filename="/logs/user_questions.log", level=logging.INFO, format="%(asctime)s - %(message)s")
+LOGS_FILEPATH = "/logs/user_questions.log"
+logging.basicConfig(filename=LOGS_FILEPATH, level=logging.INFO, format="%(asctime)s - %(message)s")
 
 templates = Jinja2Templates(directory="src/expasy_chat/templates")
 app.mount(
@@ -183,6 +186,29 @@ async def chat_completions(request: ChatCompletionRequest):
         "full_prompt": big_prompt,
     }
     # NOTE: the response is similar to OpenAI API, but we add the list of hits and the full prompt used to ask the question
+
+
+class LogsRequest(BaseModel):
+    api_key: str
+
+@app.post("/logs", response_model=list[str])
+def get_user_logs(request: LogsRequest):
+    """Get the list of user questions from the logs file."""
+    logs_key = os.getenv("LOGS_API_KEY", None)
+    if logs_key and request.api_key != logs_key:
+        raise ValueError("Invalid API key")
+    questions = set()
+    pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - User question: (.+)")
+    with open(LOGS_FILEPATH) as file:
+        for line in file:
+            match = pattern.search(line)
+            if match:
+                # date_time = match.group(1)
+                question = match.group(2)
+                # questions.append({"date": date_time, "question": question})
+                questions.add(question)
+
+    return list(questions)
 
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
