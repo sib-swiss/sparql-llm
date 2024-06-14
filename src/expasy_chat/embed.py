@@ -207,7 +207,7 @@ def get_ontology(endpoint: dict[str, str]) -> list[dict]:
         return []
     # g = ConjunctiveGraph(store="Oxigraph")
     g = ConjunctiveGraph()
-    if endpoints["label"] == "UniProt":
+    if endpoint["label"] == "UniProt":
         g.parse(endpoint["ontology"], format="xml")
     else:
         g.parse(endpoint["ontology"], format="ttl")
