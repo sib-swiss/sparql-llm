@@ -16,7 +16,7 @@ from pydantic import BaseModel
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 from starlette.middleware.cors import CORSMiddleware
 
-from expasy_chat.embed import QUERIES_COLLECTION, get_embedding_model, get_vectordb
+from expasy_chat.embed import DOCS_COLLECTION, get_embedding_model, get_vectordb
 
 system_prompt = """You are Expasy, an assistant that helps users to navigate the resources and databases from the Swiss Institute of Bioinformatics.
 Depending on the user request you may provide general information about the resources available at the SIB, or help the user to formulate a query to run on a SPARQL endpoint.
@@ -117,7 +117,7 @@ async def chat_completions(request: ChatCompletionRequest):
 
     query_embeddings = next(iter(embedding_model.embed([question])))
     hits = vectordb.search(
-        collection_name=QUERIES_COLLECTION,
+        collection_name=DOCS_COLLECTION,
         query_vector=query_embeddings,
         # query_filter=Filter(
         #     must=[

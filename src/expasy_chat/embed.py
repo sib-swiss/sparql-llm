@@ -27,13 +27,11 @@ embedding_dimensions = 1024
 def get_vectordb(host="vectordb") -> QdrantClient:
     return QdrantClient(
         host=host,
-        prefer_grpc=False,
-        # prefer_grpc=True,
-        # Qdrant is completely broken with gRPC, it was working fine for weeks, and one day it just stopped working
+        prefer_grpc=True,
     )
 
 
-QUERIES_COLLECTION = "expasy-queries"
+DOCS_COLLECTION = "expasy"
 
 endpoints = [
     {
@@ -244,9 +242,9 @@ def init_vectordb(vectordb_host: str = "vectordb") -> None:
         docs += get_ontology(endpoint)
 
 
-    if not vectordb.collection_exists(QUERIES_COLLECTION):
+    if not vectordb.collection_exists(DOCS_COLLECTION):
         vectordb.create_collection(
-            collection_name=QUERIES_COLLECTION,
+            collection_name=DOCS_COLLECTION,
             vectors_config=VectorParams(size=embedding_dimensions, distance=Distance.COSINE),
         )
 
@@ -255,7 +253,7 @@ def init_vectordb(vectordb_host: str = "vectordb") -> None:
     print(f"Done generating embeddings for {len(questions)} documents")
 
     vectordb.upsert(
-        collection_name=QUERIES_COLLECTION,
+        collection_name=DOCS_COLLECTION,
         points=models.Batch(
             ids=list(range(1, len(docs) + 1)),
             vectors=[embeddings.tolist() for embeddings in output],
@@ -266,7 +264,7 @@ def init_vectordb(vectordb_host: str = "vectordb") -> None:
 
 if __name__ == "__main__":
     init_vectordb()
-    print(f"VectorDB initialized with {get_vectordb().get_collection(QUERIES_COLLECTION).points_count} vectors")
+    print(f"VectorDB initialized with {get_vectordb().get_collection(DOCS_COLLECTION).points_count} vectors")
 
 
 ## TODO: get ontology infos from the SPARQL endpoint
