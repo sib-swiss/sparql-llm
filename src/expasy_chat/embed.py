@@ -27,7 +27,9 @@ embedding_dimensions = 1024
 def get_vectordb(host="vectordb") -> QdrantClient:
     return QdrantClient(
         host=host,
-        prefer_grpc=True,
+        prefer_grpc=False,
+        # prefer_grpc=True,
+        # Qdrant is completely broken with gRPC, it was working fine for weeks, and one day it just stopped working
     )
 
 
@@ -228,7 +230,7 @@ def get_ontology(endpoint: dict[str, str]) -> list[dict]:
             "doc_type": "ontology",
         } for split in splits
     ]
-    # print(len(docs))
+    print(f"Extracted {len(docs)} chunks for {endpoint['label']} ontology")
     return docs
 
 def init_vectordb(vectordb_host: str = "vectordb") -> None:
