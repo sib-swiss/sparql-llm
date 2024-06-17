@@ -252,15 +252,36 @@ def init_vectordb(vectordb_host: str = "vectordb") -> None:
     output = embedding_model.embed(questions)
     print(f"Done generating embeddings for {len(questions)} documents")
 
-    vectordb.upsert(
-        collection_name=DOCS_COLLECTION,
-        points=models.Batch(
-            ids=list(range(1, len(docs) + 1)),
-            vectors=[embeddings.tolist() for embeddings in output],
-            payloads=docs,
-        ),
-    )
-    print("Done inserting documents into the vectordb")
+
+    def chunk_data(data, batch_size):
+        for i in range(0, len(data), batch_size):
+            yield data[i:i + batch_size]
+
+    batch_size = 50
+    for i, chunk in enumerate(chunk_data(range(len(questions)), batch_size)):
+        batch_ids = list(range(i * batch_size + 1, i * batch_size + 1 + len(chunk)))
+        batch_vectors = [output[j].tolist() for j in chunk]
+        batch_payloads = [docs[j] for j in chunk]
+
+        vectordb.upsert(
+            collection_name=DOCS_COLLECTION,
+            points=models.Batch(
+                ids=batch_ids,
+                vectors=batch_vectors,
+                payloads=batch_payloads,
+            ),
+        )
+        print(f"Upserted batch {i + 1} containing {len(chunk)} documents")
+
+    # vectordb.upsert(
+    #     collection_name=DOCS_COLLECTION,
+    #     points=models.Batch(
+    #         ids=list(range(1, len(docs) + 1)),
+    #         vectors=[embeddings.tolist() for embeddings in output],
+    #         payloads=docs,
+    #     ),
+    # )
+    # print("Done inserting documents into the vectordb")
 
 if __name__ == "__main__":
     init_vectordb()
