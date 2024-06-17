@@ -252,32 +252,6 @@ def init_vectordb(vectordb_host: str = "vectordb") -> None:
     questions = [q["question"] for q in docs]
     output = embedding_model.embed(questions)
 
-    # batch_size = 50
-    # # Function to create chunks of data
-    # def chunk_data(data, batch_size):
-    #     for i in range(0, len(data), batch_size):
-    #         yield data[i:i + batch_size]
-
-    # # Process data in batches
-    # for i, chunk in enumerate(chunk_data(questions, batch_size)):
-    #     output = embedding_model.embed(chunk)
-    #     print(f"Done generating embeddings for batch {i + 1} containing {len(chunk)} documents")
-
-    #     batch_ids = list(range(i * batch_size + 1, i * batch_size + 1 + len(chunk)))
-    #     batch_vectors = [embeddings.tolist() for embeddings in output]
-    #     batch_payloads = docs[i * batch_size:i * batch_size + len(chunk)]
-
-    #     vectordb.upsert(
-    #         collection_name=DOCS_COLLECTION,
-    #         points=models.Batch(
-    #             ids=batch_ids,
-    #             vectors=batch_vectors,
-    #             payloads=batch_payloads,
-    #         ),
-    #     )
-    #     gc.collect()
-    #     print(f"Upserted batch {i + 1} containing {len(chunk)} documents")
-
     vectordb.upsert(
         collection_name=DOCS_COLLECTION,
         points=models.Batch(
