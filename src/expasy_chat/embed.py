@@ -240,7 +240,7 @@ def init_vectordb(vectordb_host: str = "vectordb") -> None:
         print(endpoint["label"])
         docs += get_example_queries(endpoint)
         docs += get_schemaorg_description(endpoint)
-        docs += get_ontology(endpoint)
+        # docs += get_ontology(endpoint)
 
 
     if not vectordb.collection_exists(DOCS_COLLECTION):
