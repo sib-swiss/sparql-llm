@@ -4,15 +4,13 @@ services:
     # https://hub.docker.com/r/qdrant/qdrant/tags
     image: docker.io/qdrant/qdrant:v1.9.2
     # image: qdrant/qdrant:v1.9.2-unprivileged # Unprivileged don't work when mounting a volume
-    restart: unless-stopped
     container_name: vectordb
+    restart: unless-stopped
     volumes:
       - ./data/qdrant:/qdrant/storage
       # - ./qdrant_config.yml:/qdrant/config/production.yaml
     environment:
       - QDRANT_ALLOW_RECOVERY_MODE=true
-    # networks:
-    #   - podmanfix3
     # ports:
     #   - 6333:6333
     #   - 6334:6334
@@ -33,17 +31,10 @@ services:
       - ./data/fastembed_cache:/tmp/fastembed_cache
       - ./data/logs:/logs
       - ./src:/app/src
-    # networks:
-    #   - podmanfix3
     # entrypoint: uvicorn src.expasy_chat.api:app --host 0.0.0.0 --port 80
     env_file:
       - .env
 
-# NOTE: Podman networks are completly broken so we need to increment the network name when it stops working
-
-# networks:
-#   podmanfix3:
-#     driver: bridge
 
 # podman-compose down && podman network prune -f
 # podman exec -it expasy-chat_api_1 bash -c "apt-get update && apt-get install -y telnet && telnet vectordb 6334"
