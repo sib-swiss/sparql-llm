@@ -11,6 +11,8 @@ services:
       # - ./qdrant_config.yml:/qdrant/config/production.yaml
     environment:
       - QDRANT_ALLOW_RECOVERY_MODE=true
+    networks:
+      - podmanfix6
     # ports:
     #   - 6333:6333
     #   - 6334:6334
@@ -34,6 +36,12 @@ services:
     # entrypoint: uvicorn src.expasy_chat.api:app --host 0.0.0.0 --port 80
     env_file:
       - .env
+    networks:
+      - podmanfix6
+
+networks:
+  podmanfix6:
+    driver: bridge
 
 
 # podman-compose down && podman network prune -f
