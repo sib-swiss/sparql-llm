@@ -23,7 +23,8 @@ def get_embedding_model() -> TextEmbedding:
 
 
 # embedding_model = TextEmbedding("BAAI/bge-base-en-v1.5")
-embedding_dimensions = 1024
+embedding_dimensions = 768
+# embedding_dimensions = 1024
 
 
 def get_vectordb(host="vectordb") -> QdrantClient:
