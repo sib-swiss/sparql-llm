@@ -76,6 +76,8 @@ endpoints = [
         "endpoint": "https://glyconnect.expasy.org/sparql",
         "homepage": "https://glyconnect.expasy.org/",
     },
+    # SwissLipids https://beta.sparql.swisslipids.org/
+    # Hamap
 ]
 
 
