@@ -12,9 +12,7 @@ services:
     environment:
       - QDRANT_ALLOW_RECOVERY_MODE=true
     networks:
-      - podmanfix9
-    ports:
-      - 443:6334
+      - podmanfix10
     # ports:
     #   - 6333:6333
     #   - 6334:6334
@@ -26,8 +24,8 @@ services:
     container_name: api
     depends_on:
       - vectordb
-    # ports:
-    #   - 443:80
+    ports:
+      - 443:80
     environment:
       - MAX_WORKERS=2
       # cf. https://github.com/tiangolo/uvicorn-gunicorn-docker/blob/master/docker-images/gunicorn_conf.py
@@ -39,10 +37,10 @@ services:
     env_file:
       - .env
     networks:
-      - podmanfix9
+      - podmanfix10
 
 networks:
-  podmanfix9:
+  podmanfix10:
     driver: bridge
 
 
