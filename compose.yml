@@ -12,7 +12,7 @@ services:
     environment:
       - QDRANT_ALLOW_RECOVERY_MODE=true
     networks:
-      - podmanfix7
+      - podmanfix8
     # ports:
     #   - 6333:6333
     #   - 6334:6334
@@ -37,10 +37,10 @@ services:
     env_file:
       - .env
     networks:
-      - podmanfix7
+      - podmanfix8
 
 networks:
-  podmanfix7:
+  podmanfix8:
     driver: bridge
 
 
