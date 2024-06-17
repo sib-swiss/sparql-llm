@@ -1,5 +1,6 @@
 import json
 import re
+import gc
 
 import requests
 from bs4 import BeautifulSoup
@@ -68,11 +69,11 @@ endpoints = [
         "endpoint": "https://sparql.nextprot.org",
         "homepage": "https://www.nextprot.org/",
     },
-    {
-        "label": "GlyConnect",
-        "endpoint": "https://glyconnect.expasy.org/sparql",
-        "homepage": "https://glyconnect.expasy.org/",
-    },
+    # {
+    #     "label": "GlyConnect",
+    #     "endpoint": "https://glyconnect.expasy.org/sparql",
+    #     "homepage": "https://glyconnect.expasy.org/",
+    # },
 ]
 
 
@@ -217,7 +218,7 @@ def get_ontology(endpoint: dict[str, str]) -> list[dict]:
     #     g.parse(endpoint["ontology"], format="xml")
 
     # NOTE: chunking the ontology is done here
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     splits = text_splitter.create_documents([g.serialize(format="ttl")])
 
     docs = [
@@ -239,7 +240,7 @@ def init_vectordb(vectordb_host: str = "vectordb") -> None:
         print(endpoint["label"])
         docs += get_example_queries(endpoint)
         docs += get_schemaorg_description(endpoint)
-        docs += get_ontology(endpoint)
+        # docs += get_ontology(endpoint)
 
 
     if not vectordb.collection_exists(DOCS_COLLECTION):
@@ -250,38 +251,42 @@ def init_vectordb(vectordb_host: str = "vectordb") -> None:
 
     questions = [q["question"] for q in docs]
     output = embedding_model.embed(questions)
-    print(f"Done generating embeddings for {len(questions)} documents")
 
+    # batch_size = 50
+    # # Function to create chunks of data
+    # def chunk_data(data, batch_size):
+    #     for i in range(0, len(data), batch_size):
+    #         yield data[i:i + batch_size]
 
-    def chunk_data(data, batch_size):
-        for i in range(0, len(data), batch_size):
-            yield data[i:i + batch_size]
+    # # Process data in batches
+    # for i, chunk in enumerate(chunk_data(questions, batch_size)):
+    #     output = embedding_model.embed(chunk)
+    #     print(f"Done generating embeddings for batch {i + 1} containing {len(chunk)} documents")
 
-    batch_size = 50
-    for i, chunk in enumerate(chunk_data(range(len(questions)), batch_size)):
-        batch_ids = list(range(i * batch_size + 1, i * batch_size + 1 + len(chunk)))
-        batch_vectors = [output[j].tolist() for j in chunk]
-        batch_payloads = [docs[j] for j in chunk]
+    #     batch_ids = list(range(i * batch_size + 1, i * batch_size + 1 + len(chunk)))
+    #     batch_vectors = [embeddings.tolist() for embeddings in output]
+    #     batch_payloads = docs[i * batch_size:i * batch_size + len(chunk)]
 
-        vectordb.upsert(
-            collection_name=DOCS_COLLECTION,
-            points=models.Batch(
-                ids=batch_ids,
-                vectors=batch_vectors,
-                payloads=batch_payloads,
-            ),
-        )
-        print(f"Upserted batch {i + 1} containing {len(chunk)} documents")
+    #     vectordb.upsert(
+    #         collection_name=DOCS_COLLECTION,
+    #         points=models.Batch(
+    #             ids=batch_ids,
+    #             vectors=batch_vectors,
+    #             payloads=batch_payloads,
+    #         ),
+    #     )
+    #     gc.collect()
+    #     print(f"Upserted batch {i + 1} containing {len(chunk)} documents")
 
-    # vectordb.upsert(
-    #     collection_name=DOCS_COLLECTION,
-    #     points=models.Batch(
-    #         ids=list(range(1, len(docs) + 1)),
-    #         vectors=[embeddings.tolist() for embeddings in output],
-    #         payloads=docs,
-    #     ),
-    # )
-    # print("Done inserting documents into the vectordb")
+    vectordb.upsert(
+        collection_name=DOCS_COLLECTION,
+        points=models.Batch(
+            ids=list(range(1, len(docs) + 1)),
+            vectors=[embeddings.tolist() for embeddings in output],
+            payloads=docs,
+        ),
+    )
+    print("Done inserting documents into the vectordb")
 
 if __name__ == "__main__":
     init_vectordb()
