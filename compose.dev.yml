@@ -18,9 +18,9 @@ services:
       - ./src:/app/src
     entrypoint: /start-reload.sh
 
-networks:
-  podmanfix3:
-    driver: bridge
+# networks:
+#   podmanfix3:
+#     driver: bridge
 
   # workspace:
   #   image: ghcr.io/vemonet/gpu-workspace:main
