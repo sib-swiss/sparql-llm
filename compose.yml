@@ -11,7 +11,7 @@ services:
     environment:
       - QDRANT_ALLOW_RECOVERY_MODE=true
     networks:
-      - podmanfix4
+      - podmanfix3
     # ports:
     #   - 6333:6333
     #   - 6334:6334
@@ -32,7 +32,7 @@ services:
       - ./data/logs:/logs
       - ./src:/app/src
     networks:
-      - podmanfix4
+      - podmanfix3
     # entrypoint: uvicorn src.expasy_chat.api:app --host 0.0.0.0 --port 80
     env_file:
       - .env
@@ -40,7 +40,7 @@ services:
 # NOTE: Podman networks are completly broken so we need to increment the network name when it stops working
 
 networks:
-  podmanfix4:
+  podmanfix3:
     driver: bridge
 
 # podman-compose down && podman network prune -f
