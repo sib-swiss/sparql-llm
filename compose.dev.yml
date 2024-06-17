@@ -19,7 +19,7 @@ services:
     entrypoint: /start-reload.sh
 
 networks:
-  podmanfix3:
+  podmanfix4:
     driver: bridge
 
   # workspace:
