@@ -18,7 +18,8 @@ from SPARQLWrapper import JSON, SPARQLWrapper
 # https://qdrant.github.io/fastembed/examples/Supported_Models/
 # TextEmbedding.list_supported_models()
 def get_embedding_model() -> TextEmbedding:
-    return TextEmbedding("BAAI/bge-large-en-v1.5")
+    return TextEmbedding("BAAI/bge-base-en-v1.5")
+    # return TextEmbedding("BAAI/bge-large-en-v1.5")
 
 
 # embedding_model = TextEmbedding("BAAI/bge-base-en-v1.5")
@@ -218,7 +219,7 @@ def get_ontology(endpoint: dict[str, str]) -> list[dict]:
     #     g.parse(endpoint["ontology"], format="xml")
 
     # NOTE: chunking the ontology is done here
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     splits = text_splitter.create_documents([g.serialize(format="ttl")])
 
     docs = [
@@ -242,6 +243,15 @@ def init_vectordb(vectordb_host: str = "vectordb") -> None:
         docs += get_schemaorg_description(endpoint)
         docs += get_ontology(endpoint)
 
+    # Manually add infos for UniProt since we cant retrieve it for now
+    docs.append(
+        {
+            "endpoint":"https://sparql.uniprot.org/sparql/",
+            "question": "What is the SIB resource UniProt about?",
+            "answer": "The Universal Protein Resource (UniProt) is a comprehensive resource for protein sequence and annotation data. The UniProt databases are the UniProt Knowledgebase (UniProtKB), the UniProt Reference Clusters (UniRef), and the UniProt Archive (UniParc). The UniProt consortium and host institutions EMBL-EBI, SIB and PIR are committed to the long-term preservation of the UniProt databases.",
+            "doc_type": "schemaorg_description",
+        }
+    )
 
     if not vectordb.collection_exists(DOCS_COLLECTION):
         vectordb.create_collection(
