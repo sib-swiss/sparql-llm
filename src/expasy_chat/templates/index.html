@@ -210,7 +210,7 @@
                 if (source_documents && source_documents.length > 0) {
                     for (const [i, doc] of source_documents.entries()) {
                         if (doc.payload.doc_type === "ontology") {
-                            sourcesCardHtml += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` Ontology for ${doc.payload.endpoint}\n\n\`\`\`turtle\n${doc.payload.question}\n\`\`\`\n\n`;
+                            sourcesCardHtml += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` Ontology for ${doc.payload.endpoint}\n\n\`\`\`turtle\n${doc.payload.question.trim()}\n\`\`\`\n\n`;
                         } else {
                             sourcesCardHtml += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` ${doc.payload.question} (${doc.payload.endpoint})\n\n${doc.payload.answer}\n\n`;
                         }

@@ -63,17 +63,17 @@ endpoints = [
         "endpoint": "https://rdf.metanetx.org/sparql/",
         "homepage": "https://www.metanetx.org/",
     },
-    # {
-    #     "label": "NextProt",
-    #     # "endpoint": "https://api.nextprot.org/sparql",
-    #     "endpoint": "https://sparql.nextprot.org",
-    #     "homepage": "https://www.nextprot.org/",
-    # },
-    # {
-    #     "label": "GlyConnect",
-    #     "endpoint": "https://glyconnect.expasy.org/sparql",
-    #     "homepage": "https://glyconnect.expasy.org/",
-    # },
+    {
+        "label": "NextProt",
+        # "endpoint": "https://api.nextprot.org/sparql",
+        "endpoint": "https://sparql.nextprot.org",
+        "homepage": "https://www.nextprot.org/",
+    },
+    {
+        "label": "GlyConnect",
+        "endpoint": "https://glyconnect.expasy.org/sparql",
+        "homepage": "https://glyconnect.expasy.org/",
+    },
 ]
 
 
@@ -218,7 +218,7 @@ def get_ontology(endpoint: dict[str, str]) -> list[dict]:
     #     g.parse(endpoint["ontology"], format="xml")
 
     # NOTE: chunking the ontology is done here
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     splits = text_splitter.create_documents([g.serialize(format="ttl")])
 
     docs = [
@@ -251,6 +251,7 @@ def init_vectordb(vectordb_host: str = "vectordb") -> None:
 
     questions = [q["question"] for q in docs]
     output = embedding_model.embed(questions)
+    print(f"Done generating embeddings for {len(questions)} documents")
 
     vectordb.upsert(
         collection_name=DOCS_COLLECTION,
