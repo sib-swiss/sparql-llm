@@ -63,12 +63,12 @@ endpoints = [
         "endpoint": "https://rdf.metanetx.org/sparql/",
         "homepage": "https://www.metanetx.org/",
     },
-    {
-        "label": "NextProt",
-        # "endpoint": "https://api.nextprot.org/sparql",
-        "endpoint": "https://sparql.nextprot.org",
-        "homepage": "https://www.nextprot.org/",
-    },
+    # {
+    #     "label": "NextProt",
+    #     # "endpoint": "https://api.nextprot.org/sparql",
+    #     "endpoint": "https://sparql.nextprot.org",
+    #     "homepage": "https://www.nextprot.org/",
+    # },
     # {
     #     "label": "GlyConnect",
     #     "endpoint": "https://glyconnect.expasy.org/sparql",

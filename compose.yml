@@ -40,7 +40,7 @@ services:
 
 networks:
   podmanfix:
-      driver: bridge
+    driver: bridge
 
 # podman-compose down && podman network prune -f
 # podman exec -it expasy-chat_api_1 bash -c "apt-get update && apt-get install -y telnet && telnet vectordb 6334"
