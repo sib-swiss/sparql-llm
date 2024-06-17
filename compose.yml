@@ -37,6 +37,7 @@ services:
     env_file:
       - .env
 
+# NOTE: Podman networks are completly broken so we need to increment the network name when it stops working
 
 networks:
   podmanfix2:

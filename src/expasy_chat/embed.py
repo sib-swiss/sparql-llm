@@ -218,7 +218,7 @@ def get_ontology(endpoint: dict[str, str]) -> list[dict]:
     #     g.parse(endpoint["ontology"], format="xml")
 
     # NOTE: chunking the ontology is done here
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=700, chunk_overlap=100)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=100)
     splits = text_splitter.create_documents([g.serialize(format="ttl")])
 
     docs = [
