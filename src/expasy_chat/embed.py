@@ -26,8 +26,10 @@ def get_embedding_model() -> TextEmbedding:
 embedding_dimensions = 768
 # embedding_dimensions = 1024
 
+# DEFAULT_VECTORDB_HOST = "vectordb"
+DEFAULT_VECTORDB_HOST = "10.89.0.2"
 
-def get_vectordb(host="vectordb") -> QdrantClient:
+def get_vectordb(host=DEFAULT_VECTORDB_HOST) -> QdrantClient:
     return QdrantClient(
         host=host,
         prefer_grpc=True,
@@ -236,7 +238,7 @@ def get_ontology(endpoint: dict[str, str]) -> list[dict]:
     print(f"Extracted {len(docs)} chunks for {endpoint['label']} ontology")
     return docs
 
-def init_vectordb(vectordb_host: str = "vectordb") -> None:
+def init_vectordb(vectordb_host: str = DEFAULT_VECTORDB_HOST) -> None:
     vectordb = get_vectordb(vectordb_host)
     embedding_model = get_embedding_model()
     docs = []

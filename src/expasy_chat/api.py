@@ -15,6 +15,7 @@ from openai import OpenAI, Stream
 from pydantic import BaseModel
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 from starlette.middleware.cors import CORSMiddleware
+from rdflib.plugins.sparql.parser import parseQuery
 
 from expasy_chat.embed import DOCS_COLLECTION, get_embedding_model, get_vectordb
 
@@ -174,7 +175,23 @@ async def chat_completions(request: ChatCompletionRequest):
         return StreamingResponse(stream_openai(response, hits, big_prompt), media_type="application/x-ndjson")
 
     # TODO: add checks when streaming disabled: extract the provided SPARQL queries, check if they are valid, and return them in the response
-    # response.choices[0].message.content
+    # chat_resp_md = response.choices[0].message.content
+
+    # Test the SPARQL queries generated are valid:
+#     pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
+#     generated_sparqls = pattern.findall(chat_resp_md)
+#     for sparql_q in generated_sparqls:
+#         try:
+#             parseQuery(sparql_q)
+#         except Exception as e:
+#             fix_prompt = f"""There is an error `{e}` in the generated SPARQL query:
+# {sparql_q}
+
+# In the
+# """
+#             print(e)
+#             # TODO: handle when fail
+
 
     return {
         "id": response.id,
@@ -186,6 +203,18 @@ async def chat_completions(request: ChatCompletionRequest):
         "full_prompt": big_prompt,
     }
     # NOTE: the response is similar to OpenAI API, but we add the list of hits and the full prompt used to ask the question
+
+
+# def validate_and_fix_sparql(md_resp: str, sparql_query: str) -> str:
+#     """Validate the SPARQL query and fix it if needed."""
+#     try:
+#         parseQuery(sparql_q)
+#     except Exception as e:
+#         fix_prompt = f"""There is an error `{e}` in the generated SPARQL query:
+# {sparql_q}
+
+# In the
+# """
 
 
 class LogsRequest(BaseModel):
