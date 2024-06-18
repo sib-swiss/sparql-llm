@@ -1,6 +1,7 @@
 import json
 import re
 import gc
+import os
 
 import requests
 from bs4 import BeautifulSoup
@@ -31,7 +32,7 @@ ONTOLOGY_CHUNK_OVERLAP = 100
 # ONTOLOGY_CHUNK_SIZE = 6000
 # ONTOLOGY_CHUNK_OVERLAP = 200
 
-DEFAULT_VECTORDB_HOST = "vectordb"
+DEFAULT_VECTORDB_HOST = os.getenv("VECTORDB_HOST", "10.89.0.2")
 # DEFAULT_VECTORDB_HOST = "10.89.0.2"
 
 def get_vectordb(host=DEFAULT_VECTORDB_HOST) -> QdrantClient:
