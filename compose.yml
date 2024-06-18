@@ -12,7 +12,7 @@ services:
     environment:
       - QDRANT_ALLOW_RECOVERY_MODE=true
     # networks:
-    #   - podmanfix10
+    #   - default
     # ports:
     #   - 6333:6333
     #   - 6334:6334
@@ -25,7 +25,8 @@ services:
     depends_on:
       - vectordb
     ports:
-      - 443:80
+      - 8000:80
+      # - 443:80
     environment:
       - MAX_WORKERS=2
       # cf. https://github.com/tiangolo/uvicorn-gunicorn-docker/blob/master/docker-images/gunicorn_conf.py
@@ -36,13 +37,16 @@ services:
     # entrypoint: uvicorn src.expasy_chat.api:app --host 0.0.0.0 --port 80
     env_file:
       - .env
-#     networks:
-#       - podmanfix10
+    # networks:
+    #   - default
 
 # networks:
-#   podmanfix10:
-#     driver: bridge
+#   default:
+#     driver: pasta
+#     # driver: bridge
 
 
 # podman-compose down && podman network prune -f
 # podman exec -it expasy-chat_api_1 bash -c "apt-get update && apt-get install -y telnet && telnet vectordb 6334"
+# < /dev/tcp/vectordb/6334
+# podman exec -it api bash -c "< /dev/tcp/vectordb/6334"

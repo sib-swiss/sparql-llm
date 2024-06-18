@@ -16,6 +16,7 @@ services:
       - 8000:80
     volumes:
       - ./src:/app/src
+      - ./prestart.sh:/app/prestart.sh
     entrypoint: /start-reload.sh
 
   # workspace:

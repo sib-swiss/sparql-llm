@@ -18,16 +18,21 @@ from SPARQLWrapper import JSON, SPARQLWrapper
 # https://qdrant.github.io/fastembed/examples/Supported_Models/
 # TextEmbedding.list_supported_models()
 def get_embedding_model() -> TextEmbedding:
-    return TextEmbedding("BAAI/bge-base-en-v1.5")
-    # return TextEmbedding("BAAI/bge-large-en-v1.5")
+    # return TextEmbedding("BAAI/bge-base-en-v1.5")
+    return TextEmbedding("BAAI/bge-large-en-v1.5")
 
 
 # embedding_model = TextEmbedding("BAAI/bge-base-en-v1.5")
-embedding_dimensions = 768
-# embedding_dimensions = 1024
+# embedding_dimensions = 768
+embedding_dimensions = 1024
 
-# DEFAULT_VECTORDB_HOST = "vectordb"
-DEFAULT_VECTORDB_HOST = "10.89.0.2"
+ONTOLOGY_CHUNK_SIZE = 600
+ONTOLOGY_CHUNK_OVERLAP = 100
+# ONTOLOGY_CHUNK_SIZE = 6000
+# ONTOLOGY_CHUNK_OVERLAP = 200
+
+DEFAULT_VECTORDB_HOST = "vectordb"
+# DEFAULT_VECTORDB_HOST = "10.89.0.2"
 
 def get_vectordb(host=DEFAULT_VECTORDB_HOST) -> QdrantClient:
     return QdrantClient(
@@ -208,7 +213,6 @@ def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
         print(f"Error while fetching schema.org metadata from {endpoint['homepage']}: {e}")
     return docs
 
-
 def get_ontology(endpoint: dict[str, str]) -> list[dict]:
     if "ontology" not in endpoint:
         return []
@@ -223,8 +227,8 @@ def get_ontology(endpoint: dict[str, str]) -> list[dict]:
     # except Exception as e:
     #     g.parse(endpoint["ontology"], format="xml")
 
-    # NOTE: chunking the ontology is done here
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=700, chunk_overlap=100)
+    # Chunking the ontology is done here
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=ONTOLOGY_CHUNK_SIZE, chunk_overlap=ONTOLOGY_CHUNK_OVERLAP)
     splits = text_splitter.create_documents([g.serialize(format="ttl")])
 
     docs = [
@@ -238,7 +242,9 @@ def get_ontology(endpoint: dict[str, str]) -> list[dict]:
     print(f"Extracted {len(docs)} chunks for {endpoint['label']} ontology")
     return docs
 
+
 def init_vectordb(vectordb_host: str = DEFAULT_VECTORDB_HOST) -> None:
+    """Initialize the vectordb with example queries and ontology descriptions from the SPARQL endpoints"""
     vectordb = get_vectordb(vectordb_host)
     embedding_model = get_embedding_model()
     docs = []
@@ -248,7 +254,7 @@ def init_vectordb(vectordb_host: str = DEFAULT_VECTORDB_HOST) -> None:
         docs += get_schemaorg_description(endpoint)
         docs += get_ontology(endpoint)
 
-    # Manually add infos for UniProt since we cant retrieve it for now. Taken from https://www.uniprot.org/help/about
+    # NOTE: Manually add infos for UniProt since we cant retrieve it for now. Taken from https://www.uniprot.org/help/about
     docs.append(
         {
             "endpoint":"https://sparql.uniprot.org/sparql/",

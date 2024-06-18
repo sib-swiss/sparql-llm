@@ -16,19 +16,24 @@ from pydantic import BaseModel
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 from starlette.middleware.cors import CORSMiddleware
 from rdflib.plugins.sparql.parser import parseQuery
+from rdflib.plugins.sparql.algebra import translateQuery
 
 from expasy_chat.embed import DOCS_COLLECTION, get_embedding_model, get_vectordb
 
 system_prompt = """You are Expasy, an assistant that helps users to navigate the resources and databases from the Swiss Institute of Bioinformatics.
 Depending on the user request you may provide general information about the resources available at the SIB, or help the user to formulate a query to run on a SPARQL endpoint.
-If answering with a query try to make it as efficient as possible, to avoid timeout due to how large the datasets are. Add a LIMIT 100 to the query and even sub-queries if you are unsure about the size of the result.
+If answering with a query try to make it as efficient as possible, to avoid timeout due to how large the datasets are.
 If answering with a query always indicate the URL of the endpoint on which the query should be executed in a comment in the codeblocks at the start of the query. No additional text, just the endpoint URL directly as comment, and do not put service call to the endpoint the query is run on.
 If answering with a query always use the queries provided as examples in the prompt, don't try to create a query from nothing and do not provide a super generic query.
 """
+
+# Add a LIMIT 100 to the query and even sub-queries if you are unsure about the size of the result.
 # You can deconstruct complex queries in many smaller queries, but always propose one final query to the user (federated if needed), but be careful to use the right crossref (xref) when using an identifier from an endpoint in another endpoint.
 # When writing the SPARQL query try to factorize the predicates/objects of a subject as much as possible, so that the user can understand the query and the results.
+
 STARTUP_PROMPT = "Here is a list of reference questions and answers relevant to the user question that will help you answer the user question accurately:"
 INTRO_USER_QUESTION_PROMPT = "The question from the user is:"
+MAX_TRY_FIX_SPARQL = 5
 
 client = OpenAI()
 vectordb = get_vectordb()
@@ -175,46 +180,51 @@ async def chat_completions(request: ChatCompletionRequest):
         return StreamingResponse(stream_openai(response, hits, big_prompt), media_type="application/x-ndjson")
 
     # TODO: add checks when streaming disabled: extract the provided SPARQL queries, check if they are valid, and return them in the response
-    # chat_resp_md = response.choices[0].message.content
-
-    # Test the SPARQL queries generated are valid:
-#     pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
-#     generated_sparqls = pattern.findall(chat_resp_md)
-#     for sparql_q in generated_sparqls:
-#         try:
-#             parseQuery(sparql_q)
-#         except Exception as e:
-#             fix_prompt = f"""There is an error `{e}` in the generated SPARQL query:
-# {sparql_q}
-
-# In the
-# """
-#             print(e)
-#             # TODO: handle when fail
-
+    chat_resp_md = validate_and_fix_sparql(response.choices[0].message.content, all_messages)
 
     return {
         "id": response.id,
         "object": "chat.completion",
         "created": response.created,
         "model": response.model,
-        "choices": [{"message": Message(role="assistant", content=response.choices[0].message.content)}],
+        "choices": [{"message": Message(role="assistant", content=chat_resp_md)}],
         "docs": hits,
         "full_prompt": big_prompt,
     }
     # NOTE: the response is similar to OpenAI API, but we add the list of hits and the full prompt used to ask the question
 
 
-# def validate_and_fix_sparql(md_resp: str, sparql_query: str) -> str:
-#     """Validate the SPARQL query and fix it if needed."""
-#     try:
-#         parseQuery(sparql_q)
-#     except Exception as e:
-#         fix_prompt = f"""There is an error `{e}` in the generated SPARQL query:
-# {sparql_q}
+pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
 
-# In the
-# """
+
+def validate_and_fix_sparql(md_resp: str, all_messages: list[Message], try_count: int = 0) -> str:
+    """Recursive funtion to validate the SPARQL queries in the chat response and fix them if needed."""
+    if try_count >= MAX_TRY_FIX_SPARQL:
+        return md_resp
+    generated_sparqls = pattern.findall(md_resp)
+    for sparql_query in generated_sparqls:
+        try:
+            translateQuery(parseQuery(sparql_query))
+            # TODO: add more checks, e.g. check composition of the query with VoID?
+        except Exception as e:
+            print(f"Error in SPARQL query try #{try_count}: {e}\n{sparql_query}")
+            try_count += 1
+            fix_prompt = f"""There is an error `{e}` in the generated SPARQL query:
+{sparql_query}
+
+Which is part of this answer:
+{md_resp}
+
+Fix the query and send the answer again with the fixed query.
+"""
+            all_messages.append({"role": "assistant", "content": fix_prompt})
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=all_messages,
+                stream=False,
+            )
+            md_resp = validate_and_fix_sparql(response.choices[0].message.content, all_messages, try_count)
+    return md_resp
 
 
 class LogsRequest(BaseModel):
