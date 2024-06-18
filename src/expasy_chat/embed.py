@@ -26,7 +26,7 @@ def get_embedding_model() -> TextEmbedding:
 # embedding_dimensions = 768
 embedding_dimensions = 1024
 
-ONTOLOGY_CHUNK_SIZE = 600
+ONTOLOGY_CHUNK_SIZE = 500
 ONTOLOGY_CHUNK_OVERLAP = 100
 # ONTOLOGY_CHUNK_SIZE = 6000
 # ONTOLOGY_CHUNK_OVERLAP = 200

@@ -1,4 +1,4 @@
-FROM tiangolo/uvicorn-gunicorn-fastapi:python3.11
+FROM docker.io/tiangolo/uvicorn-gunicorn-fastapi:python3.11
 
 WORKDIR /app
 

@@ -2,7 +2,7 @@ services:
 
   vectordb:
     # https://hub.docker.com/r/qdrant/qdrant/tags
-    image: docker.io/qdrant/qdrant:v1.9.2
+    image: docker.io/qdrant/qdrant:v1.9.5
     # image: qdrant/qdrant:v1.9.2-unprivileged # Unprivileged don't work when mounting a volume
     container_name: vectordb
     restart: unless-stopped
@@ -25,8 +25,7 @@ services:
     depends_on:
       - vectordb
     ports:
-      - 8000:80
-      # - 443:80
+      - 443:80
     environment:
       - MAX_WORKERS=2
       # cf. https://github.com/tiangolo/uvicorn-gunicorn-docker/blob/master/docker-images/gunicorn_conf.py
