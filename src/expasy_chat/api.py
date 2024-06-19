@@ -33,7 +33,8 @@ If answering with a query always use the queries provided as examples in the pro
 
 STARTUP_PROMPT = "Here is a list of reference questions and answers relevant to the user question that will help you answer the user question accurately:"
 INTRO_USER_QUESTION_PROMPT = "The question from the user is:"
-MAX_TRY_FIX_SPARQL = 5
+MAX_TRY_FIX_SPARQL = 10
+LLM_MODEL = "gpt-4o"
 
 client = OpenAI()
 vectordb = get_vectordb()
@@ -168,18 +169,17 @@ async def chat_completions(request: ChatCompletionRequest):
 
     # Send the prompt to OpenAI to get a response
     response = client.chat.completions.create(
-        model="gpt-4o",
+        model=LLM_MODEL,
         messages=all_messages,
         stream=request.stream,
         #   response_format={ "type": "json_object" },
     )
-    # TODO: get response as JSON object with SPARQL query separated from explanation?
-    # https://github.com/jxnl/instructor or https://github.com/outlines-dev/outlines
+    # NOTE: to get response as JSON object check https://github.com/jxnl/instructor or https://github.com/outlines-dev/outlines
 
     if request.stream:
         return StreamingResponse(stream_openai(response, hits, big_prompt), media_type="application/x-ndjson")
 
-    # TODO: add checks when streaming disabled: extract the provided SPARQL queries, check if they are valid, and return them in the response
+    # When streaming is disabled we check if provided SPARQL queries are valid
     chat_resp_md = validate_and_fix_sparql(response.choices[0].message.content, all_messages)
 
     return {
@@ -197,10 +197,10 @@ async def chat_completions(request: ChatCompletionRequest):
 pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
 
 
-def validate_and_fix_sparql(md_resp: str, all_messages: list[Message], try_count: int = 0) -> str:
+def validate_and_fix_sparql(md_resp: str, messages: list[Message], try_count: int = 0) -> str:
     """Recursive funtion to validate the SPARQL queries in the chat response and fix them if needed."""
     if try_count >= MAX_TRY_FIX_SPARQL:
-        return md_resp
+        return f"{md_resp}\n\nThe SPARQL query could not be fixed after multiple tries. Please do it yourself!"
     generated_sparqls = pattern.findall(md_resp)
     for sparql_query in generated_sparqls:
         try:
@@ -217,13 +217,13 @@ Which is part of this answer:
 
 Fix the query and send the answer again with the fixed query.
 """
-            all_messages.append({"role": "assistant", "content": fix_prompt})
+            messages.append({"role": "assistant", "content": fix_prompt})
             response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=all_messages,
+                model=LLM_MODEL,
+                messages=messages,
                 stream=False,
             )
-            md_resp = validate_and_fix_sparql(response.choices[0].message.content, all_messages, try_count)
+            md_resp = validate_and_fix_sparql(response.choices[0].message.content, messages, try_count)
     return md_resp
 
 
@@ -258,8 +258,8 @@ def chat_ui(request: Request) -> Any:
         {
             "request": request,
             "title": "Ask Expasy",
-            "description": "Assistant to navigate resources from the Swiss Institute of Bioinformatics.",
-            "short_description": "Ask a question about SIB resources.",
+            "description": "Assistant to navigate resources from the Swiss Institute of Bioinformatics. You can ask anything but I am only confident on answering questions about UniProt, OMA, Bgee and RheaDB. I am still learning.",
+            "short_description": "Ask about SIB resources.",
             "repository_url": "https://github.com/sib-swiss/expasy-chat",
             "examples": [
                 "Which resources are available at the SIB?",

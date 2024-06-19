@@ -86,6 +86,7 @@ endpoints = [
     },
     # SwissLipids https://beta.sparql.swisslipids.org/
     # Hamap
+    # https://enpkg.commons-lab.org/graphdb/sparql (query examnple in saved queries, check with Marco)
 ]
 
 
@@ -188,6 +189,13 @@ def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
             json_ld_content = json_ld_tag.string
             if json_ld_content:
                 g.parse(data=json_ld_content, format="json-ld")
+                # json_ld_content = json.loads(json_ld_content)
+                docs.append({
+                    "endpoint": endpoint["endpoint"],
+                    "question": f"Description of {endpoint['label']} resource (creators, license, dates, version, etc)",
+                    "answer": json_ld_content,
+                    "doc_type": "schemaorg_description",
+                })
 
         # Concat all schema:description of all classes in the graph
         descs = set()
