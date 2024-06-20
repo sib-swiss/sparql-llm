@@ -1,32 +1,34 @@
 import json
-from collections.abc import AsyncGenerator
-import os
-from typing import Any, Optional
 import logging
-from datetime import datetime
+import os
 import re
+from collections.abc import AsyncGenerator
+from datetime import datetime
+from typing import Any, Optional
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.security.api_key import APIKey
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.security.api_key import APIKey
 from openai import OpenAI, Stream
 from pydantic import BaseModel
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
-from starlette.middleware.cors import CORSMiddleware
-from rdflib.plugins.sparql.parser import parseQuery
 from rdflib.plugins.sparql.algebra import translateQuery
+from rdflib.plugins.sparql.parser import parseQuery
+from starlette.middleware.cors import CORSMiddleware
 
 from expasy_chat.embed import DOCS_COLLECTION, get_embedding_model, get_vectordb
 
 system_prompt = """You are Expasy, an assistant that helps users to navigate the resources and databases from the Swiss Institute of Bioinformatics.
-Depending on the user request you may provide general information about the resources available at the SIB, or help the user to formulate a query to run on a SPARQL endpoint.
-If answering with a query try to make it as efficient as possible, to avoid timeout due to how large the datasets are.
-If answering with a query always indicate the URL of the endpoint on which the query should be executed in a comment in the codeblocks at the start of the query. No additional text, just the endpoint URL directly as comment, and do not put service call to the endpoint the query is run on.
-If answering with a query always use the queries provided as examples in the prompt, don't try to create a query from nothing and do not provide a super generic query.
+Depending on the user request and provided context, you may provide general information about the resources available at the SIB, or help the user to formulate a query to run on a SPARQL endpoint.
+If answering with a query: try to make it as efficient as possible to avoid timeout due to how large the datasets are,
+always indicate the URL of the endpoint on which the query should be executed in a comment in the codeblocks at the start of the query (no additional text, just the endpoint URL directly as comment).
+If answering with a query always derive your answer from the queries provided as examples in the prompt, don't try to create a query from nothing and do not provide a generic query.
+If the answer to the question is in the provided context, do not provide a query, just provide the answer, unless explicitly asked.
 """
 
+# and do not put service call to the endpoint the query is run on
 # Add a LIMIT 100 to the query and even sub-queries if you are unsure about the size of the result.
 # You can deconstruct complex queries in many smaller queries, but always propose one final query to the user (federated if needed), but be careful to use the right crossref (xref) when using an identifier from an endpoint in another endpoint.
 # When writing the SPARQL query try to factorize the predicates/objects of a subject as much as possible, so that the user can understand the query and the results.
@@ -258,7 +260,7 @@ def chat_ui(request: Request) -> Any:
         {
             "request": request,
             "title": "Ask Expasy",
-            "description": "Assistant to navigate resources from the Swiss Institute of Bioinformatics. You can ask anything but I am only confident on answering questions about UniProt, OMA, Bgee and RheaDB. I am still learning.",
+            "description": "Assistant to navigate resources from the Swiss Institute of Bioinformatics. Particularly knowledgeable about UniProt, OMA, Bgee and RheaDB. But still learning.",
             "short_description": "Ask about SIB resources.",
             "repository_url": "https://github.com/sib-swiss/expasy-chat",
             "examples": [

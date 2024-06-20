@@ -19,12 +19,8 @@ from SPARQLWrapper import JSON, SPARQLWrapper
 # https://qdrant.github.io/fastembed/examples/Supported_Models/
 # TextEmbedding.list_supported_models()
 def get_embedding_model() -> TextEmbedding:
-    # return TextEmbedding("BAAI/bge-base-en-v1.5")
     return TextEmbedding("BAAI/bge-large-en-v1.5")
 
-
-# embedding_model = TextEmbedding("BAAI/bge-base-en-v1.5")
-# embedding_dimensions = 768
 embedding_dimensions = 1024
 
 ONTOLOGY_CHUNK_SIZE = 3000
@@ -192,7 +188,7 @@ def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
                 # json_ld_content = json.loads(json_ld_content)
                 docs.append({
                     "endpoint": endpoint["endpoint"],
-                    "question": f"Description of {endpoint['label']} resource (creators, license, dates, version, etc)",
+                    "question": f"What are the general metadata about {endpoint['label']} resource? (description, creators, license, dates, version, etc)",
                     "answer": json_ld_content,
                     "doc_type": "schemaorg_description",
                 })
@@ -203,8 +199,6 @@ def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
         # print(g.serialize(format="turtle"))
         for s, _p, _o in g.triples((None, RDF.type, None)):
             for _sd, _pd, desc in g.triples((s, SCHEMA.description, None)):
-                # desc = g.value(subject=s, predicate=SCHEMA.description)
-                # if desc:
                 descs.add(str(desc))
 
         if len(descs) == 0:
@@ -357,6 +351,7 @@ if __name__ == "__main__":
 # #    ?graph void:classPartition ?cp3 .
 # #    ?cp3 void:class ?class2 .
 # } ORDER BY DESC(?pp1triples)
+
 
 # Generate OWL ontology from VoID profile:
 # PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
