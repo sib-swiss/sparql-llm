@@ -210,7 +210,7 @@ def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
                     "endpoint": endpoint["endpoint"],
                     "question": f"What are the general metadata about {endpoint['label']} resource? (description, creators, license, dates, version, etc)",
                     "answer": json_ld_content,
-                    "doc_type": "schemaorg_description",
+                    "doc_type": "schemaorg_jsonld",
                 })
 
         # Concat all schema:description of all classes in the graph

@@ -205,14 +205,16 @@
             function appendSources(source_documents) {
                 const messageElement = chatThread.lastElementChild;
                 let sourcesBtnHtml = ""
-                let sourcesCardHtml = ""
+                let sourcesMd = ""
                 let sourcesHtml = ""
                 if (source_documents && source_documents.length > 0) {
                     for (const [i, doc] of source_documents.entries()) {
                         if (doc.payload.doc_type === "ontology") {
-                            sourcesCardHtml += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` Ontology for ${doc.payload.endpoint}\n\n\`\`\`turtle\n${doc.payload.question.trim()}\n\`\`\`\n\n`;
+                            sourcesMd += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` Ontology for ${doc.payload.endpoint}\n\n\`\`\`turtle\n${doc.payload.question.trim()}\n\`\`\`\n\n`;
+                        } else if (doc.payload.doc_type === "schemaorg_jsonld") {
+                            sourcesMd += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` ${doc.payload.question} (${doc.payload.endpoint})\n\n\`\`\`json\n${doc.payload.answer}\n\`\`\`\n\n`;
                         } else {
-                            sourcesCardHtml += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` ${doc.payload.question} (${doc.payload.endpoint})\n\n${doc.payload.answer}\n\n`;
+                            sourcesMd += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` ${doc.payload.question} (${doc.payload.endpoint})\n\n${doc.payload.answer}\n\n`;
                         }
                     }
                     // <pre><code>${doc.payload.example.replace(/<&lt;/g, '<').replace(/&gt;/g, '>')}</code></pre>`;
@@ -220,7 +222,7 @@
                     sourcesHtml += `<dialog id="source-dialog-${msgCount}" class="bg-white dark:bg-gray-800 m-3 rounded-lg shadow-md w-full">
                         <button id="close-dialog-${msgCount}" class="fixed top-2 right-8 m-3 px-2 text-xl bg-gray-200 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-full"><i class="fas fa-times"></i></button>
                         <article class="prose dark:prose-invert p-3 w-full max-w-full">
-                            ${DOMPurify.sanitize(marked.parse(sourcesCardHtml))}
+                            ${DOMPurify.sanitize(marked.parse(sourcesMd))}
                         </article>
                     </dialog>`
                 }
