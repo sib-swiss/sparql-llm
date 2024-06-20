@@ -12,8 +12,7 @@ from qdrant_client.http.models import (
     Distance,
     VectorParams,
 )
-from rdflib import RDF, ConjunctiveGraph, Graph, Namespace
-from SPARQLWrapper import JSON, SPARQLWrapper
+from rdflib import RDF, ConjunctiveGraph, Namespace
 
 
 # https://qdrant.github.io/fastembed/examples/Supported_Models/
@@ -126,24 +125,36 @@ def remove_a_tags(html_text: str) -> str:
     return soup.get_text()
 
 
+def query_sparql(query: str, endpoint: str) -> dict:
+    """Execute a SPARQL query on a SPARQL endpoint using requests"""
+    resp = requests.get(
+        endpoint,
+        headers={
+            "Accept": "application/sparql-results+json",
+            # "User-agent": "sparqlwrapper 2.0.1a0 (rdflib.github.io/sparqlwrapper)"
+        },
+        params={
+            "query": query
+        },
+        timeout=60,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
 def get_example_queries(endpoint: dict[str, str]) -> list[dict]:
     """Retrieve example SPARQL queries from a SPARQL endpoint"""
     queries = []
     endpoint_name = endpoint["label"]
     endpoint_url = endpoint["endpoint"]
     try:
-        sparql_endpoint = SPARQLWrapper(endpoint_url)
-        sparql_endpoint.setReturnFormat(JSON)
-
         # Add SPARQL queries examples to the vectordb
-        sparql_endpoint.setQuery(get_prefixes)
-        results = sparql_endpoint.query().convert()
+        results = query_sparql(get_prefixes, endpoint_url)
         prefix_map = {}
         for row in results["results"]["bindings"]:
             prefix_map[row["prefix"]["value"]] = row["namespace"]["value"]
 
-        sparql_endpoint.setQuery(get_queries)
-        results = sparql_endpoint.query().convert()
+        results = query_sparql(get_queries, endpoint_url)
         print(f"Found {len(results['results']['bindings'])} examples queries for {endpoint_url}")
 
         for row in results["results"]["bindings"]:
