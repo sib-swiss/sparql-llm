@@ -38,6 +38,8 @@ INTRO_USER_QUESTION_PROMPT = "The question from the user is:"
 MAX_TRY_FIX_SPARQL = 10
 LLM_MODEL = "gpt-4o"
 
+RETRIEVED_DOCS_COUNT = 20
+
 client = OpenAI()
 vectordb = get_vectordb()
 embedding_model = get_embedding_model()
@@ -112,7 +114,6 @@ async def stream_openai(response: Stream[Any], docs, full_prompt) -> AsyncGenera
         }
         yield f"data: {json.dumps(resp_chunk)}\n\n"
 
-DOCS_COUNT = 20
 
 @app.post("/chat")
 async def chat_completions(request: ChatCompletionRequest):
@@ -136,7 +137,7 @@ async def chat_completions(request: ChatCompletionRequest):
         #         )
         #     ]
         # ),
-        limit=DOCS_COUNT,
+        limit=RETRIEVED_DOCS_COUNT,
     )
 
     # We build a big prompt with the 3 most relevant queries retrieved from similarity search engine (could be increased)
@@ -260,7 +261,7 @@ def chat_ui(request: Request) -> Any:
         {
             "request": request,
             "title": "Ask Expasy",
-            "description": "Assistant to navigate resources from the Swiss Institute of Bioinformatics. Particularly knowledgeable about UniProt, OMA, Bgee and RheaDB. But still learning.",
+            "description": "Assistant to navigate resources from the Swiss Institute of Bioinformatics. Particularly knowledgeable about UniProt, OMA, Bgee, SwissLipids and RheaDB. But still learning.",
             "short_description": "Ask about SIB resources.",
             "repository_url": "https://github.com/sib-swiss/expasy-chat",
             "examples": [

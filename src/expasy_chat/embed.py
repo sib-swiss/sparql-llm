@@ -70,19 +70,28 @@ endpoints = [
         "homepage": "https://www.metanetx.org/",
     },
     {
+        "label": "SwissLipids",
+        "endpoint": "https://beta.sparql.swisslipids.org/",
+        "homepage": "https://www.swisslipids.org",
+    },
+    {
+        "label": "HAMAP",
+        "endpoint": "https://hamap.expasy.org/sparql/",
+        "homepage": "https://hamap.expasy.org/",
+    },
+    {
         "label": "NextProt",
         # "endpoint": "https://api.nextprot.org/sparql",
         "endpoint": "https://sparql.nextprot.org",
         "homepage": "https://www.nextprot.org/",
     },
-    {
-        "label": "GlyConnect",
-        "endpoint": "https://glyconnect.expasy.org/sparql",
-        "homepage": "https://glyconnect.expasy.org/",
-    },
-    # SwissLipids https://beta.sparql.swisslipids.org/
-    # Hamap
+    # {
+    #     "label": "GlyConnect",
+    #     "endpoint": "https://glyconnect.expasy.org/sparql",
+    #     "homepage": "https://glyconnect.expasy.org/",
+    # },
     # https://enpkg.commons-lab.org/graphdb/sparql (query examnple in saved queries, check with Marco)
+    # https://enpkg.commons-lab.org/graphdb/repositories/ENPKG
 ]
 
 
