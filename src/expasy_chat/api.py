@@ -267,6 +267,8 @@ def chat_ui(request: Request) -> Any:
             "examples": [
                 "Which resources are available at the SIB?",
                 "How can I get the HGNC symbol for the protein P68871?",
+                "What are the rat orthologs of the human TP53?",
+                "Where is expressed the gene ACE2 in human?",
                 # "Say hi",
                 # "Which are the genes, expressed in the rat, corresponding to human genes associated with cancer?",
                 # "What is the gene associated with the protein P68871?",
