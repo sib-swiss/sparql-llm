@@ -27,7 +27,7 @@ services:
     ports:
       - 443:80
     environment:
-      - MAX_WORKERS=8
+      - MAX_WORKERS=6
       # cf. https://github.com/tiangolo/uvicorn-gunicorn-docker/blob/master/docker-images/gunicorn_conf.py
     volumes:
       - ./data/fastembed_cache:/tmp/fastembed_cache
