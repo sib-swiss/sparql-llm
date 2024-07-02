@@ -2,6 +2,7 @@ import json
 import re
 import gc
 import os
+from sys import prefix
 
 import requests
 from bs4 import BeautifulSoup
@@ -36,6 +37,7 @@ def get_vectordb(host=DEFAULT_VECTORDB_HOST) -> QdrantClient:
         prefer_grpc=True,
     )
 
+ALL_PREFIXES_FILEPATH = "all_prefixes.json"
 
 DOCS_COLLECTION = "expasy"
 
@@ -103,7 +105,7 @@ WHERE
     ?sq a sh:SPARQLExecutable ;
         rdfs:label|rdfs:comment ?comment ;
         sh:select|sh:ask|sh:construct|sh:describe ?query .
-}"""
+} ORDER BY ?sq"""
 
 get_prefixes = """PREFIX sh: <http://www.w3.org/ns/shacl#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -141,7 +143,6 @@ def query_sparql(query: str, endpoint: str) -> dict:
     resp.raise_for_status()
     return resp.json()
 
-
 def get_example_queries(endpoint: dict[str, str]) -> list[dict]:
     """Retrieve example SPARQL queries from a SPARQL endpoint"""
     queries = []
@@ -174,7 +175,7 @@ def get_example_queries(endpoint: dict[str, str]) -> list[dict]:
             )
     except Exception as e:
         print(f"Error while fetching queries from {endpoint_name}: {e}")
-    return queries
+    return queries, prefix_map
 
 
 def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
@@ -271,11 +272,17 @@ def init_vectordb(vectordb_host: str = DEFAULT_VECTORDB_HOST) -> None:
     vectordb = get_vectordb(vectordb_host)
     embedding_model = get_embedding_model()
     docs = []
+    all_prefixes = {}
     for endpoint in endpoints:
         # print(endpoint["label"])
-        docs += get_example_queries(endpoint)
+        qdocs, prefix_map = get_example_queries(endpoint)
+        docs += qdocs
+        all_prefixes = {**all_prefixes, **prefix_map}
         docs += get_schemaorg_description(endpoint)
         docs += get_ontology(endpoint)
+
+    with open(ALL_PREFIXES_FILEPATH, "w") as f:
+        json.dump(all_prefixes, f)
 
     # NOTE: Manually add infos for UniProt since we cant retrieve it for now. Taken from https://www.uniprot.org/help/about
     docs.append(
@@ -378,6 +385,7 @@ if __name__ == "__main__":
 # PREFIX sh: <http://www.w3.org/ns/shacl#>
 # PREFIX void: <http://rdfs.org/ns/void#>
 # PREFIX owl: <http://www.w3.org/2002/07/owl#>
+# PREFIX void-ext: <http://ldf.fi/void-ext#>
 
 # CONSTRUCT {
 #     ?class1 a owl:Class ;
@@ -414,3 +422,51 @@ if __name__ == "__main__":
 #     OPTIONAL { ?prop rdfs:subPropertyOf ?superProp . }
 #     OPTIONAL { ?class2 rdfs:subClassOf ?superClass2 . }
 # } ORDER BY DESC(?pp1triples)
+
+
+# TODO: get datatypes
+# PREFIX up: <http://purl.uniprot.org/core/>
+# PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+# PREFIX sh: <http://www.w3.org/ns/shacl#>
+# PREFIX void: <http://rdfs.org/ns/void#>
+# PREFIX owl: <http://www.w3.org/2002/07/owl#>
+# PREFIX void-ext: <http://ldf.fi/void-ext#>
+
+# SELECT ?distinctSubjects ?class1 ?class1Label ?prop ?pp1triples ?class2 ?class2Label ?distinctObjects WHERE {
+#     ?s <http://www.w3.org/ns/sparql-service-description#graph> ?graph .
+#     ?graph void:classPartition ?cp1 .
+#     ?cp1 void:class ?class1 ;
+#           void:propertyPartition ?pp1 .
+#     ?pp1 void:property ?prop ;
+#           void:triples ?pp1triples ;
+#           void-ext:datatypePartition ?dp .
+#     ?dp void-ext:datatype ?class2 .
+
+#     OPTIONAL { ?class1 rdfs:label ?class1Label . }
+#     OPTIONAL { ?class2 rdfs:label ?class2Label . }
+#     OPTIONAL { ?prop rdfs:label ?propLabel . }
+
+#     OPTIONAL { ?class1 rdfs:comment ?class1Comment . }
+#     OPTIONAL { ?class2 rdfs:comment ?class2Comment . }
+#     OPTIONAL { ?prop rdfs:comment ?propComment . }
+# } ORDER BY DESC(?pp1triples)
+
+
+
+
+
+
+# Can we get distincts? No
+# ?graph void:propertyPartition ?propertyPartition .
+#     ?propertyPartition void:property ?predicate ;
+#       void:classPartition [
+#         void:class ?subject ;
+#         void:distinctSubjects ?subjectCount ;
+#       ] .
+
+#     OPTIONAL {
+#       ?propertyPartition void-ext:objectClassPartition [
+#       void:class ?object ;
+#       void:distinctObjects ?objectCount ;
+#       ]
+#     }

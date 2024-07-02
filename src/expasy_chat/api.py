@@ -18,7 +18,7 @@ from rdflib.plugins.sparql.algebra import translateQuery
 from rdflib.plugins.sparql.parser import parseQuery
 from starlette.middleware.cors import CORSMiddleware
 
-from expasy_chat.embed import DOCS_COLLECTION, get_embedding_model, get_vectordb
+from expasy_chat.embed import ALL_PREFIXES_FILEPATH, DOCS_COLLECTION, get_embedding_model, get_vectordb
 
 system_prompt = """You are Expasy, an assistant that helps users to navigate the resources and databases from the Swiss Institute of Bioinformatics.
 Depending on the user request and provided context, you may provide general information about the resources available at the SIB, or help the user to formulate a query to run on a SPARQL endpoint.
@@ -27,6 +27,11 @@ always indicate the URL of the endpoint on which the query should be executed in
 If answering with a query always derive your answer from the queries provided as examples in the prompt, don't try to create a query from nothing and do not provide a generic query.
 If the answer to the question is in the provided context, do not provide a query, just provide the answer, unless explicitly asked.
 """
+
+# If the user is asking about a named entity warn him that they should check if this entity exist with one of the query used to find named entity
+# And we provide the this list of queries, and the LLM figure out which query can be used to find the named entity
+# https://github.com/biosoda/bioquery/blob/master/biosoda_frontend/src/biosodadata.json#L1491
+
 
 # and do not put service call to the endpoint the query is run on
 # Add a LIMIT 100 to the query and even sub-queries if you are unsure about the size of the result.
@@ -197,36 +202,56 @@ async def chat_completions(request: ChatCompletionRequest):
     # NOTE: the response is similar to OpenAI API, but we add the list of hits and the full prompt used to ask the question
 
 
-pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
+def add_missing_prefixes(query: str) -> str:
+    """Add missing prefixes to a SPARQL query."""
+    with open(ALL_PREFIXES_FILEPATH) as f:
+        all_prefixes = json.loads(f.read())
+    # Add prefixes to queries
+    for prefix, namespace in all_prefixes.items():
+        prefix_str = f"PREFIX {prefix}: <{namespace}>"
+        if not re.search(prefix_str, query) and re.search(f"[(| |\u00a0|/]{prefix}:", query):
+            query = f"{prefix_str}\n{query}"
+    return query
 
+
+pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
 
 def validate_and_fix_sparql(md_resp: str, messages: list[Message], try_count: int = 0) -> str:
     """Recursive funtion to validate the SPARQL queries in the chat response and fix them if needed."""
+
     if try_count >= MAX_TRY_FIX_SPARQL:
         return f"{md_resp}\n\nThe SPARQL query could not be fixed after multiple tries. Please do it yourself!"
     generated_sparqls = pattern.findall(md_resp)
+
     for sparql_query in generated_sparqls:
         try:
             translateQuery(parseQuery(sparql_query))
             # TODO: add more checks, e.g. check composition of the query with VoID?
         except Exception as e:
-            print(f"Error in SPARQL query try #{try_count}: {e}\n{sparql_query}")
-            try_count += 1
-            fix_prompt = f"""There is an error `{e}` in the generated SPARQL query:
-{sparql_query}
 
-Which is part of this answer:
-{md_resp}
+            if "Unknown namespace prefix" in str(e):
+                md_resp = md_resp.replace(sparql_query, add_missing_prefixes(sparql_query))
+            else:
+                # Ask the LLM to try to fix it
+                print(f"Error in SPARQL query try #{try_count}: {e}\n{sparql_query}")
+                try_count += 1
+                fix_prompt = f"""There is an error `{e}` in the generated SPARQL query:
+    {sparql_query}
 
-Fix the query and send the answer again with the fixed query.
-"""
-            messages.append({"role": "assistant", "content": fix_prompt})
-            response = client.chat.completions.create(
-                model=LLM_MODEL,
-                messages=messages,
-                stream=False,
-            )
-            md_resp = validate_and_fix_sparql(response.choices[0].message.content, messages, try_count)
+    Which is part of this answer:
+    {md_resp}
+
+    Fix the SPARQL query in a way that it is a fully valid query, and send the answer again with the fixed query.
+    """
+                messages.append({"role": "assistant", "content": fix_prompt})
+                response = client.chat.completions.create(
+                    model=LLM_MODEL,
+                    messages=messages,
+                    stream=False,
+                )
+                md_resp = response.choices[0].message.content
+            # Check again the fixed query
+            return validate_and_fix_sparql(md_resp, messages, try_count)
     return md_resp
 
 
@@ -261,7 +286,10 @@ def chat_ui(request: Request) -> Any:
         {
             "request": request,
             "title": "Ask Expasy",
-            "description": "Assistant to navigate resources from the Swiss Institute of Bioinformatics. Particularly knowledgeable about UniProt, OMA, Bgee, and RheaDB. But still learning.",
+            "description": """Assistant to navigate resources from the Swiss Institute of Bioinformatics. Particularly knowledgeable about UniProt, OMA, Bgee, RheaDB, and SwissLipids. But still learning.
+
+Contact vincent.emonet@sib.swiss if you have any feedback or suggestions.
+""",
             "short_description": "Ask about SIB resources.",
             "repository_url": "https://github.com/sib-swiss/expasy-chat",
             "examples": [
