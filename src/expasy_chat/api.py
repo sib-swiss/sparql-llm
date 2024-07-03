@@ -206,11 +206,24 @@ def add_missing_prefixes(query: str) -> str:
     """Add missing prefixes to a SPARQL query."""
     with open(ALL_PREFIXES_FILEPATH) as f:
         all_prefixes = json.loads(f.read())
-    # Add prefixes to queries
+    # Check if the first line is a comment
+    lines = query.split('\n')
+    comment_line = lines[0].startswith("#") if lines else False
+    # Collect prefixes to be added
+    prefixes_to_add = []
     for prefix, namespace in all_prefixes.items():
         prefix_str = f"PREFIX {prefix}: <{namespace}>"
         if not re.search(prefix_str, query) and re.search(f"[(| |\u00a0|/]{prefix}:", query):
-            query = f"{prefix_str}\n{query}"
+            prefixes_to_add.append(prefix_str)
+            # query = f"{prefix_str}\n{query}"
+
+    if prefixes_to_add:
+        prefixes_to_add_str = "\n".join(prefixes_to_add)
+        if comment_line:
+            lines.insert(1, prefixes_to_add_str)
+        else:
+            lines.insert(0, prefixes_to_add_str)
+        query = "\n".join(lines)
     return query
 
 
