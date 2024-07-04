@@ -172,7 +172,6 @@ async def chat_completions(request: ChatCompletionRequest):
     request.messages[-1].content = big_prompt
     all_messages = example_messages + request.messages
     # all_messages.append({"role": "user", "content": big_prompt})
-
     # print(all_messages)
 
     # Send the prompt to OpenAI to get a response
@@ -301,7 +300,7 @@ def chat_ui(request: Request) -> Any:
             "title": "Ask Expasy",
             "description": """Assistant to navigate resources from the Swiss Institute of Bioinformatics. Particularly knowledgeable about UniProt, OMA, Bgee, RheaDB, and SwissLipids. But still learning.
 
-Contact vincent.emonet@sib.swiss if you have any feedback or suggestions.
+Contact kru@sib.swiss if you have any feedback or suggestions.
 """,
             "short_description": "Ask about SIB resources.",
             "repository_url": "https://github.com/sib-swiss/expasy-chat",

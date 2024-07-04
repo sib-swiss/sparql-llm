@@ -86,6 +86,12 @@ endpoints = [
         "endpoint": "https://sparql.nextprot.org",
         "homepage": "https://www.nextprot.org/",
     },
+    {
+        "label": "OrthoDB",
+        # "endpoint": "https://api.nextprot.org/sparql",
+        "endpoint": "https://sparql.orthodb.org/sparql/",
+        "homepage": "https://www.orthodb.org/",
+    },
     # {
     #     "label": "GlyConnect",
     #     "endpoint": "https://glyconnect.expasy.org/sparql",

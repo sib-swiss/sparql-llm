@@ -101,6 +101,9 @@
                     <i id="send-icon" class="fas fa-paper-plane"></i>
                     <i id="loading-spinner" class="hidden fas fa-spinner fa-spin"></i>
                 </button>
+                <button id="new-conversation-btn" data-tooltip="Start a new conversation" class="tooltip-top ml-2 px-4 py-2 rounded-lg text-slate-500 bg-slate-200 hover:bg-slate-300 dark:text-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600">
+                    <i id="clean-icon" class="fas fa-trash"></i>
+                </button>
                 <div class="ml-4 tooltip-top" data-tooltip="⚠️ Will check if the queries sent are valid SPARQL, no streaming response, slower">
                     <input type="checkbox" id="checks-checkbox" class="mr-2">
                     <label for="checks-checkbox">Run additional checks</label>
@@ -152,7 +155,7 @@
             const addChecks = document.getElementById("checks-checkbox");
             description.innerHTML = marked.parse(description.innerHTML.trim());
 
-            const messages = []
+            let messages = []
 
             // Warning card to send users messages
             const warningCard = document.getElementById("warning-card");
@@ -204,9 +207,14 @@
                 return messageElement
             }
 
-            // Append sources documents in QA
-            function appendSources(source_documents) {
+            // Append buttons for relevant sources documents and running query
+            function appendSources(source_documents, mdResp) {
                 const messageElement = chatThread.lastElementChild;
+                const {endpointUrl, lastQuery} = extractSparqlInfo(mdResp);
+                let queryBtn = "";
+                if (endpointUrl && lastQuery) {
+                    queryBtn = `<a class="my-3 px-3 py-1 text-sm text-black dark:text-white bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg" href="https://yasgui.triply.cc/?endpoint=${endpointUrl}&query=${encodeURIComponent(lastQuery)}" target="_blank">Run and edit the query</a>&nbsp;&nbsp;`
+                }
                 let sourcesBtnHtml = ""
                 let sourcesMd = ""
                 let sourcesHtml = ""
@@ -221,7 +229,10 @@
                         }
                     }
                     // <pre><code>${doc.payload.example.replace(/<&lt;/g, '<').replace(/&gt;/g, '>')}</code></pre>`;
-                    sourcesBtnHtml += `<button id="source-btn-${msgCount}" class="my-3 px-3 py-1 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg">See relevant references</button>&nbsp;&nbsp;`
+                    sourcesBtnHtml += `
+                        <button id="source-btn-${msgCount}" class="my-3 px-3 py-1 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg">See relevant references</button>&nbsp;&nbsp;
+                        ${queryBtn}
+                    `
                     sourcesHtml += `<dialog id="source-dialog-${msgCount}" class="bg-white dark:bg-gray-800 m-3 rounded-lg shadow-md w-full">
                         <button id="close-dialog-${msgCount}" class="fixed top-2 right-8 m-3 px-2 text-xl bg-gray-200 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-full"><i class="fas fa-times"></i></button>
                         <article class="prose dark:prose-invert p-3 w-full max-w-full">
@@ -369,7 +380,7 @@
                             console.warn('Failed to parse remaining JSON', error);
                         }
                     }
-                    messages.push({role: "assistant", content: responseContainer.innerHTML.trim()})
+                    messages.push({role: "assistant", content: responseContainer.innerHTML.trim().replace(/&lt;/g, '<').replace(/&gt;/g, '>')})
                     responseContainer.innerHTML = DOMPurify.sanitize(marked.parse(responseContainer.innerHTML.trim().replace(/&lt;/g, '<').replace(/&gt;/g, '>')));
                 } else {
                     // Don't stream, await full response with additional checks done on the server
@@ -379,7 +390,7 @@
                     appendMessage(respMsg, "assistant");
                     docs = data.docs;
                 }
-                appendSources(docs)
+                appendSources(docs, messages[messages.length-1]["content"])
                 hljs.highlightAll();
                 disableLoading();
             }
@@ -396,6 +407,15 @@
             chatForm.addEventListener("submit", function(event) {
                 event.preventDefault();
                 submitInput(userInput)
+            });
+
+            // Clear chat thread
+            const newConversationBtn = document.getElementById("new-conversation-btn");
+            newConversationBtn.addEventListener("click", function(event) {
+                event.preventDefault();
+                messages = [];
+                chatThread.innerHTML = "";
+                exampleButtons.style.display = "inherit";
             });
 
             // Fix input height to fit content
@@ -442,6 +462,21 @@
             });
 
         });
+
+        function extractSparqlInfo(markdownContent) {
+            // Regular expression to match SPARQL queries within code blocks
+            const queryRegex = /```sparql([\s\S]*?)```/g;
+            const queries = [...markdownContent.matchAll(queryRegex)].map(match => match[1].trim());
+
+            // Get the last SPARQL query
+            const lastQuery = queries.length > 0 ? queries[queries.length - 1] : null;
+
+            const endpointRegex = /#.*(https?:\/\/[^\s]+)/i;
+            const endpointMatch = lastQuery.match(endpointRegex);
+            const endpointUrl = endpointMatch ? endpointMatch[1] : null;
+            console.log({ endpointUrl, lastQuery })
+            return { endpointUrl, lastQuery };
+        }
     </script>
 
     <style>
@@ -454,6 +489,7 @@
 
         [data-tooltip].tooltip-top:before {
             bottom: 50px;
+            left: 0px;
         }
 
         /* Add tooltip for top nav on desktop */
