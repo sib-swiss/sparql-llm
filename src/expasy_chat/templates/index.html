@@ -147,6 +147,10 @@
         // TODO: those highlights are not great, move to use YASGUI?
 
         document.addEventListener("DOMContentLoaded", function() {
+            // https://api.openai.com/v1/chat/completions
+            // const url = 'https://api.openai.com/v1/chat/completions';
+            const apiUrl = window.location;
+
             const description = document.getElementById("description");
             const userInput = document.getElementById("user-input");
             const submitBtn = document.getElementById("submit-btn");
@@ -208,7 +212,8 @@
             }
 
             // Append buttons for relevant sources documents and running query
-            function appendSources(source_documents, mdResp) {
+            function appendSources(source_documents, msgs) {
+                const mdResp = msgs[msgs.length-1]["content"]
                 const messageElement = chatThread.lastElementChild;
                 const {endpointUrl, lastQuery} = extractSparqlInfo(mdResp);
                 let queryBtn = "";
@@ -232,6 +237,8 @@
                     sourcesBtnHtml += `
                         <button id="source-btn-${msgCount}" class="my-3 px-3 py-1 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg">See relevant references</button>&nbsp;&nbsp;
                         ${queryBtn}
+                        <button id="like-btn-${msgCount}" class="my-3 px-3 py-1 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg"><i class="fas fa-thumbs-up"></i></button>&nbsp;&nbsp;
+                        <button id="dislike-btn-${msgCount}" class="my-3 px-3 py-1 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg"><i class="fas fa-thumbs-down"></i></button>&nbsp;&nbsp;
                     `
                     sourcesHtml += `<dialog id="source-dialog-${msgCount}" class="bg-white dark:bg-gray-800 m-3 rounded-lg shadow-md w-full">
                         <button id="close-dialog-${msgCount}" class="fixed top-2 right-8 m-3 px-2 text-xl bg-gray-200 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-full"><i class="fas fa-times"></i></button>
@@ -257,6 +264,37 @@
                         dialog.close();
                     });
                 }
+                // Add thumbs up/down click event
+                const likeBtn = document.getElementById(`like-btn-${msgCount}`);
+                const dislikeBtn = document.getElementById(`dislike-btn-${msgCount}`);
+                likeBtn.addEventListener("click", function() {
+                    fetch(`${apiUrl}feedback`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            "like": true,
+                            "messages": msgs,
+                        }),
+                    });
+                    likeBtn.disabled = true;
+                    dislikeBtn.disabled = true;
+                    likeBtn.style.display = "none";
+                    dislikeBtn.style.display = "none";
+                });
+                dislikeBtn.addEventListener("click", function() {
+                    fetch(`${apiUrl}feedback`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            "like": false,
+                            "messages": msgs,
+                        }),
+                    });
+                    likeBtn.disabled = true;
+                    dislikeBtn.disabled = true;
+                    likeBtn.style.display = "none";
+                    dislikeBtn.style.display = "none";
+                });
             }
 
             // Function to show the tooltip content on click
@@ -284,10 +322,6 @@
                 submitBtn.disabled = false;
                 hideWarning();
             }
-
-            // https://api.openai.com/v1/chat/completions
-            // const url = 'https://api.openai.com/v1/chat/completions';
-            const url = `${window.location}chat`
 
             // Send the user input to the chat API
             async function submitInput(inputElem) {
@@ -318,7 +352,7 @@
                     api_key: "{{ expasy_key }}",
                 });
 
-                const response = await fetch(url, {
+                const response = await fetch(`${apiUrl}chat`, {
                     method: 'POST',
                     headers: headers,
                     body: body,
@@ -390,7 +424,7 @@
                     appendMessage(respMsg, "assistant");
                     docs = data.docs;
                 }
-                appendSources(docs, messages[messages.length-1]["content"])
+                appendSources(docs, messages)
                 hljs.highlightAll();
                 disableLoading();
             }

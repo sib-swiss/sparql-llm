@@ -26,6 +26,7 @@ If answering with a query: try to make it as efficient as possible to avoid time
 always indicate the URL of the endpoint on which the query should be executed in a comment in the codeblocks at the start of the query (no additional text, just the endpoint URL directly as comment).
 If answering with a query always derive your answer from the queries provided as examples in the prompt, don't try to create a query from nothing and do not provide a generic query.
 If the answer to the question is in the provided context, do not provide a query, just provide the answer, unless explicitly asked.
+Try to always answer with one query, if the answer lies in different endpoints, provide a federated query.
 """
 
 # If the user is asking about a named entity warn him that they should check if this entity exist with one of the query used to find named entity
@@ -266,6 +267,23 @@ def validate_and_fix_sparql(md_resp: str, messages: list[Message], try_count: in
             return validate_and_fix_sparql(md_resp, messages, try_count)
     return md_resp
 
+
+class FeedbackRequest(BaseModel):
+    like: bool
+    messages: list[Message]
+
+@app.post("/feedback", response_model=list[str])
+def post_like(request: FeedbackRequest):
+    """Save the user feedback in the logs files."""
+    timestamp = datetime.now().isoformat()
+    file_name = "/logs/likes.jsonl" if request.like else "/logs/dislikes.jsonl"
+    feedback_data = {
+        "timestamp": timestamp,
+        "messages": [message.model_dump() for message in request.messages]
+    }
+    with open(file_name, "a") as f:
+        f.write(json.dumps(feedback_data) + "\n")
+    return request.messages
 
 class LogsRequest(BaseModel):
     api_key: str
