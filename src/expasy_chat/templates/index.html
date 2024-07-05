@@ -237,8 +237,8 @@
                     sourcesBtnHtml += `
                         <button id="source-btn-${msgCount}" class="my-3 px-3 py-1 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg">See relevant references</button>&nbsp;&nbsp;
                         ${queryBtn}
-                        <button id="like-btn-${msgCount}" class="my-3 px-3 py-1 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg"><i class="fas fa-thumbs-up"></i></button>&nbsp;&nbsp;
-                        <button id="dislike-btn-${msgCount}" class="my-3 px-3 py-1 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg"><i class="fas fa-thumbs-down"></i></button>&nbsp;&nbsp;
+                        <button id="like-btn-${msgCount}" class="feedback-btn my-3 px-3 py-1 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg"><i class="fas fa-thumbs-up"></i></button>&nbsp;&nbsp;
+                        <button id="dislike-btn-${msgCount}" class="feedback-btn my-3 px-3 py-1 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg"><i class="fas fa-thumbs-down"></i></button>&nbsp;&nbsp;
                     `
                     sourcesHtml += `<dialog id="source-dialog-${msgCount}" class="bg-white dark:bg-gray-800 m-3 rounded-lg shadow-md w-full">
                         <button id="close-dialog-${msgCount}" class="fixed top-2 right-8 m-3 px-2 text-xl bg-gray-200 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-full"><i class="fas fa-times"></i></button>
@@ -247,6 +247,12 @@
                         </article>
                     </dialog>`
                 }
+                // Hide all previous feedback buttons before adding the new ones
+                const feedbackButtons = document.getElementsByClassName('feedback-btn');
+                for (var i = 0; i < feedbackButtons.length; i++) {
+                    feedbackButtons[i].style.display = 'none';
+                }
+
                 messageElement.lastElementChild.innerHTML += sourcesBtnHtml;
                 messageElement.lastElementChild.innerHTML += sourcesHtml;
                 // Add click event
