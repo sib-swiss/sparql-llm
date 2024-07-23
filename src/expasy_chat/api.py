@@ -19,11 +19,12 @@ from rdflib.plugins.sparql.parser import parseQuery
 from starlette.middleware.cors import CORSMiddleware
 
 from expasy_chat.embed import ALL_PREFIXES_FILEPATH, DOCS_COLLECTION, get_embedding_model, get_vectordb
+from expasy_chat.utils import extract_sparql_queries, queries_pattern
 
 system_prompt = """You are Expasy, an assistant that helps users to navigate the resources and databases from the Swiss Institute of Bioinformatics.
 Depending on the user request and provided context, you may provide general information about the resources available at the SIB, or help the user to formulate a query to run on a SPARQL endpoint.
 If answering with a query: try to make it as efficient as possible to avoid timeout due to how large the datasets are, make sure the query written is valid SPARQL,
-always indicate the URL of the endpoint on which the query should be executed in a comment in the codeblocks at the start of the query (no additional text, just the endpoint URL directly as comment).
+always indicate the URL of the endpoint on which the query should be executed in a comment in the codeblocks at the start of the query (no additional text, just the endpoint URL directly as comment, nothing else, and only 1 endpoint).
 If answering with a query always derive your answer from the queries provided as examples in the prompt, don't try to create a query from nothing and do not provide a generic query.
 If the answer to the question is in the provided context, do not provide a query, just provide the answer, unless explicitly asked.
 Try to always answer with one query, if the answer lies in different endpoints, provide a federated query.
@@ -207,7 +208,7 @@ def add_missing_prefixes(query: str) -> str:
     with open(ALL_PREFIXES_FILEPATH) as f:
         all_prefixes = json.loads(f.read())
     # Check if the first line is a comment
-    lines = query.split('\n')
+    lines = query.split("\n")
     comment_line = lines[0].startswith("#") if lines else False
     # Collect prefixes to be added
     prefixes_to_add = []
@@ -227,29 +228,28 @@ def add_missing_prefixes(query: str) -> str:
     return query
 
 
-pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
 
 def validate_and_fix_sparql(md_resp: str, messages: list[Message], try_count: int = 0) -> str:
     """Recursive funtion to validate the SPARQL queries in the chat response and fix them if needed."""
 
     if try_count >= MAX_TRY_FIX_SPARQL:
         return f"{md_resp}\n\nThe SPARQL query could not be fixed after multiple tries. Please do it yourself!"
-    generated_sparqls = pattern.findall(md_resp)
+    generated_sparqls = extract_sparql_queries(md_resp)
 
-    for sparql_query in generated_sparqls:
+    for gen_query in generated_sparqls:
         try:
-            translateQuery(parseQuery(sparql_query))
+            translateQuery(parseQuery(gen_query["query"]))
             # TODO: add more checks, e.g. check composition of the query with VoID?
         except Exception as e:
 
             if "Unknown namespace prefix" in str(e):
-                md_resp = md_resp.replace(sparql_query, add_missing_prefixes(sparql_query))
+                md_resp = md_resp.replace(gen_query["query"], add_missing_prefixes(gen_query["query"]))
             else:
                 # Ask the LLM to try to fix it
-                print(f"Error in SPARQL query try #{try_count}: {e}\n{sparql_query}")
+                print(f"Error in SPARQL query try #{try_count}: {e}\n{gen_query['query']}")
                 try_count += 1
                 fix_prompt = f"""There is an error `{e}` in the generated SPARQL query:
-    {sparql_query}
+    {gen_query["query"]}
 
     Which is part of this answer:
     {md_resp}
