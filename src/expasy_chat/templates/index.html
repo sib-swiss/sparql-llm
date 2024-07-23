@@ -510,6 +510,7 @@
 
             // Get the last SPARQL query
             const lastQuery = queries.length > 0 ? queries[queries.length - 1] : null;
+            if (!lastQuery) return { endpointUrl: null, lastQuery: null };
 
             const endpointRegex = /#.*(https?:\/\/[^\s]+)/i;
             const endpointMatch = lastQuery.match(endpointRegex);
