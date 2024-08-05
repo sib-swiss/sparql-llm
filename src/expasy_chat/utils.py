@@ -52,12 +52,13 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> tuple[Conju
     """Convert a SPARQL query string to a dictionary of triples looking like dict[endpoint][subject][predicate] = list[object]"""
     parsed_query = parseQuery(sparql_query)
     translated_query: Query = translateQuery(parsed_query)
+    query_dict = {}
+    path_var_count = 1
+    # We don't really use the graph finally, only the query_dict
     g = ConjunctiveGraph()
     g.bind("up", up)
     g.bind("rh", rh)
     g.bind("sqc", sqc)
-    query_dict = {}
-    path_var_count = 1
 
     # Recursively check all parts of the query to find BGPs
     def process_part(part, endpoint: str):
@@ -66,64 +67,63 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> tuple[Conju
         if isinstance(part, list):
             for sub_pattern in part:
                 process_part(sub_pattern, endpoint)
-        if hasattr(part, "name"):
-            # print(part.name)
-            if part.name == "BGP" or part.name == "TriplesBlock":
-                # print(part.triples)
-                for triples in part.triples:
-                    # print(triples)
-                    # print(len(triples))
-                    # TripleBlock can have multiple triples in the same list...
-                    for i in range(0, len(triples), 3):
-                        triple = triples[i:i+3]
-                        # print(triple)
-                        # TODO: handle when paths are provided? up:annotation/up:toast
-                        # Maybe reuse the code from evaluate?
-                        subj, pred, obj = triple[0], triple[1], triple[2]
-                        # Replace variables with resources from the sqc namespace
-                        if not isinstance(pred, Path):
-                            g.add((
-                                sqc[str(subj)] if isinstance(subj, Variable) else subj,
-                                sqc[str(pred)] if isinstance(pred, Variable) else pred,
-                                sqc[str(obj)] if isinstance(obj, Variable) else obj,
-                                URIRef(endpoint)
-                            ))
-                        if isinstance(subj, Variable):
-                            subj = f"?{subj}"
-                        if isinstance(pred, Variable):
-                            pred = f"?{pred}"
-                        if isinstance(obj, Variable):
-                            obj = f"?{obj}"
-                        if endpoint not in query_dict:
-                            query_dict[endpoint] = {}
-                        if str(subj) not in query_dict[endpoint]:
-                            query_dict[endpoint][str(subj)] = {}
-                        if isinstance(pred, Path):
-                            # TODO: handling paths
-                            if isinstance(pred, MulPath):
-                                # NOTE: at the moment we can't check MulPath because in OMA the nodes don't have types
-                                # And our system infer they might be orth:Protein, hence triggering an error that is not relevant
-                                if str(pred.path) not in query_dict[endpoint][str(subj)]:
-                                    query_dict[endpoint][str(subj)][str(pred.path)] = []
-                                query_dict[endpoint][str(subj)][str(pred.path)].append(str(obj))
-                                continue
-                            elif isinstance(pred, SequencePath):
-                                # Creating variables for each step in the path
-                                # print("SEQ!", pred.args)
-                                for i_path, path_pred in enumerate(pred.args):
-                                    path_var_count += 1
-                                    if str(subj) not in query_dict[endpoint]:
-                                        query_dict[endpoint][str(subj)] = {}
-                                    if i_path < len(pred.args) - 1:
-                                        path_var_str = f"?pathVar{path_var_count}"
-                                        query_dict[endpoint][str(subj)][str(path_pred)] = [path_var_str]
-                                        subj = path_var_str
-                                    else:
-                                        query_dict[endpoint][str(subj)][str(path_pred)] = [str(obj)]
+        if hasattr(part, "name") and (part.name == "BGP" or part.name == "TriplesBlock"):
+            # if part.name == "BGP" or part.name == "TriplesBlock":
+            # print(part.triples)
+            for triples in part.triples:
+                # print(triples)
+                # print(len(triples))
+                # TripleBlock can have multiple triples in the same list...
+                for i in range(0, len(triples), 3):
+                    triple = triples[i:i+3]
+                    # print(triple)
+                    # TODO: handle when paths are provided? up:annotation/up:toast
+                    # Maybe reuse the code from evaluate?
+                    subj, pred, obj = triple[0], triple[1], triple[2]
+                    # Replace variables with resources from the sqc namespace
+                    if not isinstance(pred, Path):
+                        g.add((
+                            sqc[str(subj)] if isinstance(subj, Variable) else subj,
+                            sqc[str(pred)] if isinstance(pred, Variable) else pred,
+                            sqc[str(obj)] if isinstance(obj, Variable) else obj,
+                            URIRef(endpoint)
+                        ))
+                    if isinstance(subj, Variable):
+                        subj = f"?{subj}"
+                    if isinstance(pred, Variable):
+                        pred = f"?{pred}"
+                    if isinstance(obj, Variable):
+                        obj = f"?{obj}"
+                    if endpoint not in query_dict:
+                        query_dict[endpoint] = {}
+                    if str(subj) not in query_dict[endpoint]:
+                        query_dict[endpoint][str(subj)] = {}
+                    if isinstance(pred, Path):
+                        # TODO: handling paths
+                        if isinstance(pred, MulPath):
+                            # NOTE: at the moment we can't check MulPath because in OMA the nodes don't have types
+                            # And our system infer they might be orth:Protein, hence triggering an error that is not relevant
+                            if str(pred.path) not in query_dict[endpoint][str(subj)]:
+                                query_dict[endpoint][str(subj)][str(pred.path)] = []
+                            query_dict[endpoint][str(subj)][str(pred.path)].append(str(obj))
                             continue
-                        elif str(pred) not in query_dict[endpoint][str(subj)]:
-                            query_dict[endpoint][str(subj)][str(pred)] = []
-                        query_dict[endpoint][str(subj)][str(pred)].append(str(obj))
+                        elif isinstance(pred, SequencePath):
+                            # Creating variables for each step in the path
+                            # print("SEQ!", pred.args)
+                            for i_path, path_pred in enumerate(pred.args):
+                                path_var_count += 1
+                                if str(subj) not in query_dict[endpoint]:
+                                    query_dict[endpoint][str(subj)] = {}
+                                if i_path < len(pred.args) - 1:
+                                    path_var_str = f"?pathVar{path_var_count}"
+                                    query_dict[endpoint][str(subj)][str(path_pred)] = [path_var_str]
+                                    subj = path_var_str
+                                else:
+                                    query_dict[endpoint][str(subj)][str(path_pred)] = [str(obj)]
+                        continue
+                    elif str(pred) not in query_dict[endpoint][str(subj)]:
+                        query_dict[endpoint][str(subj)][str(pred)] = []
+                    query_dict[endpoint][str(subj)][str(pred)].append(str(obj))
 
         if hasattr(part, "p"):
             process_part(part.p, endpoint)
@@ -154,12 +154,15 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> tuple[Conju
 
 def validate_triple_pattern(subj, subj_dict, void_dict, endpoint, error_msgs, parent_type = None, parent_pred = None) -> set[str]:
     pred_dict = subj_dict.get(subj, {})
+    # Direct type provided for this entity
     if "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" in pred_dict:
         for subj_type in pred_dict["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"]:
             for pred in pred_dict:
                 if pred == "http://www.w3.org/1999/02/22-rdf-syntax-ns#type":
                     continue
-                if pred not in void_dict.get(subj_type, {}):
+                if subj_type not in void_dict:
+                    error_msgs.add(f"Type {subj_type} for subject {subj} in endpoint {endpoint} does not exist. Available classes are: {', '.join(void_dict.keys())}")
+                elif pred not in void_dict.get(subj_type, {}):
                     # TODO: also check if object type matches? (if defined, because it's not always available)
                     error_msgs.add(f"Subject {subj} with type {subj_type} in endpoint {endpoint} does not support the predicate {pred} according to the VOID description. It can have the following predicates: {', '.join(void_dict.get(subj_type, {}).keys())}")
                 for obj in pred_dict[pred]:
@@ -172,7 +175,7 @@ def validate_triple_pattern(subj, subj_dict, void_dict, endpoint, error_msgs, pa
     # No type provided directly for this entity, we check if provided predicates match one of the potential type inferred for parent type
     elif parent_type and parent_pred:
         # print(f"CHECKING subject {subj} parent type {parent_type} parent pred {parent_pred}")
-        valid_ent = False
+        missing_pred = None
         potential_types = void_dict.get(parent_type, {}).get(parent_pred, [])
         if potential_types:
             # Get the list of preds for this subj
@@ -183,7 +186,6 @@ def validate_triple_pattern(subj, subj_dict, void_dict, endpoint, error_msgs, pa
                 # Find any predicate in pred_dict.keys() that is not in potential_preds
                 missing_pred = next((pred for pred in pred_dict if pred not in potential_preds), None)
                 if missing_pred is None:
-                    valid_ent = True
                     # print(f"OK Subject {subj} is a valid inferred {potential_type}!")
                     for pred in pred_dict:
                         for obj in pred_dict[pred]:
@@ -191,9 +193,24 @@ def validate_triple_pattern(subj, subj_dict, void_dict, endpoint, error_msgs, pa
                             if obj.startswith("?"):
                                 error_msgs = validate_triple_pattern(obj, subj_dict, void_dict, endpoint, error_msgs, potential_type, pred)
                     break
-            if not valid_ent and missing_pred is not None:
+            if missing_pred is not None:
                 # print(f"!!!! Subject {subj} {parent_type} {parent_pred} is not a valid {potential_types} !")
                 error_msgs.add(f"Subject {subj} in endpoint {endpoint} does not support the predicate {missing_pred} according to the VOID description. Correct predicate might be one of the following: {', '.join(potential_preds)} (we inferred this variable might be of the type {potential_type})")
+
+    # If no type and no parent type we just check if the predicates used can be found in the VOID description
+    # We only run this if no errors found yet to avoid creating too many duplicates
+    # TODO: we could improve this by generating a dict of errors, so we only push once the error for a subj/predicate
+    elif len(error_msgs) == 0:
+        all_preds = set()
+        for pred in pred_dict:
+            valid_pred = False
+            for _subj_type, void_pred_dict in void_dict.items():
+                all_preds.update(void_pred_dict.keys())
+                if pred in void_pred_dict:
+                    valid_pred = True
+                    break
+            if not valid_pred:
+                error_msgs.add(f"Predicate {pred} used by subject {subj} in endpoint {endpoint} is not supported according to the VOID description. Here are the available predicates: {', '.join(all_preds)}")
 
     return error_msgs
 
@@ -202,8 +219,9 @@ def validate_triple_pattern(subj, subj_dict, void_dict, endpoint, error_msgs, pa
 
 def validate_sparql_with_void(query: str, endpoint: str) -> None:
     """Validate SPARQL query using the VOID description of endpoints."""
-    g, query_dict = sparql_query_to_dict(query, endpoint)
+    _g, query_dict = sparql_query_to_dict(query, endpoint)
     error_msgs: set[str] = set()
+    # error_msgs = {}
 
     # Go through the query BGPs and check if they match the VOID description
     for endpoint, subj_dict in query_dict.items():
@@ -226,10 +244,9 @@ def validate_sparql_with_void(query: str, endpoint: str) -> None:
                     void_dict[void_triple["class1"]["value"]][void_triple["prop"]["value"]].append(void_triple["datatype"]["value"])
             # print(void_res["results"]["bindings"])
             if len(void_dict) == 0:
-                raise(f"Could not retrieve VOID description for endpoint {endpoint}")
+                raise("No VOID description found in the endpoint")
         except Exception as e:
-            print(f"Could not retrieve VOID description for endpoint {endpoint}")
-            # print(e)
+            print(f"Could not retrieve VOID description for endpoint {endpoint}: {e}")
             continue
 
         for subj in subj_dict:

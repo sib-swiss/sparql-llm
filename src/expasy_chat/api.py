@@ -190,6 +190,7 @@ async def chat_completions(request: ChatCompletionRequest):
         model=LLM_MODEL,
         messages=all_messages,
         stream=request.stream,
+        temperature=0,
         #   response_format={ "type": "json_object" },
     )
     # NOTE: to get response as JSON object check https://github.com/jxnl/instructor or https://github.com/outlines-dev/outlines
@@ -245,6 +246,7 @@ def validate_and_fix_sparql(md_resp: str, messages: list[Message], try_count: in
         return f"{md_resp}\n\nThe SPARQL query could not be fixed after multiple tries. Please do it yourself!"
     generated_sparqls = extract_sparql_queries(md_resp)
 
+    error_detected = False
     for gen_query in generated_sparqls:
         try:
             translateQuery(parseQuery(gen_query["query"]))
@@ -263,20 +265,23 @@ def validate_and_fix_sparql(md_resp: str, messages: list[Message], try_count: in
 SPARQL query:
 {gen_query["query"]}
 
-Which is part of this answer:
-{md_resp}
-
-Fix the SPARQL query helping yourself with the error message and previous context in a way that it is a fully valid query, and send the answer again with the fixed query.
+Fix the SPARQL query helping yourself with the error message and context from previous messages in a way that it is a fully valid query.
 """
+                # Which is part of this answer:
+                # {md_resp}
                 messages.append({"role": "assistant", "content": fix_prompt})
                 response = client.chat.completions.create(
                     model=LLM_MODEL,
                     messages=messages,
                     stream=False,
                 )
-                md_resp = response.choices[0].message.content
-            # Check again the fixed query
-            return validate_and_fix_sparql(md_resp, messages, try_count)
+                # md_resp = response.choices[0].message.content
+                fixed_sparqls = extract_sparql_queries(response.choices[0].message.content)
+                for fixed_query in fixed_sparqls:
+                    md_resp = md_resp.replace(gen_query["query"], fixed_query["query"])
+    if error_detected:
+        # Check again the fixed query
+        return validate_and_fix_sparql(md_resp, messages, try_count)
     return md_resp
 
 

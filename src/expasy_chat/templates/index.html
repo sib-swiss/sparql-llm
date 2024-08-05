@@ -326,7 +326,7 @@
                 loadingSpinner.classList.add("hidden");
                 sendIcon.classList.remove("hidden");
                 submitBtn.disabled = false;
-                hideWarning();
+                // hideWarning();
             }
 
             // Send the user input to the chat API
@@ -422,13 +422,21 @@
                     }
                     messages.push({role: "assistant", content: responseContainer.innerHTML.trim().replace(/&lt;/g, '<').replace(/&gt;/g, '>')})
                     responseContainer.innerHTML = DOMPurify.sanitize(marked.parse(responseContainer.innerHTML.trim().replace(/&lt;/g, '<').replace(/&gt;/g, '>')));
+                    hideWarning();
                 } else {
                     // Don't stream, await full response with additional checks done on the server
-                    const data = await response.json();
-                    const respMsg = data.choices[0].message.content;
-                    messages.push({role: "assistant", content: respMsg})
-                    appendMessage(respMsg, "assistant");
-                    docs = data.docs;
+                    try {
+                        const data = await response.json();
+                        const respMsg = data.choices[0].message.content;
+                        messages.push({role: "assistant", content: respMsg})
+                        appendMessage(respMsg, "assistant");
+                        docs = data.docs;
+                        hideWarning();
+                    } catch (error) {
+                        console.error('Error:', error);
+                        console.error('Response:', response);
+                        showWarning("An error occurred. Please try again.");
+                    }
                 }
                 appendSources(docs, messages)
                 hljs.highlightAll();
