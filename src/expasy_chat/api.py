@@ -19,7 +19,7 @@ from rdflib.plugins.sparql.parser import parseQuery
 from starlette.middleware.cors import CORSMiddleware
 
 from expasy_chat.embed import ALL_PREFIXES_FILEPATH, DOCS_COLLECTION, get_embedding_model, get_vectordb
-from expasy_chat.utils import extract_sparql_queries
+from expasy_chat.utils import extract_sparql_queries, validate_sparql_with_void
 
 system_prompt = """You are Expasy, an assistant that helps users to navigate the resources and databases from the Swiss Institute of Bioinformatics.
 Depending on the user request and provided context, you may provide general information about the resources available at the SIB, or help the user to formulate a query to run on a SPARQL endpoint.
@@ -43,12 +43,20 @@ Try to always answer with one query, if the answer lies in different endpoints, 
 STARTUP_PROMPT = "Here is a list of reference questions and answers relevant to the user question that will help you answer the user question accurately:"
 INTRO_USER_QUESTION_PROMPT = "The question from the user is:"
 MAX_TRY_FIX_SPARQL = 10
-LLM_MODEL = "gpt-4o"
-# LLM_MODEL = "gpt-4o-mini"
-
 RETRIEVED_DOCS_COUNT = 20
 
 client = OpenAI()
+LLM_MODEL = "gpt-4o"
+# LLM_MODEL = "gpt-4o-mini"
+
+# client = OpenAI(
+#     api_key=os.environ.get("GLHF_API_KEY"),
+#     base_url="https://glhf.chat/api/openai/v1",
+# )
+# # LLM_MODEL = "hf:meta-lama/Meta-Llama-3.1-405B-Instruct"
+# # LLM_MODEL = "hf:mistralai/Mistral-7B-Instruct-v0.3"
+# LLM_MODEL = "hf:meta-lama/Meta-Llama-3.1-70B-Instruct"
+
 vectordb = get_vectordb()
 embedding_model = get_embedding_model()
 
@@ -231,7 +239,7 @@ def add_missing_prefixes(query: str) -> str:
 
 
 def validate_and_fix_sparql(md_resp: str, messages: list[Message], try_count: int = 0) -> str:
-    """Recursive funtion to validate the SPARQL queries in the chat response and fix them if needed."""
+    """Recursive function to validate the SPARQL queries in the chat response and fix them if needed."""
 
     if try_count >= MAX_TRY_FIX_SPARQL:
         return f"{md_resp}\n\nThe SPARQL query could not be fixed after multiple tries. Please do it yourself!"
@@ -240,23 +248,26 @@ def validate_and_fix_sparql(md_resp: str, messages: list[Message], try_count: in
     for gen_query in generated_sparqls:
         try:
             translateQuery(parseQuery(gen_query["query"]))
-            # TODO: add more checks, e.g. check composition of the query with VoID?
-        except Exception as e:
+            validate_sparql_with_void(gen_query["query"], gen_query["endpoint"])
 
+        except Exception as e:
             if "Unknown namespace prefix" in str(e):
                 md_resp = md_resp.replace(gen_query["query"], add_missing_prefixes(gen_query["query"]))
             else:
                 # Ask the LLM to try to fix it
                 print(f"Error in SPARQL query try #{try_count}: {e}\n{gen_query['query']}")
                 try_count += 1
-                fix_prompt = f"""There is an error `{e}` in the generated SPARQL query:
-    {gen_query["query"]}
+                fix_prompt = f"""There is an error in the generated SPARQL query:
+`{e}`
 
-    Which is part of this answer:
-    {md_resp}
+SPARQL query:
+{gen_query["query"]}
 
-    Fix the SPARQL query in a way that it is a fully valid query, and send the answer again with the fixed query.
-    """
+Which is part of this answer:
+{md_resp}
+
+Fix the SPARQL query helping yourself with the error message and previous context in a way that it is a fully valid query, and send the answer again with the fixed query.
+"""
                 messages.append({"role": "assistant", "content": fix_prompt})
                 response = client.chat.completions.create(
                     model=LLM_MODEL,

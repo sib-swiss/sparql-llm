@@ -92,13 +92,16 @@ endpoints = [
         "endpoint": "https://sparql.orthodb.org/sparql/",
         "homepage": "https://www.orthodb.org/",
     },
+    {
+        "label": "dbgi",
+        "endpoint": "https://biosoda.unil.ch/graphdb/repositories/emi-dbgi",
+        # "homepage": "https://dbgi.eu/",
+    },
     # {
     #     "label": "GlyConnect",
     #     "endpoint": "https://glyconnect.expasy.org/sparql",
     #     "homepage": "https://glyconnect.expasy.org/",
     # },
-    # https://enpkg.commons-lab.org/graphdb/sparql (query examnple in saved queries, check with Marco)
-    # https://enpkg.commons-lab.org/graphdb/repositories/ENPKG
 ]
 
 
@@ -152,12 +155,12 @@ def query_sparql(query: str, endpoint: str) -> dict:
 def get_example_queries(endpoint: dict[str, str]) -> list[dict]:
     """Retrieve example SPARQL queries from a SPARQL endpoint"""
     queries = []
+    prefix_map = {}
     endpoint_name = endpoint["label"]
     endpoint_url = endpoint["endpoint"]
     try:
         # Add SPARQL queries examples to the vectordb
         results = query_sparql(get_prefixes, endpoint_url)
-        prefix_map = {}
         for row in results["results"]["bindings"]:
             prefix_map[row["prefix"]["value"]] = row["namespace"]["value"]
 
@@ -240,7 +243,7 @@ def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
         )
         # print("\n".join(descs))
     except Exception as e:
-        print(f"Error while fetching schema.org metadata from {endpoint['homepage']}: {e}")
+        print(f"Error while fetching schema.org metadata from {endpoint['label']}: {e}")
     return docs
 
 def get_ontology(endpoint: dict[str, str]) -> list[dict]:
@@ -456,6 +459,26 @@ if __name__ == "__main__":
 #     OPTIONAL { ?class2 rdfs:comment ?class2Comment . }
 #     OPTIONAL { ?prop rdfs:comment ?propComment . }
 # } ORDER BY DESC(?pp1triples)
+
+
+# TODO: get classes and datatypes
+# PREFIX up: <http://purl.uniprot.org/core/>
+# PREFIX void: <http://rdfs.org/ns/void#>
+# PREFIX void-ext: <http://ldf.fi/void-ext#>
+
+# SELECT DISTINCT ?class1 ?prop ?class2 ?datatype
+# WHERE {
+#   	?cp void:class ?class1 ;
+#     	void:propertyPartition ?pp .
+#     ?pp void:property ?prop .
+#     OPTIONAL {
+#       {
+#        ?pp  void:classPartition [ void:class ?class2 ] .
+#       } UNION {
+#        ?pp void-ext:datatypePartition [ void-ext:datatype ?datatype ] .
+#     }
+#   }
+# }
 
 
 
