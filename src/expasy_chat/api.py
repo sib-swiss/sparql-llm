@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import re
 from collections.abc import AsyncGenerator
 from datetime import datetime
@@ -8,18 +7,18 @@ from typing import Any, Optional
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.security.api_key import APIKey
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from openai import OpenAI, Stream
 from pydantic import BaseModel
-from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
+from qdrant_client.models import ScoredPoint
 from rdflib.plugins.sparql.algebra import translateQuery
 from rdflib.plugins.sparql.parser import parseQuery
 from starlette.middleware.cors import CORSMiddleware
 
-from expasy_chat.embed import ALL_PREFIXES_FILEPATH, DOCS_COLLECTION, get_embedding_model, get_vectordb
-from expasy_chat.utils import extract_sparql_queries, validate_sparql_with_void
+from expasy_chat.config import settings
+from expasy_chat.embed import get_embedding_model, get_vectordb
+from expasy_chat.validate_sparql import add_missing_prefixes, extract_sparql_queries, validate_sparql_with_void
 
 system_prompt = """You are Expasy, an assistant that helps users to navigate the resources and databases from the Swiss Institute of Bioinformatics.
 Depending on the user request and provided context, you may provide general information about the resources available at the SIB, or help the user to formulate a query to run on a SPARQL endpoint.
@@ -34,7 +33,6 @@ Try to always answer with one query, if the answer lies in different endpoints, 
 # And we provide the this list of queries, and the LLM figure out which query can be used to find the named entity
 # https://github.com/biosoda/bioquery/blob/master/biosoda_frontend/src/biosodadata.json#L1491
 
-
 # and do not put service call to the endpoint the query is run on
 # Add a LIMIT 100 to the query and even sub-queries if you are unsure about the size of the result.
 # You can deconstruct complex queries in many smaller queries, but always propose one final query to the user (federated if needed), but be careful to use the right crossref (xref) when using an identifier from an endpoint in another endpoint.
@@ -42,12 +40,8 @@ Try to always answer with one query, if the answer lies in different endpoints, 
 
 STARTUP_PROMPT = "Here is a list of reference questions and answers relevant to the user question that will help you answer the user question accurately:"
 INTRO_USER_QUESTION_PROMPT = "The question from the user is:"
-MAX_TRY_FIX_SPARQL = 10
-RETRIEVED_DOCS_COUNT = 20
 
 client = OpenAI()
-LLM_MODEL = "gpt-4o"
-# LLM_MODEL = "gpt-4o-mini"
 
 # client = OpenAI(
 #     api_key=os.environ.get("GLHF_API_KEY"),
@@ -66,8 +60,7 @@ app = FastAPI(
 such as SPARQL endpoints, to get information about proteins, genes, and other biological entities.""",
 )
 
-LOGS_FILEPATH = "/logs/user_questions.log"
-logging.basicConfig(filename=LOGS_FILEPATH, level=logging.INFO, format="%(asctime)s - %(message)s")
+logging.basicConfig(filename=settings.logs_filepath, level=logging.INFO, format="%(asctime)s - %(message)s")
 
 templates = Jinja2Templates(directory="src/expasy_chat/templates")
 app.mount(
@@ -100,7 +93,7 @@ class ChatCompletionRequest(BaseModel):
     model: Optional[str] = "expasy"
     messages: list[Message]
     max_tokens: Optional[int] = 512
-    temperature: Optional[float] = 0.1
+    temperature: Optional[float] = 0.0
     stream: Optional[bool] = False
     api_key: Optional[str] = None
 
@@ -133,8 +126,7 @@ async def stream_openai(response: Stream[Any], docs, full_prompt) -> AsyncGenera
 
 @app.post("/chat")
 async def chat_completions(request: ChatCompletionRequest):
-    expasy_key = os.getenv("EXPASY_API_KEY", None)
-    if expasy_key and request.api_key != expasy_key:
+    if settings.expasy_api_key and request.api_key != settings.expasy_api_key:
         raise ValueError("Invalid API key")
 
     question: str = request.messages[-1].content if request.messages else ""
@@ -143,7 +135,7 @@ async def chat_completions(request: ChatCompletionRequest):
 
     query_embeddings = next(iter(embedding_model.embed([question])))
     hits = vectordb.search(
-        collection_name=DOCS_COLLECTION,
+        collection_name=settings.docs_collection_name,
         query_vector=query_embeddings,
         # query_filter=Filter(
         #     must=[
@@ -153,7 +145,7 @@ async def chat_completions(request: ChatCompletionRequest):
         #         )
         #     ]
         # ),
-        limit=RETRIEVED_DOCS_COUNT,
+        limit=settings.retrieved_docs_count,
     )
 
     # We build a big prompt with the 3 most relevant queries retrieved from similarity search engine (could be increased)
@@ -187,7 +179,7 @@ async def chat_completions(request: ChatCompletionRequest):
 
     # Send the prompt to OpenAI to get a response
     response = client.chat.completions.create(
-        model=LLM_MODEL,
+        model=settings.llm_model,
         messages=all_messages,
         stream=request.stream,
         temperature=0,
@@ -213,36 +205,10 @@ async def chat_completions(request: ChatCompletionRequest):
     # NOTE: the response is similar to OpenAI API, but we add the list of hits and the full prompt used to ask the question
 
 
-def add_missing_prefixes(query: str) -> str:
-    """Add missing prefixes to a SPARQL query."""
-    with open(ALL_PREFIXES_FILEPATH) as f:
-        all_prefixes = json.loads(f.read())
-    # Check if the first line is a comment
-    lines = query.split("\n")
-    comment_line = lines[0].startswith("#") if lines else False
-    # Collect prefixes to be added
-    prefixes_to_add = []
-    for prefix, namespace in all_prefixes.items():
-        prefix_str = f"PREFIX {prefix}: <{namespace}>"
-        if not re.search(prefix_str, query) and re.search(f"[(| |\u00a0|/]{prefix}:", query):
-            prefixes_to_add.append(prefix_str)
-            # query = f"{prefix_str}\n{query}"
-
-    if prefixes_to_add:
-        prefixes_to_add_str = "\n".join(prefixes_to_add)
-        if comment_line:
-            lines.insert(1, prefixes_to_add_str)
-        else:
-            lines.insert(0, prefixes_to_add_str)
-        query = "\n".join(lines)
-    return query
-
-
-
 def validate_and_fix_sparql(md_resp: str, messages: list[Message], try_count: int = 0) -> str:
     """Recursive function to validate the SPARQL queries in the chat response and fix them if needed."""
 
-    if try_count >= MAX_TRY_FIX_SPARQL:
+    if try_count >= settings.max_try_fix_sparql:
         return f"{md_resp}\n\nThe SPARQL query could not be fixed after multiple tries. Please do it yourself!"
     generated_sparqls = extract_sparql_queries(md_resp)
 
@@ -271,7 +237,7 @@ Fix the SPARQL query helping yourself with the error message and context from pr
                 # {md_resp}
                 messages.append({"role": "assistant", "content": fix_prompt})
                 response = client.chat.completions.create(
-                    model=LLM_MODEL,
+                    model=settings.llm_model,
                     messages=messages,
                     stream=False,
                 )
@@ -289,31 +255,30 @@ class FeedbackRequest(BaseModel):
     like: bool
     messages: list[Message]
 
+
 @app.post("/feedback", response_model=list[str])
 def post_like(request: FeedbackRequest):
     """Save the user feedback in the logs files."""
     timestamp = datetime.now().isoformat()
     file_name = "/logs/likes.jsonl" if request.like else "/logs/dislikes.jsonl"
-    feedback_data = {
-        "timestamp": timestamp,
-        "messages": [message.model_dump() for message in request.messages]
-    }
+    feedback_data = {"timestamp": timestamp, "messages": [message.model_dump() for message in request.messages]}
     with open(file_name, "a") as f:
         f.write(json.dumps(feedback_data) + "\n")
     return request.messages
 
+
 class LogsRequest(BaseModel):
     api_key: str
+
 
 @app.post("/logs", response_model=list[str])
 def get_user_logs(request: LogsRequest):
     """Get the list of user questions from the logs file."""
-    logs_key = os.getenv("LOGS_API_KEY", None)
-    if logs_key and request.api_key != logs_key:
+    if settings.logs_api_key and request.api_key != settings.logs_api_key:
         raise ValueError("Invalid API key")
     questions = set()
     pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - User question: (.+)")
-    with open(LOGS_FILEPATH) as file:
+    with open(settings.logs_filepath) as file:
         for line in file:
             match = pattern.search(line)
             if match:
@@ -349,6 +314,6 @@ Contact kru@sib.swiss if you have any feedback or suggestions.
                 # "What is the gene associated with the protein P68871?",
             ],
             "favicon": "https://www.expasy.org/favicon.ico",
-            "expasy_key": os.getenv("EXPASY_API_KEY", None),
+            "expasy_key": settings.expasy_api_key,
         },
     )

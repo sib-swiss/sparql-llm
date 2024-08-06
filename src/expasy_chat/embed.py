@@ -1,8 +1,5 @@
 import json
 import re
-import gc
-import os
-from sys import prefix
 
 import requests
 from bs4 import BeautifulSoup
@@ -15,94 +12,18 @@ from qdrant_client.http.models import (
 )
 from rdflib import RDF, ConjunctiveGraph, Namespace
 
+from expasy_chat.config import settings
 
-# https://qdrant.github.io/fastembed/examples/Supported_Models/
-# TextEmbedding.list_supported_models()
+
 def get_embedding_model() -> TextEmbedding:
-    return TextEmbedding("BAAI/bge-large-en-v1.5")
+    return TextEmbedding(settings.embedding_model)
 
-embedding_dimensions = 1024
 
-ONTOLOGY_CHUNK_SIZE = 3000
-ONTOLOGY_CHUNK_OVERLAP = 200
-# ONTOLOGY_CHUNK_SIZE = 6000
-# ONTOLOGY_CHUNK_OVERLAP = 200
-
-DEFAULT_VECTORDB_HOST = os.getenv("VECTORDB_HOST", "10.89.0.2")
-# DEFAULT_VECTORDB_HOST = "10.89.0.2"
-
-def get_vectordb(host=DEFAULT_VECTORDB_HOST) -> QdrantClient:
+def get_vectordb(host=settings.vectordb_host) -> QdrantClient:
     return QdrantClient(
         host=host,
         prefer_grpc=True,
     )
-
-ALL_PREFIXES_FILEPATH = "all_prefixes.json"
-
-DOCS_COLLECTION = "expasy"
-
-endpoints = [
-    {
-        "label": "UniProt",
-        "endpoint": "https://sparql.uniprot.org/sparql/",
-        "homepage": "https://www.uniprot.org/",
-        "ontology": "https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl",
-    },
-    {
-        "label": "Bgee",
-        "endpoint": "https://www.bgee.org/sparql/",
-        "homepage": "https://www.bgee.org/",
-        "ontology": "http://purl.org/genex",
-    },
-    {
-        "label": "Orthology MAtrix (OMA)",
-        "endpoint": "https://sparql.omabrowser.org/sparql/",
-        "homepage": "https://omabrowser.org/",
-        "ontology": "http://purl.org/net/orth",
-    },
-    {
-        "label": "Rhea",
-        "endpoint": "https://sparql.rhea-db.org/sparql/",
-        "homepage": "https://www.rhea-db.org/",
-    },
-    {
-        "label": "MetaNetx",
-        "endpoint": "https://rdf.metanetx.org/sparql/",
-        "homepage": "https://www.metanetx.org/",
-    },
-    {
-        "label": "SwissLipids",
-        "endpoint": "https://beta.sparql.swisslipids.org/",
-        "homepage": "https://www.swisslipids.org",
-    },
-    {
-        "label": "HAMAP",
-        "endpoint": "https://hamap.expasy.org/sparql/",
-        "homepage": "https://hamap.expasy.org/",
-    },
-    {
-        "label": "NextProt",
-        # "endpoint": "https://api.nextprot.org/sparql",
-        "endpoint": "https://sparql.nextprot.org",
-        "homepage": "https://www.nextprot.org/",
-    },
-    {
-        "label": "OrthoDB",
-        # "endpoint": "https://api.nextprot.org/sparql",
-        "endpoint": "https://sparql.orthodb.org/sparql/",
-        "homepage": "https://www.orthodb.org/",
-    },
-    {
-        "label": "dbgi",
-        "endpoint": "https://biosoda.unil.ch/graphdb/repositories/emi-dbgi",
-        # "homepage": "https://dbgi.eu/",
-    },
-    # {
-    #     "label": "GlyConnect",
-    #     "endpoint": "https://glyconnect.expasy.org/sparql",
-    #     "homepage": "https://glyconnect.expasy.org/",
-    # },
-]
 
 
 get_queries = """PREFIX sh: <http://www.w3.org/ns/shacl#>
@@ -128,6 +49,7 @@ WHERE {
 
 SCHEMA = Namespace("http://schema.org/")
 
+
 def remove_a_tags(html_text: str) -> str:
     """Remove all <a> tags from the queries descriptions"""
     soup = BeautifulSoup(html_text, "html.parser")
@@ -144,13 +66,12 @@ def query_sparql(query: str, endpoint: str) -> dict:
             "Accept": "application/sparql-results+json",
             # "User-agent": "sparqlwrapper 2.0.1a0 (rdflib.github.io/sparqlwrapper)"
         },
-        params={
-            "query": query
-        },
+        params={"query": query},
         timeout=60,
     )
     resp.raise_for_status()
     return resp.json()
+
 
 def get_example_queries(endpoint: dict[str, str]) -> list[dict]:
     """Retrieve example SPARQL queries from a SPARQL endpoint"""
@@ -198,7 +119,7 @@ def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
                 # Adding a user-agent to make it look like we are a google bot to trigger SSR
                 "User-Agent": "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.96 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html) X-Middleton/1",
             },
-            timeout=10
+            timeout=10,
         )
         if resp.status_code != 200:
             raise Exception(f"Failed to fetch the webpage: {resp.status_code}")
@@ -216,12 +137,14 @@ def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
             if json_ld_content:
                 g.parse(data=json_ld_content, format="json-ld")
                 # json_ld_content = json.loads(json_ld_content)
-                docs.append({
-                    "endpoint": endpoint["endpoint"],
-                    "question": f"What are the general metadata about {endpoint['label']} resource? (description, creators, license, dates, version, etc)",
-                    "answer": json_ld_content,
-                    "doc_type": "schemaorg_jsonld",
-                })
+                docs.append(
+                    {
+                        "endpoint": endpoint["endpoint"],
+                        "question": f"What are the general metadata about {endpoint['label']} resource? (description, creators, license, dates, version, etc)",
+                        "answer": json_ld_content,
+                        "doc_type": "schemaorg_jsonld",
+                    }
+                )
 
         # Concat all schema:description of all classes in the graph
         descs = set()
@@ -246,6 +169,7 @@ def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
         print(f"Error while fetching schema.org metadata from {endpoint['label']}: {e}")
     return docs
 
+
 def get_ontology(endpoint: dict[str, str]) -> list[dict]:
     if "ontology" not in endpoint:
         return []
@@ -261,7 +185,9 @@ def get_ontology(endpoint: dict[str, str]) -> list[dict]:
     #     g.parse(endpoint["ontology"], format="xml")
 
     # Chunking the ontology is done here
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=ONTOLOGY_CHUNK_SIZE, chunk_overlap=ONTOLOGY_CHUNK_OVERLAP)
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=settings.ontology_chunk_size, chunk_overlap=settings.ontology_chunk_overlap
+    )
     splits = text_splitter.create_documents([g.serialize(format="ttl")])
 
     docs = [
@@ -270,19 +196,20 @@ def get_ontology(endpoint: dict[str, str]) -> list[dict]:
             "question": split.page_content,
             "answer": "",
             "doc_type": "ontology",
-        } for split in splits
+        }
+        for split in splits
     ]
     print(f"Extracted {len(docs)} chunks for {endpoint['label']} ontology")
     return docs
 
 
-def init_vectordb(vectordb_host: str = DEFAULT_VECTORDB_HOST) -> None:
+def init_vectordb(vectordb_host: str = settings.vectordb_host) -> None:
     """Initialize the vectordb with example queries and ontology descriptions from the SPARQL endpoints"""
     vectordb = get_vectordb(vectordb_host)
     embedding_model = get_embedding_model()
     docs = []
     all_prefixes = {}
-    for endpoint in endpoints:
+    for endpoint in settings.endpoints:
         # print(endpoint["label"])
         qdocs, prefix_map = get_example_queries(endpoint)
         docs += qdocs
@@ -290,13 +217,13 @@ def init_vectordb(vectordb_host: str = DEFAULT_VECTORDB_HOST) -> None:
         docs += get_schemaorg_description(endpoint)
         docs += get_ontology(endpoint)
 
-    with open(ALL_PREFIXES_FILEPATH, "w") as f:
+    with open(settings.all_prefixes_filepath, "w") as f:
         json.dump(all_prefixes, f)
 
     # NOTE: Manually add infos for UniProt since we cant retrieve it for now. Taken from https://www.uniprot.org/help/about
     docs.append(
         {
-            "endpoint":"https://sparql.uniprot.org/sparql/",
+            "endpoint": "https://sparql.uniprot.org/sparql/",
             "question": "What is the SIB resource UniProt about?",
             "answer": """The Universal Protein Resource (UniProt) is a comprehensive resource for protein sequence and annotation data. The UniProt databases are the UniProt Knowledgebase (UniProtKB), the UniProt Reference Clusters (UniRef), and the UniProt Archive (UniParc). The UniProt consortium and host institutions EMBL-EBI, SIB and PIR are committed to the long-term preservation of the UniProt databases.
 
@@ -310,10 +237,10 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
         }
     )
 
-    if not vectordb.collection_exists(DOCS_COLLECTION):
+    if not vectordb.collection_exists(settings.docs_collection_name):
         vectordb.create_collection(
-            collection_name=DOCS_COLLECTION,
-            vectors_config=VectorParams(size=embedding_dimensions, distance=Distance.COSINE),
+            collection_name=settings.docs_collection_name,
+            vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
         )
 
     questions = [q["question"] for q in docs]
@@ -321,7 +248,7 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
     print(f"Done generating embeddings for {len(questions)} documents")
 
     vectordb.upsert(
-        collection_name=DOCS_COLLECTION,
+        collection_name=settings.docs_collection_name,
         points=models.Batch(
             ids=list(range(1, len(docs) + 1)),
             vectors=[embeddings.tolist() for embeddings in output],
@@ -330,9 +257,12 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
     )
     print("Done inserting documents into the vectordb")
 
+
 if __name__ == "__main__":
     init_vectordb()
-    print(f"VectorDB initialized with {get_vectordb().get_collection(DOCS_COLLECTION).points_count} vectors")
+    print(
+        f"VectorDB initialized with {get_vectordb().get_collection(settings.docs_collection_name).points_count} vectors"
+    )
 
 
 ## TODO: get ontology infos from the SPARQL endpoint
@@ -361,7 +291,6 @@ if __name__ == "__main__":
 #         ?ont widoco:introduction ?widocoIntro
 #     }
 # }
-
 
 
 ## TODO: Query to get VoID metadata from the SPARQL endpoint:
@@ -479,10 +408,6 @@ if __name__ == "__main__":
 #     }
 #   }
 # }
-
-
-
-
 
 
 # Can we get distincts? No
