@@ -9,6 +9,7 @@ from rdflib.plugins.sparql.sparql import Query
 from SPARQLWrapper import SPARQLWrapper
 
 from expasy_chat.config import settings
+from expasy_chat.utils import get_prefix_converter
 
 queries_pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
 endpoint_pattern = re.compile(r"^#.*(https?://[^\s]+)", re.MULTILINE)
@@ -181,6 +182,8 @@ WHERE {
     }
 }"""
 
+prefix_converter = get_prefix_converter()
+
 
 def validate_sparql_with_void(query: str, endpoint: str) -> None:
     """Validate SPARQL query using the VOID description of endpoints."""
@@ -237,12 +240,12 @@ def validate_triple_pattern(
                     continue
                 if subj_type not in void_dict:
                     error_msgs.add(
-                        f"Type {subj_type} for subject {subj} in endpoint {endpoint} does not exist. Available classes are: {', '.join(void_dict.keys())}"
+                        f"Type {prefix_converter.compress(subj_type)} for subject {subj} in endpoint {endpoint} does not exist. Available classes are: {', '.join(prefix_converter.compress_list(list(void_dict.keys())))}"
                     )
                 elif pred not in void_dict.get(subj_type, {}):
                     # TODO: also check if object type matches? (if defined, because it's not always available)
                     error_msgs.add(
-                        f"Subject {subj} with type {subj_type} in endpoint {endpoint} does not support the predicate {pred} according to the VOID description. It can have the following predicates: {', '.join(void_dict.get(subj_type, {}).keys())}"
+                        f"Subject {subj} with type {prefix_converter.compress(subj_type)} in endpoint {endpoint} does not support the predicate {prefix_converter.compress(pred)} according to the VOID description. It can have the following predicates: {', '.join(prefix_converter.compress_list(list(void_dict.get(subj_type, {}).keys())))}"
                     )
                 for obj in pred_dict[pred]:
                     # Recursively validates objects that are variables
@@ -279,7 +282,7 @@ def validate_triple_pattern(
             if missing_pred is not None:
                 # print(f"!!!! Subject {subj} {parent_type} {parent_pred} is not a valid {potential_types} !")
                 error_msgs.add(
-                    f"Subject {subj} in endpoint {endpoint} does not support the predicate {missing_pred} according to the VOID description. Correct predicate might be one of the following: {', '.join(potential_preds)} (we inferred this variable might be of the type {potential_type})"
+                    f"Subject {subj} in endpoint {endpoint} does not support the predicate {prefix_converter.compress(missing_pred)} according to the VOID description. Correct predicate might be one of the following: {', '.join(prefix_converter.compress_list(list(potential_preds)))} (we inferred this variable might be of the type {prefix_converter.compress(potential_type)})"
                 )
 
     # If no type and no parent type we just check if the predicates used can be found in the VOID description
@@ -296,7 +299,7 @@ def validate_triple_pattern(
                     break
             if not valid_pred:
                 error_msgs.add(
-                    f"Predicate {pred} used by subject {subj} in endpoint {endpoint} is not supported according to the VOID description. Here are the available predicates: {', '.join(all_preds)}"
+                    f"Predicate {prefix_converter.compress(pred)} used by subject {subj} in endpoint {endpoint} is not supported according to the VOID description. Here are the available predicates: {', '.join(prefix_converter.compress_list(list(all_preds)))}"
                 )
 
     return error_msgs

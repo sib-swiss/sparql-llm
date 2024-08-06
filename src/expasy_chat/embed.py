@@ -218,7 +218,7 @@ def init_vectordb(vectordb_host: str = settings.vectordb_host) -> None:
         docs += get_ontology(endpoint)
 
     with open(settings.all_prefixes_filepath, "w") as f:
-        json.dump(all_prefixes, f)
+        json.dump(all_prefixes, f, indent=2)
 
     # NOTE: Manually add infos for UniProt since we cant retrieve it for now. Taken from https://www.uniprot.org/help/about
     docs.append(
