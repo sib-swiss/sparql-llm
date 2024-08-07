@@ -95,6 +95,7 @@ class ChatCompletionRequest(BaseModel):
     max_tokens: Optional[int] = 512
     temperature: Optional[float] = 0.0
     stream: Optional[bool] = False
+    validate: Optional[bool] = True
     api_key: Optional[str] = None
 
 
@@ -191,7 +192,8 @@ async def chat_completions(request: ChatCompletionRequest):
         return StreamingResponse(stream_openai(response, hits, big_prompt), media_type="application/x-ndjson")
 
     # When streaming is disabled we check if provided SPARQL queries are valid
-    chat_resp_md = validate_and_fix_sparql(response.choices[0].message.content, all_messages)
+
+    chat_resp_md = validate_and_fix_sparql(response.choices[0].message.content, all_messages) if request.validate else response.choices[0].message.content
 
     return {
         "id": response.id,
@@ -224,6 +226,7 @@ def validate_and_fix_sparql(md_resp: str, messages: list[Message], try_count: in
             else:
                 # Ask the LLM to try to fix it
                 print(f"Error in SPARQL query try #{try_count}: {e}\n{gen_query['query']}")
+                error_detected = True
                 try_count += 1
                 fix_prompt = f"""There is an error in the generated SPARQL query:
 `{e}`
