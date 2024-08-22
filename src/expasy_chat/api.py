@@ -20,15 +20,6 @@ from expasy_chat.config import settings
 from expasy_chat.embed import get_embedding_model, get_vectordb
 from expasy_chat.validate_sparql import add_missing_prefixes, extract_sparql_queries, validate_sparql_with_void
 
-system_prompt = """You are Expasy, an assistant that helps users to navigate the resources and databases from the Swiss Institute of Bioinformatics.
-Depending on the user request and provided context, you may provide general information about the resources available at the SIB, or help the user to formulate a query to run on a SPARQL endpoint.
-If answering with a query: try to make it as efficient as possible to avoid timeout due to how large the datasets are, make sure the query written is valid SPARQL,
-always indicate the URL of the endpoint on which the query should be executed in a comment in the codeblocks at the start of the query (no additional text, just the endpoint URL directly as comment, nothing else, always and only 1 endpoint).
-If answering with a query always derive your answer from the queries provided as examples in the prompt, don't try to create a query from nothing and do not provide a generic query.
-If the answer to the question is in the provided context, do not provide a query, just provide the answer, unless explicitly asked.
-Try to always answer with one query, if the answer lies in different endpoints, provide a federated query.
-"""
-
 # If the user is asking about a named entity warn him that they should check if this entity exist with one of the query used to find named entity
 # And we provide the this list of queries, and the LLM figure out which query can be used to find the named entity
 # https://github.com/biosoda/bioquery/blob/master/biosoda_frontend/src/biosodadata.json#L1491
@@ -153,7 +144,7 @@ async def chat_completions(request: ChatCompletionRequest):
     big_prompt = f"{STARTUP_PROMPT}\n\n"
 
     # We also provide the example queries as previous messages to the LLM
-    example_messages: list[Message] = [{"role": "system", "content": system_prompt}]
+    example_messages: list[Message] = [{"role": "system", "content": settings.system_prompt}]
     for hit in hits:
         if hit.payload["doc_type"] == "ontology":
             big_prompt += f"Relevant part of the ontology for {hit.payload['endpoint']}:\n```turtle\n{hit.payload['question']}\n```\n\n"

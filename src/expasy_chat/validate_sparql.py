@@ -83,14 +83,11 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> tuple[Conju
             # if part.name == "BGP" or part.name == "TriplesBlock":
             # print(part.triples)
             for triples in part.triples:
-                # print(triples)
-                # print(len(triples))
+                # print(len(triples), triples)
                 # TripleBlock can have multiple triples in the same list...
                 for i in range(0, len(triples), 3):
                     triple = triples[i : i + 3]
                     # print(triple)
-                    # TODO: handle when paths are provided? up:annotation/up:toast
-                    # Maybe reuse the code from evaluate?
                     subj, pred, obj = triple[0], triple[1], triple[2]
                     # Replace variables with resources from the sqc namespace
                     if not isinstance(pred, Path):
@@ -123,7 +120,6 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> tuple[Conju
                             continue
                         elif isinstance(pred, SequencePath):
                             # Creating variables for each step in the path
-                            # print("SEQ!", pred.args)
                             for i_path, path_pred in enumerate(pred.args):
                                 path_var_count += 1
                                 if str(subj) not in query_dict[endpoint]:
@@ -157,7 +153,6 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> tuple[Conju
             process_part(part.part, endpoint)
 
     def extract_basic_graph_pattern(algebra):
-        # print(algebra)
         if hasattr(algebra, "p"):
             process_part(algebra.p, sparql_endpoint)
 
@@ -186,14 +181,13 @@ prefix_converter = get_prefix_converter()
 
 
 def validate_sparql_with_void(query: str, endpoint: str) -> None:
-    """Validate SPARQL query using the VOID description of endpoints."""
+    """Validate SPARQL query using the VoID description of endpoints."""
     _g, query_dict = sparql_query_to_dict(query, endpoint)
     error_msgs: set[str] = set()
     # error_msgs = {}
 
-    # Go through the query BGPs and check if they match the VOID description
+    # Go through the query BGPs and check if they match the VoID description
     for endpoint, subj_dict in query_dict.items():
-        # print(endpoint)
         sparql_endpoint = SPARQLWrapper(endpoint)
         sparql_endpoint.setQuery(GET_VOID_DESC)
         sparql_endpoint.setReturnFormat("json")
@@ -214,16 +208,14 @@ def validate_sparql_with_void(query: str, endpoint: str) -> None:
                     void_dict[void_triple["class1"]["value"]][void_triple["prop"]["value"]].append(
                         void_triple["datatype"]["value"]
                     )
-            # print(void_res["results"]["bindings"])
             if len(void_dict) == 0:
-                raise Exception("No VOID description found in the endpoint")
+                raise Exception("No VoID description found in the endpoint")
         except Exception as e:
-            print(f"Could not retrieve VOID description for endpoint {endpoint}: {e}")
+            print(f"Could not retrieve VoID description for endpoint {endpoint}: {e}")
             continue
 
         for subj in subj_dict:
             error_msgs = validate_triple_pattern(subj, subj_dict, void_dict, endpoint, error_msgs)
-
     if len(error_msgs) > 0:
         raise Exception("\n".join(error_msgs))
 
@@ -245,7 +237,7 @@ def validate_triple_pattern(
                 elif pred not in void_dict.get(subj_type, {}):
                     # TODO: also check if object type matches? (if defined, because it's not always available)
                     error_msgs.add(
-                        f"Subject {subj} with type {prefix_converter.compress(subj_type)} in endpoint {endpoint} does not support the predicate {prefix_converter.compress(pred)} according to the VOID description. It can have the following predicates: {', '.join(prefix_converter.compress_list(list(void_dict.get(subj_type, {}).keys())))}"
+                        f"Subject {subj} with type {prefix_converter.compress(subj_type)} in endpoint {endpoint} does not support the predicate {prefix_converter.compress(pred)} according to the VoID description. It can have the following predicates: {', '.join(prefix_converter.compress_list(list(void_dict.get(subj_type, {}).keys())))}"
                     )
                 for obj in pred_dict[pred]:
                     # Recursively validates objects that are variables
@@ -282,24 +274,25 @@ def validate_triple_pattern(
             if missing_pred is not None:
                 # print(f"!!!! Subject {subj} {parent_type} {parent_pred} is not a valid {potential_types} !")
                 error_msgs.add(
-                    f"Subject {subj} in endpoint {endpoint} does not support the predicate {prefix_converter.compress(missing_pred)} according to the VOID description. Correct predicate might be one of the following: {', '.join(prefix_converter.compress_list(list(potential_preds)))} (we inferred this variable might be of the type {prefix_converter.compress(potential_type)})"
+                    f"Subject {subj} in endpoint {endpoint} does not support the predicate {prefix_converter.compress(missing_pred)} according to the VoID description. Correct predicate might be one of the following: {', '.join(prefix_converter.compress_list(list(potential_preds)))} (we inferred this variable might be of the type {prefix_converter.compress(potential_type)})"
                 )
 
-    # If no type and no parent type we just check if the predicates used can be found in the VOID description
+    # If no type and no parent type we just check if the predicates used can be found in the VoID description
     # We only run this if no errors found yet to avoid creating too many duplicates
     # TODO: we could improve this by generating a dict of errors, so we only push once the error for a subj/predicate
-    elif len(error_msgs) == 0:
-        all_preds = set()
-        for pred in pred_dict:
-            valid_pred = False
-            for _subj_type, void_pred_dict in void_dict.items():
-                all_preds.update(void_pred_dict.keys())
-                if pred in void_pred_dict:
-                    valid_pred = True
-                    break
-            if not valid_pred:
-                error_msgs.add(
-                    f"Predicate {prefix_converter.compress(pred)} used by subject {subj} in endpoint {endpoint} is not supported according to the VOID description. Here are the available predicates: {', '.join(prefix_converter.compress_list(list(all_preds)))}"
-                )
+    # TODO: right now commented because up:evidence is missing in the VoID description, leading to misleading errors
+    # elif len(error_msgs) == 0:
+    #     all_preds = set()
+    #     for pred in pred_dict:
+    #         valid_pred = False
+    #         for _subj_type, void_pred_dict in void_dict.items():
+    #             all_preds.update(void_pred_dict.keys())
+    #             if pred in void_pred_dict:
+    #                 valid_pred = True
+    #                 break
+    #         if not valid_pred:
+    #             error_msgs.add(
+    #                 f"Predicate {prefix_converter.compress(pred)} used by subject {subj} in endpoint {endpoint} is not supported according to the VoID description. Here are the available predicates: {', '.join(prefix_converter.compress_list(list(all_preds)))}"
+    #             )
 
     return error_msgs
