@@ -215,7 +215,7 @@ def init_vectordb(vectordb_host: str = settings.vectordb_host) -> None:
         docs += qdocs
         all_prefixes = {**all_prefixes, **prefix_map}
         docs += get_schemaorg_description(endpoint)
-        # docs += get_ontology(endpoint)
+        docs += get_ontology(endpoint)
 
     with open(settings.all_prefixes_filepath, "w") as f:
         json.dump(all_prefixes, f, indent=2)

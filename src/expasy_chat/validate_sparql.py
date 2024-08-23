@@ -179,6 +179,32 @@ WHERE {
 
 prefix_converter = get_prefix_converter()
 
+def get_void_dict(endpoint: str):
+    sparql_endpoint = SPARQLWrapper(endpoint)
+    sparql_endpoint.setQuery(GET_VOID_DESC)
+    sparql_endpoint.setReturnFormat("json")
+    void_dict = {}
+    try:
+        void_res = sparql_endpoint.query().convert()
+        # NOTE: Build a dict[subject_cls][predicate] = list[object_cls/datatype]
+        for void_triple in void_res["results"]["bindings"]:
+            if void_triple["class1"]["value"] not in void_dict:
+                void_dict[void_triple["class1"]["value"]] = {}
+            if void_triple["prop"]["value"] not in void_dict[void_triple["class1"]["value"]]:
+                void_dict[void_triple["class1"]["value"]][void_triple["prop"]["value"]] = []
+            if "class2" in void_triple:
+                void_dict[void_triple["class1"]["value"]][void_triple["prop"]["value"]].append(
+                    void_triple["class2"]["value"]
+                )
+            if "datatype" in void_triple:
+                void_dict[void_triple["class1"]["value"]][void_triple["prop"]["value"]].append(
+                    void_triple["datatype"]["value"]
+                )
+        if len(void_dict) == 0:
+            raise Exception("No VoID description found in the endpoint")
+    except Exception as e:
+        print(f"Could not retrieve VoID description for endpoint {endpoint}: {e}")
+    return void_dict
 
 def validate_sparql_with_void(query: str, endpoint: str) -> None:
     """Validate SPARQL query using the VoID description of endpoints."""
@@ -188,30 +214,8 @@ def validate_sparql_with_void(query: str, endpoint: str) -> None:
 
     # Go through the query BGPs and check if they match the VoID description
     for endpoint, subj_dict in query_dict.items():
-        sparql_endpoint = SPARQLWrapper(endpoint)
-        sparql_endpoint.setQuery(GET_VOID_DESC)
-        sparql_endpoint.setReturnFormat("json")
-        try:
-            void_res = sparql_endpoint.query().convert()
-            void_dict = {}
-            # NOTE: Build a dict[subject_cls][predicate] = list[object_cls/datatype]
-            for void_triple in void_res["results"]["bindings"]:
-                if void_triple["class1"]["value"] not in void_dict:
-                    void_dict[void_triple["class1"]["value"]] = {}
-                if void_triple["prop"]["value"] not in void_dict[void_triple["class1"]["value"]]:
-                    void_dict[void_triple["class1"]["value"]][void_triple["prop"]["value"]] = []
-                if "class2" in void_triple:
-                    void_dict[void_triple["class1"]["value"]][void_triple["prop"]["value"]].append(
-                        void_triple["class2"]["value"]
-                    )
-                if "datatype" in void_triple:
-                    void_dict[void_triple["class1"]["value"]][void_triple["prop"]["value"]].append(
-                        void_triple["datatype"]["value"]
-                    )
-            if len(void_dict) == 0:
-                raise Exception("No VoID description found in the endpoint")
-        except Exception as e:
-            print(f"Could not retrieve VoID description for endpoint {endpoint}: {e}")
+        void_dict = get_void_dict(endpoint)
+        if len(void_dict) == 0:
             continue
 
         for subj in subj_dict:
