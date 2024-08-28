@@ -1,4 +1,5 @@
 import json
+from math import e
 import re
 
 import requests
@@ -13,6 +14,7 @@ from qdrant_client.http.models import (
 from rdflib import RDF, ConjunctiveGraph, Namespace
 
 from expasy_chat.config import settings
+from expasy_chat.validate_sparql import get_shex_dict_from_void
 
 
 def get_embedding_model() -> TextEmbedding:
@@ -73,7 +75,7 @@ def query_sparql(query: str, endpoint: str) -> dict:
     return resp.json()
 
 
-def get_example_queries(endpoint: dict[str, str]) -> list[dict]:
+def index_example_queries(endpoint: dict[str, str]) -> list[dict]:
     """Retrieve example SPARQL queries from a SPARQL endpoint"""
     queries = []
     prefix_map = {}
@@ -108,7 +110,7 @@ def get_example_queries(endpoint: dict[str, str]) -> list[dict]:
     return queries, prefix_map
 
 
-def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
+def index_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
     """Extract datasets descriptions from the schema.org metadata in homepage of the endpoint"""
     docs = []
     try:
@@ -170,7 +172,7 @@ def get_schemaorg_description(endpoint: dict[str, str]) -> list[dict]:
     return docs
 
 
-def get_ontology(endpoint: dict[str, str]) -> list[dict]:
+def index_ontology(endpoint: dict[str, str]) -> list[dict]:
     if "ontology" not in endpoint:
         return []
     # g = ConjunctiveGraph(store="Oxigraph")
@@ -203,6 +205,37 @@ def get_ontology(endpoint: dict[str, str]) -> list[dict]:
     return docs
 
 
+def index_shex_generated_from_void(endpoint: dict[str, str]) -> None:
+    """Generate ShEx shapes from VoID and index them"""
+    shex_dict = get_shex_dict_from_void(endpoint["endpoint"])
+    docs = []
+    for cls_uri, shex_shape in shex_dict.items():
+        # print(cls_uri, shex_shape)
+        if "label" in shex_shape:
+            docs.append({
+                "endpoint": endpoint["endpoint"],
+                "question": shex_shape["label"],
+                "answer": shex_shape["shex"],
+                "doc_type": "shex",
+            })
+        else:
+            docs.append({
+                "endpoint": endpoint["endpoint"],
+                "question": cls_uri,
+                "answer": shex_shape["shex"],
+                "doc_type": "shex",
+            })
+        if "comment" in shex_shape:
+            docs.append({
+                "endpoint": endpoint["endpoint"],
+                "question": shex_shape["comment"],
+                "answer": shex_shape["shex"],
+                "doc_type": "shex",
+            })
+    print(f"Extracted {len(docs)} ShEx shapes for {endpoint['label']}")
+    return docs
+
+
 def init_vectordb(vectordb_host: str = settings.vectordb_host) -> None:
     """Initialize the vectordb with example queries and ontology descriptions from the SPARQL endpoints"""
     vectordb = get_vectordb(vectordb_host)
@@ -210,15 +243,20 @@ def init_vectordb(vectordb_host: str = settings.vectordb_host) -> None:
     docs = []
     all_prefixes = {}
     for endpoint in settings.endpoints:
-        # print(endpoint["label"])
-        qdocs, prefix_map = get_example_queries(endpoint)
+        print(f"  🔎 Getting metadata for {endpoint['label']} at {endpoint['endpoint']}")
+        qdocs, prefix_map = index_example_queries(endpoint)
         docs += qdocs
         all_prefixes = {**all_prefixes, **prefix_map}
-        docs += get_schemaorg_description(endpoint)
-        docs += get_ontology(endpoint)
+        with open(settings.all_prefixes_filepath, "w") as f:
+            json.dump(all_prefixes, f, indent=2)
+        docs += index_schemaorg_description(endpoint)
+        docs += index_ontology(endpoint)
+        docs += index_shex_generated_from_void(endpoint)
 
-    with open(settings.all_prefixes_filepath, "w") as f:
-        json.dump(all_prefixes, f, indent=2)
+    # with open(settings.all_prefixes_filepath, "w") as f:
+    #     json.dump(all_prefixes, f, indent=2)
+
+
 
     # NOTE: Manually add infos for UniProt since we cant retrieve it for now. Taken from https://www.uniprot.org/help/about
     docs.append(

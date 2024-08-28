@@ -20,7 +20,8 @@ class Settings(BaseSettings):
 
     # Default is the IP address inside the podman network to solve a ridiculous bug from podman
     vectordb_host: str = "10.89.0.2"
-    retrieved_docs_count: int = 20
+    retrieved_queries_count: int = 20
+    retrieved_docs_count: int = 10
     docs_collection_name: str = "expasy"
 
     max_try_fix_sparql: int = 5

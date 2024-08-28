@@ -229,6 +229,8 @@
                             sourcesMd += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` Ontology for ${doc.payload.endpoint}\n\n\`\`\`turtle\n${doc.payload.question.trim()}\n\`\`\`\n\n`;
                         } else if (doc.payload.doc_type === "schemaorg_jsonld") {
                             sourcesMd += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` ${doc.payload.question} (${doc.payload.endpoint})\n\n\`\`\`json\n${doc.payload.answer}\n\`\`\`\n\n`;
+                        } else if (doc.payload.doc_type === "shex") {
+                            sourcesMd += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` ${doc.payload.question} (${doc.payload.endpoint})\n\n\`\`\`ttl\n${doc.payload.answer}\n\`\`\`\n\n`;
                         } else {
                             sourcesMd += `\`${i + 1} - ${Math.round(doc.score*1000)/1000}\` ${doc.payload.question} (${doc.payload.endpoint})\n\n${doc.payload.answer}\n\n`;
                         }

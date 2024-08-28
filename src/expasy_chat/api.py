@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from openai import OpenAI, Stream
 from pydantic import BaseModel
-from qdrant_client.models import ScoredPoint
+from qdrant_client.models import ScoredPoint, FieldCondition, Filter, MatchValue
 from rdflib.plugins.sparql.algebra import translateQuery
 from rdflib.plugins.sparql.parser import parseQuery
 from starlette.middleware.cors import CORSMiddleware
@@ -29,7 +29,7 @@ from expasy_chat.validate_sparql import add_missing_prefixes, extract_sparql_que
 # You can deconstruct complex queries in many smaller queries, but always propose one final query to the user (federated if needed), but be careful to use the right crossref (xref) when using an identifier from an endpoint in another endpoint.
 # When writing the SPARQL query try to factorize the predicates/objects of a subject as much as possible, so that the user can understand the query and the results.
 
-STARTUP_PROMPT = "Here is a list of reference questions and answers relevant to the user question that will help you answer the user question accurately:"
+STARTUP_PROMPT = "Here is a list of reference questions and query answers relevant to the user question that will help you answer the user question accurately:"
 INTRO_USER_QUESTION_PROMPT = "The question from the user is:"
 
 client = OpenAI()
@@ -126,48 +126,71 @@ async def chat_completions(request: ChatCompletionRequest):
     logging.info(f"User question: {question}")
 
     query_embeddings = next(iter(embedding_model.embed([question])))
-    hits = vectordb.search(
-        collection_name=settings.docs_collection_name,
-        query_vector=query_embeddings,
-        # query_filter=Filter(
-        #     must=[
-        #         FieldCondition(
-        #             key="doc_type",
-        #             match=MatchValue(value="sparql"),
-        #         )
-        #     ]
-        # ),
-        limit=settings.retrieved_docs_count,
-    )
-
     # We build a big prompt with the 3 most relevant queries retrieved from similarity search engine (could be increased)
     big_prompt = f"{STARTUP_PROMPT}\n\n"
 
     # We also provide the example queries as previous messages to the LLM
-    example_messages: list[Message] = [{"role": "system", "content": settings.system_prompt}]
-    for hit in hits:
-        if hit.payload["doc_type"] == "ontology":
-            big_prompt += f"Relevant part of the ontology for {hit.payload['endpoint']}:\n```turtle\n{hit.payload['question']}\n```\n\n"
-        else:
-            big_prompt += f"{hit.payload['question']}\nQuery to run in SPARQL endpoint {hit.payload['endpoint']}\n\n{hit.payload['answer']}\n\n"
+    system_msg: list[Message] = [{"role": "system", "content": settings.system_prompt}]
 
-    # Reverse the order of the hits to show the most relevant closest to the user question
-    # NOTE: this breaks the memory
-    # for hit in hits[::-1]:
-    #     example_messages.append({"role": "user", "content": hit.payload["comment"]})
-    #     example_messages.append(
-    #         {
-    #             "role": "assistant",
-    #             "content": f"Query to run in SPARQL endpoint {hit.payload['endpoint']}\n\n```sparql\n{hit.payload['example']}\n```\n",
-    #         }
-    #     )
+    # Get the most relevant examples SPARQL queries from the search engine
+    query_hits = vectordb.search(
+        collection_name=settings.docs_collection_name,
+        query_vector=query_embeddings,
+        query_filter=Filter(
+            must=[
+                FieldCondition(
+                    key="doc_type",
+                    match=MatchValue(value="sparql"),
+                )
+            ]
+        ),
+        limit=settings.retrieved_queries_count,
+    )
+    for query_hit in query_hits:
+        big_prompt += f"{query_hit.payload['question']}\nQuery to run in SPARQL endpoint {query_hit.payload['endpoint']}\n\n{query_hit.payload['answer']}\n\n"
+
+    # Get the most relevant documents other than SPARQL query examples from the search engine (ShEx shapes, general infos)
+    docs_hits = vectordb.search(
+        collection_name=settings.docs_collection_name,
+        query_vector=query_embeddings,
+        query_filter=Filter(
+            should=[
+                FieldCondition(
+                    key="doc_type",
+                    match=MatchValue(value="shex"),
+                ),
+                FieldCondition(
+                    key="doc_type",
+                    match=MatchValue(value="schemaorg_description"),
+                ),
+                # NOTE: we don't add ontology documents yet, not clean enough
+                # FieldCondition(
+                #     key="doc_type",
+                #     match=MatchValue(value="ontology"),
+                # ),
+            ]
+        ),
+        limit=settings.retrieved_docs_count,
+    )
+
+    big_prompt += "Here is some additional information that could be useful to answer the user question:\n\n"
+
+    for docs_hit in docs_hits:
+        if docs_hit.payload["doc_type"] == "shex":
+            big_prompt += f"ShEx shape for {docs_hit.payload['question']} in {docs_hit.payload['endpoint']}:\n```\n{docs_hit.payload['answer']}\n```\n\n"
+        elif docs_hit.payload["doc_type"] == "ontology":
+            big_prompt += f"Relevant part of the ontology for {docs_hit.payload['endpoint']}:\n```turtle\n{docs_hit.payload['question']}\n```\n\n"
+        else:
+            big_prompt += f"Information about: {docs_hit.payload['question']}\nRelated to SPARQL endpoint {docs_hit.payload['endpoint']}\n\n{docs_hit.payload['answer']}\n\n"
 
     big_prompt += f"\n{INTRO_USER_QUESTION_PROMPT}\n{question}"
 
+    # Use messages from the request to keep memory of previous messages sent by client
+    # Replace the question asked by the user with the big prompt with all contextual infos
     request.messages[-1].content = big_prompt
-    all_messages = example_messages + request.messages
+    all_messages = system_msg + request.messages
     # all_messages.append({"role": "user", "content": big_prompt})
-    # print(all_messages)
+    # print(big_prompt)
 
     # Send the prompt to OpenAI to get a response
     response = client.chat.completions.create(
@@ -180,9 +203,7 @@ async def chat_completions(request: ChatCompletionRequest):
     # NOTE: to get response as JSON object check https://github.com/jxnl/instructor or https://github.com/outlines-dev/outlines
 
     if request.stream:
-        return StreamingResponse(stream_openai(response, hits, big_prompt), media_type="application/x-ndjson")
-
-    # When streaming is disabled we check if provided SPARQL queries are valid
+        return StreamingResponse(stream_openai(response, query_hits + docs_hits, big_prompt), media_type="application/x-ndjson")
 
     chat_resp_md = validate_and_fix_sparql(response.choices[0].message.content, all_messages) if request.validate else response.choices[0].message.content
 
@@ -192,7 +213,7 @@ async def chat_completions(request: ChatCompletionRequest):
         "created": response.created,
         "model": response.model,
         "choices": [{"message": Message(role="assistant", content=chat_resp_md)}],
-        "docs": hits,
+        "docs": query_hits + docs_hits,
         "full_prompt": big_prompt,
     }
     # NOTE: the response is similar to OpenAI API, but we add the list of hits and the full prompt used to ask the question
