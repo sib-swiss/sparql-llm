@@ -16,11 +16,15 @@ def get_prefixes_for_endpoints(endpoints: list[str]) -> dict[str, str]:
     """Return a dictionary of prefixes for the given endpoints."""
     prefixes = {}
     for endpoint_url in endpoints:
-        sparql_endpoint = SPARQLWrapper(endpoint_url)
-        sparql_endpoint.setReturnFormat("json")
-        for row in sparql_endpoint.setQuery(GET_PREFIXES_QUERY):
-            if row["namespace"]["value"] not in prefixes.values():
-                prefixes[row["prefix"]["value"]] = row["namespace"]["value"]
+        try:
+            sparql_endpoint = SPARQLWrapper(endpoint_url)
+            sparql_endpoint.setReturnFormat("json")
+            sparql_endpoint.setQuery(GET_PREFIXES_QUERY)
+            for row in sparql_endpoint.query().convert()["results"]["bindings"]:
+                if row["namespace"]["value"] not in prefixes.values():
+                    prefixes[row["prefix"]["value"]] = row["namespace"]["value"]
+        except Exception as e:
+            print(f"Error retrieving prefixes from {endpoint_url}: {e}")
     return prefixes
 
 
