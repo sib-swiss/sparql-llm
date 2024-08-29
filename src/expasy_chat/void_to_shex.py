@@ -9,7 +9,7 @@ DEFAULT_NAMESPACES_TO_IGNORE = [
     "http://rdfs.org/ns/void#",
     "http://purl.org/query/voidext#",
     "http://www.w3.org/2001/XMLSchema#",
-    # "http://www.w3.org/2000/01/rdf-schema#",
+    "http://www.w3.org/2000/01/rdf-schema#",
 ]
 
 
@@ -112,39 +112,3 @@ def get_shex_from_void(endpoint_url: str, namespaces_to_ignore: list[str] | None
             shex_str += f"# {shex_shape['comment']}\n"
         shex_str += shex_shape["shex"] + "\n\n"
     return shex_str
-
-
-# def get_void_dict(g: Graph):
-#     """Get a dict of VoID description of an endpoint: dict[subject_cls][predicate] = list[object_cls/datatype]"""
-#     # g = Graph(SPARQLStore(endpoint_url, auth=endpoint_auth), bind_namespaces="none")
-#     # sparql_endpoint = SPARQLWrapper(endpoint_url)
-#     # sparql_endpoint.setQuery(GET_VOID_DESC)
-#     # sparql_endpoint.setReturnFormat("json")
-
-#     void_dict = {}
-#     try:
-#         # void_res = sparql_endpoint.query().convert()
-#         # NOTE: Build a dict[subject_cls][predicate] = list[object_cls/datatype]
-#         print("GONNA QUERY!")
-#         for row in g.query(GET_VOID_DESC):
-#             # print("DONE QUERY")
-#             # print(row)
-#             if str(row.class1) not in void_dict:
-#                 void_dict[str(row.class1)] = {}
-#             if str(row.prop) not in void_dict[str(row.class1)]:
-#                 void_dict[str(row.class1)][str(row.prop)] = []
-#             if "class2" in row:
-#                 print(row.class2)
-#                 void_dict[str(row.class1)][str(row.prop)].append(
-#                     str(row.class2)
-#                 )
-#             if "datatype" in row:
-#                 print(row.datatype)
-#                 void_dict[str(row.class1)][str(row.prop)].append(
-#                     str(row.datatype)
-#                 )
-#         if len(void_dict) == 0:
-#             raise Exception("No VoID description found in the endpoint")
-#     except Exception as e:
-#         print(f"Could not retrieve VoID description: {e}")
-#     return void_dict

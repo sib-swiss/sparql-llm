@@ -45,20 +45,14 @@ class SparqlVoidShapesLoader(BaseLoader):
                 docs.append(
                     Document(
                         page_content=shex_shape["label"],
-                        metadata={
-                            "question": shex_shape["label"],
-                            **metadata_dict
-                        },
+                        metadata={"question": shex_shape["label"], **metadata_dict},
                     )
                 )
             else:
                 docs.append(
                     Document(
                         page_content=cls_uri,
-                        metadata={
-                            "question": cls_uri,
-                            **metadata_dict
-                        },
+                        metadata={"question": cls_uri, **metadata_dict},
                     )
                 )
             # We add a separate document for the comment if it exists
@@ -66,10 +60,7 @@ class SparqlVoidShapesLoader(BaseLoader):
                 docs.append(
                     Document(
                         page_content=shex_shape["comment"],
-                        metadata={
-                            "question": shex_shape["comment"],
-                            **metadata_dict
-                        },
+                        metadata={"question": shex_shape["comment"], **metadata_dict},
                     )
                 )
 

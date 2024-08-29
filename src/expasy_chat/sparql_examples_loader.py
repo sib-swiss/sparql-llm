@@ -1,13 +1,11 @@
 import re
 from typing import Any
 
-from SPARQLWrapper import SPARQLWrapper
 from bs4 import BeautifulSoup
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
-from rdflib import Graph
 from rdflib.plugins.sparql import prepareQuery
-from rdflib.plugins.stores.sparqlstore import SPARQLStore
+from SPARQLWrapper import SPARQLWrapper
 
 from expasy_chat.utils import GET_PREFIXES_QUERY
 
@@ -27,7 +25,7 @@ class SparqlExamplesLoader(BaseLoader):
     Compatible with the LangChain framework.
     """
 
-    def __init__(self, endpoint_url: str, endpoint_auth: tuple[str, str] | None = None, verbose: bool = False):
+    def __init__(self, endpoint_url: str, verbose: bool = False):
         """
         Initialize the SparqlExamplesLoader.
 
@@ -36,14 +34,8 @@ class SparqlExamplesLoader(BaseLoader):
         """
         self.endpoint_url = endpoint_url
         self.verbose = verbose
-        # self.graph = Graph(SPARQLStore(endpoint_url, auth=endpoint_auth), bind_namespaces="none")
         self.sparql_endpoint = SPARQLWrapper(endpoint_url)
-        # self.sparql_endpoint.setMethod("POST")
         self.sparql_endpoint.setReturnFormat("json")
-        # try:
-        #     self.graph.query("ASK { ?s ?p ?o }")
-        # except ValueError as e:
-        #     raise ValueError(f"Could not query the provided endpoint at {endpoint_url}: {e}") from e
 
     def load(self) -> list[Document]:
         """Load and return documents from the SPARQL endpoint."""
@@ -51,7 +43,6 @@ class SparqlExamplesLoader(BaseLoader):
 
         # Get prefixes
         prefix_map: dict[str, str] = {}
-        print("GETTING PREFIXES")
         try:
             self.sparql_endpoint.setQuery(GET_PREFIXES_QUERY)
             res = self.sparql_endpoint.query().convert()

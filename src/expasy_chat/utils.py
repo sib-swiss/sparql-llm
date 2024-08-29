@@ -1,8 +1,6 @@
 import json
 
 from curies_rs import Converter
-from rdflib import Graph
-from rdflib.plugins.stores.sparqlstore import SPARQLStore
 from SPARQLWrapper import SPARQLWrapper
 
 GET_PREFIXES_QUERY = """PREFIX sh: <http://www.w3.org/ns/shacl#>
@@ -18,10 +16,11 @@ def get_prefixes_for_endpoints(endpoints: list[str]) -> dict[str, str]:
     """Return a dictionary of prefixes for the given endpoints."""
     prefixes = {}
     for endpoint_url in endpoints:
-        g = Graph(SPARQLStore(endpoint_url), bind_namespaces="none")
-        for row in g.query(GET_PREFIXES_QUERY):
-            if str(row.namespace) not in prefixes.values():
-                prefixes[str(row.prefix)] = str(row.namespace)
+        sparql_endpoint = SPARQLWrapper(endpoint_url)
+        sparql_endpoint.setReturnFormat("json")
+        for row in sparql_endpoint.setQuery(GET_PREFIXES_QUERY):
+            if row["namespace"]["value"] not in prefixes.values():
+                prefixes[row["prefix"]["value"]] = row["namespace"]["value"]
     return prefixes
 
 
