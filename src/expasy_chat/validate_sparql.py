@@ -1,15 +1,13 @@
-import json
 import re
 
+from curies_rs import Converter
 from rdflib import ConjunctiveGraph, Namespace, URIRef, Variable
 from rdflib.paths import MulPath, Path, SequencePath
 from rdflib.plugins.sparql.algebra import translateQuery
 from rdflib.plugins.sparql.parser import parseQuery
 from rdflib.plugins.sparql.sparql import Query
-from SPARQLWrapper import SPARQLWrapper
 
-from expasy_chat.config import settings
-from expasy_chat.utils import get_prefix_converter
+from expasy_chat.utils import get_void_dict
 
 queries_pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
 endpoint_pattern = re.compile(r"^#.*(https?://[^\s]+)", re.MULTILINE)
@@ -24,22 +22,20 @@ def extract_sparql_queries(md_resp: str) -> list[dict[str, str]]:
         extracted_queries.append(
             {
                 "query": str(query).strip(),
-                "endpoint": extracted_endpoint.group(1) if extracted_endpoint else None,
+                "endpoint_url": extracted_endpoint.group(1) if extracted_endpoint else None,
             }
         )
     return extracted_queries
 
 
-def add_missing_prefixes(query: str) -> str:
+def add_missing_prefixes(query: str, prefixes_map: dict[str, str]) -> str:
     """Add missing prefixes to a SPARQL query."""
-    with open(settings.all_prefixes_filepath) as f:
-        all_prefixes = json.loads(f.read())
     # Check if the first line is a comment
     lines = query.split("\n")
     comment_line = lines[0].startswith("#") if lines else False
     # Collect prefixes to be added
     prefixes_to_add = []
-    for prefix, namespace in all_prefixes.items():
+    for prefix, namespace in prefixes_map.items():
         prefix_str = f"PREFIX {prefix}: <{namespace}>"
         if not re.search(prefix_str, query) and re.search(f"[(| |\u00a0|/]{prefix}:", query):
             prefixes_to_add.append(prefix_str)
@@ -160,55 +156,91 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> tuple[Conju
     return g, query_dict
 
 
-GET_VOID_DESC = """PREFIX up: <http://purl.uniprot.org/core/>
-PREFIX void: <http://rdfs.org/ns/void#>
-PREFIX void-ext: <http://ldf.fi/void-ext#>
-SELECT DISTINCT ?class1 ?prop ?class2 ?datatype
-WHERE {
-    ?cp void:class ?class1 ;
-        void:propertyPartition ?pp .
-    ?pp void:property ?prop .
-    OPTIONAL {
-        {
-            ?pp  void:classPartition [ void:class ?class2 ] .
-        } UNION {
-            ?pp void-ext:datatypePartition [ void-ext:datatype ?datatype ] .
-        }
-    }
-}"""
+def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: Converter) -> None:
+    """Validate SPARQL query using the VoID description of endpoints. Raise exception if errors found."""
 
-def get_void_dict(endpoint: str):
-    """Get a dict of VoID description of an endpoint: dict[subject_cls][predicate] = list[object_cls/datatype]"""
-    prefix_converter = get_prefix_converter()
-    sparql_endpoint = SPARQLWrapper(endpoint)
-    sparql_endpoint.setQuery(GET_VOID_DESC)
-    sparql_endpoint.setReturnFormat("json")
-    void_dict = {}
-    try:
-        void_res = sparql_endpoint.query().convert()
-        # NOTE: Build a dict[subject_cls][predicate] = list[object_cls/datatype]
-        for void_triple in void_res["results"]["bindings"]:
-            if void_triple["class1"]["value"] not in void_dict:
-                void_dict[void_triple["class1"]["value"]] = {}
-            if void_triple["prop"]["value"] not in void_dict[void_triple["class1"]["value"]]:
-                void_dict[void_triple["class1"]["value"]][void_triple["prop"]["value"]] = []
-            if "class2" in void_triple:
-                void_dict[void_triple["class1"]["value"]][void_triple["prop"]["value"]].append(
-                    void_triple["class2"]["value"]
-                )
-            if "datatype" in void_triple:
-                void_dict[void_triple["class1"]["value"]][void_triple["prop"]["value"]].append(
-                    void_triple["datatype"]["value"]
-                )
-        if len(void_dict) == 0:
-            raise Exception("No VoID description found in the endpoint")
-    except Exception as e:
-        print(f"Could not retrieve VoID description for endpoint {endpoint}: {e}")
-    return void_dict
+    def validate_triple_pattern(
+        subj, subj_dict, void_dict, endpoint, error_msgs, parent_type=None, parent_pred=None
+    ) -> set[str]:
+        pred_dict = subj_dict.get(subj, {})
+        # Direct type provided for this entity
+        if "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" in pred_dict:
+            for subj_type in pred_dict["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"]:
+                for pred in pred_dict:
+                    if pred == "http://www.w3.org/1999/02/22-rdf-syntax-ns#type":
+                        continue
+                    if subj_type not in void_dict:
+                        error_msgs.add(
+                            f"Type {prefix_converter.compress(subj_type)} for subject {subj} in endpoint {endpoint} does not exist. Available classes are: {', '.join(prefix_converter.compress_list(list(void_dict.keys())))}"
+                        )
+                    elif pred not in void_dict.get(subj_type, {}):
+                        # TODO: also check if object type matches? (if defined, because it's not always available)
+                        error_msgs.add(
+                            f"Subject {subj} with type {prefix_converter.compress(subj_type)} in endpoint {endpoint} does not support the predicate {prefix_converter.compress(pred)} according to the VoID description. It can have the following predicates: {', '.join(prefix_converter.compress_list(list(void_dict.get(subj_type, {}).keys())))}"
+                        )
+                    for obj in pred_dict[pred]:
+                        # Recursively validates objects that are variables
+                        if obj.startswith("?"):
+                            error_msgs = validate_triple_pattern(
+                                obj, subj_dict, void_dict, endpoint, error_msgs, subj_type, pred
+                            )
+                    # TODO: if object is a variable, we check this variable
+                    # We can pass the parent type to the function in case no type is defined for the child
 
-def validate_sparql_with_void(query: str, endpoint: str) -> None:
-    """Validate SPARQL query using the VoID description of endpoints."""
-    _g, query_dict = sparql_query_to_dict(query, endpoint)
+        # No type provided directly for this entity, we check if provided predicates match one of the potential type inferred for parent type
+        elif parent_type and parent_pred:
+            # print(f"CHECKING subject {subj} parent type {parent_type} parent pred {parent_pred}")
+            missing_pred = None
+            potential_types = void_dict.get(parent_type, {}).get(parent_pred, [])
+            if potential_types:
+                # Get the list of preds for this subj
+                # preds = [pred for pred in pred_dict.keys()]
+                for potential_type in potential_types:
+                    # print(f"Checking if {subj} is a valid {potential_type}")
+                    potential_preds = void_dict.get(potential_type, {}).keys()
+                    # Find any predicate in pred_dict.keys() that is not in potential_preds
+                    missing_pred = next((pred for pred in pred_dict if pred not in potential_preds), None)
+                    if missing_pred is None:
+                        # print(f"OK Subject {subj} is a valid inferred {potential_type}!")
+                        for pred in pred_dict:
+                            for obj in pred_dict[pred]:
+                                # If object is variable, we try to validate it too passing the potential type we just validated
+                                if obj.startswith("?"):
+                                    error_msgs = validate_triple_pattern(
+                                        obj, subj_dict, void_dict, endpoint, error_msgs, potential_type, pred
+                                    )
+                        break
+                if missing_pred is not None:
+                    # print(f"!!!! Subject {subj} {parent_type} {parent_pred} is not a valid {potential_types} !")
+                    error_msgs.add(
+                        f"Subject {subj} in endpoint {endpoint} does not support the predicate {prefix_converter.compress(missing_pred)} according to the VoID description. Correct predicate might be one of the following: {', '.join(prefix_converter.compress_list(list(potential_preds)))} (we inferred this variable might be of the type {prefix_converter.compress(potential_type)})"
+                    )
+
+        # TODO: when no type and no parent but more than 1 predicate is used, we could try to infer the type from the predicates
+        # If too many potential type we give up, otherwise we infer
+        # If the no type match the 2 predicates then it's not right
+
+        # If no type and no parent type we just check if the predicates used can be found in the VoID description
+        # We only run this if no errors found yet to avoid creating too many duplicates
+        # TODO: we could improve this by generating a dict of errors, so we only push once the error for a subj/predicate
+        # TODO: right now commented because up:evidence is missing in the VoID description, leading to misleading errors
+        # elif len(error_msgs) == 0:
+        #     all_preds = set()
+        #     for pred in pred_dict:
+        #         valid_pred = False
+        #         for _subj_type, void_pred_dict in void_dict.items():
+        #             all_preds.update(void_pred_dict.keys())
+        #             if pred in void_pred_dict:
+        #                 valid_pred = True
+        #                 break
+        #         if not valid_pred:
+        #             error_msgs.add(
+        #                 f"Predicate {prefix_converter.compress(pred)} used by subject {subj} in endpoint {endpoint} is not supported according to the VoID description. Here are the available predicates: {', '.join(prefix_converter.compress_list(list(all_preds)))}"
+        #             )
+
+        return error_msgs
+
+    _g, query_dict = sparql_query_to_dict(query, endpoint_url)
     error_msgs: set[str] = set()
     # error_msgs = {}
 
@@ -222,174 +254,3 @@ def validate_sparql_with_void(query: str, endpoint: str) -> None:
             error_msgs = validate_triple_pattern(subj, subj_dict, void_dict, endpoint, error_msgs)
     if len(error_msgs) > 0:
         raise Exception("\n".join(error_msgs))
-
-
-def validate_triple_pattern(
-    subj, subj_dict, void_dict, endpoint, error_msgs, parent_type=None, parent_pred=None
-) -> set[str]:
-    prefix_converter = get_prefix_converter()
-    pred_dict = subj_dict.get(subj, {})
-    # Direct type provided for this entity
-    if "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" in pred_dict:
-        for subj_type in pred_dict["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"]:
-            for pred in pred_dict:
-                if pred == "http://www.w3.org/1999/02/22-rdf-syntax-ns#type":
-                    continue
-                if subj_type not in void_dict:
-                    error_msgs.add(
-                        f"Type {prefix_converter.compress(subj_type)} for subject {subj} in endpoint {endpoint} does not exist. Available classes are: {', '.join(prefix_converter.compress_list(list(void_dict.keys())))}"
-                    )
-                elif pred not in void_dict.get(subj_type, {}):
-                    # TODO: also check if object type matches? (if defined, because it's not always available)
-                    error_msgs.add(
-                        f"Subject {subj} with type {prefix_converter.compress(subj_type)} in endpoint {endpoint} does not support the predicate {prefix_converter.compress(pred)} according to the VoID description. It can have the following predicates: {', '.join(prefix_converter.compress_list(list(void_dict.get(subj_type, {}).keys())))}"
-                    )
-                for obj in pred_dict[pred]:
-                    # Recursively validates objects that are variables
-                    if obj.startswith("?"):
-                        error_msgs = validate_triple_pattern(
-                            obj, subj_dict, void_dict, endpoint, error_msgs, subj_type, pred
-                        )
-                # TODO: if object is a variable, we check this variable
-                # We can pass the parent type to the function in case no type is defined for the child
-
-    # No type provided directly for this entity, we check if provided predicates match one of the potential type inferred for parent type
-    elif parent_type and parent_pred:
-        # print(f"CHECKING subject {subj} parent type {parent_type} parent pred {parent_pred}")
-        missing_pred = None
-        potential_types = void_dict.get(parent_type, {}).get(parent_pred, [])
-        if potential_types:
-            # Get the list of preds for this subj
-            # preds = [pred for pred in pred_dict.keys()]
-            for potential_type in potential_types:
-                # print(f"Checking if {subj} is a valid {potential_type}")
-                potential_preds = void_dict.get(potential_type, {}).keys()
-                # Find any predicate in pred_dict.keys() that is not in potential_preds
-                missing_pred = next((pred for pred in pred_dict if pred not in potential_preds), None)
-                if missing_pred is None:
-                    # print(f"OK Subject {subj} is a valid inferred {potential_type}!")
-                    for pred in pred_dict:
-                        for obj in pred_dict[pred]:
-                            # If object is variable, we try to validate it too passing the potential type we just validated
-                            if obj.startswith("?"):
-                                error_msgs = validate_triple_pattern(
-                                    obj, subj_dict, void_dict, endpoint, error_msgs, potential_type, pred
-                                )
-                    break
-            if missing_pred is not None:
-                # print(f"!!!! Subject {subj} {parent_type} {parent_pred} is not a valid {potential_types} !")
-                error_msgs.add(
-                    f"Subject {subj} in endpoint {endpoint} does not support the predicate {prefix_converter.compress(missing_pred)} according to the VoID description. Correct predicate might be one of the following: {', '.join(prefix_converter.compress_list(list(potential_preds)))} (we inferred this variable might be of the type {prefix_converter.compress(potential_type)})"
-                )
-
-    # TODO: when no type and no parent but more than 1 predicate is used, we could try to infer the type from the predicates
-    # If too many potential type we give up, otherwise we infer
-    # If the no type match the 2 predicates then it's not right
-
-    # If no type and no parent type we just check if the predicates used can be found in the VoID description
-    # We only run this if no errors found yet to avoid creating too many duplicates
-    # TODO: we could improve this by generating a dict of errors, so we only push once the error for a subj/predicate
-    # TODO: right now commented because up:evidence is missing in the VoID description, leading to misleading errors
-    # elif len(error_msgs) == 0:
-    #     all_preds = set()
-    #     for pred in pred_dict:
-    #         valid_pred = False
-    #         for _subj_type, void_pred_dict in void_dict.items():
-    #             all_preds.update(void_pred_dict.keys())
-    #             if pred in void_pred_dict:
-    #                 valid_pred = True
-    #                 break
-    #         if not valid_pred:
-    #             error_msgs.add(
-    #                 f"Predicate {prefix_converter.compress(pred)} used by subject {subj} in endpoint {endpoint} is not supported according to the VoID description. Here are the available predicates: {', '.join(prefix_converter.compress_list(list(all_preds)))}"
-    #             )
-
-    return error_msgs
-
-query_get_labels_for_classes = """PREFIX up: <http://purl.uniprot.org/core/>
-SELECT DISTINCT ?class ?label
-WHERE {
-    ?class <http://www.w3.org/2000/01/rdf-schema#label> ?label .
-}"""
-
-ns_to_ignore = [
-    "http://www.w3.org/ns/sparql-service-description#",
-    "http://www.w3.org/ns/shacl#",
-    "http://www.w3.org/2002/07/owl#",
-    "http://rdfs.org/ns/void#",
-    "http://purl.org/query/voidext#",
-    "http://www.w3.org/2001/XMLSchema#",
-]
-def ignore_namespaces(cls) -> bool:
-    return any(cls.startswith(ns) for ns in ns_to_ignore)
-
-def get_shex_dict_from_void(endpoint: str) -> dict[str, str]:
-    """Get a dict of shex shapes from the VoID description."""
-    prefix_converter = get_prefix_converter()
-    void_dict = get_void_dict(endpoint)
-    shex_dict = {}
-
-    for subject_cls, predicates in void_dict.items():
-        if ignore_namespaces(subject_cls):
-            continue
-        # shex += f"{subject_cls} {{\n"
-        try:
-            subj = prefix_converter.compress(subject_cls)
-        except Exception as _e:
-            subj = f"<{subject_cls}>"
-        shex_dict[subject_cls] = {"shex": f"{subj} IRI {{\n"}
-
-        for predicate, object_list in predicates.items():
-            try:
-                pred = prefix_converter.compress(predicate)
-            except Exception as _e:
-                pred = f"<{predicate}>"
-
-            compressed_obj_list = prefix_converter.compress_list(object_list, passthrough=True)
-            compressed_obj_list = []
-            for obj in object_list:
-                try:
-                    compressed_obj_list.append(prefix_converter.compress(obj))
-                except Exception as _e:
-                    compressed_obj_list.append(f"<{obj}>")
-            # prefix_converter.compress_list(object_list, passthrough=True)
-
-            if len(compressed_obj_list) > 0 and len(compressed_obj_list) < 2 and compressed_obj_list[0].startswith("xsd:"):
-                shex_dict[subject_cls]["shex"] += f"  {pred} {compressed_obj_list[0]} ;\n"
-            elif len(compressed_obj_list) > 0:
-                shex_dict[subject_cls]["shex"] += f"  {pred} [ {' | '.join(compressed_obj_list)} ] ;\n"
-            else:
-                shex_dict[subject_cls]["shex"] += f"  {pred} IRI ;\n"
-
-        shex_dict[subject_cls]["shex"] = shex_dict[subject_cls]["shex"].rstrip(" ;\n") + "\n}"
-
-    # Now get labels and comments for all classes
-    get_labels_query = f"""PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-PREFIX owl: <http://www.w3.org/2002/07/owl#>
-SELECT DISTINCT * WHERE {{
-    ?cls a owl:Class ;
-        rdfs:label ?label .
-    OPTIONAL {{
-        ?cls rdfs:comment ?comment .
-    }}
-    VALUES ?cls {{ <{"> <".join(shex_dict.keys())}> }}
-}}"""
-    sparql_endpoint = SPARQLWrapper(endpoint)
-    sparql_endpoint.setQuery(get_labels_query)
-    sparql_endpoint.setMethod("POST")
-    sparql_endpoint.setReturnFormat("json")
-    void_dict = {}
-    try:
-        label_res = sparql_endpoint.query().convert()
-        for label_triple in label_res["results"]["bindings"]:
-            cls = label_triple["cls"]["value"]
-            if cls not in shex_dict:
-                continue
-            shex_dict[cls]["label"] = label_triple["label"]["value"]
-            if "comment" in label_triple:
-                # shex_dict[cls]["label"] += f": {label_triple['comment']['value']}"
-                shex_dict[cls]["comment"] = label_triple["comment"]["value"]
-    except Exception as e:
-        print(f"Could not retrieve labels for classes in endpoint {endpoint}: {e}")
-
-    return shex_dict

@@ -11,13 +11,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from openai import OpenAI, Stream
 from pydantic import BaseModel
-from qdrant_client.models import ScoredPoint, FieldCondition, Filter, MatchValue
+from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 from rdflib.plugins.sparql.algebra import translateQuery
 from rdflib.plugins.sparql.parser import parseQuery
 from starlette.middleware.cors import CORSMiddleware
 
-from expasy_chat.config import settings
+from expasy_chat.config import get_prefixes_dict, settings
 from expasy_chat.embed import get_embedding_model, get_vectordb
+from expasy_chat.utils import get_prefix_converter
 from expasy_chat.validate_sparql import add_missing_prefixes, extract_sparql_queries, validate_sparql_with_void
 
 # If the user is asking about a named entity warn him that they should check if this entity exist with one of the query used to find named entity
@@ -67,6 +68,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+prefixes_map = get_prefixes_dict()
+prefix_converter = get_prefix_converter(prefixes_map)
 
 
 class SearchResult(BaseModel):
@@ -127,7 +131,7 @@ async def chat_completions(request: ChatCompletionRequest):
 
     query_embeddings = next(iter(embedding_model.embed([question])))
     # We build a big prompt with the 3 most relevant queries retrieved from similarity search engine (could be increased)
-    big_prompt = f"{STARTUP_PROMPT}\n\n"
+    prompt_with_context = f"{STARTUP_PROMPT}\n\n"
 
     # We also provide the example queries as previous messages to the LLM
     system_msg: list[Message] = [{"role": "system", "content": settings.system_prompt}]
@@ -140,14 +144,14 @@ async def chat_completions(request: ChatCompletionRequest):
             must=[
                 FieldCondition(
                     key="doc_type",
-                    match=MatchValue(value="sparql"),
+                    match=MatchValue(value="sparql_query"),
                 )
             ]
         ),
         limit=settings.retrieved_queries_count,
     )
     for query_hit in query_hits:
-        big_prompt += f"{query_hit.payload['question']}\nQuery to run in SPARQL endpoint {query_hit.payload['endpoint']}\n\n{query_hit.payload['answer']}\n\n"
+        prompt_with_context += f"{query_hit.payload['question']}\nQuery to run in SPARQL endpoint {query_hit.payload['endpoint_url']}\n\n{query_hit.payload['answer']}\n\n"
 
     # Get the most relevant documents other than SPARQL query examples from the search engine (ShEx shapes, general infos)
     docs_hits = vectordb.search(
@@ -173,21 +177,20 @@ async def chat_completions(request: ChatCompletionRequest):
         limit=settings.retrieved_docs_count,
     )
 
-    big_prompt += "Here is some additional information that could be useful to answer the user question:\n\n"
-
+    prompt_with_context += "Here is some additional information that could be useful to answer the user question:\n\n"
     for docs_hit in docs_hits:
         if docs_hit.payload["doc_type"] == "shex":
-            big_prompt += f"ShEx shape for {docs_hit.payload['question']} in {docs_hit.payload['endpoint']}:\n```\n{docs_hit.payload['answer']}\n```\n\n"
+            prompt_with_context += f"ShEx shape for {docs_hit.payload['question']} in {docs_hit.payload['endpoint_url']}:\n```\n{docs_hit.payload['answer']}\n```\n\n"
         elif docs_hit.payload["doc_type"] == "ontology":
-            big_prompt += f"Relevant part of the ontology for {docs_hit.payload['endpoint']}:\n```turtle\n{docs_hit.payload['question']}\n```\n\n"
+            prompt_with_context += f"Relevant part of the ontology for {docs_hit.payload['endpoint_url']}:\n```turtle\n{docs_hit.payload['question']}\n```\n\n"
         else:
-            big_prompt += f"Information about: {docs_hit.payload['question']}\nRelated to SPARQL endpoint {docs_hit.payload['endpoint']}\n\n{docs_hit.payload['answer']}\n\n"
+            prompt_with_context += f"Information about: {docs_hit.payload['question']}\nRelated to SPARQL endpoint {docs_hit.payload['endpoint_url']}\n\n{docs_hit.payload['answer']}\n\n"
 
-    big_prompt += f"\n{INTRO_USER_QUESTION_PROMPT}\n{question}"
+    prompt_with_context += f"\n{INTRO_USER_QUESTION_PROMPT}\n{question}"
 
     # Use messages from the request to keep memory of previous messages sent by client
     # Replace the question asked by the user with the big prompt with all contextual infos
-    request.messages[-1].content = big_prompt
+    request.messages[-1].content = prompt_with_context
     all_messages = system_msg + request.messages
     # all_messages.append({"role": "user", "content": big_prompt})
     # print(big_prompt)
@@ -203,9 +206,15 @@ async def chat_completions(request: ChatCompletionRequest):
     # NOTE: to get response as JSON object check https://github.com/jxnl/instructor or https://github.com/outlines-dev/outlines
 
     if request.stream:
-        return StreamingResponse(stream_openai(response, query_hits + docs_hits, big_prompt), media_type="application/x-ndjson")
+        return StreamingResponse(
+            stream_openai(response, query_hits + docs_hits, prompt_with_context), media_type="application/x-ndjson"
+        )
 
-    chat_resp_md = validate_and_fix_sparql(response.choices[0].message.content, all_messages) if request.validate else response.choices[0].message.content
+    chat_resp_md = (
+        validate_and_fix_sparql(response.choices[0].message.content, all_messages)
+        if request.validate
+        else response.choices[0].message.content
+    )
 
     return {
         "id": response.id,
@@ -214,7 +223,7 @@ async def chat_completions(request: ChatCompletionRequest):
         "model": response.model,
         "choices": [{"message": Message(role="assistant", content=chat_resp_md)}],
         "docs": query_hits + docs_hits,
-        "full_prompt": big_prompt,
+        "full_prompt": prompt_with_context,
     }
     # NOTE: the response is similar to OpenAI API, but we add the list of hits and the full prompt used to ask the question
 
@@ -230,11 +239,11 @@ def validate_and_fix_sparql(md_resp: str, messages: list[Message], try_count: in
     for gen_query in generated_sparqls:
         try:
             translateQuery(parseQuery(gen_query["query"]))
-            validate_sparql_with_void(gen_query["query"], gen_query["endpoint"])
+            validate_sparql_with_void(gen_query["query"], gen_query["endpoint_url"], prefix_converter)
 
         except Exception as e:
             if "Unknown namespace prefix" in str(e):
-                md_resp = md_resp.replace(gen_query["query"], add_missing_prefixes(gen_query["query"]))
+                md_resp = md_resp.replace(gen_query["query"], add_missing_prefixes(gen_query["query"], prefixes_map))
             else:
                 # Ask the LLM to try to fix it
                 print(f"Error in SPARQL query try #{try_count}: {e}\n{gen_query['query']}")

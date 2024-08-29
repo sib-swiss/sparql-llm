@@ -1,5 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from expasy_chat.utils import get_prefixes_for_endpoints
+
 # import warnings
 # warnings.simplefilter(action="ignore", category=UserWarning)
 
@@ -21,7 +23,7 @@ class Settings(BaseSettings):
     # Default is the IP address inside the podman network to solve a ridiculous bug from podman
     vectordb_host: str = "10.89.0.2"
     retrieved_queries_count: int = 20
-    retrieved_docs_count: int = 10
+    retrieved_docs_count: int = 15
     docs_collection_name: str = "expasy"
 
     max_try_fix_sparql: int = 5
@@ -38,70 +40,75 @@ Try to always answer with one query, if the answer lies in different endpoints, 
     endpoints: list[dict[str, str]] = [
         {
             "label": "UniProt",
-            "endpoint": "https://sparql.uniprot.org/sparql/",
+            "endpoint_url": "https://sparql.uniprot.org/sparql/",
             "homepage": "https://www.uniprot.org/",
             "ontology": "https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl",
         },
         {
             "label": "Bgee",
-            "endpoint": "https://www.bgee.org/sparql/",
+            "endpoint_url": "https://www.bgee.org/sparql/",
             "homepage": "https://www.bgee.org/",
             "ontology": "http://purl.org/genex",
         },
         {
             "label": "Orthology MAtrix (OMA)",
-            "endpoint": "https://sparql.omabrowser.org/sparql/",
+            "endpoint_url": "https://sparql.omabrowser.org/sparql/",
             "homepage": "https://omabrowser.org/",
             "ontology": "http://purl.org/net/orth",
         },
         {
             "label": "Rhea",
-            "endpoint": "https://sparql.rhea-db.org/sparql/",
+            "endpoint_url": "https://sparql.rhea-db.org/sparql/",
             "homepage": "https://www.rhea-db.org/",
         },
         {
             "label": "MetaNetx",
-            "endpoint": "https://rdf.metanetx.org/sparql/",
+            "endpoint_url": "https://rdf.metanetx.org/sparql/",
             "homepage": "https://www.metanetx.org/",
         },
         {
             "label": "SwissLipids",
-            "endpoint": "https://beta.sparql.swisslipids.org/",
+            "endpoint_url": "https://beta.sparql.swisslipids.org/",
             "homepage": "https://www.swisslipids.org",
         },
         {
             "label": "HAMAP",
-            "endpoint": "https://hamap.expasy.org/sparql/",
+            "endpoint_url": "https://hamap.expasy.org/sparql/",
             "homepage": "https://hamap.expasy.org/",
         },
         {
             "label": "NextProt",
-            # "endpoint": "https://api.nextprot.org/sparql",
-            "endpoint": "https://sparql.nextprot.org",
+            # "endpoint_url": "https://api.nextprot.org/sparql",
+            "endpoint_url": "https://sparql.nextprot.org",
             "homepage": "https://www.nextprot.org/",
         },
         {
             "label": "OrthoDB",
-            # "endpoint": "https://api.nextprot.org/sparql",
-            "endpoint": "https://sparql.orthodb.org/sparql/",
+            # "endpoint_url": "https://api.nextprot.org/sparql",
+            "endpoint_url": "https://sparql.orthodb.org/sparql/",
             "homepage": "https://www.orthodb.org/",
         },
         {
             "label": "dbgi",
-            "endpoint": "https://biosoda.unil.ch/graphdb/repositories/emi-dbgi",
+            "endpoint_url": "https://biosoda.unil.ch/graphdb/repositories/emi-dbgi",
             # "homepage": "https://dbgi.eu/",
         },
         # {
         #     "label": "GlyConnect",
-        #     "endpoint": "https://glyconnect.expasy.org/sparql",
+        #     "endpoint_url": "https://glyconnect.expasy.org/sparql",
         #     "homepage": "https://glyconnect.expasy.org/",
         # },
     ]
 
-    all_prefixes_filepath: str = "all_prefixes.json"
     logs_filepath: str = "/logs/user_questions.log"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 
 settings = Settings()
+
+
+def get_prefixes_dict() -> dict[str, str]:
+    """Return a dictionary of all prefixes."""
+    endpoints_urls = [endpoint["endpoint_url"] for endpoint in settings.endpoints]
+    return get_prefixes_for_endpoints(endpoints_urls)
