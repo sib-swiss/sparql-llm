@@ -1,6 +1,7 @@
 import re
 from typing import Any
 
+from SPARQLWrapper import SPARQLWrapper
 from bs4 import BeautifulSoup
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
@@ -35,7 +36,10 @@ class SparqlExamplesLoader(BaseLoader):
         """
         self.endpoint_url = endpoint_url
         self.verbose = verbose
-        self.graph = Graph(SPARQLStore(endpoint_url, auth=endpoint_auth), bind_namespaces="none")
+        # self.graph = Graph(SPARQLStore(endpoint_url, auth=endpoint_auth), bind_namespaces="none")
+        self.sparql_endpoint = SPARQLWrapper(endpoint_url)
+        # self.sparql_endpoint.setMethod("POST")
+        self.sparql_endpoint.setReturnFormat("json")
         # try:
         #     self.graph.query("ASK { ?s ?p ?o }")
         # except ValueError as e:
@@ -47,13 +51,19 @@ class SparqlExamplesLoader(BaseLoader):
 
         # Get prefixes
         prefix_map: dict[str, str] = {}
-        # row: Any
-        for row in self.graph.query(GET_PREFIXES_QUERY):
-            # TODO: we might be able to remove this now that prefixes are included
-            prefix_map[str(row.prefix)] = str(row.namespace)
+        print("GETTING PREFIXES")
+        try:
+            self.sparql_endpoint.setQuery(GET_PREFIXES_QUERY)
+            res = self.sparql_endpoint.query().convert()
+            for row in res["results"]["bindings"]:
+                # TODO: we might be able to remove this now that prefixes are included
+                prefix_map[row["prefix"]["value"]] = row["namespace"]["value"]
 
-        for row in self.graph.query(GET_SPARQL_EXAMPLES_QUERY):
-            docs.append(self._create_document(row, prefix_map))
+            self.sparql_endpoint.setQuery(GET_SPARQL_EXAMPLES_QUERY)
+            for row in self.sparql_endpoint.query().convert()["results"]["bindings"]:
+                docs.append(self._create_document(row, prefix_map))
+        except Exception as e:
+            print(f"Could not retrieve SPARQL examples from endpoint {self.endpoint_url}: {e}")
 
         if self.verbose:
             print(f"Found {len(docs)} examples queries for {self.endpoint_url}")
@@ -61,8 +71,8 @@ class SparqlExamplesLoader(BaseLoader):
 
     def _create_document(self, row: Any, prefix_map: dict[str, str]) -> Document:
         """Create a Document object from a query result row."""
-        comment = self._remove_a_tags(str(row.comment))
-        query = str(row.query)
+        comment = self._remove_a_tags(row["comment"]["value"])
+        query = row["query"]["value"]
         # Add prefixes to query if not already present
         # TODO: we might be able to remove this now that prefixes are included
         for prefix, namespace in prefix_map.items():
