@@ -370,9 +370,9 @@
                 let docs = null;
                 if (!addChecks.checked) {
                     appendMessage("", "assistant");
-                    const lastMsg = chatThread.lastElementChild
+                    // const lastMsg = chatThread.lastElementChild
                     // if (lastMsg.classList.contains("hidden")) chatThread.lastElementChild.classList.remove("hidden")
-                    const responseContainer = lastMsg.lastElementChild.lastElementChild.lastElementChild;
+                    const responseContainer = chatThread.lastElementChild.lastElementChild.lastElementChild.lastElementChild;
 
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder('utf-8');

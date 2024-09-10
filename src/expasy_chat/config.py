@@ -31,7 +31,8 @@ class Settings(BaseSettings):
     system_prompt: str = """You are Expasy, an assistant that helps users to navigate the resources and databases from the Swiss Institute of Bioinformatics.
 Depending on the user request and provided context, you may provide general information about the resources available at the SIB, or help the user to formulate a query to run on a SPARQL endpoint.
 If answering with a query: try to make it as efficient as possible to avoid timeout due to how large the datasets are, make sure the query written is valid SPARQL,
-always indicate the URL of the endpoint on which the query should be executed in a comment in the codeblocks at the start of the query (no additional text, just the endpoint URL directly as comment, nothing else, always and only 1 endpoint).
+and only use endpoints that are provided in the context.
+Always indicate the URL of the endpoint on which the query should be executed in a comment in the codeblocks at the start of the query (no additional text, just the endpoint URL directly as comment, nothing else, always and only 1 endpoint).
 If answering with a query always derive your answer from the queries provided as examples in the prompt, don't try to create a query from nothing and do not provide a generic query.
 If the answer to the question is in the provided context, do not provide a query, just provide the answer, unless explicitly asked.
 Try to always answer with one query, if the answer lies in different endpoints, provide a federated query.
@@ -57,6 +58,17 @@ Try to always answer with one query, if the answer lies in different endpoints, 
             "ontology": "http://purl.org/net/orth",
         },
         {
+            "label": "HAMAP",
+            "endpoint_url": "https://hamap.expasy.org/sparql/",
+            "homepage": "https://hamap.expasy.org/",
+        },
+        {
+            "label": "dbgi",
+            "endpoint_url": "https://biosoda.unil.ch/graphdb/repositories/emi-dbgi",
+            # "homepage": "https://dbgi.eu/",
+        },
+        # Nothing in those endpoints:
+        {
             "label": "Rhea",
             "endpoint_url": "https://sparql.rhea-db.org/sparql/",
             "homepage": "https://www.rhea-db.org/",
@@ -67,16 +79,6 @@ Try to always answer with one query, if the answer lies in different endpoints, 
             "homepage": "https://www.metanetx.org/",
         },
         {
-            "label": "SwissLipids",
-            "endpoint_url": "https://beta.sparql.swisslipids.org/",
-            "homepage": "https://www.swisslipids.org",
-        },
-        {
-            "label": "HAMAP",
-            "endpoint_url": "https://hamap.expasy.org/sparql/",
-            "homepage": "https://hamap.expasy.org/",
-        },
-        {
             "label": "NextProt",
             # "endpoint_url": "https://api.nextprot.org/sparql",
             "endpoint_url": "https://sparql.nextprot.org",
@@ -84,14 +86,14 @@ Try to always answer with one query, if the answer lies in different endpoints, 
         },
         {
             "label": "OrthoDB",
-            # "endpoint_url": "https://api.nextprot.org/sparql",
             "endpoint_url": "https://sparql.orthodb.org/sparql/",
             "homepage": "https://www.orthodb.org/",
         },
+        # 500 Internal Error, but this one should work, maybe error due to SparqlWrapper
         {
-            "label": "dbgi",
-            "endpoint_url": "https://biosoda.unil.ch/graphdb/repositories/emi-dbgi",
-            # "homepage": "https://dbgi.eu/",
+            "label": "SwissLipids",
+            "endpoint_url": "https://beta.sparql.swisslipids.org/",
+            "homepage": "https://www.swisslipids.org",
         },
         # {
         #     "label": "GlyConnect",

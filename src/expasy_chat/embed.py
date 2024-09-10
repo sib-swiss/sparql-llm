@@ -146,7 +146,7 @@ def init_vectordb(vectordb_host: str = settings.vectordb_host) -> None:
     prefix_map = get_prefixes_for_endpoints(endpoints_urls)
 
     for endpoint in settings.endpoints:
-        print(f"  🔎 Getting metadata for {endpoint['label']} at {endpoint['endpoint_url']}")
+        print(f"\n  🔎 Getting metadata for {endpoint['label']} at {endpoint['endpoint_url']}")
         queries_loader = SparqlExamplesLoader(endpoint["endpoint_url"], verbose=True)
         docs += queries_loader.load()
 

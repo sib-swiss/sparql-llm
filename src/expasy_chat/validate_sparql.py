@@ -3,11 +3,10 @@ import re
 from curies_rs import Converter
 from rdflib import ConjunctiveGraph, Namespace, URIRef, Variable
 from rdflib.paths import MulPath, Path, SequencePath
-from rdflib.plugins.sparql.algebra import translateQuery
-from rdflib.plugins.sparql.parser import parseQuery
+from rdflib.plugins.sparql import prepareQuery
 from rdflib.plugins.sparql.sparql import Query
 
-from expasy_chat.utils import get_void_dict
+from expasy_chat.utils import get_prefix_converter, get_prefixes_for_endpoints, get_void_dict
 
 queries_pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
 endpoint_pattern = re.compile(r"^#.*(https?://[^\s]+)", re.MULTILINE)
@@ -58,8 +57,7 @@ sqc = Namespace("http://example.org/sqc/")  # SPARQL query check
 
 def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> tuple[ConjunctiveGraph, dict]:
     """Convert a SPARQL query string to a dictionary of triples looking like dict[endpoint][subject][predicate] = list[object]"""
-    parsed_query = parseQuery(sparql_query)
-    translated_query: Query = translateQuery(parsed_query)
+    translated_query: Query = prepareQuery(sparql_query)
     query_dict = {}
     path_var_count = 1
     # We don't really use the graph finally, only the query_dict
@@ -152,12 +150,15 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> tuple[Conju
         if hasattr(algebra, "p"):
             process_part(algebra.p, sparql_endpoint)
 
+    # print(translated_query.algebra)
     extract_basic_graph_pattern(translated_query.algebra)
     return g, query_dict
 
 
-def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: Converter) -> None:
+def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: Converter | None = None) -> None:
     """Validate SPARQL query using the VoID description of endpoints. Raise exception if errors found."""
+    if prefix_converter is None:
+        prefix_converter = get_prefix_converter(get_prefixes_for_endpoints([endpoint_url]))
 
     def validate_triple_pattern(
         subj, subj_dict, void_dict, endpoint, error_msgs, parent_type=None, parent_pred=None
@@ -254,3 +255,7 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: C
             error_msgs = validate_triple_pattern(subj, subj_dict, void_dict, endpoint, error_msgs)
     if len(error_msgs) > 0:
         raise Exception("\n".join(error_msgs))
+    # TODO: return a structured list of errors instead of raising an exception
+    # { "endpoint": "", "subject": "", "type": "", "inferred_type": "",
+    # "wrong_predicate": "", "potential_predicates": [], "error_msg": "" }
+    # }

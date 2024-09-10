@@ -2,6 +2,7 @@ import json
 
 from curies_rs import Converter
 from SPARQLWrapper import SPARQLWrapper
+import requests
 
 GET_PREFIXES_QUERY = """PREFIX sh: <http://www.w3.org/ns/shacl#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -36,17 +37,23 @@ def get_prefix_converter(prefix_dict: dict[str, str]) -> Converter:
 GET_VOID_DESC = """PREFIX up: <http://purl.uniprot.org/core/>
 PREFIX void: <http://rdfs.org/ns/void#>
 PREFIX void-ext: <http://ldf.fi/void-ext#>
-SELECT DISTINCT ?class1 ?prop ?class2 ?datatype
+SELECT DISTINCT ?subjectClass ?prop ?objectClass ?objectDatatype
 WHERE {
-    ?cp void:class ?class1 ;
-        void:propertyPartition ?pp .
-    ?pp void:property ?prop .
-    OPTIONAL {
-        {
-            ?pp  void:classPartition [ void:class ?class2 ] .
-        } UNION {
-            ?pp void-ext:datatypePartition [ void-ext:datatype ?datatype ] .
+    {
+        ?cp void:class ?subjectClass ;
+            void:propertyPartition ?pp .
+        ?pp void:property ?prop .
+        OPTIONAL {
+            {
+                ?pp  void:classPartition [ void:class ?objectClass ] .
+            } UNION {
+                ?pp void-ext:datatypePartition [ void-ext:datatype ?objectDatatype ] .
+            }
         }
+    } UNION {
+        ?ls void:subjectsTarget ?subjectClass ;
+            void:linkPredicate ?prop ;
+            void:objectsTarget ?objectClass .
     }
 }"""
 
@@ -60,17 +67,17 @@ def get_void_dict(endpoint_url: str) -> dict[str, dict[str, list[str]]]:
     try:
         void_res = sparql_endpoint.query().convert()
         for void_triple in void_res["results"]["bindings"]:
-            if void_triple["class1"]["value"] not in void_dict:
-                void_dict[void_triple["class1"]["value"]] = {}
-            if void_triple["prop"]["value"] not in void_dict[void_triple["class1"]["value"]]:
-                void_dict[void_triple["class1"]["value"]][void_triple["prop"]["value"]] = []
-            if "class2" in void_triple:
-                void_dict[void_triple["class1"]["value"]][void_triple["prop"]["value"]].append(
-                    void_triple["class2"]["value"]
+            if void_triple["subjectClass"]["value"] not in void_dict:
+                void_dict[void_triple["subjectClass"]["value"]] = {}
+            if void_triple["prop"]["value"] not in void_dict[void_triple["subjectClass"]["value"]]:
+                void_dict[void_triple["subjectClass"]["value"]][void_triple["prop"]["value"]] = []
+            if "objectClass" in void_triple:
+                void_dict[void_triple["subjectClass"]["value"]][void_triple["prop"]["value"]].append(
+                    void_triple["objectClass"]["value"]
                 )
-            if "datatype" in void_triple:
-                void_dict[void_triple["class1"]["value"]][void_triple["prop"]["value"]].append(
-                    void_triple["datatype"]["value"]
+            if "objectDatatype" in void_triple:
+                void_dict[void_triple["subjectClass"]["value"]][void_triple["prop"]["value"]].append(
+                    void_triple["objectDatatype"]["value"]
                 )
         if len(void_dict) == 0:
             raise Exception("No VoID description found in the endpoint")
@@ -79,19 +86,19 @@ def get_void_dict(endpoint_url: str) -> dict[str, dict[str, list[str]]]:
     return void_dict
 
 
-# def query_sparql(query: str, endpoint_url: str) -> dict:
-#     """Execute a SPARQL query on a SPARQL endpoint using requests"""
-#     # g = Graph(SPARQLStore(endpoint_url))
-#     # # g = Graph(store, identifier=None, bind_namespaces="none", method="POST")
-#     # return g.query(query)
-#     resp = requests.post(
-#         endpoint_url,
-#         headers={
-#             "Accept": "application/sparql-results+json",
-#             # "User-agent": "sparqlwrapper 2.0.1a0 (rdflib.github.io/sparqlwrapper)"
-#         },
-#         json={"query": query},
-#         timeout=60,
-#     )
-#     resp.raise_for_status()
-#     return resp.json()
+def query_sparql(query: str, endpoint_url: str) -> dict:
+    """Execute a SPARQL query on a SPARQL endpoint using requests"""
+    # g = Graph(SPARQLStore(endpoint_url))
+    # # g = Graph(store, identifier=None, bind_namespaces="none", method="POST")
+    # return g.query(query)
+    resp = requests.post(
+        endpoint_url,
+        headers={
+            "Accept": "application/sparql-results+json",
+            # "User-agent": "sparqlwrapper 2.0.1a0 (rdflib.github.io/sparqlwrapper)"
+        },
+        json={"query": query},
+        timeout=60,
+    )
+    resp.raise_for_status()
+    return resp.json()

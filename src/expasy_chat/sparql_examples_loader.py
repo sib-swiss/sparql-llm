@@ -1,13 +1,16 @@
 import re
+import warnings
 from typing import Any
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
 from rdflib.plugins.sparql import prepareQuery
 from SPARQLWrapper import SPARQLWrapper
 
 from expasy_chat.utils import GET_PREFIXES_QUERY
+
+warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 
 GET_SPARQL_EXAMPLES_QUERY = """PREFIX sh: <http://www.w3.org/ns/shacl#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -47,7 +50,7 @@ class SparqlExamplesLoader(BaseLoader):
             self.sparql_endpoint.setQuery(GET_PREFIXES_QUERY)
             res = self.sparql_endpoint.query().convert()
             for row in res["results"]["bindings"]:
-                # TODO: we might be able to remove this now that prefixes are included
+                # TODO: we might be able to remove this soon, when prefixes will be included in all endpoints
                 prefix_map[row["prefix"]["value"]] = row["namespace"]["value"]
 
             self.sparql_endpoint.setQuery(GET_SPARQL_EXAMPLES_QUERY)
