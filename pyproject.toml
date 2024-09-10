@@ -24,7 +24,6 @@ dependencies = [
     "requests",
     "rdflib",
     "oxrdflib",
-    "SPARQLWrapper",
     "pandas",
     "openai",
     "bs4",
@@ -44,11 +43,12 @@ dependencies = [
 test = [
     "ruff",
     "pip-tools",
-    # "tqdm",
+    "SPARQLWrapper",
     "ipykernel",
     "python-dotenv",
     # "jupyter",
     # "ipywidgets",
+    # "tqdm",
 ]
 cpu = [
     "fastembed",

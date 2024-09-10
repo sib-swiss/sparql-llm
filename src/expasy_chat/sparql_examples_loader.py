@@ -6,9 +6,8 @@ from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
 from rdflib.plugins.sparql import prepareQuery
-from SPARQLWrapper import SPARQLWrapper
 
-from expasy_chat.utils import GET_PREFIXES_QUERY
+from expasy_chat.utils import GET_PREFIXES_QUERY, query_sparql
 
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 
@@ -37,8 +36,6 @@ class SparqlExamplesLoader(BaseLoader):
         """
         self.endpoint_url = endpoint_url
         self.verbose = verbose
-        self.sparql_endpoint = SPARQLWrapper(endpoint_url)
-        self.sparql_endpoint.setReturnFormat("json")
 
     def load(self) -> list[Document]:
         """Load and return documents from the SPARQL endpoint."""
@@ -47,14 +44,12 @@ class SparqlExamplesLoader(BaseLoader):
         # Get prefixes
         prefix_map: dict[str, str] = {}
         try:
-            self.sparql_endpoint.setQuery(GET_PREFIXES_QUERY)
-            res = self.sparql_endpoint.query().convert()
+            res = query_sparql(GET_PREFIXES_QUERY, self.endpoint_url)
             for row in res["results"]["bindings"]:
                 # TODO: we might be able to remove this soon, when prefixes will be included in all endpoints
                 prefix_map[row["prefix"]["value"]] = row["namespace"]["value"]
 
-            self.sparql_endpoint.setQuery(GET_SPARQL_EXAMPLES_QUERY)
-            for row in self.sparql_endpoint.query().convert()["results"]["bindings"]:
+            for row in query_sparql(GET_SPARQL_EXAMPLES_QUERY, self.endpoint_url)["results"]["bindings"]:
                 docs.append(self._create_document(row, prefix_map))
         except Exception as e:
             print(f"Could not retrieve SPARQL examples from endpoint {self.endpoint_url}: {e}")

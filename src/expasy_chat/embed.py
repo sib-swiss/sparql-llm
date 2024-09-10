@@ -1,3 +1,5 @@
+import time
+
 import requests
 from bs4 import BeautifulSoup
 from fastembed import TextEmbedding
@@ -187,11 +189,22 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
             vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
         )
 
-    # questions = [q["question"] for q in docs]
+    questions = [q["question"] for q in docs]
     questions = [q.page_content for q in docs]
     output = embedding_model.embed(questions)
     print(f"Done generating embeddings for {len(questions)} documents")
 
+    # print(f"Generating embeddings for {len(docs)} documents")
+    # vectordb.upload_points(
+    #     collection_name=settings.docs_collection_name,
+    #     points=[
+    #         models.PointStruct(
+    #             id=idx, vector=next(iter(embedding_model.embed(doc.page_content))).tolist(), payload=doc.metadata
+    #         )
+    #         for idx, doc in enumerate(docs)
+    #     ],
+    # )
+    start_time = time.time()
     vectordb.upsert(
         collection_name=settings.docs_collection_name,
         points=models.Batch(
@@ -199,8 +212,9 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
             vectors=[embeddings.tolist() for embeddings in output],
             payloads=[doc.metadata for doc in docs],
         ),
+        # wait=False, # Waiting for indexing to finish or not
     )
-    print("Done inserting documents into the vectordb")
+    print(f"Done inserting and indexing documents into the vectordb in {time.time() - start_time} seconds")
 
 
 if __name__ == "__main__":

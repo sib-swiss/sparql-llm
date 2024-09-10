@@ -90,7 +90,7 @@ class ChatCompletionRequest(BaseModel):
     max_tokens: Optional[int] = 512
     temperature: Optional[float] = 0.0
     stream: Optional[bool] = False
-    validate: Optional[bool] = True
+    validate_output: Optional[bool] = True
     api_key: Optional[str] = None
 
 
@@ -212,7 +212,7 @@ async def chat_completions(request: ChatCompletionRequest):
 
     chat_resp_md = (
         validate_and_fix_sparql(response.choices[0].message.content, all_messages)
-        if request.validate
+        if request.validate_output
         else response.choices[0].message.content
     )
 
@@ -224,6 +224,7 @@ async def chat_completions(request: ChatCompletionRequest):
         "choices": [{"message": Message(role="assistant", content=chat_resp_md)}],
         "docs": query_hits + docs_hits,
         "full_prompt": prompt_with_context,
+        "usage": response.usage,
     }
     # NOTE: the response is similar to OpenAI API, but we add the list of hits and the full prompt used to ask the question
 

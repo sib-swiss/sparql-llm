@@ -67,6 +67,11 @@ Try to always answer with one query, if the answer lies in different endpoints, 
             "endpoint_url": "https://biosoda.unil.ch/graphdb/repositories/emi-dbgi",
             # "homepage": "https://dbgi.eu/",
         },
+        {
+            "label": "SwissLipids",
+            "endpoint_url": "https://beta.sparql.swisslipids.org/",
+            "homepage": "https://www.swisslipids.org",
+        },
         # Nothing in those endpoints:
         {
             "label": "Rhea",
@@ -79,22 +84,17 @@ Try to always answer with one query, if the answer lies in different endpoints, 
             "homepage": "https://www.metanetx.org/",
         },
         {
-            "label": "NextProt",
-            # "endpoint_url": "https://api.nextprot.org/sparql",
-            "endpoint_url": "https://sparql.nextprot.org",
-            "homepage": "https://www.nextprot.org/",
-        },
-        {
             "label": "OrthoDB",
             "endpoint_url": "https://sparql.orthodb.org/sparql/",
             "homepage": "https://www.orthodb.org/",
         },
-        # 500 Internal Error, but this one should work, maybe error due to SparqlWrapper
-        {
-            "label": "SwissLipids",
-            "endpoint_url": "https://beta.sparql.swisslipids.org/",
-            "homepage": "https://www.swisslipids.org",
-        },
+        # Error querying NExtProt
+        # {
+        #     "label": "NextProt",
+        #     # "endpoint_url": "https://api.nextprot.org/sparql",
+        #     "endpoint_url": "https://sparql.nextprot.org",
+        #     "homepage": "https://www.nextprot.org/",
+        # },
         # {
         #     "label": "GlyConnect",
         #     "endpoint_url": "https://glyconnect.expasy.org/sparql",

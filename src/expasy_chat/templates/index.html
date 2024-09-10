@@ -431,6 +431,7 @@
                     // Don't stream, await full response with additional checks done on the server
                     try {
                         const data = await response.json();
+                        console.log("Complete response", data);
                         const respMsg = data.choices[0].message.content;
                         messages.push({role: "assistant", content: respMsg})
                         appendMessage(respMsg, "assistant");

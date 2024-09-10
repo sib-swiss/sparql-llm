@@ -1,7 +1,6 @@
 import json
 
 from curies_rs import Converter
-from SPARQLWrapper import SPARQLWrapper
 import requests
 
 GET_PREFIXES_QUERY = """PREFIX sh: <http://www.w3.org/ns/shacl#>
@@ -18,10 +17,11 @@ def get_prefixes_for_endpoints(endpoints: list[str]) -> dict[str, str]:
     prefixes = {}
     for endpoint_url in endpoints:
         try:
-            sparql_endpoint = SPARQLWrapper(endpoint_url)
-            sparql_endpoint.setReturnFormat("json")
-            sparql_endpoint.setQuery(GET_PREFIXES_QUERY)
-            for row in sparql_endpoint.query().convert()["results"]["bindings"]:
+            # sparql_endpoint = SPARQLWrapper(endpoint_url)
+            # sparql_endpoint.setReturnFormat("json")
+            # sparql_endpoint.setQuery(GET_PREFIXES_QUERY)
+
+            for row in query_sparql(GET_PREFIXES_QUERY, endpoint_url)["results"]["bindings"]:
                 if row["namespace"]["value"] not in prefixes.values():
                     prefixes[row["prefix"]["value"]] = row["namespace"]["value"]
         except Exception as e:
@@ -60,13 +60,9 @@ WHERE {
 
 def get_void_dict(endpoint_url: str) -> dict[str, dict[str, list[str]]]:
     """Get a dict of VoID description of an endpoint: dict[subject_cls][predicate] = list[object_cls/datatype]"""
-    sparql_endpoint = SPARQLWrapper(endpoint_url)
-    sparql_endpoint.setQuery(GET_VOID_DESC)
-    sparql_endpoint.setReturnFormat("json")
     void_dict = {}
     try:
-        void_res = sparql_endpoint.query().convert()
-        for void_triple in void_res["results"]["bindings"]:
+        for void_triple in query_sparql(GET_VOID_DESC, endpoint_url)["results"]["bindings"]:
             if void_triple["subjectClass"]["value"] not in void_dict:
                 void_dict[void_triple["subjectClass"]["value"]] = {}
             if void_triple["prop"]["value"] not in void_dict[void_triple["subjectClass"]["value"]]:
@@ -86,19 +82,29 @@ def get_void_dict(endpoint_url: str) -> dict[str, dict[str, list[str]]]:
     return void_dict
 
 
-def query_sparql(query: str, endpoint_url: str) -> dict:
+def query_sparql(query: str, endpoint_url: str, post: bool = False, timeout: int | None = None) -> dict:
     """Execute a SPARQL query on a SPARQL endpoint using requests"""
-    # g = Graph(SPARQLStore(endpoint_url))
-    # # g = Graph(store, identifier=None, bind_namespaces="none", method="POST")
-    # return g.query(query)
-    resp = requests.post(
-        endpoint_url,
-        headers={
-            "Accept": "application/sparql-results+json",
-            # "User-agent": "sparqlwrapper 2.0.1a0 (rdflib.github.io/sparqlwrapper)"
-        },
-        json={"query": query},
-        timeout=60,
-    )
+    if post:
+        resp = requests.post(
+            endpoint_url,
+            headers={
+                "Accept": "application/sparql-results+json",
+                # "User-agent": "sparqlwrapper 2.0.1a0 (rdflib.github.io/sparqlwrapper)"
+            },
+            data={"query": query},
+            timeout=timeout,
+        )
+    else:
+        # NOTE: We prefer GET because in the past it seemed like some endpoints at the SIB were having issues with POST
+        # But not sure if this is still the case
+        resp = requests.get(
+            endpoint_url,
+            headers={
+                "Accept": "application/sparql-results+json",
+                # "User-agent": "sparqlwrapper 2.0.1a0 (rdflib.github.io/sparqlwrapper)"
+            },
+            params={"query": query},
+            timeout=timeout,
+        )
     resp.raise_for_status()
     return resp.json()

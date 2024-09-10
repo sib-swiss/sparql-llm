@@ -1,6 +1,4 @@
-from SPARQLWrapper import SPARQLWrapper
-
-from expasy_chat.utils import get_prefix_converter, get_prefixes_for_endpoints, get_void_dict
+from expasy_chat.utils import get_prefix_converter, get_prefixes_for_endpoints, get_void_dict, query_sparql
 
 DEFAULT_NAMESPACES_TO_IGNORE = [
     "http://www.w3.org/ns/sparql-service-description#",
@@ -77,13 +75,9 @@ SELECT DISTINCT * WHERE {{
     }}
     VALUES ?cls {{ <{"> <".join(shex_dict.keys())}> }}
 }}"""
-    sparql_endpoint = SPARQLWrapper(endpoint_url)
-    sparql_endpoint.setQuery(get_labels_query)
-    sparql_endpoint.setMethod("POST")
-    sparql_endpoint.setReturnFormat("json")
     void_dict = {}
     try:
-        label_res = sparql_endpoint.query().convert()
+        label_res = query_sparql(get_labels_query, endpoint_url, post=True)
         for label_triple in label_res["results"]["bindings"]:
             cls = label_triple["cls"]["value"]
             if cls not in shex_dict:
