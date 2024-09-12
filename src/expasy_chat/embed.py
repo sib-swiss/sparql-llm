@@ -189,7 +189,6 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
             vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
         )
 
-    questions = [q["question"] for q in docs]
     questions = [q.page_content for q in docs]
     output = embedding_model.embed(questions)
     print(f"Done generating embeddings for {len(questions)} documents")

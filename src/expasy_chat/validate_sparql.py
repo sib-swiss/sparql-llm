@@ -4,7 +4,6 @@ from curies_rs import Converter
 from rdflib import ConjunctiveGraph, Namespace, URIRef, Variable
 from rdflib.paths import MulPath, Path, SequencePath
 from rdflib.plugins.sparql import prepareQuery
-from rdflib.plugins.sparql.sparql import Query
 
 from expasy_chat.utils import get_prefix_converter, get_prefixes_for_endpoints, get_void_dict
 
@@ -57,7 +56,7 @@ sqc = Namespace("http://example.org/sqc/")  # SPARQL query check
 
 def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> tuple[ConjunctiveGraph, dict]:
     """Convert a SPARQL query string to a dictionary of triples looking like dict[endpoint][subject][predicate] = list[object]"""
-    translated_query: Query = prepareQuery(sparql_query)
+    translated_query = prepareQuery(sparql_query)
     query_dict = {}
     path_var_count = 1
     # We don't really use the graph finally, only the query_dict

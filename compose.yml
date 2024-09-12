@@ -40,6 +40,8 @@ services:
     # networks:
     #   - default
 
+# TODO: add ollama
+
 # networks:
 #   default:
 #     driver: pasta

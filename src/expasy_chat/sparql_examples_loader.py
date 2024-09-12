@@ -16,7 +16,7 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 SELECT DISTINCT ?comment ?query
 WHERE {
     ?sq a sh:SPARQLExecutable ;
-        rdfs:label|rdfs:comment ?comment ;
+        rdfs:comment ?comment ;
         sh:select|sh:ask|sh:construct|sh:describe ?query .
 } ORDER BY ?sq"""
 

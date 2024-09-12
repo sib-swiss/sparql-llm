@@ -34,14 +34,10 @@ STARTUP_PROMPT = "Here is a list of reference questions and query answers releva
 INTRO_USER_QUESTION_PROMPT = "The question from the user is:"
 
 client = OpenAI()
-
 # client = OpenAI(
-#     api_key=os.environ.get("GLHF_API_KEY"),
+#     api_key=settings.glhf_api_key,
 #     base_url="https://glhf.chat/api/openai/v1",
 # )
-# # LLM_MODEL = "hf:meta-lama/Meta-Llama-3.1-405B-Instruct"
-# # LLM_MODEL = "hf:mistralai/Mistral-7B-Instruct-v0.3"
-# LLM_MODEL = "hf:meta-lama/Meta-Llama-3.1-70B-Instruct"
 
 vectordb = get_vectordb()
 embedding_model = get_embedding_model()
@@ -151,7 +147,8 @@ async def chat_completions(request: ChatCompletionRequest):
         limit=settings.retrieved_queries_count,
     )
     for query_hit in query_hits:
-        prompt_with_context += f"{query_hit.payload['question']}\nQuery to run in SPARQL endpoint {query_hit.payload['endpoint_url']}\n\n{query_hit.payload['answer']}\n\n"
+        prompt_with_context += f"{query_hit.payload['question']}:\n\n```sparql\n# {query_hit.payload['endpoint_url']}\n{query_hit.payload['answer']}\n```\n\n"
+        # prompt_with_context += f"{query_hit.payload['question']}\nQuery to run in SPARQL endpoint {query_hit.payload['endpoint_url']}\n\n{query_hit.payload['answer']}\n\n"
 
     # Get the most relevant documents other than SPARQL query examples from the search engine (ShEx shapes, general infos)
     docs_hits = vectordb.search(
@@ -210,6 +207,7 @@ async def chat_completions(request: ChatCompletionRequest):
             stream_openai(response, query_hits + docs_hits, prompt_with_context), media_type="application/x-ndjson"
         )
 
+    print(response.choices[0].message.content)
     chat_resp_md = (
         validate_and_fix_sparql(response.choices[0].message.content, all_messages)
         if request.validate_output
@@ -240,7 +238,10 @@ def validate_and_fix_sparql(md_resp: str, messages: list[Message], try_count: in
     for gen_query in generated_sparqls:
         try:
             translateQuery(parseQuery(gen_query["query"]))
-            validate_sparql_with_void(gen_query["query"], gen_query["endpoint_url"], prefix_converter)
+            if gen_query["endpoint_url"]:
+                validate_sparql_with_void(gen_query["query"], gen_query["endpoint_url"], prefix_converter)
+            else:
+                print("Endpoint URL not provided with the query")
 
         except Exception as e:
             if "Unknown namespace prefix" in str(e):
