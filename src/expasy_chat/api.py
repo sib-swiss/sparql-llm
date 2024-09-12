@@ -239,7 +239,9 @@ def validate_and_fix_sparql(md_resp: str, messages: list[Message], try_count: in
         try:
             translateQuery(parseQuery(gen_query["query"]))
             if gen_query["endpoint_url"]:
-                validate_sparql_with_void(gen_query["query"], gen_query["endpoint_url"], prefix_converter)
+                issues = validate_sparql_with_void(gen_query["query"], gen_query["endpoint_url"], prefix_converter)
+                if len(issues) > 1:
+                    raise ValueError(f"Validation issues:\n{'\n'.join(issues)}")
             else:
                 print("Endpoint URL not provided with the query")
 

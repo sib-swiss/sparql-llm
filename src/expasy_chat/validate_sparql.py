@@ -154,13 +154,13 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> tuple[Conju
     return g, query_dict
 
 
-def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: Converter | None = None) -> None:
+def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: Converter | None = None) -> set[str]:
     """Validate SPARQL query using the VoID description of endpoints. Raise exception if errors found."""
     if prefix_converter is None:
         prefix_converter = get_prefix_converter(get_prefixes_for_endpoints([endpoint_url]))
 
     def validate_triple_pattern(
-        subj, subj_dict, void_dict, endpoint, error_msgs, parent_type=None, parent_pred=None
+        subj: str, subj_dict, void_dict, endpoint: str, issues: set[str], parent_type=None, parent_pred=None
     ) -> set[str]:
         pred_dict = subj_dict.get(subj, {})
         # Direct type provided for this entity
@@ -170,19 +170,17 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: C
                     if pred == "http://www.w3.org/1999/02/22-rdf-syntax-ns#type":
                         continue
                     if subj_type not in void_dict:
-                        error_msgs.add(
-                            f"Type {prefix_converter.compress(subj_type)} for subject {subj} in endpoint {endpoint} does not exist. Available classes are: {', '.join(prefix_converter.compress_list(list(void_dict.keys())))}"
-                        )
+                        issues.add(f"Type {prefix_converter.compress(subj_type)} for subject {subj} in endpoint {endpoint} does not exist. Available classes are: {', '.join(prefix_converter.compress_list(list(void_dict.keys())))}")
                     elif pred not in void_dict.get(subj_type, {}):
                         # TODO: also check if object type matches? (if defined, because it's not always available)
-                        error_msgs.add(
-                            f"Subject {subj} with type {prefix_converter.compress(subj_type)} in endpoint {endpoint} does not support the predicate {prefix_converter.compress(pred)} according to the VoID description. It can have the following predicates: {', '.join(prefix_converter.compress_list(list(void_dict.get(subj_type, {}).keys())))}"
+                        issues.add(
+                            f"Subject {subj} with type {prefix_converter.compress(subj_type)} in endpoint {endpoint} does not support the predicate {prefix_converter.compress(pred)}. It can have the following predicates: {', '.join(prefix_converter.compress_list(list(void_dict.get(subj_type, {}).keys())))}"
                         )
                     for obj in pred_dict[pred]:
                         # Recursively validates objects that are variables
                         if obj.startswith("?"):
-                            error_msgs = validate_triple_pattern(
-                                obj, subj_dict, void_dict, endpoint, error_msgs, subj_type, pred
+                            issues = validate_triple_pattern(
+                                obj, subj_dict, void_dict, endpoint, issues, subj_type, pred
                             )
                     # TODO: if object is a variable, we check this variable
                     # We can pass the parent type to the function in case no type is defined for the child
@@ -206,14 +204,14 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: C
                             for obj in pred_dict[pred]:
                                 # If object is variable, we try to validate it too passing the potential type we just validated
                                 if obj.startswith("?"):
-                                    error_msgs = validate_triple_pattern(
-                                        obj, subj_dict, void_dict, endpoint, error_msgs, potential_type, pred
+                                    issues = validate_triple_pattern(
+                                        obj, subj_dict, void_dict, endpoint, issues, potential_type, pred
                                     )
                         break
                 if missing_pred is not None:
                     # print(f"!!!! Subject {subj} {parent_type} {parent_pred} is not a valid {potential_types} !")
-                    error_msgs.add(
-                        f"Subject {subj} in endpoint {endpoint} does not support the predicate {prefix_converter.compress(missing_pred)} according to the VoID description. Correct predicate might be one of the following: {', '.join(prefix_converter.compress_list(list(potential_preds)))} (we inferred this variable might be of the type {prefix_converter.compress(potential_type)})"
+                    issues.add(
+                        f"Subject {subj} in endpoint {endpoint} does not support the predicate {prefix_converter.compress(missing_pred)}. Correct predicate might be one of the following: {', '.join(prefix_converter.compress_list(list(potential_preds)))} (we inferred this variable might be of the type {prefix_converter.compress(potential_type)})"
                     )
 
         # TODO: when no type and no parent but more than 1 predicate is used, we could try to infer the type from the predicates
@@ -238,10 +236,10 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: C
         #                 f"Predicate {prefix_converter.compress(pred)} used by subject {subj} in endpoint {endpoint} is not supported according to the VoID description. Here are the available predicates: {', '.join(prefix_converter.compress_list(list(all_preds)))}"
         #             )
 
-        return error_msgs
+        return issues
 
     _g, query_dict = sparql_query_to_dict(query, endpoint_url)
-    error_msgs: set[str] = set()
+    issues_msgs: set[str] = set()
     # error_msgs = {}
 
     # Go through the query BGPs and check if they match the VoID description
@@ -251,10 +249,29 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: C
             continue
 
         for subj in subj_dict:
-            error_msgs = validate_triple_pattern(subj, subj_dict, void_dict, endpoint, error_msgs)
-    if len(error_msgs) > 0:
-        raise Exception("\n".join(error_msgs))
-    # TODO: return a structured list of errors instead of raising an exception
-    # { "endpoint": "", "subject": "", "type": "", "inferred_type": "",
-    # "wrong_predicate": "", "potential_predicates": [], "error_msg": "" }
-    # }
+            issues_msgs = validate_triple_pattern(subj, subj_dict, void_dict, endpoint, issues_msgs)
+
+    return issues_msgs
+
+    # TODO: figure out a structured way to store errors?
+    # errors.add(
+    #     {
+    #         "endpoint": endpoint, "error_type": "type_not_found", # ??
+    #         "subject": subj, "type": subj_type, "inferred_type": "",
+    #         "wrong_type": "", "available_types": list(void_dict.keys()),
+    #         "wrong_predicate": "", "available_predicates": list(void_dict.keys()),
+    #         "message": f"Type {prefix_converter.compress(subj_type)} for subject {subj} in endpoint {endpoint} does not exist. Available classes are: {', '.join(prefix_converter.compress_list(list(void_dict.keys())))}"
+    #     }
+    # )
+
+# @dataclass
+# class QueryIssue:
+#     endpoint: str
+#     error_type: str
+#     subject: str
+#     type: str
+#     inferred_type: str
+#     wrong_class: str
+#     wrong_predicate: str
+#     available_options: list[str]
+#     message: str
