@@ -1,17 +1,19 @@
 import re
+from typing import Any
 
 from curies_rs import Converter
 from rdflib import ConjunctiveGraph, Namespace, URIRef, Variable
-from rdflib.paths import MulPath, Path, SequencePath
+from rdflib.paths import MulPath, Path, SequencePath, AlternativePath
 from rdflib.plugins.sparql import prepareQuery
+from rdflib.plugins.sparql.parserutils import CompValue
 
-from expasy_chat.utils import get_prefix_converter, get_prefixes_for_endpoints, get_void_dict
+from expasy_chat.utils import TripleDict, get_prefix_converter, get_prefixes_for_endpoints, get_void_dict
 
 queries_pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
 endpoint_pattern = re.compile(r"^#.*(https?://[^\s]+)", re.MULTILINE)
 
 
-def extract_sparql_queries(md_resp: str) -> list[dict[str, str]]:
+def extract_sparql_queries(md_resp: str) -> list[dict[str, str | None]]:
     """Extract SPARQL queries and endpoint URL from a markdown response."""
     extracted_queries = []
     queries = queries_pattern.findall(md_resp)
@@ -20,7 +22,7 @@ def extract_sparql_queries(md_resp: str) -> list[dict[str, str]]:
         extracted_queries.append(
             {
                 "query": str(query).strip(),
-                "endpoint_url": extracted_endpoint.group(1) if extracted_endpoint else None,
+                "endpoint_url": str(extracted_endpoint.group(1)) if extracted_endpoint else None,
             }
         )
     return extracted_queries
@@ -54,19 +56,22 @@ rh = Namespace("http://rdf.rhea-db.org/")
 sqc = Namespace("http://example.org/sqc/")  # SPARQL query check
 
 
-def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> tuple[ConjunctiveGraph, dict]:
+# Quite simlar to the VoidDict type, but we also store the endpoints in an outer dict
+SparqlTriplesDict = dict[str, TripleDict]
+
+def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> SparqlTriplesDict:
     """Convert a SPARQL query string to a dictionary of triples looking like dict[endpoint][subject][predicate] = list[object]"""
     translated_query = prepareQuery(sparql_query)
-    query_dict = {}
+    query_dict: SparqlTriplesDict = {}
     path_var_count = 1
-    # We don't really use the graph finally, only the query_dict
-    g = ConjunctiveGraph()
-    g.bind("up", up)
-    g.bind("rh", rh)
-    g.bind("sqc", sqc)
+    # # We don't really use the graph finally, only the query_dict
+    # g = ConjunctiveGraph()
+    # g.bind("up", up)
+    # g.bind("rh", rh)
+    # g.bind("sqc", sqc)
 
     # Recursively check all parts of the query to find BGPs
-    def process_part(part, endpoint: str):
+    def process_part(part: Any, endpoint: str) -> None:
         nonlocal path_var_count
         # print(part)
         if isinstance(part, list):
@@ -83,15 +88,15 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> tuple[Conju
                     # print(triple)
                     subj, pred, obj = triple[0], triple[1], triple[2]
                     # Replace variables with resources from the sqc namespace
-                    if not isinstance(pred, Path):
-                        g.add(
-                            (
-                                sqc[str(subj)] if isinstance(subj, Variable) else subj,
-                                sqc[str(pred)] if isinstance(pred, Variable) else pred,
-                                sqc[str(obj)] if isinstance(obj, Variable) else obj,
-                                URIRef(endpoint),
-                            )
-                        )
+                    # if not isinstance(pred, Path):
+                    #     g.add(
+                    #         (
+                    #             sqc[str(subj)] if isinstance(subj, Variable) else subj,
+                    #             sqc[str(pred)] if isinstance(pred, Variable) else pred,
+                    #             sqc[str(obj)] if isinstance(obj, Variable) else obj,
+                    #             URIRef(endpoint),
+                    #         )
+                    #     )
                     if isinstance(subj, Variable):
                         subj = f"?{subj}"
                     if isinstance(pred, Variable):
@@ -102,6 +107,9 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> tuple[Conju
                         query_dict[endpoint] = {}
                     if str(subj) not in query_dict[endpoint]:
                         query_dict[endpoint][str(subj)] = {}
+                    # print(pred, type(pred))
+                    # TODO: handle recursively when paths are used inside paths e.g. https://github.com/sib-swiss/sparql-examples/blob/master/examples/UniProt/26_component_HLA_class_I_histocompatibility_domain.ttl
+                    # protein (up:recommendedName|up:alternativeName)|((up:domain|up:component)/(up:recommendedName|up:alternativeName)) ?structuredName .
                     if isinstance(pred, Path):
                         # TODO: handling paths
                         if isinstance(pred, MulPath):
@@ -123,6 +131,13 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> tuple[Conju
                                     subj = path_var_str
                                 else:
                                     query_dict[endpoint][str(subj)][str(path_pred)] = [str(obj)]
+                        elif isinstance(pred, AlternativePath):
+                            for path_pred in pred.args:
+                                if str(path_pred) not in query_dict[endpoint][str(subj)]:
+                                    query_dict[endpoint][str(subj)][str(path_pred)] = []
+                                query_dict[endpoint][str(subj)][str(path_pred)].append(str(obj))
+                            # print("YEEE", pred, type(pred))
+                            # print(pred.args)
                         continue
                     elif str(pred) not in query_dict[endpoint][str(subj)]:
                         query_dict[endpoint][str(subj)][str(pred)] = []
@@ -134,24 +149,33 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> tuple[Conju
             process_part(part.p1, endpoint)
         if hasattr(part, "p2"):
             process_part(part.p2, endpoint)
+        if hasattr(part, "expr"):
+            process_part(part.expr, endpoint)
 
         # Meeting a SERVICE clause
         # (can't be found in RDFLib evaluate because it's a special case,
         # they use the service_string directly with a regex)
-        if hasattr(part, "graph") and hasattr(part, "service_string") and hasattr(part, "term"):
+        if hasattr(part, "graph") and hasattr(part, "service_string") and hasattr(part, "term") and part.term is not None:
             process_part(part.graph, str(part.term))
+        elif hasattr(part, "graph") and hasattr(part, "service_string") and hasattr(part, "term") and part.term is None:
+            # Apparently that's for optional in service
+            process_part(part.graph, endpoint)
+        elif hasattr(part, "graph"):
+            print(part)
+            process_part(part.graph, endpoint)
+
         if hasattr(part, "where"):
             process_part(part.where, endpoint)
         if hasattr(part, "part"):
             process_part(part.part, endpoint)
 
-    def extract_basic_graph_pattern(algebra):
+    def extract_basic_graph_pattern(algebra: CompValue) -> None:
         if hasattr(algebra, "p"):
             process_part(algebra.p, sparql_endpoint)
 
     # print(translated_query.algebra)
     extract_basic_graph_pattern(translated_query.algebra)
-    return g, query_dict
+    return query_dict
 
 
 def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: Converter | None = None) -> set[str]:
@@ -160,7 +184,7 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: C
         prefix_converter = get_prefix_converter(get_prefixes_for_endpoints([endpoint_url]))
 
     def validate_triple_pattern(
-        subj: str, subj_dict, void_dict, endpoint: str, issues: set[str], parent_type=None, parent_pred=None
+        subj: str, subj_dict: TripleDict, void_dict: TripleDict, endpoint: str, issues: set[str], parent_type: str | None=None, parent_pred: str | None=None
     ) -> set[str]:
         pred_dict = subj_dict.get(subj, {})
         # Direct type provided for this entity
@@ -238,7 +262,7 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: C
 
         return issues
 
-    _g, query_dict = sparql_query_to_dict(query, endpoint_url)
+    query_dict = sparql_query_to_dict(query, endpoint_url)
     issues_msgs: set[str] = set()
     # error_msgs = {}
 
@@ -269,7 +293,6 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: C
 #     endpoint: str
 #     error_type: str
 #     subject: str
-#     type: str
 #     inferred_type: str
 #     wrong_class: str
 #     wrong_predicate: str

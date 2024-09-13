@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 version = "0.0.1"
 name = "expasy-chat"
 description = "Scripts for Expasy 4, prepare data, train models, etc."
@@ -36,6 +36,8 @@ dependencies = [
     "langchain-community",
     "curies-rs >=0.1.3",
     "pydantic-settings",
+    # "sparql-llm-utils @ git+https://github.com/vemonet/sparql-llm-utils.git"
+    # "sparql-llm-utils @ {root:uri}/sparql-llm-utils",
 ]
 
 
@@ -91,8 +93,8 @@ compile = "pip-compile -o requirements.txt pyproject.toml"
 packages = ["src/expasy_chat"]
 
 # If you need to import packages from git URLs:
-# [tool.hatch.metadata]
-# allow-direct-references = true
+[tool.hatch.metadata]
+allow-direct-references = true
 
 
 # https://github.com/astral-sh/ruff#configuration

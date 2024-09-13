@@ -1,6 +1,6 @@
-# 🦜✨ LLM utilities for SPARQL
+# 🦜✨ LLM utilities for SPARQL and RDF
 
-Utilities to improve LLMs capabilities when working with SPARQL endpoints. In particular improving SPARQL query generation.
+Utilities to improve LLMs capabilities when working with SPARQL endpoints and RDF knowledge graph. In particular improving SPARQL query generation.
 
 Loaders are compatible with LangChain, but they can also be used outside of LangChain as they just return a list of documents with metadata as JSON, which can then be loaded how you want in your vectorstore.
 
@@ -48,7 +48,7 @@ shex_str = get_shex_from_void("https://sparql.uniprot.org/sparql/")
 
 This takes a SPARQL query and validates the predicates/types used are compliant with the VoID description present in the SPARQL endpoint the query is executed on.
 
-This functions supports:
+This function supports:
 
 * federated queries (VoID description will be retrieved for each SERVICE call), 
 * path patterns (e.g. `orth:organism/obo:RO_0002162/up:scientificName`)

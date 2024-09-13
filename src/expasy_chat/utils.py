@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 from curies_rs import Converter
 import requests
@@ -14,7 +15,7 @@ WHERE {
 
 def get_prefixes_for_endpoints(endpoints: list[str]) -> dict[str, str]:
     """Return a dictionary of prefixes for the given endpoints."""
-    prefixes = {}
+    prefixes: dict[str, str] = {}
     for endpoint_url in endpoints:
         try:
             # sparql_endpoint = SPARQLWrapper(endpoint_url)
@@ -57,10 +58,13 @@ WHERE {
     }
 }"""
 
+# A dictionary to store triples like structure: dict[subject][predicate] = list[object]
+# Also used to store VoID description of an endpoint: dict[subject_cls][predicate] = list[object_cls/datatype]
+TripleDict = dict[str, dict[str, list[str]]]
 
-def get_void_dict(endpoint_url: str) -> dict[str, dict[str, list[str]]]:
+def get_void_dict(endpoint_url: str) -> TripleDict:
     """Get a dict of VoID description of an endpoint: dict[subject_cls][predicate] = list[object_cls/datatype]"""
-    void_dict = {}
+    void_dict: TripleDict = {}
     try:
         for void_triple in query_sparql(GET_VOID_DESC, endpoint_url)["results"]["bindings"]:
             if void_triple["subjectClass"]["value"] not in void_dict:
@@ -82,7 +86,7 @@ def get_void_dict(endpoint_url: str) -> dict[str, dict[str, list[str]]]:
     return void_dict
 
 
-def query_sparql(query: str, endpoint_url: str, post: bool = False, timeout: int | None = None) -> dict:
+def query_sparql(query: str, endpoint_url: str, post: bool = False, timeout: int | None = None) -> Any:
     """Execute a SPARQL query on a SPARQL endpoint using requests"""
     if post:
         resp = requests.post(
