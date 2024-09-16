@@ -48,6 +48,7 @@ test = [
     "SPARQLWrapper",
     "ipykernel",
     "python-dotenv",
+    "pandas",
     # "jupyter",
     # "ipywidgets",
     # "tqdm",
@@ -99,9 +100,11 @@ allow-direct-references = true
 
 # https://github.com/astral-sh/ruff#configuration
 [tool.ruff]
-src = ["src"]
 target-version = "py39"
 line-length = 120
+exclude = [
+    "notebooks",
+]
 
 [tool.ruff.lint]
 select = [
