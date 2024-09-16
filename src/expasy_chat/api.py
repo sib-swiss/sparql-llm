@@ -9,14 +9,15 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from openai import OpenAI, Stream
+from openai import Stream
+from openai._client import OpenAI
 from pydantic import BaseModel
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 from rdflib.plugins.sparql.algebra import translateQuery
 from rdflib.plugins.sparql.parser import parseQuery
 from starlette.middleware.cors import CORSMiddleware
 
-from expasy_chat.config import get_prefixes_dict, settings
+from expasy_chat.config import get_llm_client, get_prefixes_dict, settings
 from expasy_chat.embed import get_embedding_model, get_vectordb
 from expasy_chat.utils import get_prefix_converter
 from expasy_chat.validate_sparql import add_missing_prefixes, extract_sparql_queries, validate_sparql_with_void
@@ -33,11 +34,14 @@ from expasy_chat.validate_sparql import add_missing_prefixes, extract_sparql_que
 STARTUP_PROMPT = "Here is a list of reference questions and query answers relevant to the user question that will help you answer the user question accurately:"
 INTRO_USER_QUESTION_PROMPT = "The question from the user is:"
 
-client = OpenAI()
-# client = OpenAI(
-#     api_key=settings.glhf_api_key,
-#     base_url="https://glhf.chat/api/openai/v1",
-# )
+llm_model = "gpt-4o"
+# llm_model: str = "gpt-4o-mini"
+# Models from glhf:
+# llm_model: str = "hf:meta-llama/Meta-Llama-3.1-8B-Instruct"
+# llm_model: str = "hf:mistralai/Mixtral-8x22B-Instruct-v0.1"
+# llm_model: str = "hf:mistralai/Mistral-7B-Instruct-v0.3"
+# Not working in glhf
+# llm_model: str = "hf:meta-lama/Meta-Llama-3.1-405B-Instruct"
 
 vectordb = get_vectordb()
 embedding_model = get_embedding_model()
@@ -81,7 +85,7 @@ class Message(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
-    model: Optional[str] = "expasy"
+    model: Optional[str] = llm_model
     messages: list[Message]
     max_tokens: Optional[int] = 512
     temperature: Optional[float] = 0.0
@@ -120,6 +124,8 @@ async def stream_openai(response: Stream[Any], docs, full_prompt) -> AsyncGenera
 async def chat_completions(request: ChatCompletionRequest):
     if settings.expasy_api_key and request.api_key != settings.expasy_api_key:
         raise ValueError("Invalid API key")
+
+    client = get_llm_client(request.model)
 
     question: str = request.messages[-1].content if request.messages else ""
 
@@ -194,7 +200,7 @@ async def chat_completions(request: ChatCompletionRequest):
 
     # Send the prompt to OpenAI to get a response
     response = client.chat.completions.create(
-        model=settings.llm_model,
+        model=request.model,
         messages=all_messages,
         stream=request.stream,
         temperature=0,
@@ -207,9 +213,9 @@ async def chat_completions(request: ChatCompletionRequest):
             stream_openai(response, query_hits + docs_hits, prompt_with_context), media_type="application/x-ndjson"
         )
 
-    print(response.choices[0].message.content)
+    # print(response.choices[0].message.content)
     chat_resp_md = (
-        validate_and_fix_sparql(response.choices[0].message.content, all_messages)
+        validate_and_fix_sparql(response.choices[0].message.content, all_messages, client, request.model)
         if request.validate_output
         else response.choices[0].message.content
     )
@@ -227,7 +233,9 @@ async def chat_completions(request: ChatCompletionRequest):
     # NOTE: the response is similar to OpenAI API, but we add the list of hits and the full prompt used to ask the question
 
 
-def validate_and_fix_sparql(md_resp: str, messages: list[Message], try_count: int = 0) -> str:
+def validate_and_fix_sparql(
+    md_resp: str, messages: list[Message], client: OpenAI, llm_model: str, try_count: int = 0
+) -> str:
     """Recursive function to validate the SPARQL queries in the chat response and fix them if needed."""
 
     if try_count >= settings.max_try_fix_sparql:
@@ -241,7 +249,8 @@ def validate_and_fix_sparql(md_resp: str, messages: list[Message], try_count: in
             if gen_query["endpoint_url"]:
                 issues = validate_sparql_with_void(gen_query["query"], gen_query["endpoint_url"], prefix_converter)
                 if len(issues) > 1:
-                    raise ValueError(f"Validation issues:\n{'\n'.join(issues)}")
+                    issues_str = "\n".join(issues)
+                    raise ValueError(f"Validation issues:\n{issues_str}")
             else:
                 print("Endpoint URL not provided with the query")
 
@@ -265,7 +274,7 @@ Fix the SPARQL query helping yourself with the error message and context from pr
                 # {md_resp}
                 messages.append({"role": "assistant", "content": fix_prompt})
                 response = client.chat.completions.create(
-                    model=settings.llm_model,
+                    model=llm_model,
                     messages=messages,
                     stream=False,
                 )
@@ -275,7 +284,7 @@ Fix the SPARQL query helping yourself with the error message and context from pr
                     md_resp = md_resp.replace(gen_query["query"], fixed_query["query"])
     if error_detected:
         # Check again the fixed query
-        return validate_and_fix_sparql(md_resp, messages, try_count)
+        return validate_and_fix_sparql(md_resp, messages, client, llm_model, try_count)
     return md_resp
 
 
@@ -326,6 +335,7 @@ def chat_ui(request: Request) -> Any:
         {
             "request": request,
             "title": "Ask Expasy",
+            "llm_model": llm_model,
             "description": """Assistant to navigate resources from the Swiss Institute of Bioinformatics. Particularly knowledgeable about UniProt, OMA, Bgee, RheaDB, and SwissLipids. But still learning.
 
 Contact kru@sib.swiss if you have any feedback or suggestions.

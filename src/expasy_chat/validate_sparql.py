@@ -1,11 +1,11 @@
 import re
+from collections import defaultdict
 from typing import Any
 
 from curies_rs import Converter
-from rdflib import ConjunctiveGraph, Namespace, URIRef, Variable
-from rdflib.paths import MulPath, Path, SequencePath, AlternativePath
+from rdflib import Namespace, Variable
+from rdflib.paths import AlternativePath, MulPath, Path, SequencePath
 from rdflib.plugins.sparql import prepareQuery
-from rdflib.plugins.sparql.parserutils import CompValue
 
 from expasy_chat.utils import TripleDict, get_prefix_converter, get_prefixes_for_endpoints, get_void_dict
 
@@ -59,122 +59,78 @@ sqc = Namespace("http://example.org/sqc/")  # SPARQL query check
 # Quite simlar to the VoidDict type, but we also store the endpoints in an outer dict
 SparqlTriplesDict = dict[str, TripleDict]
 
+
 def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> SparqlTriplesDict:
     """Convert a SPARQL query string to a dictionary of triples looking like dict[endpoint][subject][predicate] = list[object]"""
-    translated_query = prepareQuery(sparql_query)
-    query_dict: SparqlTriplesDict = {}
+    query_dict: SparqlTriplesDict = defaultdict(TripleDict)
     path_var_count = 1
-    # # We don't really use the graph finally, only the query_dict
-    # g = ConjunctiveGraph()
-    # g.bind("up", up)
-    # g.bind("rh", rh)
-    # g.bind("sqc", sqc)
 
-    # Recursively check all parts of the query to find BGPs
-    def process_part(part: Any, endpoint: str) -> None:
+    def handle_path(endpoint: str, subj: str, pred: str | Path, obj: str):
+        """
+        Recursively handle a Path object in a SPARQL query.
+        Check here to understand why we need this: https://github.com/sib-swiss/sparql-examples/blob/master/examples/UniProt/26_component_HLA_class_I_histocompatibility_domain.ttl
+        """
         nonlocal path_var_count
-        # print(part)
-        if isinstance(part, list):
-            for sub_pattern in part:
-                process_part(sub_pattern, endpoint)
-        if hasattr(part, "name") and (part.name == "BGP" or part.name == "TriplesBlock"):
-            # if part.name == "BGP" or part.name == "TriplesBlock":
-            # print(part.triples)
-            for triples in part.triples:
-                # print(len(triples), triples)
-                # TripleBlock can have multiple triples in the same list...
-                for i in range(0, len(triples), 3):
-                    triple = triples[i : i + 3]
-                    # print(triple)
-                    subj, pred, obj = triple[0], triple[1], triple[2]
-                    # Replace variables with resources from the sqc namespace
-                    # if not isinstance(pred, Path):
-                    #     g.add(
-                    #         (
-                    #             sqc[str(subj)] if isinstance(subj, Variable) else subj,
-                    #             sqc[str(pred)] if isinstance(pred, Variable) else pred,
-                    #             sqc[str(obj)] if isinstance(obj, Variable) else obj,
-                    #             URIRef(endpoint),
-                    #         )
-                    #     )
-                    if isinstance(subj, Variable):
-                        subj = f"?{subj}"
-                    if isinstance(pred, Variable):
-                        pred = f"?{pred}"
-                    if isinstance(obj, Variable):
-                        obj = f"?{obj}"
-                    if endpoint not in query_dict:
-                        query_dict[endpoint] = {}
-                    if str(subj) not in query_dict[endpoint]:
-                        query_dict[endpoint][str(subj)] = {}
-                    # print(pred, type(pred))
-                    # TODO: handle recursively when paths are used inside paths e.g. https://github.com/sib-swiss/sparql-examples/blob/master/examples/UniProt/26_component_HLA_class_I_histocompatibility_domain.ttl
-                    # protein (up:recommendedName|up:alternativeName)|((up:domain|up:component)/(up:recommendedName|up:alternativeName)) ?structuredName .
-                    if isinstance(pred, Path):
-                        # TODO: handling paths
-                        if isinstance(pred, MulPath):
-                            # NOTE: at the moment we can't check MulPath because in OMA the nodes don't have types
-                            # And our system infer they might be orth:Protein, hence triggering an error that is not relevant
-                            if str(pred.path) not in query_dict[endpoint][str(subj)]:
-                                query_dict[endpoint][str(subj)][str(pred.path)] = []
-                            query_dict[endpoint][str(subj)][str(pred.path)].append(str(obj))
-                            continue
-                        elif isinstance(pred, SequencePath):
-                            # Creating variables for each step in the path
-                            for i_path, path_pred in enumerate(pred.args):
-                                path_var_count += 1
-                                if str(subj) not in query_dict[endpoint]:
-                                    query_dict[endpoint][str(subj)] = {}
-                                if i_path < len(pred.args) - 1:
-                                    path_var_str = f"?pathVar{path_var_count}"
-                                    query_dict[endpoint][str(subj)][str(path_pred)] = [path_var_str]
-                                    subj = path_var_str
-                                else:
-                                    query_dict[endpoint][str(subj)][str(path_pred)] = [str(obj)]
-                        elif isinstance(pred, AlternativePath):
-                            for path_pred in pred.args:
-                                if str(path_pred) not in query_dict[endpoint][str(subj)]:
-                                    query_dict[endpoint][str(subj)][str(path_pred)] = []
-                                query_dict[endpoint][str(subj)][str(path_pred)].append(str(obj))
-                            # print("YEEE", pred, type(pred))
-                            # print(pred.args)
-                        continue
-                    elif str(pred) not in query_dict[endpoint][str(subj)]:
-                        query_dict[endpoint][str(subj)][str(pred)] = []
-                    query_dict[endpoint][str(subj)][str(pred)].append(str(obj))
+        if isinstance(pred, MulPath):
+            handle_path(endpoint, subj, pred.path, obj)
+        elif isinstance(pred, SequencePath):
+            # Creating variables for each step in the path
+            for i_path, path_pred in enumerate(pred.args):
+                path_var_count += 1
+                if subj not in query_dict[endpoint]:
+                    query_dict[endpoint][subj] = defaultdict(list[str])
+                if i_path < len(pred.args) - 1:
+                    path_var_str = f"?pathVar{path_var_count}"
+                    handle_path(endpoint, subj, path_pred, path_var_str)
+                    subj = path_var_str
+                else:
+                    handle_path(endpoint, subj, path_pred, obj)
+        elif isinstance(pred, AlternativePath):
+            # We just create a different triple for each alternative like they are separate paths
+            for path_pred in pred.args:
+                handle_path(endpoint, subj, path_pred, obj)
+        else:
+            # If not a path, then we got to the bottom of it, it's a URI and we can add the triple
+            query_dict[endpoint][subj][str(pred)].append(obj)
 
-        if hasattr(part, "p"):
-            process_part(part.p, endpoint)
-        if hasattr(part, "p1"):
-            process_part(part.p1, endpoint)
-        if hasattr(part, "p2"):
-            process_part(part.p2, endpoint)
-        if hasattr(part, "expr"):
-            process_part(part.expr, endpoint)
+    def format_var_str(var: Any) -> Any:
+        """We don't want to return a str because pred might be a Path object"""
+        return f"?{var}" if isinstance(var, Variable) else var
 
-        # Meeting a SERVICE clause
-        # (can't be found in RDFLib evaluate because it's a special case,
-        # they use the service_string directly with a regex)
-        if hasattr(part, "graph") and hasattr(part, "service_string") and hasattr(part, "term") and part.term is not None:
-            process_part(part.graph, str(part.term))
-        elif hasattr(part, "graph") and hasattr(part, "service_string") and hasattr(part, "term") and part.term is None:
-            # Apparently that's for optional in service
-            process_part(part.graph, endpoint)
-        elif hasattr(part, "graph"):
-            print(part)
-            process_part(part.graph, endpoint)
+    def extract_triples(node: Any, endpoint: str):
+        """Recursively go down the nodes of a SPARQL query to find triples."""
+        nonlocal path_var_count
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key == "triples":
+                    for triples in value:
+                        # print(len(triples), triples)
+                        # TripleBlock that can be found inside SERVICE can have multiple triples in the same list... wtf is this format
+                        for i in range(0, len(triples), 3):
+                            triple = triples[i : i + 3]
+                            # print(triple)
+                            subj: str = str(format_var_str(triple[0]))
+                            pred = format_var_str(triple[1])
+                            obj: str = str(format_var_str(triple[2]))
+                            if subj not in query_dict[endpoint]:
+                                query_dict[endpoint][subj] = defaultdict(list[str])
+                            # print(pred, type(pred))
+                            if isinstance(pred, Path):
+                                handle_path(endpoint, subj, pred, obj)
+                            else:
+                                query_dict[endpoint][subj][str(pred)].append(obj)
 
-        if hasattr(part, "where"):
-            process_part(part.where, endpoint)
-        if hasattr(part, "part"):
-            process_part(part.part, endpoint)
+                # Handle SERVICE clauses
+                # NOTE: recursion issue when nested SERVICE clauses: https://github.com/RDFLib/rdflib/issues/2136
+                elif key == "graph" and hasattr(node, "term"):
+                    extract_triples(value, node.term)
+                else:
+                    extract_triples(value, endpoint)
+        elif isinstance(node, list):
+            for item in node:
+                extract_triples(item, endpoint)
 
-    def extract_basic_graph_pattern(algebra: CompValue) -> None:
-        if hasattr(algebra, "p"):
-            process_part(algebra.p, sparql_endpoint)
-
-    # print(translated_query.algebra)
-    extract_basic_graph_pattern(translated_query.algebra)
+    extract_triples(prepareQuery(sparql_query).algebra, sparql_endpoint)
     return query_dict
 
 
@@ -184,7 +140,13 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: C
         prefix_converter = get_prefix_converter(get_prefixes_for_endpoints([endpoint_url]))
 
     def validate_triple_pattern(
-        subj: str, subj_dict: TripleDict, void_dict: TripleDict, endpoint: str, issues: set[str], parent_type: str | None=None, parent_pred: str | None=None
+        subj: str,
+        subj_dict: TripleDict,
+        void_dict: TripleDict,
+        endpoint: str,
+        issues: set[str],
+        parent_type: str | None = None,
+        parent_pred: str | None = None,
     ) -> set[str]:
         pred_dict = subj_dict.get(subj, {})
         # Direct type provided for this entity
@@ -194,7 +156,9 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: C
                     if pred == "http://www.w3.org/1999/02/22-rdf-syntax-ns#type":
                         continue
                     if subj_type not in void_dict:
-                        issues.add(f"Type {prefix_converter.compress(subj_type)} for subject {subj} in endpoint {endpoint} does not exist. Available classes are: {', '.join(prefix_converter.compress_list(list(void_dict.keys())))}")
+                        issues.add(
+                            f"Type {prefix_converter.compress(subj_type)} for subject {subj} in endpoint {endpoint} does not exist. Available classes are: {', '.join(prefix_converter.compress_list(list(void_dict.keys())))}"
+                        )
                     elif pred not in void_dict.get(subj_type, {}):
                         # TODO: also check if object type matches? (if defined, because it's not always available)
                         issues.add(
@@ -287,6 +251,7 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: C
     #         "message": f"Type {prefix_converter.compress(subj_type)} for subject {subj} in endpoint {endpoint} does not exist. Available classes are: {', '.join(prefix_converter.compress_list(list(void_dict.keys())))}"
     #     }
     # )
+
 
 # @dataclass
 # class QueryIssue:

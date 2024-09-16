@@ -1,3 +1,4 @@
+from openai import OpenAI
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from expasy_chat.utils import get_prefixes_for_endpoints
@@ -6,26 +7,30 @@ from expasy_chat.utils import get_prefixes_for_endpoints
 # warnings.simplefilter(action="ignore", category=UserWarning)
 
 
+def get_llm_client(model: str) -> OpenAI:
+    if model.startswith("hf:"):
+        # Automatically use glhf API key if the model starts with "hf:"
+        return OpenAI(
+            api_key=settings.glhf_api_key,
+            base_url="https://glhf.chat/api/openai/v1",
+        )
+    return OpenAI()
+
+
 class Settings(BaseSettings):
     openai_api_key: str = ""
     glhf_api_key: str = ""
     expasy_api_key: str = ""
     logs_api_key: str = ""
-
-    llm_model: str = "gpt-4o"
-    # llm_model: str = "gpt-4o-mini"
-    # Models from glhf:
-    # llm_model: str = "hf:meta-llama/Meta-Llama-3.1-8B-Instruct"
-    # llm_model: str = "hf:mistralai/Mixtral-8x22B-Instruct-v0.1"
-
-    # llm_model: str = "hf:meta-lama/Meta-Llama-3.1-405B-Instruct"
-    # llm_model: str = "hf:mistralai/Mistral-7B-Instruct-v0.3"
-
+    # llm_model: str = "gpt-4o"
     # cheap_llm_model: str = "gpt-4o-mini"
 
     # https://qdrant.github.io/fastembed/examples/Supported_Models/
     embedding_model: str = "BAAI/bge-large-en-v1.5"
     embedding_dimensions: int = 1024
+    # embedding_model: str = "jinaai/jina-embeddings-v2-base-en"
+    # embedding_dimensions: int = 768
+
     ontology_chunk_size: int = 3000
     ontology_chunk_overlap: int = 200
 
@@ -45,8 +50,8 @@ Always indicate the URL of the endpoint on which the query should be executed in
 If answering with a query always derive your answer from the queries provided as examples in the prompt, don't try to create a query from nothing and do not provide a generic query.
 Try to always answer with one query, if the answer lies in different endpoints, provide a federated query.
 """
-# try to make it as efficient as possible to avoid timeout due to how large the datasets are, make sure the query written is valid SPARQL,
-# If the answer to the question is in the provided context, do not provide a query, just provide the answer, unless explicitly asked.
+    # try to make it as efficient as possible to avoid timeout due to how large the datasets are, make sure the query written is valid SPARQL,
+    # If the answer to the question is in the provided context, do not provide a query, just provide the answer, unless explicitly asked.
 
     endpoints: list[dict[str, str]] = [
         {

@@ -189,31 +189,18 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
             vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
         )
 
-    questions = [q.page_content for q in docs]
-    output = embedding_model.embed(questions)
-    print(f"Done generating embeddings for {len(questions)} documents")
-
-    # print(f"Generating embeddings for {len(docs)} documents")
-    # vectordb.upload_points(
-    #     collection_name=settings.docs_collection_name,
-    #     points=[
-    #         models.PointStruct(
-    #             id=idx, vector=next(iter(embedding_model.embed(doc.page_content))).tolist(), payload=doc.metadata
-    #         )
-    #         for idx, doc in enumerate(docs)
-    #     ],
-    # )
+    embeddings = embedding_model.embed([q.page_content for q in docs])
     start_time = time.time()
     vectordb.upsert(
         collection_name=settings.docs_collection_name,
         points=models.Batch(
             ids=list(range(1, len(docs) + 1)),
-            vectors=[embeddings.tolist() for embeddings in output],
+            vectors=embeddings,
             payloads=[doc.metadata for doc in docs],
         ),
         # wait=False, # Waiting for indexing to finish or not
     )
-    print(f"Done inserting and indexing documents into the vectordb in {time.time() - start_time} seconds")
+    print(f"Done generating and indexing documents into the vectordb in {time.time() - start_time} seconds")
 
 
 if __name__ == "__main__":

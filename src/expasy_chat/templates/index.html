@@ -356,7 +356,7 @@
                 };
                 const body = JSON.stringify({
                     messages: messages,
-                    model: "gpt-4o",
+                    model: "{{ llm_model }}",
                     max_tokens: 50,
                     stream: !addChecks.checked,
                     api_key: "{{ expasy_key }}",
@@ -398,7 +398,7 @@
                                         if (json.docs) {
                                             // appendSources(json.docs)
                                             docs = json.docs;
-                                            console.log(json.full_prompt)
+                                            // console.log(json.full_prompt)
                                         } else {
                                             const content = json.choices[0].delta?.content;
                                             if (content) {
@@ -432,6 +432,7 @@
                     try {
                         const data = await response.json();
                         console.log("Complete response", data);
+                        // console.log(data.full_prompt)
                         const respMsg = data.choices[0].message.content;
                         messages.push({role: "assistant", content: respMsg})
                         appendMessage(respMsg, "assistant");

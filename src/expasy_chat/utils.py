@@ -1,8 +1,8 @@
 import json
 from typing import Any
 
-from curies_rs import Converter
 import requests
+from curies_rs import Converter
 
 GET_PREFIXES_QUERY = """PREFIX sh: <http://www.w3.org/ns/shacl#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -61,6 +61,7 @@ WHERE {
 # A dictionary to store triples like structure: dict[subject][predicate] = list[object]
 # Also used to store VoID description of an endpoint: dict[subject_cls][predicate] = list[object_cls/datatype]
 TripleDict = dict[str, dict[str, list[str]]]
+
 
 def get_void_dict(endpoint_url: str) -> TripleDict:
     """Get a dict of VoID description of an endpoint: dict[subject_cls][predicate] = list[object_cls/datatype]"""
