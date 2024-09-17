@@ -1,6 +1,6 @@
 import re
 from collections import defaultdict
-from typing import Any
+from typing import Any, Optional
 
 from curies_rs import Converter
 from rdflib import Namespace, Variable
@@ -13,7 +13,7 @@ queries_pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
 endpoint_pattern = re.compile(r"^#.*(https?://[^\s]+)", re.MULTILINE)
 
 
-def extract_sparql_queries(md_resp: str) -> list[dict[str, str | None]]:
+def extract_sparql_queries(md_resp: str) -> list[dict[str, Optional[str]]]:
     """Extract SPARQL queries and endpoint URL from a markdown response."""
     extracted_queries = []
     queries = queries_pattern.findall(md_resp)
@@ -134,7 +134,7 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> SparqlTripl
     return query_dict
 
 
-def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: Converter | None = None) -> set[str]:
+def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: Optional[Converter] = None) -> set[str]:
     """Validate SPARQL query using the VoID description of endpoints. Raise exception if errors found."""
     if prefix_converter is None:
         prefix_converter = get_prefix_converter(get_prefixes_for_endpoints([endpoint_url]))
@@ -145,8 +145,8 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: C
         void_dict: TripleDict,
         endpoint: str,
         issues: set[str],
-        parent_type: str | None = None,
-        parent_pred: str | None = None,
+        parent_type: Optional[str] = None,
+        parent_pred: Optional[str] = None,
     ) -> set[str]:
         pred_dict = subj_dict.get(subj, {})
         # Direct type provided for this entity

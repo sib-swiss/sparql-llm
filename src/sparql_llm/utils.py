@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, Optional
 
 import requests
 from curies_rs import Converter
@@ -87,7 +87,7 @@ def get_void_dict(endpoint_url: str) -> TripleDict:
     return void_dict
 
 
-def query_sparql(query: str, endpoint_url: str, post: bool = False, timeout: int | None = None) -> Any:
+def query_sparql(query: str, endpoint_url: str, post: bool = False, timeout: Optional[int] = None) -> Any:
     """Execute a SPARQL query on a SPARQL endpoint using requests"""
     if post:
         resp = requests.post(

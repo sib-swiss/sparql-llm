@@ -1,3 +1,4 @@
+from typing import Optional
 from sparql_llm.utils import get_prefix_converter, get_prefixes_for_endpoints, get_void_dict, query_sparql
 
 DEFAULT_NAMESPACES_TO_IGNORE = [
@@ -16,7 +17,7 @@ def ignore_namespaces(ns_to_ignore: list[str], cls: str) -> bool:
 
 
 def get_shex_dict_from_void(
-    endpoint_url: str, prefix_map: dict[str, str] | None = None, namespaces_to_ignore: list[str] | None = None
+    endpoint_url: str, prefix_map: Optional[dict[str, str]] = None, namespaces_to_ignore: Optional[list[str]] = None
 ) -> dict[str, dict[str, str]]:
     """Get a dict of shex shapes from the VoID description."""
     prefix_map = prefix_map or get_prefixes_for_endpoints([endpoint_url])
@@ -92,7 +93,7 @@ SELECT DISTINCT * WHERE {{
     return shex_dict
 
 
-def get_shex_from_void(endpoint_url: str, namespaces_to_ignore: list[str] | None = None) -> str:
+def get_shex_from_void(endpoint_url: str, namespaces_to_ignore: Optional[list[str]] = None) -> str:
     """Function to build complete ShEx from VoID description with prefixes and all shapes"""
     prefix_map = get_prefixes_for_endpoints([endpoint_url])
     shex_dict = get_shex_dict_from_void(endpoint_url, prefix_map, namespaces_to_ignore)

@@ -1,3 +1,4 @@
+from typing import Optional
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
 
@@ -13,8 +14,8 @@ class SparqlVoidShapesLoader(BaseLoader):
     def __init__(
         self,
         endpoint_url: str,
-        namespaces_to_ignore: list[str] | None = None,
-        prefix_map: dict[str, str] | None = None,
+        namespaces_to_ignore: Optional[list[str]] = None,
+        prefix_map: Optional[dict[str, str]] = None,
         verbose: bool = False,
     ):
         """

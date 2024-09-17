@@ -135,9 +135,10 @@ disallow_untyped_calls = true
 disallow_untyped_defs = true
 disallow_any_generics = true
 
-# TODO: Use mypy or pyright for static type checking?
+# TODO: Use mypy or pyright for static type checking? Mypy is slow
+# But pyright does not recognize the type of the curies Converter ("unknown import symbol"), while mypy does.
+# So I guess pyright is garbage, I don't have time to fix all their bs, they should be better, classic microsoft
 # https://microsoft.github.io/pyright/#/configuration?id=sample-pyprojecttoml-file
-# [tool.pyright]
 
 
 # https://github.com/astral-sh/ruff#configuration
