@@ -1,6 +1,10 @@
-# 🦜✨ LLM for SPARQL query generation
+<div align="center">
+
+# 🦜✨ SPARQL query generation with LLMs
 
 [![Tests](https://github.com/sib-swiss/sparql-llm/actions/workflows/test.yml/badge.svg)](https://github.com/sib-swiss/sparql-llm/actions/workflows/test.yml)
+
+</div>
 
 Reusable components and complete webapp to improve Large Language Models (LLMs) capabilities when generating [SPARQL](https://www.w3.org/TR/sparql11-overview/) queries for a given set of endpoints, using Retrieval-Augmented Generation (RAG) and SPARQL query validation from the endpoint schema.
 
@@ -12,6 +16,8 @@ This repository contains:
 * Function to automatically parse and validate SPARQL queries based on a endpoint VoID description.
 * A complete reusable system to deploy a LLM chat system with web UI, API and vector database, designed to help users to write SPARQL queries for a given set of endpoints by exploiting metadata uploaded to the endpoints (WIP).
 * The deployment configuration for **[chat.expasy.org](https://chat.expasy.org)** the LLM chat system to help users accessing the endpoints maintained at the [SIB](https://www.sib.swiss/).
+
+> You can quickly check if an endpoint contains the expected metadata at [sib-swiss.github.io/sparql-editor/check](https://sib-swiss.github.io/sparql-editor/check)
 
 ## 🪄 Reusable components
 
