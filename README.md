@@ -1,6 +1,8 @@
 # 🦜✨ LLM for SPARQL query generation
 
-Reusable components and complete webapp to improve Large Language Models (LLMs) capabilities when generating [SPARQL](https://www.w3.org/TR/sparql11-overview/) queries for a given set of endpoints, using Retrieval-Augmented Generation (RAG) and query validation from the endpoint schema.
+[![Tests](https://github.com/sib-swiss/sparql-llm/actions/workflows/test.yml/badge.svg)](https://github.com/sib-swiss/sparql-llm/actions/workflows/test.yml)
+
+Reusable components and complete webapp to improve Large Language Models (LLMs) capabilities when generating [SPARQL](https://www.w3.org/TR/sparql11-overview/) queries for a given set of endpoints, using Retrieval-Augmented Generation (RAG) and SPARQL query validation from the endpoint schema.
 
 The different components of the system can be used separately, or the whole chat system webapp can be deployed for a set of endpoints. It relies on the endpoint containing some descriptive metadata: [SPARQL query examples](https://github.com/sib-swiss/sparql-examples), and endpoint description using the [Vocabulary of Interlinked Datasets (VoID)](https://www.w3.org/TR/void/), which can generated automatically using the [void-generator](https://github.com/JervenBolleman/void-generator).
 

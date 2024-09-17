@@ -1,6 +1,6 @@
 import re
 from collections import defaultdict
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from curies_rs import Converter
 from rdflib import Namespace, Variable
@@ -65,7 +65,7 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> SparqlTripl
     query_dict: SparqlTriplesDict = defaultdict(TripleDict)
     path_var_count = 1
 
-    def handle_path(endpoint: str, subj: str, pred: str | Path, obj: str):
+    def handle_path(endpoint: str, subj: str, pred: Union[str, Path], obj: str):
         """
         Recursively handle a Path object in a SPARQL query.
         Check here to understand why we need this: https://github.com/sib-swiss/sparql-examples/blob/master/examples/UniProt/26_component_HLA_class_I_histocompatibility_domain.ttl
