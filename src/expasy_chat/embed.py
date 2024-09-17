@@ -107,6 +107,7 @@ def load_ontology(endpoint: dict[str, str]) -> list[Document]:
         return []
     # g = ConjunctiveGraph(store="Oxigraph")
     g = ConjunctiveGraph()
+    # Hackity hack to handle UniProt ontology in XML format but with .owl extension
     if endpoint["label"] == "UniProt":
         g.parse(endpoint["ontology"], format="xml")
     else:
@@ -208,31 +209,3 @@ if __name__ == "__main__":
     print(
         f"VectorDB initialized with {get_vectordb().get_collection(settings.docs_collection_name).points_count} vectors"
     )
-
-
-## TODO: get ontology infos from the SPARQL endpoint
-# For each class get the vann:example provided which is an example of the class as turtle?
-
-# PREFIX dct: <http://purl.org/dc/terms/>
-# PREFIX owl: <http://www.w3.org/2002/07/owl#>
-# PREFIX up: <http://purl.uniprot.org/core/>
-# PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-# PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-# PREFIX rh: <http://rdf.rhea-db.org/>
-# PREFIX widoco: <https://w3id.org/widoco/vocab#>
-# SELECT DISTINCT *
-# WHERE {
-#     ?ont a owl:Ontology .
-#     OPTIONAL {
-#         ?ont dct:title|rdfs:label ?title .
-#     }
-#     OPTIONAL {
-#         ?ont dct:description ?desc
-#     }
-#     OPTIONAL {
-#         ?ont dct:abstract ?abstract
-#     }
-#     OPTIONAL {
-#         ?ont widoco:introduction ?widocoIntro
-#     }
-# }

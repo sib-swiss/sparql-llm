@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 requires-python = ">=3.9"
 version = "0.0.1"
-name = "expasy-chat"
+name = "sparql-llm"
 description = "Scripts for Expasy 4, prepare data, train models, etc."
 license = "MIT"
 authors = [
@@ -104,6 +104,7 @@ target-version = "py39"
 line-length = 120
 exclude = [
     "notebooks",
+    "**/__init__.py",
 ]
 
 [tool.ruff.lint]
@@ -137,3 +138,8 @@ ignore = [
     "T201", # do not use print
     "B008", # do not perform function calls in argument defaults
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["I", "F401"] # module imported but unused
+# Tests can use magic values, assertions, and relative imports:
+"tests/**/*" = ["PLR2004", "S101", "S105", "TID252"]
