@@ -1,7 +1,7 @@
 from openai import OpenAI
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from expasy_chat.utils import get_prefixes_for_endpoints
+from sparql_llm.utils import get_prefixes_for_endpoints
 
 # import warnings
 # warnings.simplefilter(action="ignore", category=UserWarning)
@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     ontology_chunk_size: int = 3000
     ontology_chunk_overlap: int = 200
 
-    # Default is the IP address inside the podman network to solve a ridiculous bug from podman
+    # NOTE: Default is the IP address inside the podman network to solve a ridiculous bug from podman
     vectordb_host: str = "10.89.0.2"
     retrieved_queries_count: int = 20
     retrieved_docs_count: int = 15

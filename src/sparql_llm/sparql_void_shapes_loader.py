@@ -1,7 +1,7 @@
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
 
-from expasy_chat.void_to_shex import get_shex_dict_from_void
+from sparql_llm.void_to_shex import get_shex_dict_from_void
 
 
 class SparqlVoidShapesLoader(BaseLoader):

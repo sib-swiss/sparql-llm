@@ -12,10 +12,10 @@ from qdrant_client.http.models import (
 )
 from rdflib import RDF, ConjunctiveGraph, Namespace
 
-from expasy_chat.config import settings
-from expasy_chat.sparql_examples_loader import SparqlExamplesLoader
-from expasy_chat.sparql_void_shapes_loader import SparqlVoidShapesLoader
-from expasy_chat.utils import get_prefixes_for_endpoints
+from sparql_llm.config import settings
+from sparql_llm.sparql_examples_loader import SparqlExamplesLoader
+from sparql_llm.sparql_void_shapes_loader import SparqlVoidShapesLoader
+from sparql_llm.utils import get_prefixes_for_endpoints
 
 
 def get_embedding_model() -> TextEmbedding:

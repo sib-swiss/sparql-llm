@@ -7,7 +7,7 @@ from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
 from rdflib.plugins.sparql import prepareQuery
 
-from expasy_chat.utils import GET_PREFIXES_QUERY, query_sparql
+from sparql_llm.utils import GET_PREFIXES_QUERY, query_sparql
 
 GET_SPARQL_EXAMPLES_QUERY = """PREFIX sh: <http://www.w3.org/ns/shacl#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -41,16 +41,16 @@ class SparqlExamplesLoader(BaseLoader):
 
         # Get prefixes
         prefix_map: dict[str, str] = {}
-        # try:
-        res = query_sparql(GET_PREFIXES_QUERY, self.endpoint_url)
-        for row in res["results"]["bindings"]:
-            # TODO: we might be able to remove this soon, when prefixes will be included in all endpoints
-            prefix_map[row["prefix"]["value"]] = row["namespace"]["value"]
+        try:
+            res = query_sparql(GET_PREFIXES_QUERY, self.endpoint_url)
+            for row in res["results"]["bindings"]:
+                # TODO: we might be able to remove this soon, when prefixes will be included in all endpoints
+                prefix_map[row["prefix"]["value"]] = row["namespace"]["value"]
 
-        for row in query_sparql(GET_SPARQL_EXAMPLES_QUERY, self.endpoint_url)["results"]["bindings"]:
-            docs.append(self._create_document(row, prefix_map))
-        # except Exception as e:
-        #     print(f"Could not retrieve SPARQL examples from endpoint {self.endpoint_url}: {e}")
+            for row in query_sparql(GET_SPARQL_EXAMPLES_QUERY, self.endpoint_url)["results"]["bindings"]:
+                docs.append(self._create_document(row, prefix_map))
+        except Exception as e:
+            print(f"Could not retrieve SPARQL query examples from endpoint {self.endpoint_url}: {e}")
 
         if self.verbose:
             print(f"Found {len(docs)} examples queries for {self.endpoint_url}")

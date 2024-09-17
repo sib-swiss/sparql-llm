@@ -2,7 +2,6 @@ services:
 
   vectordb:
     # https://hub.docker.com/r/qdrant/qdrant/tags
-    # image: docker.io/qdrant/qdrant:v1.9.5
     image: docker.io/qdrant/qdrant:v1.11.3
     # image: qdrant/qdrant:v1.9.2-unprivileged # Unprivileged don't work when mounting a volume
     container_name: vectordb
@@ -12,11 +11,6 @@ services:
       # - ./qdrant_config.yml:/qdrant/config/production.yaml
     environment:
       - QDRANT_ALLOW_RECOVERY_MODE=true
-    # networks:
-    #   - default
-    # ports:
-    #   - 6333:6333
-    #   - 6334:6334
     # command:
     #   - ./qdrant --config-path /qdrant/config/production.yaml
 
@@ -34,21 +28,13 @@ services:
       - ./data/fastembed_cache:/tmp/fastembed_cache
       - ./data/logs:/logs
       - ./src:/app/src
-    # entrypoint: uvicorn src.expasy_chat.api:app --host 0.0.0.0 --port 80
+    # entrypoint: uvicorn src.sparql_llm.api:app --host 0.0.0.0 --port 80
     env_file:
       - .env
-    # networks:
-    #   - default
 
 # TODO: add ollama
 
-# networks:
-#   default:
-#     driver: pasta
-#     # driver: bridge
-
-
 # podman-compose down && podman network prune -f
-# podman exec -it expasy-chat_api_1 bash -c "apt-get update && apt-get install -y telnet && telnet vectordb 6334"
+# podman exec -it sparql-llm_api_1 bash -c "apt-get update && apt-get install -y telnet && telnet vectordb 6334"
 # < /dev/tcp/vectordb/6334
 # podman exec -it api bash -c "< /dev/tcp/vectordb/6334"

@@ -21,6 +21,7 @@ services:
       - ./prestart.sh:/app/prestart.sh
     entrypoint: /start-reload.sh
 
+  # In case you need a GPU-enabled workspace
   # workspace:
   #   image: ghcr.io/vemonet/gpu-workspace:main
   #   # Enable GPUs in this container:

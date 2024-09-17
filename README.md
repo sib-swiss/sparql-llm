@@ -1,11 +1,15 @@
 # 🦜✨ LLM for SPARQL query generation
 
+Reusable components and complete webapp to improve Large Language Models (LLMs) capabilities when generating [SPARQL](https://www.w3.org/TR/sparql11-overview/) queries for a given set of endpoints, using Retrieval-Augmented Generation (RAG) and query validation from the endpoint schema.
+
+The different components of the system can be used separately, or the whole chat system webapp can be deployed for a set of endpoints. It relies on the endpoint containing some descriptive metadata: [SPARQL query examples](https://github.com/sib-swiss/sparql-examples), and endpoint description using the [Vocabulary of Interlinked Datasets (VoID)](https://www.w3.org/TR/void/), which can generated automatically using the [void-generator](https://github.com/JervenBolleman/void-generator).
+
 This repository contains:
 
-* Utilities and functions to improve LLMs capabilities when working with [SPARQL](https://www.w3.org/TR/sparql11-overview/) endpoints and [RDF](https://www.w3.org/RDF/) knowledge graph. In particular improving SPARQL query generation. 
-  * Loaders are compatible with [LangChain](https://python.langchain.com), but they can also be used outside of LangChain as they just return a list of documents with metadata as JSON, which can then be loaded how you want in your vectorstore.
-* A complete reusable system to deploy a LLM chat system for multiple SPARQL endpoints (WIP)
-* The deployment for **[chat.expasy.org](https://chat.expasy.org)** the LLM chat system to help users accessing the endpoints maintained at the SIB
+* Functions to extract and load relevant metadata from a SPARQL endpoints. Loaders are compatible with [LangChain](https://python.langchain.com), but they can also be used outside of LangChain as they just return a list of documents with metadata as JSON, which can then be loaded how you want in your vectorstore.
+* Function to automatically parse and validate SPARQL queries based on a endpoint VoID description.
+* A complete reusable system to deploy a LLM chat system with web UI, API and vector database, designed to help users to write SPARQL queries for a given set of endpoints by exploiting metadata uploaded to the endpoints (WIP).
+* The deployment configuration for **[chat.expasy.org](https://chat.expasy.org)** the LLM chat system to help users accessing the endpoints maintained at the [SIB](https://www.sib.swiss/).
 
 ## 🪄 Reusable components
 
@@ -34,9 +38,11 @@ print(docs[0].metadata)
 
 ### SPARQL endpoint schema loader
 
-Generate a human-readable schema using the ShEx format to describe all classes of a SPARQL endpoint based on its [VoID description](https://www.w3.org/TR/void/) present in your endpoint. Ideally the endpoint should also contain the ontology describing the class, so the `rdfs:label` and `rdfs:comment` of the class can be used to generate embeddings and improve semantic matching.
+Generate a human-readable schema using the ShEx format to describe all classes of a SPARQL endpoint based on the [VoID description](https://www.w3.org/TR/void/) present in the endpoint. Ideally the endpoint should also contain the ontology describing the class, so the `rdfs:label` and `rdfs:comment` of the classes can be used to generate embeddings and improve semantic matching.
 
-Checkout the **[void-generator](https://github.com/JervenBolleman/void-generator)** project to automatically generate VoID description for your endpoint.
+> [!TIP]
+>
+> Checkout the **[void-generator](https://github.com/JervenBolleman/void-generator)** project to automatically generate VoID description for your endpoint.
 
 ```python
 from sparql_llm import SparqlVoidShapesLoader
@@ -64,25 +70,25 @@ This takes a SPARQL query and validates the predicates/types used are compliant 
 
 This function supports:
 
-* federated queries (VoID description will be retrieved for each SERVICE call),
+* federated queries (VoID description will be automatically retrieved for each SERVICE call in the query),
 * path patterns (e.g. `orth:organism/obo:RO_0002162/up:scientificName`)
 
-The function requires that at least one type is defined for each endpoint, but it will be able to infer types of subjects that are connected to the subject for which the type is defined.
+This function requires that at least one type is defined for each endpoint, but it will be able to infer types of subjects that are connected to the subject for which the type is defined.
 
-It will return a list of issues described in natural language, with hints on how to fix them (by listing the available classes or predicates in the context), which can be passed to an LLM to help for fixing the query.
+It will return a list of issues described in natural language, with hints on how to fix them (by listing the available classes/predicates), which can be passed to an LLM as context to help it figuring out how to fix the query.
 
 ```python
 from sparql_llm import validate_sparql_with_void
 
 sparql_query = """PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-PREFIX up:<http://purl.uniprot.org/core/>
-PREFIX taxon:<http://purl.uniprot.org/taxonomy/>
-PREFIX rdfs:<http://www.w3.org/2000/01/rdf-schema#>
-PREFIX orth:<http://purl.org/net/orth#>
-PREFIX dcterms:<http://purl.org/dc/terms/>
-PREFIX obo:<http://purl.obolibrary.org/obo/>
-PREFIX lscr:<http://purl.org/lscr#>
-PREFIX genex:<http://purl.org/genex#>
+PREFIX up: <http://purl.uniprot.org/core/>
+PREFIX taxon: <http://purl.uniprot.org/taxonomy/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX orth: <http://purl.org/net/orth#>
+PREFIX dcterms: <http://purl.org/dc/terms/>
+PREFIX obo: <http://purl.obolibrary.org/obo/>
+PREFIX lscr: <http://purl.org/lscr#>
+PREFIX genex: <http://purl.org/genex#>
 PREFIX sio: <http://semanticscience.org/resource/>
 SELECT DISTINCT ?diseaseLabel ?humanProtein ?hgncSymbol ?orthologRatProtein ?orthologRatGene
 WHERE {
@@ -122,20 +128,19 @@ WHERE {
         ?anatEntity rdfs:label 'brain' .
         ?ratOrganism obo:RO_0002162 taxon:10116 .
     }
-}
-"""
+}"""
 
 issues = validate_sparql_with_void(sparql_query, "https://sparql.uniprot.org/sparql/")
 print("\n".join(issues))
 ```
 
-## 🚀 Deploy chat system
+## 🚀 Complete chat system 
 
 > [!WARNING]
 >
 > To deploy the complete chat system right now you will need to fork this repository, change the configuration in `src/sparql_llm/config.py` and `compose.yml`, then deploy with docker/podman compose.
 >
-> We plan to make configuration and deployment of complete SPARQL LLM chat system easier in the future, let us know if you are interested in the GitHub issues!
+> It can easily be adapted to use any LLM served through an OpenAI-compatible API. We plan to make configuration and deployment of complete SPARQL LLM chat system easier in the future, let us know if you are interested in the GitHub issues!
 
 Create a `.env` file at the root of the repository to provide OpenAI API key to a `.env` file at the root of the repository:
 
@@ -143,18 +148,21 @@ Create a `.env` file at the root of the repository to provide OpenAI API key to 
 OPENAI_API_KEY=sk-proj-YYY
 GLHF_API_KEY=APIKEY_FOR_glhf.chat_USED_FOR_OPEN_SOURCE_MODELS
 EXPASY_API_KEY=NOT_SO_SECRET_API_KEY_USED_BY_FRONTEND_TO_AVOID_SPAM_FROM_CRAWLERS
-LOGS_API_KEY=PASSWORD_TO_ACCESS_LOGS_THROUGH_THE_API
+LOGS_API_KEY=PASSWORD_TO_EASILY_ACCESS_LOGS_THROUGH_THE_API
 ```
 
-Start the web UI, API, and similarity search engine in production (you might need to make some changes to the `compose.yml` file to adapt it to your server setup):
+Start the web UI, API, and similarity search engine in production (you might need to make some changes to the `compose.yml` file to adapt it to your server/proxy setup):
 
 ```bash
 docker compose up
 ```
 
-Start the stack locally for development:
+Start the stack locally for development, with code from `src` folder mounted in the container and automatic API reload on changes to the code:
 
 ```bash
 docker compose -f compose.dev.yml up
 ```
 
+* Chat web UI available at http://localhost:8000
+* OpenAPI Swagger UI available at http://localhost:8000/docs
+* Vector database dashboard UI available at http://localhost:6333/dashboard

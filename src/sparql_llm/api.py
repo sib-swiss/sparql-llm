@@ -17,10 +17,10 @@ from rdflib.plugins.sparql.algebra import translateQuery
 from rdflib.plugins.sparql.parser import parseQuery
 from starlette.middleware.cors import CORSMiddleware
 
-from expasy_chat.config import get_llm_client, get_prefixes_dict, settings
-from expasy_chat.embed import get_embedding_model, get_vectordb
-from expasy_chat.utils import get_prefix_converter
-from expasy_chat.validate_sparql import add_missing_prefixes, extract_sparql_queries, validate_sparql_with_void
+from sparql_llm.config import get_llm_client, get_prefixes_dict, settings
+from sparql_llm.embed import get_embedding_model, get_vectordb
+from sparql_llm.utils import get_prefix_converter
+from sparql_llm.validate_sparql import add_missing_prefixes, extract_sparql_queries, validate_sparql_with_void
 
 # If the user is asking about a named entity warn him that they should check if this entity exist with one of the query used to find named entity
 # And we provide the this list of queries, and the LLM figure out which query can be used to find the named entity
@@ -54,10 +54,10 @@ such as SPARQL endpoints, to get information about proteins, genes, and other bi
 
 logging.basicConfig(filename=settings.logs_filepath, level=logging.INFO, format="%(asctime)s - %(message)s")
 
-templates = Jinja2Templates(directory="src/expasy_chat/templates")
+templates = Jinja2Templates(directory="src/sparql_llm/templates")
 app.mount(
     "/static",
-    StaticFiles(directory="src/expasy_chat/static"),
+    StaticFiles(directory="src/sparql_llm/static"),
     name="static",
 )
 
@@ -341,7 +341,7 @@ def chat_ui(request: Request) -> Any:
 Contact kru@sib.swiss if you have any feedback or suggestions.
 """,
             "short_description": "Ask about SIB resources.",
-            "repository_url": "https://github.com/sib-swiss/expasy-chat",
+            "repository_url": "https://github.com/sib-swiss/sparql-llm",
             "examples": [
                 "Which resources are available at the SIB?",
                 "How can I get the HGNC symbol for the protein P68871?",

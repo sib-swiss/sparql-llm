@@ -1,1 +1,1 @@
-python src/expasy_chat/embed.py
+python src/sparql_llm/embed.py

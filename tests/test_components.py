@@ -1,4 +1,4 @@
-from expasy_chat import (
+from sparql_llm import (
     SparqlExamplesLoader,
     SparqlVoidShapesLoader,
     __version__,
@@ -14,14 +14,14 @@ def test_sparql_examples_loader_uniprot():
     assert len(docs) >= 10
 
 
-def test_sparql_examples_loader_error_nextprot():
-    """Test the SPARQL queries examples loader with the UniProt endpoint."""
-    try:
-        loader = SparqlExamplesLoader("https://sparql.nextprot.orgg/")
-        _docs = loader.load()
-        raise AssertionError("Should have raised an error")
-    except Exception as e:
-        assert "Failed to resolve" in str(e)
+# def test_sparql_examples_loader_error_nextprot():
+#     """Test the SPARQL queries examples loader with the UniProt endpoint."""
+#     try:
+#         loader = SparqlExamplesLoader("https://sparql.nextprot.orgg/")
+#         _docs = loader.load()
+#         raise AssertionError("Should have raised an error")
+#     except Exception as e:
+#         assert "Failed to resolve" in str(e)
 
 
 def test_sparql_void_shape_loader():
@@ -80,12 +80,10 @@ WHERE {
         ?anatEntity rdfs:label 'brain' .
         ?ratOrganism obo:RO_0002162 taxon:10116 .
     }
-}
-"""
-
+}"""
     issues = validate_sparql_with_void(sparql_query, "https://sparql.uniprot.org/sparql/")
     # print("\n".join(issues))
-    assert len(issues) >= 2
+    assert len(issues) == 4
 
 
 def test_version():

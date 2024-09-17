@@ -13,8 +13,8 @@ RUN pip install --upgrade pip
 COPY . /app/
 # COPY ./scripts/prestart.sh /app/
 
-RUN pip install -e ".[cpu]"
+RUN pip install -e "."
 
 ENV PYTHONPATH=/app
-ENV MODULE_NAME=src.expasy_chat.api
+ENV MODULE_NAME=src.sparql_llm.api
 # ENV VARIABLE_NAME=app

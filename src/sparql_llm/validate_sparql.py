@@ -7,7 +7,7 @@ from rdflib import Namespace, Variable
 from rdflib.paths import AlternativePath, MulPath, Path, SequencePath
 from rdflib.plugins.sparql import prepareQuery
 
-from expasy_chat.utils import TripleDict, get_prefix_converter, get_prefixes_for_endpoints, get_void_dict
+from sparql_llm.utils import TripleDict, get_prefix_converter, get_prefixes_for_endpoints, get_void_dict
 
 queries_pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
 endpoint_pattern = re.compile(r"^#.*(https?://[^\s]+)", re.MULTILINE)
