@@ -1,4 +1,5 @@
 from typing import Optional
+
 from sparql_llm.utils import get_prefix_converter, get_prefixes_for_endpoints, get_void_dict, query_sparql
 
 DEFAULT_NAMESPACES_TO_IGNORE = [

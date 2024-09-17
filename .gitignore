@@ -3,5 +3,6 @@
 data/
 __pycache__/
 .*_cache
+.coverage
 
 notebooks/all_prefixes.json

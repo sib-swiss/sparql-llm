@@ -46,6 +46,7 @@ web = [
 ]
 test = [
     "pytest",
+    "pytest-cov",
     "ruff",
     "mypy",
     "pyright",
@@ -140,6 +141,15 @@ disallow_any_generics = true
 # So I guess pyright is garbage, I don't have time to fix all their bs, they should be better, classic microsoft
 # https://microsoft.github.io/pyright/#/configuration?id=sample-pyprojecttoml-file
 
+
+[tool.pytest.ini_options]
+addopts = [
+    "-vvv",           # Verbose level 3
+    "--durations=10", # Show 10 slowest tests durations
+    "--cov=src",
+    "--color=yes",
+    "--cov-report=term-missing",
+]
 
 # https://github.com/astral-sh/ruff#configuration
 [tool.ruff]
