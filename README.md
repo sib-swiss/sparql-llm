@@ -6,17 +6,19 @@
 
 </div>
 
-Reusable components and complete webapp to improve Large Language Models (LLMs) capabilities when generating [SPARQL](https://www.w3.org/TR/sparql11-overview/) queries for a given set of endpoints, using Retrieval-Augmented Generation (RAG) and SPARQL query validation from the endpoint schema.
+Reusable components and complete web service to improve Large Language Models (LLMs) capabilities when generating [SPARQL](https://www.w3.org/TR/sparql11-overview/) queries for a given set of endpoints, using Retrieval-Augmented Generation (RAG) and SPARQL query validation from the endpoints schemas.
 
-The different components of the system can be used separately, or the whole chat system webapp can be deployed for a set of endpoints. It relies on the endpoint containing some descriptive metadata: [SPARQL query examples](https://github.com/sib-swiss/sparql-examples), and endpoint description using the [Vocabulary of Interlinked Datasets (VoID)](https://www.w3.org/TR/void/), which can generated automatically using the [void-generator](https://github.com/JervenBolleman/void-generator).
+The different components of the system can be used separately, or the whole chat system can be deployed for a set of endpoints. It relies on the endpoint containing some descriptive metadata: [SPARQL query examples](https://github.com/sib-swiss/sparql-examples), and endpoint description using the [Vocabulary of Interlinked Datasets (VoID)](https://www.w3.org/TR/void/), which can generated automatically using the [void-generator](https://github.com/JervenBolleman/void-generator).
 
 This repository contains:
 
 * Functions to extract and load relevant metadata from a SPARQL endpoints. Loaders are compatible with [LangChain](https://python.langchain.com), but they can also be used outside of LangChain as they just return a list of documents with metadata as JSON, which can then be loaded how you want in your vectorstore.
-* Function to automatically parse and validate SPARQL queries based on a endpoint VoID description.
+* Function to automatically parse and validate SPARQL queries based on an endpoint VoID description.
 * A complete reusable system to deploy a LLM chat system with web UI, API and vector database, designed to help users to write SPARQL queries for a given set of endpoints by exploiting metadata uploaded to the endpoints (WIP).
 * The deployment configuration for **[chat.expasy.org](https://chat.expasy.org)** the LLM chat system to help users accessing the endpoints maintained at the [SIB](https://www.sib.swiss/).
 
+> [!TIP]
+>
 > You can quickly check if an endpoint contains the expected metadata at [sib-swiss.github.io/sparql-editor/check](https://sib-swiss.github.io/sparql-editor/check)
 
 ## 🪄 Reusable components
@@ -60,6 +62,17 @@ docs = loader.load()
 print(len(docs))
 print(docs[0].metadata)
 ```
+
+> The generated shapes are well-suited for use with a LLM or a human, as they provide clear information about which predicates are available for a class, and the corresponding classes or datatypes those predicates point to. Each object property references a list of classes rather than another shape, making each shape self-contained and interpretable on its own, e.g. for a *Disease Annotation* in UniProt:
+>
+> ```turtle
+> up:Disease_Annotation {
+>   a [ up:Disease_Annotation ] ;
+>   up:sequence [ up:Chain_Annotation up:Modified_Sequence ] ;
+>   rdfs:comment xsd:string ;
+>   up:disease IRI
+> }
+> ```
 
 ### Generate complete ShEx shapes from VoID description
 
@@ -142,7 +155,7 @@ issues = validate_sparql_with_void(sparql_query, "https://sparql.uniprot.org/spa
 print("\n".join(issues))
 ```
 
-## 🚀 Complete chat system 
+## 🚀 Complete chat system
 
 > [!WARNING]
 >

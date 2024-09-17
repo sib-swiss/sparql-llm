@@ -338,7 +338,7 @@ def chat_ui(request: Request) -> Any:
             "llm_model": llm_model,
             "description": """Assistant to navigate resources from the Swiss Institute of Bioinformatics. Particularly knowledgeable about UniProt, OMA, Bgee, RheaDB, and SwissLipids. But still learning.
 
-Contact kru@sib.swiss if you have any feedback or suggestions.
+Contact kru@sib.swiss if you have any feedback or suggestions. Questions asked here are stored for research purposes, see the [SIB privacy policy](https://www.sib.swiss/privacy-policy) for more information.
 """,
             "short_description": "Ask about SIB resources.",
             "repository_url": "https://github.com/sib-swiss/sparql-llm",

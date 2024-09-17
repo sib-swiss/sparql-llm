@@ -228,7 +228,6 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: O
 
     query_dict = sparql_query_to_dict(query, endpoint_url)
     issues_msgs: set[str] = set()
-    # error_msgs = {}
 
     # Go through the query BGPs and check if they match the VoID description
     for endpoint, subj_dict in query_dict.items():

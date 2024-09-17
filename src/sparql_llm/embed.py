@@ -189,7 +189,7 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
             collection_name=settings.docs_collection_name,
             vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
         )
-
+    print(f"Generating embeddings for {len(docs)} documents")
     embeddings = embedding_model.embed([q.page_content for q in docs])
     start_time = time.time()
     vectordb.upsert(
@@ -201,7 +201,7 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
         ),
         # wait=False, # Waiting for indexing to finish or not
     )
-    print(f"Done generating and indexing documents into the vectordb in {time.time() - start_time} seconds")
+    print(f"Done generating and indexing {len(docs)} documents into the vectordb in {time.time() - start_time} seconds")
 
 
 if __name__ == "__main__":

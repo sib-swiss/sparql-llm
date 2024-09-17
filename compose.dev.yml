@@ -14,8 +14,6 @@ services:
       service: api
     ports:
       - 8000:80
-    environment:
-      - VECTORDB_HOST=vectordb
     volumes:
       - ./src:/app/src
       - ./prestart.sh:/app/prestart.sh
