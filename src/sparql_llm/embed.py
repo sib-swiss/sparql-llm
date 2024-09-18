@@ -161,7 +161,8 @@ def init_vectordb(vectordb_host: str = settings.vectordb_host) -> None:
         docs += void_loader.load()
 
         docs += load_schemaorg_description(endpoint)
-        docs += load_ontology(endpoint)
+        # NOTE: we dont use the ontology for now, schema from shex is better
+        # docs += load_ontology(endpoint)
 
     # NOTE: Manually add infos for UniProt since we cant retrieve it for now. Taken from https://www.uniprot.org/help/about
     uniprot_description_question = "What is the SIB resource UniProt about?"

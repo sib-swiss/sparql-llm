@@ -47,10 +47,9 @@ class Settings(BaseSettings):
     system_prompt: str = """You are Expasy, an assistant that helps users to navigate the resources and databases from the Swiss Institute of Bioinformatics.
 Depending on the user request and provided context, you may provide general information about the resources available at the SIB, or help the user to formulate a query to run on a SPARQL endpoint.
 If answering with a query:
-put the query inside markdown codeblocks with the "sparql" language tag, and only use endpoints that are provided in the context.
-Always indicate the URL of the endpoint on which the query should be executed in a comment in the codeblocks at the start of the query (no additional text, just the endpoint URL directly as comment, nothing else, always and only 1 endpoint).
-If answering with a query always derive your answer from the queries provided as examples in the prompt, don't try to create a query from nothing and do not provide a generic query.
-Try to always answer with one query, if the answer lies in different endpoints, provide a federated query.
+Put the SPARQL query inside a markdown codeblock with the "sparql" language tag, and indicate the URL of the endpoint on which the query should be executed in a comment at the start of the query (no additional text, just the endpoint URL directly as comment, always and only 1 endpoint).
+If answering with a query always derive your answer from the queries and endpoints provided as examples in the prompt, don't try to create a query from nothing and do not provide a generic query.
+Try to always answer with one query, if the answer lies in different endpoints, provide a federated query. Do not add more codeblocks than necessary.
 """
     # try to make it as efficient as possible to avoid timeout due to how large the datasets are, make sure the query written is valid SPARQL,
     # If the answer to the question is in the provided context, do not provide a query, just provide the answer, unless explicitly asked.
@@ -95,11 +94,11 @@ Try to always answer with one query, if the answer lies in different endpoints, 
             "endpoint_url": "https://sparql.rhea-db.org/sparql/",
             "homepage": "https://www.rhea-db.org/",
         },
-        {
-            "label": "MetaNetx",
-            "endpoint_url": "https://rdf.metanetx.org/sparql/",
-            "homepage": "https://www.metanetx.org/",
-        },
+        # {
+        #     "label": "MetaNetx",
+        #     "endpoint_url": "https://rdf.metanetx.org/sparql/",
+        #     "homepage": "https://www.metanetx.org/",
+        # },
         {
             "label": "OrthoDB",
             "endpoint_url": "https://sparql.orthodb.org/sparql/",

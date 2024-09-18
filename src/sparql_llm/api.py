@@ -9,8 +9,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from openai import Stream
-from openai._client import OpenAI
+from openai import Stream, OpenAI
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from pydantic import BaseModel
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 from rdflib.plugins.sparql.algebra import translateQuery
@@ -85,8 +85,8 @@ class Message(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
-    model: Optional[str] = llm_model
     messages: list[Message]
+    model: Optional[str] = llm_model
     max_tokens: Optional[int] = 512
     temperature: Optional[float] = 0.0
     stream: Optional[bool] = False
@@ -94,7 +94,7 @@ class ChatCompletionRequest(BaseModel):
     api_key: Optional[str] = None
 
 
-async def stream_openai(response: Stream[Any], docs, full_prompt) -> AsyncGenerator[str, None]:
+async def stream_openai(response: Stream[ChatCompletionChunk], docs, full_prompt) -> AsyncGenerator[str, None]:
     """Stream the response from OpenAI"""
 
     first_chunk = {
@@ -121,7 +121,7 @@ async def stream_openai(response: Stream[Any], docs, full_prompt) -> AsyncGenera
 
 
 @app.post("/chat")
-async def chat_completions(request: ChatCompletionRequest):
+async def chat(request: ChatCompletionRequest):
     if settings.expasy_api_key and request.api_key != settings.expasy_api_key:
         raise ValueError("Invalid API key")
 
@@ -132,11 +132,11 @@ async def chat_completions(request: ChatCompletionRequest):
     logging.info(f"User question: {question}")
 
     query_embeddings = next(iter(embedding_model.embed([question])))
-    # We build a big prompt with the 3 most relevant queries retrieved from similarity search engine (could be increased)
+    # We build a big prompt with the most relevant queries retrieved from similarity search engine (could be increased)
     prompt_with_context = f"{STARTUP_PROMPT}\n\n"
 
-    # We also provide the example queries as previous messages to the LLM
-    system_msg: list[Message] = [{"role": "system", "content": settings.system_prompt}]
+    # # We also provide the example queries as previous messages to the LLM
+    # system_msg: list[Message] = [{"role": "system", "content": settings.system_prompt}]
 
     # Get the most relevant examples SPARQL queries from the search engine
     query_hits = vectordb.search(
@@ -184,27 +184,28 @@ async def chat_completions(request: ChatCompletionRequest):
     for docs_hit in docs_hits:
         if docs_hit.payload["doc_type"] == "shex":
             prompt_with_context += f"ShEx shape for {docs_hit.payload['question']} in {docs_hit.payload['endpoint_url']}:\n```\n{docs_hit.payload['answer']}\n```\n\n"
-        elif docs_hit.payload["doc_type"] == "ontology":
-            prompt_with_context += f"Relevant part of the ontology for {docs_hit.payload['endpoint_url']}:\n```turtle\n{docs_hit.payload['question']}\n```\n\n"
+        # elif docs_hit.payload["doc_type"] == "ontology":
+        #     prompt_with_context += f"Relevant part of the ontology for {docs_hit.payload['endpoint_url']}:\n```turtle\n{docs_hit.payload['question']}\n```\n\n"
         else:
             prompt_with_context += f"Information about: {docs_hit.payload['question']}\nRelated to SPARQL endpoint {docs_hit.payload['endpoint_url']}\n\n{docs_hit.payload['answer']}\n\n"
 
     prompt_with_context += f"\n{INTRO_USER_QUESTION_PROMPT}\n{question}"
 
-    # Use messages from the request to keep memory of previous messages sent by client
+    # Use messages from the request to keep memory of previous messages sent by the client
     # Replace the question asked by the user with the big prompt with all contextual infos
     request.messages[-1].content = prompt_with_context
-    all_messages = system_msg + request.messages
-    # all_messages.append({"role": "user", "content": big_prompt})
-    # print(big_prompt)
+    all_messages = [
+        Message(role="system", content=settings.system_prompt),
+        *request.messages
+    ]
 
     # Send the prompt to OpenAI to get a response
     response = client.chat.completions.create(
         model=request.model,
         messages=all_messages,
         stream=request.stream,
-        temperature=0,
-        #   response_format={ "type": "json_object" },
+        temperature=request.temperature,
+        # response_format={ "type": "json_object" },
     )
     # NOTE: to get response as JSON object check https://github.com/jxnl/instructor or https://github.com/outlines-dev/outlines
 
@@ -213,42 +214,46 @@ async def chat_completions(request: ChatCompletionRequest):
             stream_openai(response, query_hits + docs_hits, prompt_with_context), media_type="application/x-ndjson"
         )
 
+    print(response)
     # print(response.choices[0].message.content)
-    chat_resp_md = (
-        validate_and_fix_sparql(response.choices[0].message.content, all_messages, client, request.model)
+    response: ChatCompletion = (
+        validate_and_fix_sparql(response, all_messages, client, request.model)
         if request.validate_output
-        else response.choices[0].message.content
+        else response
     )
-
-    return {
-        "id": response.id,
-        "object": "chat.completion",
-        "created": response.created,
-        "model": response.model,
-        "choices": [{"message": Message(role="assistant", content=chat_resp_md)}],
-        "docs": query_hits + docs_hits,
-        "full_prompt": prompt_with_context,
-        "usage": response.usage,
-    }
     # NOTE: the response is similar to OpenAI API, but we add the list of hits and the full prompt used to ask the question
+    response.docs = query_hits + docs_hits
+    response.full_prompt = prompt_with_context
+    return response
+    # return {
+    #     "id": response.id,
+    #     "object": "chat.completion",
+    #     "created": response.created,
+    #     "model": response.model,
+    #     "choices": [{"message": Message(role="assistant", content=response.choices[0].message.content)}],
+    #     "docs": query_hits + docs_hits,
+    #     "full_prompt": prompt_with_context,
+    #     "usage": response.usage,
+    # }
 
 
 def validate_and_fix_sparql(
-    md_resp: str, messages: list[Message], client: OpenAI, llm_model: str, try_count: int = 0
-) -> str:
+    resp: ChatCompletion, messages: list[Message], client: OpenAI, llm_model: str, try_count: int = 0
+) -> ChatCompletion:
     """Recursive function to validate the SPARQL queries in the chat response and fix them if needed."""
 
     if try_count >= settings.max_try_fix_sparql:
-        return f"{md_resp}\n\nThe SPARQL query could not be fixed after multiple tries. Please do it yourself!"
-    generated_sparqls = extract_sparql_queries(md_resp)
-
+        resp.choices[0].message.content = f"{resp.choices[0].message.content}\n\nThe SPARQL query could not be fixed after multiple tries. Please do it yourself!"
+        return resp
+    generated_sparqls = extract_sparql_queries(resp.choices[0].message.content)
+    print("generated_sparqls", generated_sparqls)
     error_detected = False
     for gen_query in generated_sparqls:
         try:
             translateQuery(parseQuery(gen_query["query"]))
             if gen_query["endpoint_url"]:
                 issues = validate_sparql_with_void(gen_query["query"], gen_query["endpoint_url"], prefix_converter)
-                if len(issues) > 1:
+                if len(issues) > 0:
                     issues_str = "\n".join(issues)
                     raise ValueError(f"Validation issues:\n{issues_str}")
             else:
@@ -273,19 +278,22 @@ Fix the SPARQL query helping yourself with the error message and context from pr
                 # Which is part of this answer:
                 # {md_resp}
                 messages.append({"role": "assistant", "content": fix_prompt})
-                response = client.chat.completions.create(
-                    model=llm_model,
+                fixing_resp = client.chat.completions.create(
+                    model=resp.model,
                     messages=messages,
                     stream=False,
                 )
                 # md_resp = response.choices[0].message.content
-                fixed_sparqls = extract_sparql_queries(response.choices[0].message.content)
+                fixed_sparqls = extract_sparql_queries(fixing_resp.choices[0].message.content)
                 for fixed_query in fixed_sparqls:
-                    md_resp = md_resp.replace(gen_query["query"], fixed_query["query"])
+                    resp.usage.prompt_tokens += fixing_resp.usage.prompt_tokens
+                    resp.usage.completion_tokens += fixing_resp.usage.completion_tokens
+                    resp.usage.total_tokens += fixing_resp.usage.total_tokens
+                    resp.choices[0].message.content = resp.choices[0].message.content.replace(gen_query["query"], fixed_query["query"])
     if error_detected:
         # Check again the fixed query
-        return validate_and_fix_sparql(md_resp, messages, client, llm_model, try_count)
-    return md_resp
+        return validate_and_fix_sparql(resp, messages, client, llm_model, try_count)
+    return resp
 
 
 class FeedbackRequest(BaseModel):
