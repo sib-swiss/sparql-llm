@@ -13,7 +13,7 @@ cd sparql-llm
 
 ## 🐣 Install dependencies
 
-> This repository uses [`hatch`](https://hatch.pypa.io/latest/) to easily handle scripts and virtual environments. Checkout the `pyproject.toml` file for more details on the scripts available. You can also just install dependencies with `pip install .` and run the python scripts in `src`
+> This repository uses [`hatch`](https://hatch.pypa.io/latest/) to easily handle scripts and virtual environments. Checkout the `pyproject.toml` file for more details on the scripts available. You can also just install dependencies with `pip install ".[chat,test]"` and run the python scripts in `src`
 
 Install [Hatch](https://hatch.pypa.io), this will automatically handle virtual environments and make sure all dependencies are installed when you run a script in the project:
 

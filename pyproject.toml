@@ -6,8 +6,12 @@ build-backend = "hatchling.build"
 requires-python = ">=3.9"
 name = "sparql-llm"
 description = "Reusable components and complete webapp to improve Large Language Models (LLMs) capabilities when generating SPARQL queries for a given set of endpoints, using Retrieval-Augmented Generation (RAG) and SPARQL query validation from the endpoint schema."
-license = "MIT"
+readme = "README.md"
+license = { file = "LICENSE.txt" }
 authors = [
+    { name = "Vincent Emonet", email = "vincent.emonet@gmail.com" },
+]
+maintainers = [
     { name = "Vincent Emonet", email = "vincent.emonet@gmail.com" },
 ]
 keywords = [
@@ -26,23 +30,21 @@ dynamic = ["version"]
 dependencies = [
     "requests",
     "rdflib",
-    "openai",
     "bs4",
-    "fastembed",
-    "qdrant_client",
-    "fastapi",
     "langchain",
     "langchain-core",
     "curies-rs >=0.1.3",
-    "pydantic >=2.0.0",
-    "pydantic-settings",
 ]
 
 
 [project.optional-dependencies]
-web = [
-    "qdrant_client",
+chat = [
     "fastapi",
+    "pydantic >=2.0.0",
+    "pydantic-settings",
+    "openai",
+    "qdrant_client",
+    "fastembed",
 ]
 test = [
     "pytest",
@@ -83,7 +85,7 @@ PIP_EXTRA_INDEX_URL = "https://aiinfra.pkgs.visualstudio.com/PublicPackages/_pac
 [tool.hatch.envs.default]
 features = [
     "test",
-    "web",
+    "chat",
 ]
 post-install-commands = []
 

@@ -1,5 +1,6 @@
 .env
 .venv
+dist/
 data/
 __pycache__/
 .*_cache

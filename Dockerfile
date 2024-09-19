@@ -13,7 +13,7 @@ RUN pip install --upgrade pip
 COPY . /app/
 # COPY ./scripts/prestart.sh /app/
 
-RUN pip install -e "."
+RUN pip install -e ".[chat]"
 
 ENV PYTHONPATH=/app
 ENV MODULE_NAME=src.sparql_llm.api

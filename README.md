@@ -28,7 +28,7 @@ This repository contains:
 This package requires Python >=3.9, install it from the git repository with:
 
 ```bash
-pip install git+https://github.com/sib-swiss/sparql-llm.git
+pip install sparql-llm
 ```
 
 ### SPARQL query examples loader
