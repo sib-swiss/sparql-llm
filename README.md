@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🦜✨ SPARQL query generation with LLMs
+# ✨ SPARQL query generation with LLMs 🦜
 
 [![PyPI - Version](https://img.shields.io/pypi/v/sparql-llm.svg?logo=pypi&label=PyPI&logoColor=silver)](https://pypi.org/project/sparql-llm/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/sparql-llm.svg?logo=python&label=Python&logoColor=silver)](https://pypi.org/project/sparql-llm/)
@@ -8,26 +8,26 @@
 
 </div>
 
-Reusable components and complete web service to improve Large Language Models (LLMs) capabilities when generating [SPARQL](https://www.w3.org/TR/sparql11-overview/) queries for a given set of endpoints, using Retrieval-Augmented Generation (RAG) and SPARQL query validation from the endpoints schemas.
+This project provides reusable components and a complete web service to enhance the capabilities of Large Language Models (LLMs) in generating [SPARQL](https://www.w3.org/TR/sparql11-overview/) queries for specific endpoints. By integrating Retrieval-Augmented Generation (RAG) and SPARQL query validation through endpoint schemas, this system ensures more accurate and relevant query generation on large scale knowledge graphs.
 
-The different components of the system can be used separately, or the whole chat system can be deployed for a set of endpoints. It relies on the endpoint containing some descriptive metadata: [SPARQL query examples](https://github.com/sib-swiss/sparql-examples), and endpoint description using the [Vocabulary of Interlinked Datasets (VoID)](https://www.w3.org/TR/void/), which can generated automatically using the [void-generator](https://github.com/JervenBolleman/void-generator).
+The components are designed to work either independently or as part of a full chat-based system that can be deployed for a set of SPARQL endpoints. It **requires endpoints to include metadata** such as [SPARQL query examples](https://github.com/sib-swiss/sparql-examples) and endpoint descriptions using the [Vocabulary of Interlinked Datasets (VoID)](https://www.w3.org/TR/void/), which can be automatically generated using the [void-generator](https://github.com/JervenBolleman/void-generator).
 
-This repository contains:
+## 🌈 Features
 
-* Functions to extract and load relevant metadata from a SPARQL endpoints. Loaders are compatible with [LangChain](https://python.langchain.com), but they can also be used outside of LangChain as they just return a list of documents with metadata as JSON, which can then be loaded how you want in your vectorstore.
-* Function to automatically parse and validate SPARQL queries based on an endpoint VoID description.
-* A complete reusable system to deploy a LLM chat system with web UI, API and vector database, designed to help users to write SPARQL queries for a given set of endpoints by exploiting metadata uploaded to the endpoints (WIP).
-* The deployment configuration for **[chat.expasy.org](https://chat.expasy.org)** the LLM chat system to help users accessing the endpoints maintained at the [SIB](https://www.sib.swiss/).
+- **Metadata Extraction**: Functions to extract and load relevant metadata from SPARQL endpoints. These loaders are compatible with [LangChain](https://python.langchain.com) but are flexible enough to be used independently, providing metadata as JSON for custom vector store integration.
+- **SPARQL Query Validation**: A function to automatically parse and validate federated SPARQL queries against the VoID description of the target endpoints.
+- **Deployable Chat System**: A reusable and containerized system for deploying an LLM-based chat service with a web UI, API, and vector database. This system helps users write SPARQL queries by leveraging endpoint metadata (WIP).
+- **Live Example**: Configuration for **[chat.expasy.org](https://chat.expasy.org)**, an LLM-powered chat system supporting SPARQL query generation for endpoints maintained by the [SIB](https://www.sib.swiss/).
 
 > [!TIP]
 >
 > You can quickly check if an endpoint contains the expected metadata at [sib-swiss.github.io/sparql-editor/check](https://sib-swiss.github.io/sparql-editor/check)
 
-## 🪄 Reusable components
+## 📦️ Reusable components
 
 ### Installation
 
-This package requires Python >=3.9, install it from the git repository with:
+Requires Python >=3.9
 
 ```bash
 pip install sparql-llm
@@ -50,7 +50,7 @@ print(docs[0].metadata)
 
 ### SPARQL endpoint schema loader
 
-Generate a human-readable schema using the ShEx format to describe all classes of a SPARQL endpoint based on the [VoID description](https://www.w3.org/TR/void/) present in the endpoint. Ideally the endpoint should also contain the ontology describing the class, so the `rdfs:label` and `rdfs:comment` of the classes can be used to generate embeddings and improve semantic matching.
+Generate a human-readable schema using the ShEx format to describe all classes of a SPARQL endpoint based on the [VoID description](https://www.w3.org/TR/void/) present in the endpoint. Ideally the endpoint should also contain the ontology describing the classes, so the `rdfs:label` and `rdfs:comment` of the classes can be used to generate embeddings and improve semantic matching.
 
 > [!TIP]
 >
@@ -165,13 +165,13 @@ print("\n".join(issues))
 >
 > It can easily be adapted to use any LLM served through an OpenAI-compatible API. We plan to make configuration and deployment of complete SPARQL LLM chat system easier in the future, let us know if you are interested in the GitHub issues!
 
-Create a `.env` file at the root of the repository to provide OpenAI API key to a `.env` file at the root of the repository:
+Create a `.env` file at the root of the repository to provide secrets and API keys:
 
 ```bash
 OPENAI_API_KEY=sk-proj-YYY
-GLHF_API_KEY=APIKEY_FOR_glhf.chat_USED_FOR_OPEN_SOURCE_MODELS
+GLHF_API_KEY=APIKEY_FOR_glhf.chat_USED_FOR_TEST_OPEN_SOURCE_MODELS
 EXPASY_API_KEY=NOT_SO_SECRET_API_KEY_USED_BY_FRONTEND_TO_AVOID_SPAM_FROM_CRAWLERS
-LOGS_API_KEY=PASSWORD_TO_EASILY_ACCESS_LOGS_THROUGH_THE_API
+LOGS_API_KEY=SECRET_PASSWORD_TO_EASILY_ACCESS_LOGS_THROUGH_THE_API
 ```
 
 Start the web UI, API, and similarity search engine in production (you might need to make some changes to the `compose.yml` file to adapt it to your server/proxy setup):
