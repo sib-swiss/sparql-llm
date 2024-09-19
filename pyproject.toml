@@ -113,8 +113,8 @@ compile = "pip-compile -o requirements.txt pyproject.toml"
 [tool.hatch.version]
 path = "src/sparql_llm/__init__.py"
 
-# [tool.hatch.build.targets.wheel]
-# packages = ["src/sparql_llm"]
+[tool.hatch.build.targets.wheel]
+packages = ["src/sparql_llm"]
 
 # If you need to import packages from git URLs:
 # [tool.hatch.metadata]
