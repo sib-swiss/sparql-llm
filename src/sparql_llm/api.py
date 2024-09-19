@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from openai import Stream, OpenAI
+from openai import OpenAI, Stream
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from pydantic import BaseModel
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
@@ -194,10 +194,7 @@ async def chat(request: ChatCompletionRequest):
     # Use messages from the request to keep memory of previous messages sent by the client
     # Replace the question asked by the user with the big prompt with all contextual infos
     request.messages[-1].content = prompt_with_context
-    all_messages = [
-        Message(role="system", content=settings.system_prompt),
-        *request.messages
-    ]
+    all_messages = [Message(role="system", content=settings.system_prompt), *request.messages]
 
     # Send the prompt to OpenAI to get a response
     response = client.chat.completions.create(
@@ -214,12 +211,10 @@ async def chat(request: ChatCompletionRequest):
             stream_openai(response, query_hits + docs_hits, prompt_with_context), media_type="application/x-ndjson"
         )
 
-    print(response)
+    # print(response)
     # print(response.choices[0].message.content)
     response: ChatCompletion = (
-        validate_and_fix_sparql(response, all_messages, client, request.model)
-        if request.validate_output
-        else response
+        validate_and_fix_sparql(response, all_messages, client, request.model) if request.validate_output else response
     )
     # NOTE: the response is similar to OpenAI API, but we add the list of hits and the full prompt used to ask the question
     response.docs = query_hits + docs_hits
@@ -243,10 +238,12 @@ def validate_and_fix_sparql(
     """Recursive function to validate the SPARQL queries in the chat response and fix them if needed."""
 
     if try_count >= settings.max_try_fix_sparql:
-        resp.choices[0].message.content = f"{resp.choices[0].message.content}\n\nThe SPARQL query could not be fixed after multiple tries. Please do it yourself!"
+        resp.choices[
+            0
+        ].message.content = f"{resp.choices[0].message.content}\n\nThe SPARQL query could not be fixed after multiple tries. Please do it yourself!"
         return resp
     generated_sparqls = extract_sparql_queries(resp.choices[0].message.content)
-    print("generated_sparqls", generated_sparqls)
+    # print("generated_sparqls", generated_sparqls)
     error_detected = False
     for gen_query in generated_sparqls:
         try:
@@ -261,7 +258,9 @@ def validate_and_fix_sparql(
 
         except Exception as e:
             if "Unknown namespace prefix" in str(e):
-                md_resp = md_resp.replace(gen_query["query"], add_missing_prefixes(gen_query["query"], prefixes_map))
+                resp.choices[0].message.content = resp.choices[0].message.content.replace(
+                    gen_query["query"], add_missing_prefixes(gen_query["query"], prefixes_map)
+                )
             else:
                 # Ask the LLM to try to fix it
                 print(f"Error in SPARQL query try #{try_count}: {e}\n{gen_query['query']}")
@@ -279,7 +278,7 @@ Fix the SPARQL query helping yourself with the error message and context from pr
                 # {md_resp}
                 messages.append({"role": "assistant", "content": fix_prompt})
                 fixing_resp = client.chat.completions.create(
-                    model=resp.model,
+                    model=llm_model,
                     messages=messages,
                     stream=False,
                 )
@@ -289,7 +288,9 @@ Fix the SPARQL query helping yourself with the error message and context from pr
                     resp.usage.prompt_tokens += fixing_resp.usage.prompt_tokens
                     resp.usage.completion_tokens += fixing_resp.usage.completion_tokens
                     resp.usage.total_tokens += fixing_resp.usage.total_tokens
-                    resp.choices[0].message.content = resp.choices[0].message.content.replace(gen_query["query"], fixed_query["query"])
+                    resp.choices[0].message.content = resp.choices[0].message.content.replace(
+                        gen_query["query"], fixed_query["query"]
+                    )
     if error_detected:
         # Check again the fixed query
         return validate_and_fix_sparql(resp, messages, client, llm_model, try_count)
