@@ -218,7 +218,7 @@
                 const {endpointUrl, lastQuery} = extractSparqlInfo(mdResp);
                 let queryBtn = "";
                 if (endpointUrl && lastQuery) {
-                    queryBtn = `<a class="my-3 px-3 py-1 text-sm text-black dark:text-white bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg" href="https://yasgui.triply.cc/?endpoint=${endpointUrl}&query=${encodeURIComponent(lastQuery)}" target="_blank">Run and edit the query</a>&nbsp;&nbsp;`
+                    queryBtn = `<a class="my-3 px-3 py-1 text-sm text-black dark:text-white bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg" href="https://sib-swiss.github.io/sparql-editor/?endpoint=${endpointUrl}&query=${encodeURIComponent(lastQuery)}" target="_blank">Run and edit the query</a>&nbsp;&nbsp;`
                 }
                 let sourcesBtnHtml = ""
                 let sourcesMd = ""
