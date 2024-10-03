@@ -27,7 +27,7 @@ The components are designed to work either independently or as part of a full ch
 
 ### Installation
 
-Requires Python >=3.9
+> Requires Python >=3.9
 
 ```bash
 pip install sparql-llm
@@ -189,3 +189,7 @@ docker compose -f compose.dev.yml up
 * Chat web UI available at http://localhost:8000
 * OpenAPI Swagger UI available at http://localhost:8000/docs
 * Vector database dashboard UI available at http://localhost:6333/dashboard
+
+## 🧑‍💻 Contributing
+
+Checkout the [CONTRIBUTING.md](https://github.com/sib-swiss/sparql-llm/blob/main/CONTRIBUTING.md) page for more details on how to run the package in development and make a contribution.
