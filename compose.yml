@@ -17,6 +17,7 @@ services:
   api:
     build: .
     container_name: api
+    restart: unless-stopped
     depends_on:
       - vectordb
     ports:
