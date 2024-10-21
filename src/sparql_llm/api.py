@@ -356,6 +356,7 @@ Contact kru@sib.swiss if you have any feedback or suggestions. Questions asked h
                 "How can I get the HGNC symbol for the protein P68871?",
                 "What are the rat orthologs of the human TP53?",
                 "Where is expressed the gene ACE2 in human?",
+                "List the genes in primates orthologous to genes expressed in the fruit fly's eye",
                 # "Say hi",
                 # "Which are the genes, expressed in the rat, corresponding to human genes associated with cancer?",
                 # "What is the gene associated with the protein P68871?",

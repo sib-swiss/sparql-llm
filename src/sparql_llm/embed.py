@@ -58,10 +58,11 @@ def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
         g = ConjunctiveGraph()
         for json_ld_tag in json_ld_tags:
             json_ld_content = json_ld_tag.string
+            # print(json_ld_content)
             if json_ld_content:
                 g.parse(data=json_ld_content, format="json-ld")
                 # json_ld_content = json.loads(json_ld_content)
-                question = f"What are the general metadata about {endpoint['label']} resource? (description, creators, license, dates, version, etc)"
+                question = f"What are the general metadata about {endpoint['label']} resource? (description, creators, maintainers, license, dates, version, etc)"
                 docs.append(
                     Document(
                         page_content=question,
