@@ -193,3 +193,20 @@ docker compose -f compose.dev.yml up
 ## 🧑‍💻 Contributing
 
 Checkout the [CONTRIBUTING.md](https://github.com/sib-swiss/sparql-llm/blob/main/CONTRIBUTING.md) page for more details on how to run the package in development and make a contribution.
+
+## 🪶 How to cite this work
+
+If you reuse any part of this work, please cite [the arXiv paper](https://arxiv.org/abs/2410.06062):
+
+```
+@misc{emonet2024llmbasedsparqlquerygeneration,
+    title={LLM-based SPARQL Query Generation from Natural Language over Federated Knowledge Graphs}, 
+    author={Vincent Emonet and Jerven Bolleman and Severine Duvaud and Tarcisio Mendes de Farias and Ana Claudia Sima},
+    year={2024},
+    eprint={2410.06062},
+    archivePrefix={arXiv},
+    primaryClass={cs.DB},
+    url={https://arxiv.org/abs/2410.06062}, 
+}
+```
+

@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "LLM-based SPARQL Query Generation from Natural Language over Federated Knowledge Graphs"
+repository-code: https://github.com/sib-swiss/sparql-llm
+date-released: 2024-10-08
+doi: 10.48550/arXiv.2410.06062
+license: MIT
+authors:
+  - given-names: Vincent
+    family-names: Emonet
+    orcid: https://orcid.org/0000-0002-1501-1082
+    affiliation: SIB Swiss Institute of Bioinformatics
+  - given-names: Jerven
+    family-names: Bolleman
+    orcid: https://orcid.org/0000-0002-7449-1266,
+    email: Jerven.Bolleman@sib.swiss
+    affiliation: SIB Swiss Institute of Bioinformatics
+  - given-names: Severine
+    family-names: Duvaud
+    orcid: https://orcid.org/0000-0001-7892-9678
+    affiliation: SIB Swiss Institute of Bioinformatics
+  - given-names: Tarcisio
+    family-names: Mendes de Farias
+    orcid: https://orcid.org/0000-0002-3175-5372
+    affiliation: SIB Swiss Institute of Bioinformatics
+  - given-names: Ana Claudia
+    family-names: Sima
+    orcid: https://orcid.org/0000-0003-3213-4495
+    affiliation: SIB Swiss Institute of Bioinformatics
