@@ -47,6 +47,7 @@ chat = [
     "pydantic >=2.0.0",
     "pydantic-settings",
     "openai",
+    "azure-ai-inference",
     "qdrant_client",
     "fastembed",
 ]

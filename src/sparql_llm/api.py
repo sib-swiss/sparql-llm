@@ -126,6 +126,7 @@ async def chat(request: ChatCompletionRequest):
         raise ValueError("Invalid API key")
 
     client = get_llm_client(request.model)
+    # print(client.models.list())
 
     question: str = request.messages[-1].content if request.messages else ""
 
