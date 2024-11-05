@@ -55,7 +55,7 @@ for entity in entities_list.values():
 print(f"Generating embeddings for {len(docs)} entities")
 
 # To test with a smaller number of entities
-docs = docs[:10]
+# docs = docs[:10]
 
 embeddings = embedding_model.embed([q.page_content for q in docs])
 
