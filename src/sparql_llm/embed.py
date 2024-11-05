@@ -18,6 +18,7 @@ from sparql_llm.sparql_void_shapes_loader import SparqlVoidShapesLoader
 from sparql_llm.utils import get_prefixes_for_endpoints, query_sparql
 
 def get_embedding_model() -> TextEmbedding:
+    # return TextEmbedding(settings.embedding_model, cuda=True)
     return TextEmbedding(settings.embedding_model)
 
 
@@ -204,32 +205,32 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
     )
     print(f"Done generating and indexing {len(docs)} documents into the vectordb in {time.time() - start_time} seconds")
 
-    docs = []
-    # TODO: Add entities list to the vectordb
-    for entity in entities_list.values():
-        res = query_sparql(entity["query"], entity["endpoint"])
-        for entity_res in res["results"]["bindings"]:
-            docs.append(
-                Document(
-                    page_content=entity_res["label"],
-                    metadata={
-                        "label": entity_res["label"],
-                        "uri": entity_res["uri"],
-                        "endpoint_url": entity["endpoint"],
-                        "entity_type": entity["uri"],
-                    },
-                )
-            )
-    print(f"Generating embeddings for {len(docs)} entities")
-    vectordb.upsert(
-        collection_name="entities",
-        points=models.Batch(
-            ids=list(range(1, len(docs) + 1)),
-            vectors=embeddings,
-            payloads=[doc.metadata for doc in docs],
-        ),
-        # wait=False, # Waiting for indexing to finish or not
-    )
+    # docs = []
+    # # TODO: Add entities list to the vectordb
+    # for entity in entities_list.values():
+    #     res = query_sparql(entity["query"], entity["endpoint"])
+    #     for entity_res in res["results"]["bindings"]:
+    #         docs.append(
+    #             Document(
+    #                 page_content=entity_res["label"],
+    #                 metadata={
+    #                     "label": entity_res["label"],
+    #                     "uri": entity_res["uri"],
+    #                     "endpoint_url": entity["endpoint"],
+    #                     "entity_type": entity["uri"],
+    #                 },
+    #             )
+    #         )
+    # print(f"Generating embeddings for {len(docs)} entities")
+    # vectordb.upsert(
+    #     collection_name="entities",
+    #     points=models.Batch(
+    #         ids=list(range(1, len(docs) + 1)),
+    #         vectors=embeddings,
+    #         payloads=[doc.metadata for doc in docs],
+    #     ),
+    #     # wait=False, # Waiting for indexing to finish or not
+    # )
 
 if __name__ == "__main__":
     init_vectordb()

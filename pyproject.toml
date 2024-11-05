@@ -73,7 +73,7 @@ cpu = [
     "fastembed",
 ]
 gpu = [
-    "onnxruntime-gpu",
+    # "onnxruntime-gpu",
     "fastembed-gpu",
 ]
 
