@@ -74,6 +74,8 @@ class Settings(BaseSettings):
     glhf_api_key: str = ""
     expasy_api_key: str = ""
     logs_api_key: str = ""
+    azure_inference_credential: str = ""
+    azure_inference_endpoint: str = ""
     # llm_model: str = "gpt-4o"
     # cheap_llm_model: str = "gpt-4o-mini"
 

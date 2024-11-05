@@ -8,3 +8,5 @@ __pycache__/
 
 notebooks/*.csv
 notebooks/*.txt
+entities_embeddings.csv
+uv.lock

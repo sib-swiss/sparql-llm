@@ -120,6 +120,7 @@ async def stream_openai(response: Stream[ChatCompletionChunk], docs, full_prompt
         yield f"data: {json.dumps(resp_chunk)}\n\n"
 
 
+
 @app.post("/chat")
 async def chat(request: ChatCompletionRequest):
     if settings.expasy_api_key and request.api_key != settings.expasy_api_key:
@@ -159,7 +160,7 @@ async def chat(request: ChatCompletionRequest):
 
     # Get the most relevant documents other than SPARQL query examples from the search engine (ShEx shapes, general infos)
     docs_hits = vectordb.search(
-        collection_name=settings.docs_collection_name,
+        collection_name="entities",
         query_vector=query_embeddings,
         query_filter=Filter(
             should=[

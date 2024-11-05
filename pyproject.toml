@@ -49,7 +49,7 @@ chat = [
     "openai",
     "azure-ai-inference",
     "qdrant_client",
-    "fastembed",
+    # "fastembed",
 ]
 test = [
     "pytest",
@@ -67,6 +67,10 @@ test = [
     # "jupyter",
     # "ipywidgets",
     # "tqdm",
+]
+cpu = [
+    # "onnxruntime",
+    "fastembed",
 ]
 gpu = [
     "onnxruntime-gpu",
@@ -94,6 +98,10 @@ features = [
 ]
 post-install-commands = []
 
+
+# uv venv
+# uv pip install ".[chat,gpu]"
+# uv run python src/sparql_llm/embed_entities.py
 [tool.hatch.envs.default.scripts]
 fmt = [
     "ruff format",
