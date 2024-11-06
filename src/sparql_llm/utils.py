@@ -18,10 +18,6 @@ def get_prefixes_for_endpoints(endpoints: list[str]) -> dict[str, str]:
     prefixes: dict[str, str] = {}
     for endpoint_url in endpoints:
         try:
-            # sparql_endpoint = SPARQLWrapper(endpoint_url)
-            # sparql_endpoint.setReturnFormat("json")
-            # sparql_endpoint.setQuery(GET_PREFIXES_QUERY)
-
             for row in query_sparql(GET_PREFIXES_QUERY, endpoint_url)["results"]["bindings"]:
                 if row["namespace"]["value"] not in prefixes.values():
                     prefixes[row["prefix"]["value"]] = row["namespace"]["value"]

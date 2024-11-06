@@ -1,6 +1,7 @@
-import os
-from openai import OpenAI, AzureOpenAI
+from fastembed import TextEmbedding
+from openai import OpenAI
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from qdrant_client import QdrantClient
 
 from sparql_llm.utils import get_prefixes_for_endpoints
 
@@ -58,7 +59,6 @@ from sparql_llm.utils import get_prefixes_for_endpoints
 # print("	Completion tokens:", response.usage.completion_tokens)
 
 
-
 def get_llm_client(model: str) -> OpenAI:
     if model.startswith("hf:"):
         # Automatically use glhf API key if the model starts with "hf:"
@@ -95,6 +95,8 @@ class Settings(BaseSettings):
     retrieved_queries_count: int = 20
     retrieved_docs_count: int = 15
     docs_collection_name: str = "expasy"
+
+    entities_collection_name: str = "entities"
 
     max_try_fix_sparql: int = 5
 
@@ -184,3 +186,15 @@ def get_prefixes_dict() -> dict[str, str]:
     """Return a dictionary of all prefixes."""
     endpoints_urls = [endpoint["endpoint_url"] for endpoint in settings.endpoints]
     return get_prefixes_for_endpoints(endpoints_urls)
+
+
+def get_embedding_model() -> TextEmbedding:
+    # return TextEmbedding(settings.embedding_model, cuda=True)
+    return TextEmbedding(settings.embedding_model)
+
+
+def get_vectordb(host=settings.vectordb_host) -> QdrantClient:
+    return QdrantClient(
+        host=host,
+        prefer_grpc=True,
+    )

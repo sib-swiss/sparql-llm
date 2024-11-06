@@ -120,7 +120,6 @@ async def stream_openai(response: Stream[ChatCompletionChunk], docs, full_prompt
         yield f"data: {json.dumps(resp_chunk)}\n\n"
 
 
-
 @app.post("/chat")
 async def chat(request: ChatCompletionRequest):
     if settings.expasy_api_key and request.api_key != settings.expasy_api_key:

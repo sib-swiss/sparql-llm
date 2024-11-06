@@ -2,32 +2,20 @@ import time
 
 import requests
 from bs4 import BeautifulSoup
-from fastembed import TextEmbedding
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-from qdrant_client import QdrantClient, models
+from qdrant_client import models
 from qdrant_client.http.models import (
     Distance,
     VectorParams,
 )
 from rdflib import RDF, ConjunctiveGraph, Namespace
 
-from sparql_llm.config import settings
+from sparql_llm.config import get_embedding_model, get_vectordb, settings
+from sparql_llm.embed_entities import load_entities_embeddings_to_vectordb
 from sparql_llm.sparql_examples_loader import SparqlExamplesLoader
 from sparql_llm.sparql_void_shapes_loader import SparqlVoidShapesLoader
-from sparql_llm.utils import get_prefixes_for_endpoints, query_sparql
-
-def get_embedding_model() -> TextEmbedding:
-    # return TextEmbedding(settings.embedding_model, cuda=True)
-    return TextEmbedding(settings.embedding_model)
-
-
-def get_vectordb(host=settings.vectordb_host) -> QdrantClient:
-    return QdrantClient(
-        host=host,
-        prefer_grpc=True,
-    )
-
+from sparql_llm.utils import get_prefixes_for_endpoints
 
 SCHEMA = Namespace("http://schema.org/")
 
@@ -205,6 +193,14 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
     )
     print(f"Done generating and indexing {len(docs)} documents into the vectordb in {time.time() - start_time} seconds")
 
+    if not vectordb.collection_exists(settings.entities_collection_name):
+        vectordb.create_collection(
+            collection_name=settings.entities_collection_name,
+            vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
+        )
+    if vectordb.get_collection(settings.entities_collection_name).points_count == 0:
+        load_entities_embeddings_to_vectordb()
+
     # docs = []
     # # TODO: Add entities list to the vectordb
     # for entity in entities_list.values():
@@ -231,6 +227,7 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
     #     ),
     #     # wait=False, # Waiting for indexing to finish or not
     # )
+
 
 if __name__ == "__main__":
     init_vectordb()
