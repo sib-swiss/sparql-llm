@@ -1,23 +1,24 @@
 import csv
 import os
-from ast import literal_eval
 import time
+from ast import literal_eval
 
 from langchain_core.documents import Document
 from qdrant_client import models
 
-from sparql_llm.config import get_embedding_model, get_vectordb
+from sparql_llm.config import get_embedding_model, get_vectordb, settings
 from sparql_llm.utils import query_sparql
+from tqdm import tqdm
 
 entities_embeddings_dir = os.path.join("data", "embeddings")
 entities_embeddings_filepath = os.path.join(entities_embeddings_dir, "entities_embeddings.csv")
 
-def retrieve_index_data(entity: dict , docs: list[Document], pagination : (int, int) | None ):
-    if pagination:
-        query = entity["query"] + " LIMIT " + pagination[0] + " OFFSET " + pagination[1]
-    else:
-        query = entity["query"]
-    entities_res = query_sparql(query, entity["endpoint"])["results"]["bindings"]
+def retrieve_index_data(entity: dict, docs: list[Document], pagination: (int, int) = None):
+    query = f"{entity['query']} LIMIT {pagination[0]} OFFSET {pagination[1]}" if pagination else entity["query"]
+    try:
+        entities_res = query_sparql(query, entity["endpoint"])["results"]["bindings"]
+    except Exception as _e:
+        return None
     print(f"Found {len(entities_res)} entities for {entity['label']} in {entity['endpoint']}")
     for entity_res in entities_res:
         docs.append(
@@ -32,6 +33,8 @@ def retrieve_index_data(entity: dict , docs: list[Document], pagination : (int, 
             )
         )
     return entities_res
+
+
 def generate_embeddings_for_entities():
     start_time = time.time()
     embedding_model = get_embedding_model()
@@ -42,6 +45,7 @@ def generate_embeddings_for_entities():
             "label": "Anatomical entity",
             "description": "An anatomical entity can be an organism part (e.g. brain, blood, liver and so on) or a material anatomical entity such as a cell.",
             "endpoint": "https://www.bgee.org/sparql/",
+            "pagination": False,
             "query": """PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
     PREFIX genex: <http://purl.org/genex#>
     SELECT DISTINCT ?uri ?label
@@ -175,15 +179,17 @@ def generate_embeddings_for_entities():
     docs: list[Document] = []
     for entity in entities_list.values():
         if entity["pagination"]:
-            max_results = 100000
+            max_results = 200000
             pagination = (max_results, 0)
             while retrieve_index_data(entity, docs, pagination):
                 pagination = (pagination[0], pagination[1] + max_results)
         else:
             retrieve_index_data(entity, docs)
 
+    # entities_res = query_sparql(entity["query"], entity["endpoint"])["results"]["bindings"]
+    # print(f"Found {len(entities_res)} entities for {entity['label']} in {entity['endpoint']}")
 
-    print(f"Generating embeddings for {len(docs)} entities")
+    print(f"Done querying in {time.time() - start_time} seconds, generating embeddings for {len(docs)} entities")
 
     # To test with a smaller number of entities
     # docs = docs[:10]
@@ -228,9 +234,10 @@ def load_entities_embeddings_to_vectordb():
     docs = []
     embeddings = []
 
+    print("Reading entities embeddings from the .csv file")
     with open(entities_embeddings_filepath) as file:
         reader = csv.DictReader(file)
-        for _i, row in enumerate(reader):
+        for row in tqdm(reader, desc="Extracting embeddings from CSV file"):
             docs.append(
                 Document(
                     page_content=row["label"],
@@ -243,9 +250,9 @@ def load_entities_embeddings_to_vectordb():
                 )
             )
             embeddings.append(literal_eval(row["embedding"]))
-
+    print(f"Found embeddings for {len(docs)} entities in {time.time() - start_time} seconds. Now adding them to the vectordb")
     vectordb.upsert(
-        collection_name="entities",
+        collection_name=settings.entities_collection_name,
         points=models.Batch(
             ids=list(range(1, len(docs) + 1)),
             vectors=embeddings,

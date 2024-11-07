@@ -49,6 +49,7 @@ chat = [
     "openai",
     "azure-ai-inference",
     "qdrant_client",
+    "tqdm",
     # "fastembed",
 ]
 test = [

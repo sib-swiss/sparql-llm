@@ -28,6 +28,7 @@ services:
     volumes:
       - ./data/fastembed_cache:/tmp/fastembed_cache
       - ./data/logs:/logs
+      - ./data/embeddings:/app/data/embeddings
       - ./src:/app/src
     # entrypoint: uvicorn src.sparql_llm.api:app --host 0.0.0.0 --port 80
     env_file:

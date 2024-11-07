@@ -120,6 +120,50 @@ async def stream_openai(response: Stream[ChatCompletionChunk], docs, full_prompt
         yield f"data: {json.dumps(resp_chunk)}\n\n"
 
 
+def extract_entities(sentence: str) -> list[dict[str, str]]:
+    score_threshold = 0.8
+    sentence_splitted = re.findall(r"\b\w+\b", sentence)
+    window_size = len(sentence_splitted)
+    entities_list = []
+    while window_size > 0 and window_size <= len(sentence_splitted):
+        window_start = 0
+        window_end = window_start + window_size
+        while window_end <= len(sentence_splitted):
+            term = sentence_splitted[window_start:window_end]
+            print("term", term)
+            term_embeddings = next(iter(embedding_model.embed([" ".join(term)])))
+            query_hits = vectordb.search(
+                collection_name=settings.entities_collection_name,
+                query_vector=term_embeddings,
+                limit=10,
+            )
+            matchs = []
+            for query_hit in query_hits:
+                if query_hit.score > score_threshold:
+                    matchs.append(query_hit)
+            if len(matchs) > 0:
+                entities_list.append(
+                    {
+                        "matchs": matchs,
+                        "term": term,
+                        "start_index": window_start,
+                        "end_index": window_end,
+                    }
+                )
+            # term_search = reduce(lambda x, y: "{} {}".format(x, y), sentence_splitted[window_start:window_end])
+            # resultSearch = index.search(term_search)
+            # if resultSearch is not None and len(resultSearch) > 0:
+            #     selected_hit = resultSearch[0]
+            #     if selected_hit['score'] > MAX_SCORE_PARSER_TRIPLES:
+            #         selected_hit = None
+            #     if selected_hit is not None and selected_hit not in matchs:
+            #         matchs.append(selected_hit)
+            window_start += 1
+            window_end = window_start + window_size
+        window_size -= 1
+    return entities_list
+
+
 @app.post("/chat")
 async def chat(request: ChatCompletionRequest):
     if settings.expasy_api_key and request.api_key != settings.expasy_api_key:
@@ -159,7 +203,7 @@ async def chat(request: ChatCompletionRequest):
 
     # Get the most relevant documents other than SPARQL query examples from the search engine (ShEx shapes, general infos)
     docs_hits = vectordb.search(
-        collection_name="entities",
+        collection_name=settings.docs_collection_name,
         query_vector=query_embeddings,
         query_filter=Filter(
             should=[
@@ -190,7 +234,20 @@ async def chat(request: ChatCompletionRequest):
         else:
             prompt_with_context += f"Information about: {docs_hit.payload['question']}\nRelated to SPARQL endpoint {docs_hit.payload['endpoint_url']}\n\n{docs_hit.payload['answer']}\n\n"
 
+    # Now extract entities from the user question
+    entities_list = extract_entities(question)
+    for entity in entities_list:
+        prompt_with_context += f'\n\nEntities found in the user question for "{" ".join(entity["term"])}":\n\n'
+        for match in entity["matchs"]:
+            prompt_with_context += f"- {match.payload['label']} with IRI <{match.payload['uri']}> in endpoint {match.payload['endpoint_url']}\n\n"
+
+    if len(entities_list) == 0:
+        prompt_with_context += "\nNo entities found in the user question that matches entities in the endpoints. "
+
+    prompt_with_context += "\nIf the user is asking for a named entity, and this entity cannot be found in the endpoint, warn them about the fact we could not find it in the endpoints.\n\n"
+
     prompt_with_context += f"\n{INTRO_USER_QUESTION_PROMPT}\n{question}"
+    print(prompt_with_context)
 
     # Use messages from the request to keep memory of previous messages sent by the client
     # Replace the question asked by the user with the big prompt with all contextual infos

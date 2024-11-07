@@ -131,67 +131,68 @@ def load_ontology(endpoint: dict[str, str]) -> list[Document]:
 def init_vectordb(vectordb_host: str = settings.vectordb_host) -> None:
     """Initialize the vectordb with example queries and ontology descriptions from the SPARQL endpoints"""
     vectordb = get_vectordb(vectordb_host)
-    embedding_model = get_embedding_model()
-    docs: list[Document] = []
-
-    endpoints_urls = [endpoint["endpoint_url"] for endpoint in settings.endpoints]
-    prefix_map = get_prefixes_for_endpoints(endpoints_urls)
-
-    for endpoint in settings.endpoints:
-        print(f"\n  🔎 Getting metadata for {endpoint['label']} at {endpoint['endpoint_url']}")
-        queries_loader = SparqlExamplesLoader(endpoint["endpoint_url"], verbose=True)
-        docs += queries_loader.load()
-
-        void_loader = SparqlVoidShapesLoader(
-            endpoint["endpoint_url"],
-            prefix_map=prefix_map,
-            verbose=True,
-        )
-        docs += void_loader.load()
-
-        docs += load_schemaorg_description(endpoint)
-        # NOTE: we dont use the ontology for now, schema from shex is better
-        # docs += load_ontology(endpoint)
-
-    # NOTE: Manually add infos for UniProt since we cant retrieve it for now. Taken from https://www.uniprot.org/help/about
-    uniprot_description_question = "What is the SIB resource UniProt about?"
-    docs.append(
-        Document(
-            page_content=uniprot_description_question,
-            metadata={
-                "question": uniprot_description_question,
-                "answer": """The Universal Protein Resource (UniProt) is a comprehensive resource for protein sequence and annotation data. The UniProt databases are the UniProt Knowledgebase (UniProtKB), the UniProt Reference Clusters (UniRef), and the UniProt Archive (UniParc). The UniProt consortium and host institutions EMBL-EBI, SIB and PIR are committed to the long-term preservation of the UniProt databases.
-
-UniProt is a collaboration between the European Bioinformatics Institute (EMBL-EBI), the SIB Swiss Institute of Bioinformatics and the Protein Information Resource (PIR). Across the three institutes more than 100 people are involved through different tasks such as database curation, software development and support.
-
-EMBL-EBI and SIB together used to produce Swiss-Prot and TrEMBL, while PIR produced the Protein Sequence Database (PIR-PSD). These two data sets coexisted with different protein sequence coverage and annotation priorities. TrEMBL (Translated EMBL Nucleotide Sequence Data Library) was originally created because sequence data was being generated at a pace that exceeded Swiss-Prot's ability to keep up. Meanwhile, PIR maintained the PIR-PSD and related databases, including iProClass, a database of protein sequences and curated families. In 2002 the three institutes decided to pool their resources and expertise and formed the UniProt consortium.
-
-The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supported by key staff, and receives valuable input from an independent Scientific Advisory Board.
-""",
-                "endpoint_url": "https://sparql.uniprot.org/sparql/",
-                "doc_type": "schemaorg_description",
-            },
-        )
-    )
 
     if not vectordb.collection_exists(settings.docs_collection_name):
         vectordb.create_collection(
             collection_name=settings.docs_collection_name,
             vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
         )
-    print(f"Generating embeddings for {len(docs)} documents")
-    embeddings = embedding_model.embed([q.page_content for q in docs])
-    start_time = time.time()
-    vectordb.upsert(
-        collection_name=settings.docs_collection_name,
-        points=models.Batch(
-            ids=list(range(1, len(docs) + 1)),
-            vectors=embeddings,
-            payloads=[doc.metadata for doc in docs],
-        ),
-        # wait=False, # Waiting for indexing to finish or not
-    )
-    print(f"Done generating and indexing {len(docs)} documents into the vectordb in {time.time() - start_time} seconds")
+        embedding_model = get_embedding_model()
+        docs: list[Document] = []
+
+        endpoints_urls = [endpoint["endpoint_url"] for endpoint in settings.endpoints]
+        prefix_map = get_prefixes_for_endpoints(endpoints_urls)
+
+        for endpoint in settings.endpoints:
+            print(f"\n  🔎 Getting metadata for {endpoint['label']} at {endpoint['endpoint_url']}")
+            queries_loader = SparqlExamplesLoader(endpoint["endpoint_url"], verbose=True)
+            docs += queries_loader.load()
+
+            void_loader = SparqlVoidShapesLoader(
+                endpoint["endpoint_url"],
+                prefix_map=prefix_map,
+                verbose=True,
+            )
+            docs += void_loader.load()
+
+            docs += load_schemaorg_description(endpoint)
+            # NOTE: we dont use the ontology for now, schema from shex is better
+            # docs += load_ontology(endpoint)
+
+        # NOTE: Manually add infos for UniProt since we cant retrieve it for now. Taken from https://www.uniprot.org/help/about
+        uniprot_description_question = "What is the SIB resource UniProt about?"
+        docs.append(
+            Document(
+                page_content=uniprot_description_question,
+                metadata={
+                    "question": uniprot_description_question,
+                    "answer": """The Universal Protein Resource (UniProt) is a comprehensive resource for protein sequence and annotation data. The UniProt databases are the UniProt Knowledgebase (UniProtKB), the UniProt Reference Clusters (UniRef), and the UniProt Archive (UniParc). The UniProt consortium and host institutions EMBL-EBI, SIB and PIR are committed to the long-term preservation of the UniProt databases.
+
+    UniProt is a collaboration between the European Bioinformatics Institute (EMBL-EBI), the SIB Swiss Institute of Bioinformatics and the Protein Information Resource (PIR). Across the three institutes more than 100 people are involved through different tasks such as database curation, software development and support.
+
+    EMBL-EBI and SIB together used to produce Swiss-Prot and TrEMBL, while PIR produced the Protein Sequence Database (PIR-PSD). These two data sets coexisted with different protein sequence coverage and annotation priorities. TrEMBL (Translated EMBL Nucleotide Sequence Data Library) was originally created because sequence data was being generated at a pace that exceeded Swiss-Prot's ability to keep up. Meanwhile, PIR maintained the PIR-PSD and related databases, including iProClass, a database of protein sequences and curated families. In 2002 the three institutes decided to pool their resources and expertise and formed the UniProt consortium.
+
+    The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supported by key staff, and receives valuable input from an independent Scientific Advisory Board.
+    """,
+                    "endpoint_url": "https://sparql.uniprot.org/sparql/",
+                    "doc_type": "schemaorg_description",
+                },
+            )
+        )
+
+        print(f"Generating embeddings for {len(docs)} documents")
+        embeddings = embedding_model.embed([q.page_content for q in docs])
+        start_time = time.time()
+        vectordb.upsert(
+            collection_name=settings.docs_collection_name,
+            points=models.Batch(
+                ids=list(range(1, len(docs) + 1)),
+                vectors=embeddings,
+                payloads=[doc.metadata for doc in docs],
+            ),
+            # wait=False, # Waiting for indexing to finish or not
+        )
+        print(f"Done generating and indexing {len(docs)} documents into the vectordb in {time.time() - start_time} seconds")
 
     if not vectordb.collection_exists(settings.entities_collection_name):
         vectordb.create_collection(
