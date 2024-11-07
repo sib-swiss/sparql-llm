@@ -88,9 +88,13 @@ def generate_embeddings_for_entities():
             "pagination": False,
             "query": """PREFIX orth: <http://purl.org/net/orth#>
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    PREFIX dc: <http://purl.org/dc/terms/>
     SELECT DISTINCT ?uri ?label {
-    ?uri a orth:Gene .
-    ?uri rdfs:label ?label .}""",
+        ?uri a orth:Gene .
+        {?uri rdfs:label ?label .}
+        UNION {
+        ?uri dc:identifier ?label .}
+     }""",
         },
         "oma_protein": {
             "uri": "http://purl.org/net/orth#Protein",
@@ -171,6 +175,45 @@ def generate_embeddings_for_entities():
     WHERE {
         ?uri a up:Taxon ;
             up:rank up:Species ;
+            up:scientificName ?label .
+    }""",
+        },
+        "oma_tax_levels": {
+            "uri": "http://purl.org/net/orth#TaxonomicRange",
+            "label": "Taxonomic level",
+            "description": "The taxonomic level represents the taxon at which a group of sequences are considered members of the same cluster of orthologs/paralogs",
+            "endpoint": "https://sparql.omabrowser.org/sparql/",
+            "pagination": False,
+            "query": """PREFIX orth: <http://purl.org/net/orth#>
+        SELECT ?uri ?label
+        WHERE {
+            ?uri a orth:TaxonomicRange ;
+                orth:taxRange  ?label .
+        }""",
+        },
+        "uniprot_mnemonics": {
+            "uri": "http://purl.uniprot.org/core/Protein",
+            "label": "mnemonic",
+            "description": "uniprot mnemonic",
+            "endpoint": "https://sparql.uniprot.org/sparql/",
+            "pagination": True,
+            "query": """PREFIX up: <http://purl.uniprot.org/core/>
+    SELECT ?uri ?label
+    WHERE {
+        ?uri a up:Protein ;
+            up:mnemonic  ?label .
+        }""",
+        },
+        "uniprot_taxon": {
+            "uri": "http://purl.uniprot.org/core/Taxon",
+            "label": "species",
+            "description": "taxon scientific names",
+            "endpoint": "https://sparql.uniprot.org/sparql/",
+            "pagination": False,
+            "query": """PREFIX up: <http://purl.uniprot.org/core/>
+    SELECT ?uri ?label
+    WHERE {
+        ?uri a up:Taxon ;
             up:scientificName ?label .
     }""",
         },
