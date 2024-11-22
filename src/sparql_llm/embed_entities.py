@@ -217,7 +217,6 @@ def generate_embeddings_for_entities():
             up:scientificName ?label .
     }""",
         },
-        ,
         "uniprot_disease": {
             "uri": "http://purl.uniprot.org/core/Disease",
             "label": "Disease",
@@ -225,12 +224,12 @@ def generate_embeddings_for_entities():
             "endpoint": "https://sparql.uniprot.org/sparql/",
             "pagination": False,
             "query": """PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-PREFIX up: <http://purl.uniprot.org/core/>
-SELECT ?uri ?label ?type WHERE {
-  ?uri a up:Disease ;
-  	   skos:prefLabel ?label .
-} """,
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    PREFIX up: <http://purl.uniprot.org/core/>
+    SELECT ?uri ?label ?type WHERE {
+      ?uri a up:Disease ;
+      	   skos:prefLabel ?label .
+    }""",
         },
     }
 
