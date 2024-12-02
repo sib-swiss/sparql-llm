@@ -192,7 +192,9 @@ def init_vectordb(vectordb_host: str = settings.vectordb_host) -> None:
             ),
             # wait=False, # Waiting for indexing to finish or not
         )
-        print(f"Done generating and indexing {len(docs)} documents into the vectordb in {time.time() - start_time} seconds")
+        print(
+            f"Done generating and indexing {len(docs)} documents into the vectordb in {time.time() - start_time} seconds"
+        )
 
     if not vectordb.collection_exists(settings.entities_collection_name):
         vectordb.create_collection(

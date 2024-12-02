@@ -5,13 +5,14 @@ from ast import literal_eval
 
 from langchain_core.documents import Document
 from qdrant_client import models
+from tqdm import tqdm
 
 from sparql_llm.config import get_embedding_model, get_vectordb, settings
 from sparql_llm.utils import query_sparql
-from tqdm import tqdm
 
 entities_embeddings_dir = os.path.join("data", "embeddings")
 entities_embeddings_filepath = os.path.join(entities_embeddings_dir, "entities_embeddings.csv")
+
 
 def retrieve_index_data(entity: dict, docs: list[Document], pagination: (int, int) = None):
     query = f"{entity['query']} LIMIT {pagination[0]} OFFSET {pagination[1]}" if pagination else entity["query"]
@@ -307,7 +308,9 @@ def load_entities_embeddings_to_vectordb():
                 )
             )
             embeddings.append(literal_eval(row["embedding"]))
-    print(f"Found embeddings for {len(docs)} entities in {time.time() - start_time} seconds. Now adding them to the vectordb")
+    print(
+        f"Found embeddings for {len(docs)} entities in {time.time() - start_time} seconds. Now adding them to the vectordb"
+    )
     vectordb.upsert(
         collection_name=settings.entities_collection_name,
         points=models.Batch(
