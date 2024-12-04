@@ -10,6 +10,10 @@ from tqdm import tqdm
 from sparql_llm.config import get_embedding_model, get_vectordb, settings
 from sparql_llm.utils import query_sparql
 
+# Run the script to extract entities from endpoints and generate embeddings for them (long):
+# uv run python src/sparql_llm/embed_entities.py
+
+
 entities_embeddings_dir = os.path.join("data", "embeddings")
 entities_embeddings_filepath = os.path.join(entities_embeddings_dir, "entities_embeddings.csv")
 
@@ -78,8 +82,9 @@ def generate_embeddings_for_entities():
             "query": """PREFIX genex: <http://purl.org/genex#>
     PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
     SELECT DISTINCT ?uri ?label {
-    ?uri a <http://www.ebi.ac.uk/efo/EFO_0000399> .
-    ?uri rdfs:label ?label .}""",
+        ?uri a <http://www.ebi.ac.uk/efo/EFO_0000399> .
+        ?uri rdfs:label ?label .
+    }""",
         },
         "bgee_gene": {
             "uri": "http://purl.org/net/orth#Gene",
@@ -92,10 +97,12 @@ def generate_embeddings_for_entities():
     PREFIX dc: <http://purl.org/dc/terms/>
     SELECT DISTINCT ?uri ?label {
         ?uri a orth:Gene .
-        {?uri rdfs:label ?label .}
-        UNION {
-        ?uri dc:identifier ?label .}
-     }""",
+        {
+            ?uri rdfs:label ?label .
+        } UNION {
+            ?uri dc:identifier ?label .
+        }
+    }""",
         },
         "oma_protein": {
             "uri": "http://purl.org/net/orth#Protein",
@@ -109,9 +116,10 @@ def generate_embeddings_for_entities():
 
     SELECT DISTINCT ?uri ?label {
     ?uri a orth:Protein .
-    {?uri rdfs:label ?label .}
-    UNION {
-    ?uri dc:identifier ?label .}
+    {
+        ?uri rdfs:label ?label .
+    } UNION {
+        ?uri dc:identifier ?label .}
     }""",
         },
         "oma_gene": {
@@ -126,31 +134,32 @@ def generate_embeddings_for_entities():
     ?uri a orth:Protein .
     ?uri rdfs:label ?label .}""",
         },
-        "uniprot_gene": {
-            "uri": "http://purl.uniprot.org/core/Gene",
-            "label": "Gene",
-            "description": "A region (or regions) that includes all of the sequence elements necessary to encode a functional transcript. A gene may include regulatory regions, transcribed regions and/or other functional sequence regions.",
-            "endpoint": "https://sparql.uniprot.org/sparql/",
-            "pagination": True,
-            "query": """PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-    PREFIX up: <http://purl.uniprot.org/core/>
-    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    SELECT  ?uri ?label {
-    ?uri a up:Gene .
-    ?uri skos:prefLabel ?label .}""",
-        },
-        "uniprot_protein": {
-            "uri": "http://purl.uniprot.org/core/Protein",
-            "label": "Protein",
-            "description": "A sequence of amino acids linked by peptide bonds which may lack appreciable tertiary structure and may not be liable to irreversible denaturation.",
-            "endpoint": "https://sparql.uniprot.org/sparql/",
-            "pagination": True,
-            "query": """PREFIX up: <http://purl.uniprot.org/core/>
-    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    SELECT  ?uri ?label {
-    ?uri a up:Protein .
-    ?uri rdfs:label ?label .}""",
-        },
+        # TODO: way too many UniProt genes, should we just ignore indexing genes?
+    #     "uniprot_gene": {
+    #         "uri": "http://purl.uniprot.org/core/Gene",
+    #         "label": "Gene",
+    #         "description": "A region (or regions) that includes all of the sequence elements necessary to encode a functional transcript. A gene may include regulatory regions, transcribed regions and/or other functional sequence regions.",
+    #         "endpoint": "https://sparql.uniprot.org/sparql/",
+    #         "pagination": True,
+    #         "query": """PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    # PREFIX up: <http://purl.uniprot.org/core/>
+    # PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    # SELECT  ?uri ?label {
+    # ?uri a up:Gene .
+    # ?uri skos:prefLabel ?label .}""",
+    #     },
+    #     "uniprot_protein": {
+    #         "uri": "http://purl.uniprot.org/core/Protein",
+    #         "label": "Protein",
+    #         "description": "A sequence of amino acids linked by peptide bonds which may lack appreciable tertiary structure and may not be liable to irreversible denaturation.",
+    #         "endpoint": "https://sparql.uniprot.org/sparql/",
+    #         "pagination": True,
+    #         "query": """PREFIX up: <http://purl.uniprot.org/core/>
+    # PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    # SELECT  ?uri ?label {
+    # ?uri a up:Protein .
+    # ?uri rdfs:label ?label .}""",
+    #     },
         "uniprot_species": {
             "uri": "http://purl.uniprot.org/core/Taxon",
             "label": "species",
@@ -228,8 +237,8 @@ def generate_embeddings_for_entities():
     PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
     PREFIX up: <http://purl.uniprot.org/core/>
     SELECT ?uri ?label ?type WHERE {
-      ?uri a up:Disease ;
-      	   skos:prefLabel ?label .
+        ?uri a up:Disease ;
+            skos:prefLabel ?label .
     }""",
         },
     }

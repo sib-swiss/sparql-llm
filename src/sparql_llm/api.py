@@ -183,7 +183,7 @@ async def chat(request: ChatCompletionRequest):
     # # We also provide the example queries as previous messages to the LLM
     # system_msg: list[Message] = [{"role": "system", "content": settings.system_prompt}]
 
-    # Get the most relevant examples SPARQL queries from the search engine
+    # 1. Get the most relevant examples SPARQL queries from the search engine
     query_hits = vectordb.search(
         collection_name=settings.docs_collection_name,
         query_vector=query_embeddings,
@@ -201,7 +201,7 @@ async def chat(request: ChatCompletionRequest):
         prompt_with_context += f"{query_hit.payload['question']}:\n\n```sparql\n# {query_hit.payload['endpoint_url']}\n{query_hit.payload['answer']}\n```\n\n"
         # prompt_with_context += f"{query_hit.payload['question']}\nQuery to run in SPARQL endpoint {query_hit.payload['endpoint_url']}\n\n{query_hit.payload['answer']}\n\n"
 
-    # Get the most relevant documents other than SPARQL query examples from the search engine (ShEx shapes, general infos)
+    # 2. Get the most relevant documents other than SPARQL query examples from the search engine (ShEx shapes, general infos)
     docs_hits = vectordb.search(
         collection_name=settings.docs_collection_name,
         query_vector=query_embeddings,
@@ -234,7 +234,7 @@ async def chat(request: ChatCompletionRequest):
         else:
             prompt_with_context += f"Information about: {docs_hit.payload['question']}\nRelated to SPARQL endpoint {docs_hit.payload['endpoint_url']}\n\n{docs_hit.payload['answer']}\n\n"
 
-    # Now extract entities from the user question
+    # 3. Extract potential entities from the user question
     entities_list = extract_entities(question)
     for entity in entities_list:
         prompt_with_context += f'\n\nEntities found in the user question for "{" ".join(entity["term"])}":\n\n'
