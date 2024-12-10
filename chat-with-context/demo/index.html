@@ -6,19 +6,59 @@
     <title>Expasy Chat</title>
     <meta name="description" content="Chat with SIB endpoints" />
     <link rel="icon" type="image/png" href="./sib-logo.png" />
-
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/default.min.css">
-
-    <script type="module" src="../src/chat-with-context.tsx"></script>
+    <!-- <link href="./style.css" rel="stylesheet"> -->
+    <!-- <link href="../node_modules/tailwindcss/index.css" rel="stylesheet"> -->
+    <!-- <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script> -->
+    <!-- <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/default.min.css"
+    /> -->
+    <!-- <script type="module" src="../src/chat-with-context.tsx"></script> -->
+    <script type="module" src="../dist/chat-with-context.js"></script>
   </head>
 
-  <body class="bg-gray-100 dark:bg-gray-800 text-black dark:text-white">
-  <!-- <body> -->
+  <!-- <script type="module">
+    tailwind.config = {
+      darkMode: "selector",
+      // theme: {
+      //   extend: {
+      //     // Remove backticks from inline code
+      //     typography: {
+      //       DEFAULT: {
+      //         css: {
+      //           // Fix <code> rendering
+      //           "code::before": {
+      //             content: '""',
+      //           },
+      //           "code::after": {
+      //             content: '""',
+      //           },
+      //           code: {
+      //             "border-radius": "0.375rem",
+      //             padding: "0.35em",
+      //             color: "var(--tw-prose-pre-code)",
+      //             "background-color": "var(--tw-prose-pre-bg)",
+      //             "font-weight": "normal",
+      //           },
+      //         },
+      //       },
+      //     },
+      //   },
+      // },
+    };
+  </script> -->
+
+  <!-- <body class="bg-gray-100 dark:bg-gray-800 text-black dark:text-white"> -->
+  <body class="bg-gray-100 text-black">
+    <!-- <body> -->
     <nav>
       <div class="absolute top-2 right-8">
-        <button title="Switch theme" id="theme-switch-btn" class="px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500">
+        <button
+          title="Switch theme"
+          id="theme-switch-btn"
+          class="px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500"
+        >
           <span id="sun-icon">☀️</span>
           <span id="moon-icon" class="hidden">🌙</span>
         </button>
@@ -34,36 +74,7 @@
     </div>
   </body>
 
-  <script type="module">
-    tailwind.config = {
-      darkMode: "selector",
-      theme: {
-        extend: {
-          // Remove backticks from inline code
-          typography: {
-            DEFAULT: {
-              css: {
-                // Fix <code> rendering
-                "code::before": {
-                  content: '""',
-                },
-                "code::after": {
-                  content: '""',
-                },
-                code: {
-                  "border-radius": "0.375rem",
-                  padding: "0.35em",
-                  color: "var(--tw-prose-pre-code)",
-                  "background-color": "var(--tw-prose-pre-bg)",
-                  "font-weight": "normal",
-                },
-              },
-            },
-          },
-        },
-      },
-    };
-
+  <script>
     // TODO: dark mode in tailwind seems broken, it does not respect anything
     // The dark: classes set on body will always just use the system pref. While docs says otherwise https://tailwindcss.com/docs/dark-mode
     // And I am not even talking about the dark: classes set inside the light DOM custom element
@@ -73,35 +84,25 @@
     const sunIcon = document.getElementById("sun-icon");
     const moonIcon = document.getElementById("moon-icon");
     function toggleIcons() {
-        const isDarkMode = document.documentElement.classList.contains("dark");
-        if (isDarkMode) {
-            sunIcon.classList.remove("hidden");
-            moonIcon.classList.add("hidden");
-        } else {
-            sunIcon.classList.add("hidden");
-            moonIcon.classList.remove("hidden");
-        }
+      if (document.documentElement.classList.contains("dark")) {
+        sunIcon.classList.remove("hidden");
+        moonIcon.classList.add("hidden");
+      } else {
+        sunIcon.classList.add("hidden");
+        moonIcon.classList.remove("hidden");
+      }
     }
     toggleIcons();
     const themeSwitchBtn = document.getElementById("theme-switch-btn");
     function toggleDarkMode() {
-        const doc = document.documentElement;
-        doc.classList.toggle("dark");
-        toggleIcons();
+      const doc = document.documentElement;
+      doc.classList.toggle("dark");
+      toggleIcons();
     }
     themeSwitchBtn.addEventListener("click", toggleDarkMode);
-    let prefersDark = true
-    if (window.matchMedia) prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    let prefersDark = true;
+    if (window.matchMedia) prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     // if (prefersDark) document.documentElement.classList.toggle('dark', prefersDark);
     // if (prefersDark) toggleDarkMode();
   </script>
-
-  <style>
-    a {
-        color: #007BFF;
-    }
-    a:hover {
-        color: #0056b3;
-    }
-  </style>
 </html>

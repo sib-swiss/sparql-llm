@@ -3,11 +3,12 @@ import {customElement, noShadowDOM} from "solid-element";
 import {marked} from "marked";
 import DOMPurify from "dompurify";
 import hljs from "highlight.js/lib/core";
+import "highlight.js/styles/default.min.css";
 import feather from "feather-icons";
 
 import {extractSparqlQuery, getLangForDocType} from "./utils";
-
 import {hljsDefineSparql, hljsDefineTurtle} from "./highlight";
+import "./style.css";
 
 // https://github.com/solidjs/solid/blob/main/packages/solid-element/README.md
 // https://github.com/solidjs/templates/tree/main/ts-tailwindcss
@@ -207,8 +208,9 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
   }
 
   return (
-    <div class="flex flex-col h-screen text-black dark:text-white">
+    <div class="flex flex-col h-screen text-black">
       {/* <style>{style}</style> */}
+      {/* <style>@import "tailwindcss";</style> */}
       {/* Main chat container */}
       <div ref={chatContainerEl} class="flex-grow overflow-y-auto">
         {/* Title, top nav, and description */}

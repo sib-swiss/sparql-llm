@@ -13,7 +13,7 @@ export function extractSparqlQuery(markdownContent: string) {
   if (!endpointUrl) return null;
   // console.log({endpointUrl, lastQuery});
   // return {endpointUrl, lastQuery};
-  return `https://sib-swiss.github.io/sparql-editor/?endpoint=${endpointUrl}&query=${encodeURIComponent(lastQuery)}`
+  return `https://sib-swiss.github.io/sparql-editor/?endpoint=${endpointUrl}&query=${encodeURIComponent(lastQuery)}`;
   // return <a
   //   class="my-3 px-3 py-1 text-sm text-black dark:text-white bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg"
   //   href="https://sib-swiss.github.io/sparql-editor/?endpoint=${endpointUrl}&query=${encodeURIComponent(lastQuery)}"
@@ -22,7 +22,6 @@ export function extractSparqlQuery(markdownContent: string) {
   //   Run and edit the query
   // </a>
 }
-
 
 export function getLangForDocType(docType: string) {
   switch (docType) {

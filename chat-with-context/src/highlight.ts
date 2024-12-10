@@ -130,7 +130,6 @@ export function hljsDefineTurtle(hljs: any) {
   };
 }
 
-
 export function hljsDefineSparql(hljs: any) {
   var ttl = hljs.getLanguage("ttl").exports;
   var KEYWORDS = {
@@ -190,4 +189,3 @@ export function hljsDefineSparql(hljs: any) {
 }
 
 // window.hljsDefineSparql = hljsDefineSparql;
-

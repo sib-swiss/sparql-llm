@@ -1,15 +1,19 @@
 import {defineConfig} from "vite";
 import solidPlugin from "vite-plugin-solid";
+// import tailwindcss from '@tailwindcss/vite';
 // import typescript from "@rollup/plugin-typescript";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [solidPlugin()],
+  plugins: [
+    solidPlugin(),
+    // tailwindcss(),
+  ],
   server: {
     port: 3000,
   },
-  envDir: '../',
-  envPrefix: 'EXPASY_',
+  envDir: "../",
+  envPrefix: "EXPASY_",
   build: {
     outDir: "dist",
     target: ["esnext"],

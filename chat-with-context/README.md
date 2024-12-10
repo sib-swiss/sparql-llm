@@ -32,7 +32,6 @@ A web component to easily deploy an interface for a chat with context. It is the
    <chat-with-context api="http://localhost:8000/"></chat-with-context>
    ```
 
-
 > [!WARNING]
 >
 > It uses TailwindCSS for styling
