@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chat with context dev</title>
+    <meta name="description" content="Chat with context development page" />
+    <!-- <link rel="icon" type="image/png" href="../demo/src/sib-logo.png" /> -->
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/default.min.css">
+
+    <script type="module" src="./src/chat-with-context.tsx"></script>
+  </head>
+
+  <body>
+    <div>
+      <chat-with-context
+        api="https://chat.expasy.org/"
+        api-key="%EXPASY_API_KEY%"
+        examples="How can I get the HGNC symbol for the protein P68871?,What are the rat orthologs of the human TP53?"
+      ></chat-with-context>
+    </div>
+  </body>
+
+  <script type="module">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          // Remove backticks from inline code
+          typography: {
+            DEFAULT: {
+              css: {
+                // Fix <code> rendering
+                "code::before": {
+                  content: '""',
+                },
+                "code::after": {
+                  content: '""',
+                },
+                code: {
+                  "border-radius": "0.375rem",
+                  padding: "0.35em",
+                  color: "var(--tw-prose-pre-code)",
+                  "background-color": "var(--tw-prose-pre-bg)",
+                  "font-weight": "normal",
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+  </script>
+</html>

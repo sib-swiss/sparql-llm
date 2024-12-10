@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Expasy Chat</title>
+    <meta name="description" content="Chat with SIB endpoints" />
+    <link rel="icon" type="image/png" href="/assets/sib-logo-ClPlpgYP.png" />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/default.min.css">
+
+    <script type="module" crossorigin src="/assets/index-LYuD_g3V.js"></script>
+  </head>
+
+  <body class="bg-gray-100 dark:bg-gray-800 text-black dark:text-white">
+  <!-- <body> -->
+    <nav>
+      <div class="absolute top-2 right-8">
+        <button title="Switch theme" id="theme-switch-btn" class="px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500">
+          <span id="sun-icon">☀️</span>
+          <span id="moon-icon" class="hidden">🌙</span>
+        </button>
+      </div>
+    </nav>
+
+    <div>
+      <chat-with-context
+        api="https://chat.expasy.org/"
+        api-key="{{ expasy_key }}"
+        examples="Which resources are available at the SIB?,How can I get the HGNC symbol for the protein P68871?,What are the rat orthologs of the human TP53?,Where is expressed the gene ACE2 in human?,Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations,List the genes in primates orthologous to genes expressed in the fruit fly eye"
+      ></chat-with-context>
+    </div>
+  </body>
+
+
+  <style>
+    a {
+        color: #007BFF;
+    }
+    a:hover {
+        color: #0056b3;
+    }
+  </style>
+</html>

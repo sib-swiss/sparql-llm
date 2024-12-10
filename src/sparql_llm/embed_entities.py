@@ -201,19 +201,19 @@ def generate_embeddings_for_entities():
                 orth:taxRange  ?label .
         }""",
         },
-        "uniprot_mnemonics": {
-            "uri": "http://purl.uniprot.org/core/Protein",
-            "label": "mnemonic",
-            "description": "uniprot mnemonic",
-            "endpoint": "https://sparql.uniprot.org/sparql/",
-            "pagination": True,
-            "query": """PREFIX up: <http://purl.uniprot.org/core/>
-    SELECT ?uri ?label
-    WHERE {
-        ?uri a up:Protein ;
-            up:mnemonic  ?label .
-        }""",
-        },
+    #     "uniprot_mnemonics": {
+    #         "uri": "http://purl.uniprot.org/core/Protein",
+    #         "label": "mnemonic",
+    #         "description": "uniprot mnemonic",
+    #         "endpoint": "https://sparql.uniprot.org/sparql/",
+    #         "pagination": True,
+    #         "query": """PREFIX up: <http://purl.uniprot.org/core/>
+    # SELECT ?uri ?label
+    # WHERE {
+    #     ?uri a up:Protein ;
+    #         up:mnemonic  ?label .
+    #     }""",
+    #     },
         "uniprot_taxon": {
             "uri": "http://purl.uniprot.org/core/Taxon",
             "label": "species",

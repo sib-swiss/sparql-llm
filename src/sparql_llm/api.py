@@ -54,13 +54,6 @@ such as SPARQL endpoints, to get information about proteins, genes, and other bi
 
 logging.basicConfig(filename=settings.logs_filepath, level=logging.INFO, format="%(asctime)s - %(message)s")
 
-templates = Jinja2Templates(directory="src/sparql_llm/templates")
-app.mount(
-    "/static",
-    StaticFiles(directory="src/sparql_llm/static"),
-    name="static",
-)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -393,6 +386,27 @@ def get_user_logs(request: LogsRequest):
 
     return list(questions)
 
+# templates = Jinja2Templates(directory="src/sparql_llm/templates")
+# app.mount(
+#     "/static",
+#     StaticFiles(directory="src/sparql_llm/static"),
+#     name="static",
+# )
+
+templates = Jinja2Templates(directory="src/sparql_llm/webapp")
+app.mount(
+    "/assets",
+    StaticFiles(directory="src/sparql_llm/webapp/assets"),
+    name="static",
+)
+
+# app.mount(
+#     "/",
+#     StaticFiles(
+#         directory=pkg_resources.resource_filename("sparql_llm", "webapp"), html=True
+#     ),
+#     name="static",
+# )
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def chat_ui(request: Request) -> Any:
@@ -401,26 +415,26 @@ def chat_ui(request: Request) -> Any:
         "index.html",
         {
             "request": request,
-            "title": "Ask Expasy",
-            "llm_model": llm_model,
-            "description": """Assistant to navigate resources from the Swiss Institute of Bioinformatics. Particularly knowledgeable about UniProt, OMA, Bgee, RheaDB, and SwissLipids. But still learning.
-
-Contact kru@sib.swiss if you have any feedback or suggestions. Questions asked here are stored for research purposes, see the [SIB privacy policy](https://www.sib.swiss/privacy-policy) for more information.
-""",
-            "short_description": "Ask about SIB resources.",
-            "repository_url": "https://github.com/sib-swiss/sparql-llm",
-            "examples": [
-                "Which resources are available at the SIB?",
-                "How can I get the HGNC symbol for the protein P68871?",
-                "What are the rat orthologs of the human TP53?",
-                "Where is expressed the gene ACE2 in human?",
-                "Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations",
-                "List the genes in primates orthologous to genes expressed in the fruit fly eye",
-                # "Say hi",
-                # "Which are the genes, expressed in the rat, corresponding to human genes associated with cancer?",
-                # "What is the gene associated with the protein P68871?",
-            ],
-            "favicon": "https://www.expasy.org/favicon.ico",
             "expasy_key": settings.expasy_api_key,
+#             "title": "Ask Expasy",
+#             "llm_model": llm_model,
+#             "description": """Assistant to navigate resources from the Swiss Institute of Bioinformatics. Particularly knowledgeable about UniProt, OMA, Bgee, RheaDB, and SwissLipids. But still learning.
+
+# Contact kru@sib.swiss if you have any feedback or suggestions. Questions asked here are stored for research purposes, see the [SIB privacy policy](https://www.sib.swiss/privacy-policy) for more information.
+# """,
+#             "short_description": "Ask about SIB resources.",
+#             "repository_url": "https://github.com/sib-swiss/sparql-llm",
+#             "examples": [
+#                 "Which resources are available at the SIB?",
+#                 "How can I get the HGNC symbol for the protein P68871?",
+#                 "What are the rat orthologs of the human TP53?",
+#                 "Where is expressed the gene ACE2 in human?",
+#                 "Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations",
+#                 "List the genes in primates orthologous to genes expressed in the fruit fly eye",
+#                 # "Say hi",
+#                 # "Which are the genes, expressed in the rat, corresponding to human genes associated with cancer?",
+#                 # "What is the gene associated with the protein P68871?",
+#             ],
+#             "favicon": "https://www.expasy.org/favicon.ico",
         },
     )
