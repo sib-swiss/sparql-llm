@@ -1,6 +1,6 @@
 {
   "name": "@sib-swiss/chat-with-context",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "A web component to easily deploy a chat with context.",
   "license": "MIT",
   "author": {
@@ -47,6 +47,7 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^9.15.0",
     "eslint-plugin-solid": "^0.14.4",
+    "globals": "^15.13.0",
     "husky": "^9.1.7",
     "jsdom": "^25.0.1",
     "lint-staged": "^15.2.10",

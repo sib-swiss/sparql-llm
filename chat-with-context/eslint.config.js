@@ -1,7 +1,7 @@
 import js from "@eslint/js";
 import solid from "eslint-plugin-solid/configs/typescript";
 import * as tsParser from "@typescript-eslint/parser";
-// import globals from 'globals';
+import globals from "globals";
 
 export default [
   js.configs.recommended,
@@ -13,19 +13,16 @@ export default [
       parserOptions: {
         project: "tsconfig.json",
       },
+      globals: {
+        ...globals.browser,
+      },
     },
-    env: {
-      browser: true,
-    },
-    // globals: {
-    //   ...globals.browser,
-    // },
     // rules: {
     //   "@typescript-eslint/no-explicit-any": "off",
     //   "@typescript-eslint/ban-ts-comment": "off",
     // },
   },
   {
-    ignores: ["node_modules", "dist"],
+    ignores: ["node_modules", "dist", "demo"],
   },
 ];

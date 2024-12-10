@@ -74,8 +74,10 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
   };
 
   const highlightAll = () => {
-    document.querySelectorAll('pre code:not(.hljs)').forEach((block) => { hljs.highlightElement(block as HTMLElement); });
-  }
+    document.querySelectorAll("pre code:not(.hljs)").forEach(block => {
+      hljs.highlightElement(block as HTMLElement);
+    });
+  };
 
   // Run on component mount
   createEffect(() => {
@@ -233,25 +235,25 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
                         class="my-3 mr-1 px-3 py-1 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg align-middle"
                         title="See relevant documents used to generate the response"
                         onClick={() => {
-                          (document.getElementById(`source-dialog-${iMsg}`) as HTMLDialogElement).showModal();
+                          (document.getElementById(`source-dialog-${iMsg()}`) as HTMLDialogElement).showModal();
                           highlightAll();
                         }}
                       >
                         See relevant references
                       </button>
                       <dialog
-                        id={`source-dialog-${iMsg}`}
+                        id={`source-dialog-${iMsg()}`}
                         class="bg-white dark:bg-gray-800 m-3 rounded-lg shadow-md w-full"
                       >
                         <button
-                          id={`close-dialog-${iMsg}`}
+                          id={`close-dialog-${iMsg()}`}
                           class="fixed top-2 right-8 m-3 px-2 text-xl text-slate-500 bg-gray-200 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-full"
                           title="Close references"
                           onClick={() =>
-                            (document.getElementById(`source-dialog-${iMsg}`) as HTMLDialogElement).close()
+                            (document.getElementById(`source-dialog-${iMsg()}`) as HTMLDialogElement).close()
                           }
                         >
-                          <i data-feather="x"></i>
+                          <i data-feather="x" />
                         </button>
                         <article class="prose max-w-full p-3">
                           <For each={msg.sources}>
@@ -261,7 +263,11 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
                                   <code class="mr-1">
                                     {iSource() + 1} - {Math.round(source.score * 1000) / 1000}
                                   </code>
-                                  {source.payload.question} (<a href={source.payload.endpoint_url} target="_blank">{source.payload.endpoint_url}</a>)
+                                  {source.payload.question} (
+                                  <a href={source.payload.endpoint_url} target="_blank">
+                                    {source.payload.endpoint_url}
+                                  </a>
+                                  )
                                 </p>
                                 {getLangForDocType(source.payload.doc_type).startsWith("language-") ? (
                                   <pre>
@@ -298,7 +304,7 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
                         onClick={() => sendFeedback(true)}
                       >
                         {/* @ts-ignore */}
-                        <i height="20px" width="20px" class="text-sm align-middle" data-feather="thumbs-up"></i>
+                        <i height="20px" width="20px" class="text-sm align-middle" data-feather="thumbs-up" />
                       </button>
                       <button
                         class="my-3 px-3 py-1 text-sm bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg align-middle"
@@ -306,7 +312,7 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
                         onClick={() => sendFeedback(false)}
                       >
                         {/* @ts-ignore */}
-                        <i height="20px" width="20px" data-feather="thumbs-down"></i>
+                        <i height="20px" width="20px" data-feather="thumbs-down" />
                       </button>
                     </>
                   )}
@@ -373,14 +379,14 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
             title={loading() ? "Loading..." : "Send question"}
             class="ml-2 px-4 py-2 rounded-lg text-slate-500 bg-slate-200 hover:bg-slate-300 dark:text-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600"
           >
-            {loading() ? <i data-feather="loader" class="animate-spin"></i> : <i data-feather="send"></i>}
+            {loading() ? <i data-feather="loader" class="animate-spin" /> : <i data-feather="send" />}
           </button>
           <button
             title="Start a new conversation"
             class="ml-2 px-4 py-2 rounded-lg text-slate-500 bg-slate-200 hover:bg-slate-300 dark:text-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600"
             onClick={() => setMessages([])}
           >
-            <i data-feather="trash"></i>
+            <i data-feather="trash" />
           </button>
           {/* <div
             class="ml-4 tooltip-top"
