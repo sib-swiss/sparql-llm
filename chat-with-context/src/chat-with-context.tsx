@@ -73,6 +73,10 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
     feather.replace();
   };
 
+  const highlightAll = () => {
+    document.querySelectorAll('pre code:not(.hljs)').forEach((block) => { hljs.highlightElement(block as HTMLElement); });
+  }
+
   // Run on component mount
   createEffect(() => {
     feather.replace();
@@ -183,7 +187,7 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
     }
     setLoading(false);
     setFeedbackSent(false);
-    hljs.highlightAll();
+    highlightAll();
     feather.replace();
     chatContainerEl.scrollTop = chatContainerEl.scrollHeight;
   }
@@ -208,26 +212,9 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
   }
 
   return (
-    <div class="flex flex-col h-screen text-black">
-      {/* <style>{style}</style> */}
-      {/* <style>@import "tailwindcss";</style> */}
+    <div class="flex flex-col h-screen bg-gray-100 dark:bg-gray-800 text-black dark:text-white">
       {/* Main chat container */}
       <div ref={chatContainerEl} class="flex-grow overflow-y-auto">
-        {/* Title, top nav, and description */}
-        <div class="container mx-auto px-2 max-w-5xl">
-          <div class="container mx-auto max-w-5xl p-4 border-slate-300 dark:border-slate-600 flex justify-center items-center">
-            <h2 class="text-xl font-semibold flex">
-              Chat Expasy
-              <div class="inline-block ml-3 px-3 py-1 bg-red-600 text-white text-sm font-semibold rounded-full justify-center items-center">
-                Beta
-              </div>
-            </h2>
-          </div>
-          {/* <div class="py-4 text-center">
-            Ask anything about SIB resources.s
-          </div> */}
-        </div>
-
         <div class="w-full border-t border-slate-500">
           <For each={messages()}>
             {(msg, iMsg) => (
@@ -247,7 +234,7 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
                         title="See relevant documents used to generate the response"
                         onClick={() => {
                           (document.getElementById(`source-dialog-${iMsg}`) as HTMLDialogElement).showModal();
-                          hljs.highlightAll();
+                          highlightAll();
                         }}
                       >
                         See relevant references
@@ -274,11 +261,11 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
                                   <code class="mr-1">
                                     {iSource() + 1} - {Math.round(source.score * 1000) / 1000}
                                   </code>
-                                  {source.payload.question} ({source.payload.endpoint_url})
+                                  {source.payload.question} (<a href={source.payload.endpoint_url} target="_blank">{source.payload.endpoint_url}</a>)
                                 </p>
                                 {getLangForDocType(source.payload.doc_type).startsWith("language-") ? (
                                   <pre>
-                                    <code class={`${getLangForDocType(source.payload.doc_type)} hljs`}>
+                                    <code class={`${getLangForDocType(source.payload.doc_type)}`}>
                                       {source.payload.answer}
                                     </code>
                                   </pre>
