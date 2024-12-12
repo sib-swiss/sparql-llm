@@ -15,46 +15,87 @@
     /> -->
 
     <script type="module" src="./src/chat-with-context.tsx"></script>
+    <link href="./demo/style.css" rel="stylesheet" />
   </head>
 
   <body>
-    <div>
-      <chat-with-context
-        api="https://chat.expasy.org/"
-        api-key="%EXPASY_API_KEY%"
-        examples="How can I get the HGNC symbol for the protein P68871?,What are the rat orthologs of the human TP53?"
-      ></chat-with-context>
+    <div class="flex flex-col h-screen w-full">
+      <nav class="flex justify-end">
+        <!-- <button
+          title="Switch theme"
+          id="theme-switch-btn"
+          class="px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 align-middle"
+            >
+          <span id="sun-icon">☀️</span>
+          <span id="moon-icon" class="hidden">🌙</span>
+        </button> -->
+        <a
+          href="https://github.com/sib-swiss/sparql-llm"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-black hover:text-black dark:text-white align-middle"
+        >
+          <button title="Source code on GitHub" class="px-4 py-2 m-1 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500">
+            <i data-feather="github"></i>
+          </button>
+        </a>
+      </nav>
+
+      <div class="text-center mb-5 prose max-w-6xl mx-auto pb-5 border-b">
+        <h2 class="text-xl font-semibold ">
+          Ask Expasy
+          <div
+            class="inline-block ml-3 px-3 py-1 bg-red-600 text-white text-sm font-semibold rounded-full justify-center items-center"
+          >
+            Beta
+          </div>
+        </h2>
+        <p class="border-t pt-5">
+          Assistant to navigate resources from the Swiss Institute of Bioinformatics. Particularly knowledgeable about
+          UniProt, OMA, Bgee, RheaDB, and SwissLipids. But still learning.
+        </p>
+        <p>
+          Contact kru@sib.swiss if you have any feedback or suggestions. Questions asked here are stored for research
+          purposes, see the <a href="https://www.sib.swiss/privacy-policy">SIB privacy policy</a> for more information.
+        </p>
+      </div>
+
+      <div class="flex-grow mx-5">
+        <chat-with-context
+          api="https://chat.expasy.org/"
+          api-key="%EXPASY_API_KEY%"
+          examples="Which resources are available at the SIB?,How can I get the HGNC symbol for the protein P68871?,What are the rat orthologs of the human TP53?,Where is expressed the gene ACE2 in human?,Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations,List the genes in primates orthologous to genes expressed in the fruit fly eye"
+        ></chat-with-context>
+      </div>
     </div>
   </body>
 
-  <!-- <script type="module">
-    tailwind.config = {
-      darkMode: "class",
-      theme: {
-        extend: {
-          // Remove backticks from inline code
-          typography: {
-            DEFAULT: {
-              css: {
-                // Fix <code> rendering
-                "code::before": {
-                  content: '""',
-                },
-                "code::after": {
-                  content: '""',
-                },
-                code: {
-                  "border-radius": "0.375rem",
-                  padding: "0.35em",
-                  color: "var(--tw-prose-pre-code)",
-                  "background-color": "var(--tw-prose-pre-bg)",
-                  "font-weight": "normal",
-                },
-              },
-            },
-          },
-        },
-      },
-    };
+  <!-- <script>
+    // TODO: dark mode in tailwind seems broken
+
+    // Light/dark theme setup, default to dark if nothing found
+    const sunIcon = document.getElementById("sun-icon");
+    const moonIcon = document.getElementById("moon-icon");
+    function toggleIcons() {
+      if (document.documentElement.classList.contains("dark")) {
+        sunIcon.classList.remove("hidden");
+        moonIcon.classList.add("hidden");
+      } else {
+        sunIcon.classList.add("hidden");
+        moonIcon.classList.remove("hidden");
+      }
+    }
+    toggleIcons();
+    const themeSwitchBtn = document.getElementById("theme-switch-btn");
+    function toggleDarkMode() {
+      const doc = document.documentElement;
+      doc.classList.toggle("dark");
+      toggleIcons();
+    }
+    themeSwitchBtn.addEventListener("click", toggleDarkMode);
+    let prefersDark = true;
+    if (window.matchMedia) prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    // if (prefersDark) document.documentElement.classList.toggle('dark', prefersDark);
+    // if (prefersDark) toggleDarkMode();
   </script> -->
 </html>

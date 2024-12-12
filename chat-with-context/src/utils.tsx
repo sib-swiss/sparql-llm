@@ -37,3 +37,14 @@ export function getLangForDocType(docType: string) {
       return "";
   }
 }
+
+export const style = `chat-with-context {
+  button:hover {
+    filter: brightness(90%);
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}`;

@@ -174,6 +174,15 @@ EXPASY_API_KEY=NOT_SO_SECRET_API_KEY_USED_BY_FRONTEND_TO_AVOID_SPAM_FROM_CRAWLER
 LOGS_API_KEY=SECRET_PASSWORD_TO_EASILY_ACCESS_LOGS_THROUGH_THE_API
 ```
 
+Build the chat webpage (will be better integrated in the workflow in the future):
+
+```bash
+cd chat-with-context
+npm i
+npm run build
+cd ..
+```
+
 Start the web UI, API, and similarity search engine in production (you might need to make some changes to the `compose.yml` file to adapt it to your server/proxy setup):
 
 ```bash
