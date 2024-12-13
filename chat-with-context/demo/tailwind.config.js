@@ -3,9 +3,7 @@ import tailwindTypography from "@tailwindcss/typography";
 
 export default {
   darkMode: "selector",
-  content: [
-    "./index.html",
-  ],
+  content: ["./index.html"],
   theme: {
     extend: {
       // Remove backticks from inline code

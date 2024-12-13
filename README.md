@@ -179,7 +179,7 @@ Build the chat webpage (will be better integrated in the workflow in the future)
 ```bash
 cd chat-with-context
 npm i
-npm run build
+npm run build:demo
 cd ..
 ```
 

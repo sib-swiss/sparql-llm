@@ -16,6 +16,7 @@ A web component to easily deploy an interface for a chat with context. It is the
 
    ```html
    <script type="module" src="https://unpkg.com/@sib-swiss/chat-with-context"></script>
+   <link href="https://unpkg.com/@sib-swiss/chat-with-context/dist/style.css" rel="stylesheet" />
    ```
 
    Or install with a package manager in your project:
@@ -73,6 +74,42 @@ npx http-server
 python -m http.server
 ```
 
-# 🧑‍💻 Contributing
+# 🧑‍💻 Development
 
-Checkout [CONTRIBUTING.md](https://github.com/sib-swiss/sparql-editor/blob/main/CONTRIBUTING.md) for more details on how to run this in development and make a contribution.
+Install:
+
+```sh
+npm i
+```
+
+Start in dev:
+
+```sh
+npm run dev
+```
+
+Build package:
+
+```sh
+npm run build
+```
+
+Build demo website (used by the python API):
+
+```sh
+npm run build:demo
+```
+
+Format and lint:
+
+```sh
+npm run fmt
+npm run lint
+```
+
+Publish new version:
+
+```sh
+npm version patch
+```
+

@@ -65,7 +65,8 @@
   "keywords": [
     "chat",
     "chatbot",
-    "LLM"
+    "LLM",
+    "RAG"
   ],
   "prettier": {
     "semi": true,

@@ -4,10 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chat Expasy</title>
-    <meta name="description" content="Assistant to navigate resources from the Swiss Institute of Bioinformatics (SIB)." />
+    <meta
+      name="description"
+      content="Assistant to navigate resources from the Swiss Institute of Bioinformatics (SIB)."
+    />
     <link rel="icon" type="image/png" href="./sib-logo.png" />
 
-    <link href="./style.css" rel="stylesheet">
+    <link href="./style.css" rel="stylesheet" />
     <script type="module" src="../src/chat-with-context.tsx"></script>
 
     <!-- <link href="https://unpkg.com/@sib-swiss/chat-with-context/dist/style.css" rel="stylesheet" />
@@ -26,14 +29,17 @@
           rel="noopener noreferrer"
           class="text-black hover:text-black dark:text-white align-middle"
         >
-          <button title="Source code on GitHub" class="px-4 py-2 m-1 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500">
+          <button
+            title="Source code on GitHub"
+            class="px-4 py-2 m-1 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500"
+          >
             <i data-feather="github"></i>
           </button>
         </a>
       </nav>
 
       <div class="text-center mb-5 prose max-w-6xl mx-auto pb-5 border-b">
-        <h2 class="text-xl font-semibold ">
+        <h2 class="text-xl font-semibold">
           Ask Expasy
           <div
             class="inline-block ml-3 px-3 py-1 bg-red-600 text-white text-sm font-semibold rounded-full justify-center items-center"
@@ -53,12 +59,11 @@
 
       <div class="flex-grow mx-5">
         <chat-with-context
-          api="https://chat.expasy.org/"
+          api="{{ api_url }}"
           api-key="{{ expasy_key }}"
-          examples="Which resources are available at the SIB?,How can I get the HGNC symbol for the protein P68871?,What are the rat orthologs of the human TP53?,Where is expressed the gene ACE2 in human?,Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations,List the genes in primates orthologous to genes expressed in the fruit fly eye"
+          examples="{{ examples }}"
         ></chat-with-context>
       </div>
     </div>
   </body>
-
 </html>

@@ -293,7 +293,7 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
                   {link => (
                     <a href={link.url} title={link.title} target="_blank" class="hover:text-inherit">
                       <button class="my-3 mr-1 px-3 py-1 text-sm bg-gray-300 dark:bg-gray-700 rounded-3xl align-middle">
-                          {link.label}
+                        {link.label}
                       </button>
                     </a>
                   )}
@@ -339,10 +339,7 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
         <div class="py-2 px-4 justify-center items-center text-sm flex flex-col flex-row space-y-2">
           <For each={examples}>
             {example => (
-              <button
-                onClick={() => submitInput(example)}
-                class="px-5 py-2.5 bg-slate-200 text-slate-600 rounded-3xl"
-              >
+              <button onClick={() => submitInput(example)} class="px-5 py-2.5 bg-slate-200 text-slate-600 rounded-3xl">
                 {example}
               </button>
             )}

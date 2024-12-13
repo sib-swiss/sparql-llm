@@ -416,6 +416,18 @@ def chat_ui(request: Request) -> Any:
         {
             "request": request,
             "expasy_key": settings.expasy_api_key,
+            "api_url": "https://chat.expasy.org/",
+            "examples": ",".join([
+                "Which resources are available at the SIB?",
+                "How can I get the HGNC symbol for the protein P68871?",
+                "What are the rat orthologs of the human TP53?",
+                "Where is expressed the gene ACE2 in human?",
+                "Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations",
+                "List the genes in primates orthologous to genes expressed in the fruit fly eye",
+                # "Say hi",
+                # "Which are the genes, expressed in the rat, corresponding to human genes associated with cancer?",
+                # "What is the gene associated with the protein P68871?",
+            ]),
 #             "title": "Ask Expasy",
 #             "llm_model": llm_model,
 #             "description": """Assistant to navigate resources from the Swiss Institute of Bioinformatics. Particularly knowledgeable about UniProt, OMA, Bgee, RheaDB, and SwissLipids. But still learning.
@@ -424,17 +436,6 @@ def chat_ui(request: Request) -> Any:
 # """,
 #             "short_description": "Ask about SIB resources.",
 #             "repository_url": "https://github.com/sib-swiss/sparql-llm",
-#             "examples": [
-#                 "Which resources are available at the SIB?",
-#                 "How can I get the HGNC symbol for the protein P68871?",
-#                 "What are the rat orthologs of the human TP53?",
-#                 "Where is expressed the gene ACE2 in human?",
-#                 "Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations",
-#                 "List the genes in primates orthologous to genes expressed in the fruit fly eye",
-#                 # "Say hi",
-#                 # "Which are the genes, expressed in the rat, corresponding to human genes associated with cancer?",
-#                 # "What is the gene associated with the protein P68871?",
-#             ],
 #             "favicon": "https://www.expasy.org/favicon.ico",
         },
     )
