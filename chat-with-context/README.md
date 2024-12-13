@@ -112,4 +112,3 @@ Publish new version:
 ```sh
 npm version patch
 ```
-
