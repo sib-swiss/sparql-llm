@@ -217,7 +217,7 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
   }
 
   return (
-    <div class={`chat-container w-full h-full flex flex-col ${messages().length === 0 ? "justify-center" : ""}`}>
+    <div class={`chat-with-context w-full h-full flex flex-col ${messages().length === 0 ? "justify-center" : ""}`}>
       <style>{style}</style>
       {/* Main chat container */}
       <div ref={chatContainerEl} class={`overflow-y-auto ${messages().length !== 0 ? "flex-grow" : ""}`}>
@@ -336,7 +336,7 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
 
       {/* List of examples */}
       {messages().length < 1 && (
-        <div class="py-2 px-4 justify-center items-center text-sm flex flex-col flex-row space-y-2">
+        <div class="py-2 px-4 justify-center items-center text-sm flex flex-col space-y-2">
           <For each={examples}>
             {example => (
               <button onClick={() => submitInput(example)} class="px-5 py-2.5 bg-slate-200 text-slate-600 rounded-3xl">
