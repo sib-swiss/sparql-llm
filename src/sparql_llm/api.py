@@ -216,9 +216,18 @@ async def chat(request: ChatCompletionRequest):
             ]
         ),
         limit=settings.retrieved_docs_count,
+        # group_by="iri",
+        # with_payload=True,
     )
+    # TODO: vectordb.search_groups(
+    # https://qdrant.tech/documentation/concepts/search/#search-groups
+
+    # TODO: hybrid search? https://qdrant.github.io/fastembed/examples/Hybrid_Search/#about-qdrant
+    # we might want to group by iri for shex docs https://qdrant.tech/documentation/concepts/hybrid-queries/?q=hybrid+se#grouping
+    # https://qdrant.tech/documentation/concepts/search/#search-groups
 
     prompt_with_context += "Here is some additional information that could be useful to answer the user question:\n\n"
+    # for docs_hit in docs_hits.groups:
     for docs_hit in docs_hits:
         if docs_hit.payload["doc_type"] == "shex":
             prompt_with_context += f"ShEx shape for {docs_hit.payload['question']} in {docs_hit.payload['endpoint_url']}:\n```\n{docs_hit.payload['answer']}\n```\n\n"

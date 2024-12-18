@@ -40,7 +40,7 @@ class SparqlVoidShapesLoader(BaseLoader):
             metadata_dict = {
                 "answer": shex_shape["shex"],
                 "endpoint_url": self.endpoint_url,
-                "class_uri": cls_uri,
+                "iri": cls_uri,
                 "doc_type": "shex",
             }
             if "label" in shex_shape:

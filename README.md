@@ -165,39 +165,58 @@ print("\n".join(issues))
 >
 > It can easily be adapted to use any LLM served through an OpenAI-compatible API. We plan to make configuration and deployment of complete SPARQL LLM chat system easier in the future, let us know if you are interested in the GitHub issues!
 
-Create a `.env` file at the root of the repository to provide secrets and API keys:
+1. Create a `.env` file at the root of the repository to provide secrets and API keys:
 
-```bash
-OPENAI_API_KEY=sk-proj-YYY
-GLHF_API_KEY=APIKEY_FOR_glhf.chat_USED_FOR_TEST_OPEN_SOURCE_MODELS
-EXPASY_API_KEY=NOT_SO_SECRET_API_KEY_USED_BY_FRONTEND_TO_AVOID_SPAM_FROM_CRAWLERS
-LOGS_API_KEY=SECRET_PASSWORD_TO_EASILY_ACCESS_LOGS_THROUGH_THE_API
-```
+   ```sh
+   OPENAI_API_KEY=sk-proj-YYY
+   GLHF_API_KEY=APIKEY_FOR_glhf.chat_USED_FOR_TEST_OPEN_SOURCE_MODELS
+   EXPASY_API_KEY=NOT_SO_SECRET_API_KEY_USED_BY_FRONTEND_TO_AVOID_SPAM_FROM_CRAWLERS
+   LOGS_API_KEY=SECRET_PASSWORD_TO_EASILY_ACCESS_LOGS_THROUGH_THE_API
+   ```
 
-Build the chat webpage (will be better integrated in the workflow in the future):
+2. Build the chat UI webpage (will be better integrated in the workflow in the future):
 
-```bash
-cd chat-with-context
-npm i
-npm run build:demo
-cd ..
-```
+   ```sh
+   cd chat-with-context
+   npm i
+   npm run build:demo
+   cd ..
+   ```
 
-Start the web UI, API, and similarity search engine in production (you might need to make some changes to the `compose.yml` file to adapt it to your server/proxy setup):
+3. Start the vector database and web server
 
-```bash
-docker compose up
-```
+   In production (you might need to make some changes to the `compose.yml` file to adapt it to your server/proxy setup):
 
-Start the stack locally for development, with code from `src` folder mounted in the container and automatic API reload on changes to the code:
+   ```bash
+   docker compose up
+   ```
 
-```bash
-docker compose -f compose.dev.yml up
-```
+   Start the stack locally for development, with code from `src` folder mounted in the container and automatic API reload on changes to the code:
 
-* Chat web UI available at http://localhost:8000
-* OpenAPI Swagger UI available at http://localhost:8000/docs
-* Vector database dashboard UI available at http://localhost:6333/dashboard
+   ```bash
+   docker compose -f compose.dev.yml up
+   ```
+
+   * Chat web UI available at http://localhost:8000
+   * OpenAPI Swagger UI available at http://localhost:8000/docs
+   * Vector database dashboard UI available at http://localhost:6333/dashboard
+
+4. Run the script to index the resources (SPARQL endpoints listed in config file):
+
+   ```sh
+   docker compose run api python src/sparql_llm/embed.py
+   ```
+
+> [!WARNING]
+>
+> **Experimental entities indexing**: it can take a lot of time to generate embeddings for entities. So we recommend to run the script to generate embeddings on a machine with GPU (does not need to be a powerful one, but at least with a GPU, checkout [fastembed GPU docs](https://qdrant.github.io/fastembed/examples/FastEmbed_GPU/) to install the GPU drivers and dependencies)
+>
+> ```sh
+> pip install -e ".[chat,gpu]"
+> python src/sparql_llm/embed_entities.py
+> ```
+>
+> Then move the CSV containing the embeddings in `data/embeddings/entities_embeddings.py` before running the `embed.py` script
 
 ## 🧑‍💻 Contributing
 

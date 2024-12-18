@@ -81,6 +81,7 @@ def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
                     "question": question,
                     "answer": "\n".join(descs),
                     "endpoint_url": endpoint["endpoint_url"],
+                    "iri": endpoint["homepage"],
                     "doc_type": "schemaorg_description",
                 },
             )
@@ -119,6 +120,7 @@ def load_ontology(endpoint: dict[str, str]) -> list[Document]:
                 "question": split.page_content,
                 "answer": "",
                 "endpoint_url": endpoint["endpoint_url"],
+                "iri": endpoint["ontology"],
                 "doc_type": "ontology",
             },
         )
@@ -175,6 +177,7 @@ def init_vectordb(vectordb_host: str = settings.vectordb_host) -> None:
     The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supported by key staff, and receives valuable input from an independent Scientific Advisory Board.
     """,
                     "endpoint_url": "https://sparql.uniprot.org/sparql/",
+                    "iri": "http://www.uniprot.org/help/about",
                     "doc_type": "schemaorg_description",
                 },
             )
@@ -201,8 +204,9 @@ def init_vectordb(vectordb_host: str = settings.vectordb_host) -> None:
             collection_name=settings.entities_collection_name,
             vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
         )
-    if vectordb.get_collection(settings.entities_collection_name).points_count == 0:
-        load_entities_embeddings_to_vectordb()
+    # if vectordb.get_collection(settings.entities_collection_name).points_count == 0:
+    load_entities_embeddings_to_vectordb()
+
 
     # docs = []
     # # TODO: Add entities list to the vectordb

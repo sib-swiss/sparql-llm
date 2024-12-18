@@ -134,32 +134,6 @@ def generate_embeddings_for_entities():
     ?uri a orth:Protein .
     ?uri rdfs:label ?label .}""",
         },
-        # TODO: way too many UniProt genes, should we just ignore indexing genes?
-    #     "uniprot_gene": {
-    #         "uri": "http://purl.uniprot.org/core/Gene",
-    #         "label": "Gene",
-    #         "description": "A region (or regions) that includes all of the sequence elements necessary to encode a functional transcript. A gene may include regulatory regions, transcribed regions and/or other functional sequence regions.",
-    #         "endpoint": "https://sparql.uniprot.org/sparql/",
-    #         "pagination": True,
-    #         "query": """PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-    # PREFIX up: <http://purl.uniprot.org/core/>
-    # PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    # SELECT  ?uri ?label {
-    # ?uri a up:Gene .
-    # ?uri skos:prefLabel ?label .}""",
-    #     },
-    #     "uniprot_protein": {
-    #         "uri": "http://purl.uniprot.org/core/Protein",
-    #         "label": "Protein",
-    #         "description": "A sequence of amino acids linked by peptide bonds which may lack appreciable tertiary structure and may not be liable to irreversible denaturation.",
-    #         "endpoint": "https://sparql.uniprot.org/sparql/",
-    #         "pagination": True,
-    #         "query": """PREFIX up: <http://purl.uniprot.org/core/>
-    # PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    # SELECT  ?uri ?label {
-    # ?uri a up:Protein .
-    # ?uri rdfs:label ?label .}""",
-    #     },
         "uniprot_species": {
             "uri": "http://purl.uniprot.org/core/Taxon",
             "label": "species",
@@ -201,19 +175,6 @@ def generate_embeddings_for_entities():
                 orth:taxRange  ?label .
         }""",
         },
-    #     "uniprot_mnemonics": {
-    #         "uri": "http://purl.uniprot.org/core/Protein",
-    #         "label": "mnemonic",
-    #         "description": "uniprot mnemonic",
-    #         "endpoint": "https://sparql.uniprot.org/sparql/",
-    #         "pagination": True,
-    #         "query": """PREFIX up: <http://purl.uniprot.org/core/>
-    # SELECT ?uri ?label
-    # WHERE {
-    #     ?uri a up:Protein ;
-    #         up:mnemonic  ?label .
-    #     }""",
-    #     },
         "uniprot_taxon": {
             "uri": "http://purl.uniprot.org/core/Taxon",
             "label": "species",
@@ -241,6 +202,45 @@ def generate_embeddings_for_entities():
             skos:prefLabel ?label .
     }""",
         },
+    # TODO: way too many UniProt genes, should we just ignore indexing genes?
+    #     "uniprot_gene": {
+    #         "uri": "http://purl.uniprot.org/core/Gene",
+    #         "label": "Gene",
+    #         "description": "A region (or regions) that includes all of the sequence elements necessary to encode a functional transcript. A gene may include regulatory regions, transcribed regions and/or other functional sequence regions.",
+    #         "endpoint": "https://sparql.uniprot.org/sparql/",
+    #         "pagination": True,
+    #         "query": """PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    # PREFIX up: <http://purl.uniprot.org/core/>
+    # PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    # SELECT  ?uri ?label {
+    # ?uri a up:Gene .
+    # ?uri skos:prefLabel ?label .}""",
+    #     },
+    #     "uniprot_protein": {
+    #         "uri": "http://purl.uniprot.org/core/Protein",
+    #         "label": "Protein",
+    #         "description": "A sequence of amino acids linked by peptide bonds which may lack appreciable tertiary structure and may not be liable to irreversible denaturation.",
+    #         "endpoint": "https://sparql.uniprot.org/sparql/",
+    #         "pagination": True,
+    #         "query": """PREFIX up: <http://purl.uniprot.org/core/>
+    # PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    # SELECT  ?uri ?label {
+    # ?uri a up:Protein .
+    # ?uri rdfs:label ?label .}""",
+    #     },
+    #     "uniprot_mnemonics": {
+    #         "uri": "http://purl.uniprot.org/core/Protein",
+    #         "label": "mnemonic",
+    #         "description": "uniprot mnemonic",
+    #         "endpoint": "https://sparql.uniprot.org/sparql/",
+    #         "pagination": True,
+    #         "query": """PREFIX up: <http://purl.uniprot.org/core/>
+    # SELECT ?uri ?label
+    # WHERE {
+    #     ?uri a up:Protein ;
+    #         up:mnemonic  ?label .
+    #     }""",
+    #     },
     }
 
     docs: list[Document] = []
@@ -301,7 +301,7 @@ def load_entities_embeddings_to_vectordb():
     docs = []
     embeddings = []
 
-    print("Reading entities embeddings from the .csv file")
+    print(f"Reading entities embeddings from the .csv file at {entities_embeddings_filepath}")
     with open(entities_embeddings_filepath) as file:
         reader = csv.DictReader(file)
         for row in tqdm(reader, desc="Extracting embeddings from CSV file"):
