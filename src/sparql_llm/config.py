@@ -188,8 +188,9 @@ def get_prefixes_dict() -> dict[str, str]:
     return get_prefixes_for_endpoints(endpoints_urls)
 
 
-def get_embedding_model() -> TextEmbedding:
-    # return TextEmbedding(settings.embedding_model, cuda=True)
+def get_embedding_model(gpu: bool = False) -> TextEmbedding:
+    if gpu:
+        return TextEmbedding(settings.embedding_model, providers=["CUDAExecutionProvider"])
     return TextEmbedding(settings.embedding_model)
 
 

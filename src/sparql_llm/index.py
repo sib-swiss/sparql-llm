@@ -12,7 +12,6 @@ from qdrant_client.http.models import (
 from rdflib import RDF, ConjunctiveGraph, Namespace
 
 from sparql_llm.config import get_embedding_model, get_vectordb, settings
-from sparql_llm.index_entities import load_entities_embeddings_to_vectordb
 from sparql_llm.sparql_examples_loader import SparqlExamplesLoader
 from sparql_llm.sparql_void_shapes_loader import SparqlVoidShapesLoader
 from sparql_llm.utils import get_prefixes_for_endpoints

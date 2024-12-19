@@ -42,7 +42,7 @@ def retrieve_index_data(entity: dict, docs: list[Document], pagination: (int, in
 
 def generate_embeddings_for_entities():
     start_time = time.time()
-    embedding_model = get_embedding_model()
+    embedding_model = get_embedding_model(gpu=True)
 
     entities_list = {
         "genex:AnatomicalEntity": {
