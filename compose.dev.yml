@@ -16,7 +16,7 @@ services:
       - 8000:80
     volumes:
       - ./src:/app/src
-      - ./prestart.sh:/app/prestart.sh
+      # - ./prestart.sh:/app/prestart.sh
     entrypoint: /start-reload.sh
 
   # In case you need a GPU-enabled workspace

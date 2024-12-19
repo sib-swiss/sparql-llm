@@ -204,7 +204,7 @@ print("\n".join(issues))
 4. Run the script to index the resources (SPARQL endpoints listed in config file):
 
    ```sh
-   docker compose run api python src/sparql_llm/embed.py
+   docker compose run api python src/sparql_llm/index.py
    ```
 
 > [!WARNING]
@@ -213,10 +213,10 @@ print("\n".join(issues))
 >
 > ```sh
 > pip install -e ".[chat,gpu]"
-> python src/sparql_llm/embed_entities.py
+> python src/sparql_llm/index_entities.py
 > ```
 >
-> Then move the CSV containing the embeddings in `data/embeddings/entities_embeddings.py` before running the `embed.py` script
+> Then move the entities collection containing the embeddings in `data/qdrant/collections/entities` before starting the stack
 
 ## 🧑‍💻 Contributing
 
@@ -228,13 +228,13 @@ If you reuse any part of this work, please cite [the arXiv paper](https://arxiv.
 
 ```
 @misc{emonet2024llmbasedsparqlquerygeneration,
-    title={LLM-based SPARQL Query Generation from Natural Language over Federated Knowledge Graphs}, 
+    title={LLM-based SPARQL Query Generation from Natural Language over Federated Knowledge Graphs},
     author={Vincent Emonet and Jerven Bolleman and Severine Duvaud and Tarcisio Mendes de Farias and Ana Claudia Sima},
     year={2024},
     eprint={2410.06062},
     archivePrefix={arXiv},
     primaryClass={cs.DB},
-    url={https://arxiv.org/abs/2410.06062}, 
+    url={https://arxiv.org/abs/2410.06062},
 }
 ```
 

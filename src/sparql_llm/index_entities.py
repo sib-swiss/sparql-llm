@@ -4,7 +4,7 @@ import time
 from ast import literal_eval
 
 from langchain_core.documents import Document
-from qdrant_client import models
+from qdrant_client import QdrantClient, models
 from tqdm import tqdm
 
 from sparql_llm.config import get_embedding_model, get_vectordb, settings
@@ -266,20 +266,34 @@ def generate_embeddings_for_entities():
     if not os.path.exists(entities_embeddings_dir):
         os.makedirs(entities_embeddings_dir)
 
-    with open(entities_embeddings_filepath, mode="w", newline="") as file:
-        writer = csv.writer(file)
-        header = ["label", "uri", "endpoint_url", "entity_type", "embedding"]
-        writer.writerow(header)
+    vectordb_local = QdrantClient(
+        path="data/qdrant",
+        # host=host,
+        prefer_grpc=True,
+    )
+    vectordb_local.upsert(
+        collection_name=settings.entities_collection_name,
+        points=models.Batch(
+            ids=list(range(1, len(docs) + 1)),
+            vectors=embeddings,
+            payloads=[doc.metadata for doc in docs],
+        ),
+    )
 
-        for doc, embedding in zip(docs, embeddings):
-            row = [
-                doc.metadata["label"],
-                doc.metadata["uri"],
-                doc.metadata["endpoint_url"],
-                doc.metadata["entity_type"],
-                embedding.tolist(),
-            ]
-            writer.writerow(row)
+    # NOTE: saving to a CSV makes it too slow to then read and upload to the vectordb, so we now directly upload to the vectordb
+    # with open(entities_embeddings_filepath, mode="w", newline="") as file:
+    #     writer = csv.writer(file)
+    #     header = ["label", "uri", "endpoint_url", "entity_type", "embedding"]
+    #     writer.writerow(header)
+    #     for doc, embedding in zip(docs, embeddings):
+    #         row = [
+    #             doc.metadata["label"],
+    #             doc.metadata["uri"],
+    #             doc.metadata["endpoint_url"],
+    #             doc.metadata["entity_type"],
+    #             embedding.tolist(),
+    #         ]
+    #         writer.writerow(row)
 
     print(f"Done generating embeddings for {len(docs)} entities in {time.time() - start_time} seconds")
 
@@ -295,11 +309,14 @@ def generate_embeddings_for_entities():
     # )
 
 
+# NOTE: not used anymore, we now directly load to a local vectordb then move the loaded entities collection to the main vectordb
 def load_entities_embeddings_to_vectordb():
     start_time = time.time()
     vectordb = get_vectordb()
     docs = []
     embeddings = []
+    batch_size = 100000
+    embeddings_count = 0
 
     print(f"Reading entities embeddings from the .csv file at {entities_embeddings_filepath}")
     with open(entities_embeddings_filepath) as file:
@@ -317,17 +334,45 @@ def load_entities_embeddings_to_vectordb():
                 )
             )
             embeddings.append(literal_eval(row["embedding"]))
+            embeddings_count += 1
+
+            if len(docs) == batch_size:
+                vectordb.upsert(
+                    collection_name=settings.entities_collection_name,
+                    points=models.Batch(
+                        ids=list(range(embeddings_count - batch_size + 1, embeddings_count + 1)),
+                        vectors=embeddings,
+                        payloads=[doc.metadata for doc in docs],
+                    ),
+                )
+                docs = []
+                embeddings = []
+
+
     print(
         f"Found embeddings for {len(docs)} entities in {time.time() - start_time} seconds. Now adding them to the vectordb"
     )
-    vectordb.upsert(
-        collection_name=settings.entities_collection_name,
-        points=models.Batch(
-            ids=list(range(1, len(docs) + 1)),
-            vectors=embeddings,
-            payloads=[doc.metadata for doc in docs],
-        ),
-    )
+
+    # for i in range(0, len(docs), batch_size):
+    #     batch_docs = docs[i:i + batch_size]
+    #     batch_embeddings = embeddings[i:i + batch_size]
+    #     vectordb.upsert(
+    #         collection_name=settings.entities_collection_name,
+    #         points=models.Batch(
+    #             ids=list(range(i + 1, i + len(batch_docs) + 1)),
+    #             vectors=batch_embeddings,
+    #             payloads=[doc.metadata for doc in batch_docs],
+    #         ),
+    #     )
+
+    # vectordb.upsert(
+    #     collection_name=settings.entities_collection_name,
+    #     points=models.Batch(
+    #         ids=list(range(1, len(docs) + 1)),
+    #         vectors=embeddings,
+    #         payloads=[doc.metadata for doc in docs],
+    #     ),
+    # )
 
     print(f"Done uploading embeddings for {len(docs)} entities in the vectordb in {time.time() - start_time} seconds")
 
