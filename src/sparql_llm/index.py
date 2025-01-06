@@ -56,8 +56,10 @@ def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
                         metadata={
                             "question": question,
                             "answer": json_ld_content,
+                            # "answer": f"```json\n{json_ld_content}\n```",
+                            "iri": endpoint["homepage"],
                             "endpoint_url": endpoint["endpoint_url"],
-                            "doc_type": "schemaorg_jsonld",
+                            "doc_type": "General information",
                         },
                     )
                 )
@@ -81,7 +83,7 @@ def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
                     "answer": "\n".join(descs),
                     "endpoint_url": endpoint["endpoint_url"],
                     "iri": endpoint["homepage"],
-                    "doc_type": "schemaorg_description",
+                    "doc_type": "General information",
                 },
             )
         )
@@ -133,7 +135,8 @@ def init_vectordb(vectordb_host: str = settings.vectordb_host) -> None:
     """Initialize the vectordb with example queries and ontology descriptions from the SPARQL endpoints"""
     vectordb = get_vectordb(vectordb_host)
 
-    # if not vectordb.collection_exists(settings.docs_collection_name):
+    if vectordb.collection_exists(settings.docs_collection_name):
+        vectordb.delete_collection(settings.docs_collection_name)
     vectordb.create_collection(
         collection_name=settings.docs_collection_name,
         vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
@@ -177,7 +180,7 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
 """,
                 "endpoint_url": "https://sparql.uniprot.org/sparql/",
                 "iri": "http://www.uniprot.org/help/about",
-                "doc_type": "schemaorg_description",
+                "doc_type": "General information",
             },
         )
     )

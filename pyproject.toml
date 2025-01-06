@@ -48,6 +48,7 @@ chat = [
     "pydantic-settings",
     "openai",
     "azure-ai-inference",
+    "litellm",
     "qdrant_client",
     "tqdm",
     # "fastembed",
@@ -58,7 +59,6 @@ test = [
     "ruff",
     "mypy",
     "pyright",
-    "pip-tools",
     "SPARQLWrapper",
     "ipykernel",
     "python-dotenv",
@@ -78,6 +78,11 @@ gpu = [
     "fastembed-gpu",
 ]
 
+# [dependency-groups]
+# dev = [
+#     "pytest >=7.1.3",
+#     "pytest-cov >=3.0.0",
+# ]
 
 [project.urls]
 Homepage = "https://github.com/sib-swiss/sparql-llm"
@@ -102,6 +107,7 @@ post-install-commands = []
 
 # uv venv
 # uv pip install ".[chat,gpu]"
+# uv pip compile pyproject.toml -o requirements.txt
 # uv run python src/sparql_llm/embed_entities.py
 [tool.hatch.envs.default.scripts]
 fmt = [
@@ -122,7 +128,7 @@ cov-check = [
     "python -c 'import webbrowser; webbrowser.open(\"http://0.0.0.0:3000\")'",
     "python -m http.server 3000 --directory ./htmlcov",
 ]
-compile = "pip-compile -o requirements.txt pyproject.toml"
+# compile = "pip-compile -o requirements.txt pyproject.toml"
 
 
 ## TOOLS
@@ -212,3 +218,6 @@ ignore = [
 "__init__.py" = ["I", "F401"] # module imported but unused
 # Tests can use magic values, assertions, and relative imports:
 "tests/**/*" = ["PLR2004", "S101", "S105", "TID252"]
+
+# [tool.uv.workspace]
+# members = ["mcp-sparql"]

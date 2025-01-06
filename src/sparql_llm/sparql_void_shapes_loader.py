@@ -41,7 +41,7 @@ class SparqlVoidShapesLoader(BaseLoader):
                 "answer": shex_shape["shex"],
                 "endpoint_url": self.endpoint_url,
                 "iri": cls_uri,
-                "doc_type": "shex",
+                "doc_type": "SPARQL endpoints classes schema",
             }
             if "label" in shex_shape:
                 docs.append(

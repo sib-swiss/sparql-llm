@@ -13,7 +13,7 @@ import "./style.css";
 // https://github.com/solidjs/solid/blob/main/packages/solid-element/README.md
 // https://github.com/solidjs/templates/tree/main/ts-tailwindcss
 
-type GenContext = {
+type RefenceDocument = {
   score: number;
   payload: {
     doc_type: string;
@@ -33,7 +33,7 @@ type Message = {
   role: "assistant" | "user";
   content: Accessor<string>;
   setContent: Setter<string>;
-  sources: GenContext[];
+  docs: RefenceDocument[];
   links: Accessor<Links[]>;
   setLinks: Setter<Links[]>;
 };
@@ -52,7 +52,9 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
   const [messages, setMessages] = createSignal<Message[]>([]);
   const [warningMsg, setWarningMsg] = createSignal("");
   const [loading, setLoading] = createSignal(false);
+  const [abortController, setAbortController] = createSignal(new AbortController());
   const [feedbackSent, setFeedbackSent] = createSignal(false);
+  const [selectedTab, setSelectedTab] = createSignal("");
 
   const apiUrl = props.api.endsWith("/") ? props.api : props.api + "/";
   if (props.api === "") setWarningMsg("Please provide an API URL for the chat component to work.");
@@ -65,13 +67,10 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
   let chatContainerEl!: HTMLDivElement;
   let inputTextEl!: HTMLTextAreaElement;
 
-  // NOTE: the 2 works but for now we want to always run validation
-  const streamResponse = false;
-
-  const appendMessage = (msgContent: string, role: "assistant" | "user" = "assistant", sources: GenContext[] = []) => {
+  const appendMessage = (msgContent: string, role: "assistant" | "user" = "assistant", docs: RefenceDocument[] = []) => {
     const [content, setContent] = createSignal(msgContent);
     const [links, setLinks] = createSignal<Links[]>([]);
-    const newMsg: Message = {content, setContent, role, sources, links, setLinks};
+    const newMsg: Message = {content, setContent, role, docs, links, setLinks};
     const query = extractSparqlQuery(msgContent);
     if (query) newMsg.setLinks([{url: query, ...queryLinkLabels}]);
     setMessages(messages => [...messages, newMsg]);
@@ -88,7 +87,7 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
   async function submitInput(question: string) {
     if (!question.trim()) return;
     if (loading()) {
-      setWarningMsg("⏳ Thinking...");
+      // setWarningMsg("⏳ Thinking...");
       return;
     }
     inputTextEl.value = "";
@@ -96,15 +95,19 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
     appendMessage(question, "user");
     setTimeout(() => fixInputHeight(), 0);
     try {
+      const startTime = Date.now();
+      // NOTE: the 2 works but for now we want to always run validation
+      const streamResponse = true;
       const response = await fetch(`${apiUrl}chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // 'Authorization': `Bearer ${apiKey}`,
         },
+        signal: abortController().signal,
         body: JSON.stringify({
           messages: messages().map(({content, role}) => ({content: content(), role})),
           model: "gpt-4o",
+          // model: "azure_ai/mistral-large",
           max_tokens: 50,
           stream: streamResponse,
           api_key: props.apiKey,
@@ -116,7 +119,6 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
         const reader = response.body?.getReader();
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
-        console.log(reader);
         // Iterate stream response
         while (true) {
           if (reader) {
@@ -124,12 +126,13 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
             if (done) break;
             buffer += decoder.decode(value, {stream: true});
             let boundary = buffer.lastIndexOf("\n");
+            // Add a small artificial delay to make streaming feel more natural
+            // if (boundary > 10000) await new Promise(resolve => setTimeout(resolve, 10));
+            console.log(boundary, buffer)
             if (boundary !== -1) {
               const chunk = buffer.slice(0, boundary);
               buffer = buffer.slice(boundary + 1);
-
-              const lines = chunk.split("\n").filter(line => line.trim() !== "");
-              for (const line of lines) {
+              for (const line of chunk.split("\n").filter(line => line.trim() !== "")) {
                 if (line === "data: [DONE]") {
                   return;
                 }
@@ -172,7 +175,6 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
         }
         // Extract query once message complete
         const query = extractSparqlQuery(lastMsg.content());
-        console.log(query);
         if (query) lastMsg.setLinks([{url: query, ...queryLinkLabels}]);
       } else {
         // Don't stream, await full response with additional checks done on the server
@@ -187,9 +189,13 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
           setWarningMsg("An error occurred. Please try again.");
         }
       }
+      console.log(`Request completed in ${(Date.now() - startTime) / 1000} seconds`);
     } catch (error) {
-      console.error("Failed to send message", error);
-      setWarningMsg("An error occurred when querying the API. Please try again or contact an admin.");
+      if (error instanceof Error && error.name !== 'AbortError') {
+        console.error("An error occurred when querying the API", error);
+        setWarningMsg("An error occurred when querying the API. Please try again or contact an admin.");
+      }
+      // setWarningMsg("An error occurred when querying the API. Please try again or contact an admin.");
     }
     setLoading(false);
     setFeedbackSent(false);
@@ -231,14 +237,15 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
                   innerHTML={DOMPurify.sanitize(marked.parse(msg.content()) as string)}
                 />
 
-                {/* Add sources references dialog */}
-                {msg.sources.length > 0 && (
+                {/* Add reference docs dialog */}
+                {msg.docs.length > 0 && (
                   <>
                     <button
                       class="my-3 mr-1 px-3 py-1 text-sm bg-gray-300 dark:bg-gray-700 rounded-3xl align-middle"
                       title="See the documents used to generate the response"
                       onClick={() => {
                         (document.getElementById(`source-dialog-${iMsg()}`) as HTMLDialogElement).showModal();
+                        setSelectedTab(msg.docs[0].payload.doc_type);
                         highlightAll();
                       }}
                     >
@@ -259,31 +266,50 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
                         <i data-feather="x" />
                       </button>
                       <article class="prose max-w-full p-3">
-                        <For each={msg.sources}>
-                          {(source, iSource) => (
-                            <>
-                              <p>
-                                <code class="mr-1">
-                                  {iSource() + 1} - {Math.round(source.score * 1000) / 1000}
+                        <div class="flex space-x-2 mb-4">
+                          <For each={Array.from(new Set(msg.docs.map(doc => doc.payload.doc_type)))}>
+                          {(docType) =>
+                          <button
+                            class={`px-4 py-2 rounded-lg transition-all ${
+                              selectedTab() === docType
+                                ? 'bg-gray-600 text-white shadow-md'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                              }`
+                            }
+                            onClick={() => {
+                              setSelectedTab(docType);
+                              highlightAll();
+                            }}
+                            title="Show only this type of document"
+                          >
+                            {docType}
+                          </button>
+                          }</For>
+                        </div>
+                        <For each={msg.docs.filter(doc => doc.payload.doc_type === selectedTab())}>
+                        {(doc, iDoc) => (
+                          <>
+                            <p>
+                              <code class="mr-1">
+                                {iDoc() + 1} - {Math.round(doc.score * 1000) / 1000}
+                              </code>
+                              {doc.payload.question} (
+                              <a href={doc.payload.endpoint_url} target="_blank">
+                                {doc.payload.endpoint_url}
+                              </a>
+                              )
+                            </p>
+                            {getLangForDocType(doc.payload.doc_type).startsWith("language-") ? (
+                              <pre>
+                                <code class={`${getLangForDocType(doc.payload.doc_type)}`}>
+                                  {doc.payload.answer}
                                 </code>
-                                {source.payload.question} (
-                                <a href={source.payload.endpoint_url} target="_blank">
-                                  {source.payload.endpoint_url}
-                                </a>
-                                )
-                              </p>
-                              {getLangForDocType(source.payload.doc_type).startsWith("language-") ? (
-                                <pre>
-                                  <code class={`${getLangForDocType(source.payload.doc_type)}`}>
-                                    {source.payload.answer}
-                                  </code>
-                                </pre>
-                              ) : (
-                                <p>{source.payload.answer}</p>
-                              )}
-                            </>
-                          )}
-                        </For>
+                              </pre>
+                            ) : (
+                              <p>{doc.payload.answer}</p>
+                            )}
+                          </>
+                        )}</For>
                       </article>
                     </dialog>
                   </>
@@ -352,6 +378,11 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
         class="p-2 flex"
         onSubmit={event => {
           event.preventDefault();
+          // Only abort if it's a click event (not from pressing Enter)
+          if (event.type === 'submit' && event.submitter && loading()) {
+            abortController().abort();
+            setAbortController(new AbortController());
+          }
           submitInput(inputTextEl.value);
         }}
       >
@@ -372,18 +403,19 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
           />
           <button
             type="submit"
-            title={loading() ? "Loading..." : "Send question"}
-            class="ml-2 px-4 py-2 rounded-3xl text-slate-500 bg-slate-200 dark:text-slate-400 dark:bg-slate-700 "
-            disabled={loading()}
+            title={loading() ? "Stop generation" : "Send question"}
+            class="ml-2 px-4 py-2 rounded-3xl text-slate-500 bg-slate-200 dark:text-slate-400 dark:bg-slate-700"
+            // disabled={loading()}
           >
-            {loading() ? <i data-feather="loader" class="animate-spin" /> : <i data-feather="send" />}
+            {loading() ? <i data-feather="square" /> : <i data-feather="send" />}
+            {/*  <i data-feather="loader" class="animate-spin" />  */}
           </button>
           <button
             title="Start a new conversation"
             class="ml-2 px-4 py-2 rounded-3xl text-slate-500 bg-slate-200 dark:text-slate-400 dark:bg-slate-700"
             onClick={() => setMessages([])}
           >
-            <i data-feather="trash" />
+            <i data-feather="edit" />
           </button>
           {/* <div
             class="ml-4 tooltip-top"

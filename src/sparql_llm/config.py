@@ -58,7 +58,7 @@ from sparql_llm.utils import get_prefixes_for_endpoints
 # print("	Total tokens:", response.usage.total_tokens)
 # print("	Completion tokens:", response.usage.completion_tokens)
 
-
+# NOTE: still in use by tests, to be replaced with litellm
 def get_llm_client(model: str) -> OpenAI:
     if model.startswith("hf:"):
         # Automatically use glhf API key if the model starts with "hf:"

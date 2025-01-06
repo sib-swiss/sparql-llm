@@ -25,13 +25,13 @@ export function extractSparqlQuery(markdownContent: string) {
 
 export function getLangForDocType(docType: string) {
   switch (docType) {
-    case "sparql_query":
+    case "SPARQL endpoints query examples":
       return "language-sparql";
-    case "schemaorg_jsonld":
-      return "language-json";
-    case "shex":
+    // case "General information":
+    //   return "language-json";
+    case "SPARQL endpoints classes schema":
       return "language-turtle";
-    case "ontology":
+    case "Ontology":
       return "language-turtle";
     default:
       return "";

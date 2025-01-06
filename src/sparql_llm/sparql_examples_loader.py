@@ -75,7 +75,7 @@ class SparqlExamplesLoader(BaseLoader):
                 "answer": query,
                 "endpoint_url": self.endpoint_url,
                 "query_type": parsed_query.algebra.name,
-                "doc_type": "sparql_query",
+                "doc_type": "SPARQL endpoints query examples",
             },
         )
 
