@@ -1,0 +1,146 @@
+[project]
+name = "expasy-agent"
+version = "0.0.1"
+description = "LangGraph agent to create an assistant that helps users access open data endpoints, such as public SPARQL endpoints."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Vincent Emonet", email = "vincent.emonet@gmail.com" }]
+maintainers = [{ name = "Vincent Emonet", email = "vincent.emonet@gmail.com" }]
+keywords = [
+    "SPARQL",
+    "LLM",
+    "Expasy",
+    "KGQA",
+    "Chabot",
+]
+requires-python = ">=3.9"
+dependencies = [
+    # LangGraph dependencies
+    "python-dotenv >=1.0.1",
+    "langgraph >=0.2.61",
+    "langchain >=0.2.14",
+    "langchain-community >=0.2.17",
+    "langchain-openai >=0.1.22",
+    # "langchain-anthropic >=0.1.23",
+    # "langchain-fireworks >=0.1.7",
+    "langchain-qdrant",
+    "qdrant-client",
+    # "fastembed",
+    "langserve",
+    # Our API dependencies
+    "sparql-llm",
+    "rdflib",
+    "curies-rs",
+    "fastapi",
+    "uvicorn",
+    "pydantic >=2.0.0",
+    "pydantic-settings",
+    "openai",
+    "azure-ai-inference",
+    "litellm",
+    "jinja2",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+cpu = [
+    # "onnxruntime",
+    "fastembed",
+]
+gpu = [
+    # "onnxruntime-gpu",
+    "fastembed-gpu",
+]
+
+
+[dependency-groups]
+dev = [
+    "langgraph-cli[inmem]",
+    "pytest >=7.1.3",
+    "pytest-cov >=3.0.0",
+    "pytest-asyncio",
+    "ruff >=0.6.1",
+    "mypy >=1.4.1",
+    "pre-commit",
+    # "vcrpy",
+    # "requests",
+    # "httpx",
+]
+
+[tool.uv.sources]
+sparql-llm = { workspace = true }
+
+[build-system]
+requires = ["setuptools>=73.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["langgraph.templates.expasy_agent", "expasy_agent"]
+[tool.setuptools.package-dir]
+"langgraph.templates.expasy_agent" = "src/expasy_agent"
+"expasy_agent" = "src/expasy_agent"
+
+[tool.setuptools.package-data]
+"*" = ["py.typed"]
+
+# TODO: try hatch build system
+# [build-system]
+# requires = ["hatchling"]
+# build-backend = "hatchling.build"
+
+# dynamic = ["version"]
+
+# [tool.hatch.version]
+# path = "src/expasy_agent/__init__.py"
+
+# [tool.hatch.build.targets.wheel]
+# packages = ["src/expasy_agent"]
+
+# Required for onnxruntime-gpu on CUDA 12
+[tool.uv.pip]
+extra-index-url = ["https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/"]
+# [tool.hatch.envs.default.env-vars]
+# PIP_EXTRA_INDEX_URL = "https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/"
+
+[tool.ruff]
+lint.select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "I",    # isort
+    "D",    # pydocstyle
+    "D401", # First line should be in imperative mood
+    "T201",
+    "UP",
+    # Ours:
+    "N",     # pep8-naming
+    "S",     # bandit
+    "A",     # flake8-builtins
+    "YTT",   # flake8-2020
+    "B",     # flake8-bugbear
+    "C",     # flake8-comprehensions
+    "ICN",   # flake8-import-conventions
+    "SIM",   # flake8-simplify
+    "TID",   # flake8-tidy-imports
+    "Q",     # flake8-quotes
+    "UP",    # pyupgrade
+    "W",     # pycodestyle warnings
+    "PLC",   # pylint convention
+    "PLE",   # pylint error
+    # "PLR",   # pylint refactor Magic value used in comparison, consider replacing 400 with a constant variable
+    "PLW",   # pylint warning
+    "RUF",   # ruff specific
+    "T",
+]
+lint.ignore = [
+    "UP006",
+    "UP007",
+    # We actually do want to import from typing_extensions
+    "UP035",
+    # Relax the convention by _not_ requiring documentation for every function parameter.
+    "D417",
+    "E501",
+]
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D", "UP"]
+[tool.ruff.lint.pydocstyle]
+convention = "google"

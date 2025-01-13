@@ -1,0 +1,48 @@
+# This workflow will run unit tests for the current project
+
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch: # Allows triggering the workflow manually in GitHub UI
+
+# If another push to the same PR or branch happens while this workflow is still running,
+# cancel the earlier run in favor of the next run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.11", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Lint with ruff
+        run: |
+          uv run ruff check .
+      - name: Lint with mypy
+        run: |
+          uv run mypy --strict src/
+      - name: Check README spelling
+        uses: codespell-project/actions-codespell@v2
+        with:
+          ignore_words_file: .codespellignore
+          path: README.md
+      - name: Check code spelling
+        uses: codespell-project/actions-codespell@v2
+        with:
+          ignore_words_file: .codespellignore
+          path: src/
+      - name: Run tests with pytest
+        run: |
+          uv run pytest tests/unit_tests

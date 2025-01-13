@@ -7,7 +7,7 @@ from langchain_core.documents import Document
 from qdrant_client import QdrantClient, models
 from tqdm import tqdm
 
-from sparql_llm.config import get_embedding_model, get_vectordb, settings
+from expasy_agent.config import get_embedding_model, get_vectordb, settings
 from sparql_llm.utils import query_sparql
 
 # Run the script to extract entities from endpoints and generate embeddings for them (long):

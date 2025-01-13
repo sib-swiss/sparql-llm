@@ -13,8 +13,10 @@ RUN pip install --upgrade pip
 COPY . /app/
 # COPY ./scripts/prestart.sh /app/
 
-RUN pip install -e ".[chat,cpu]"
+WORKDIR /app/packages/expasy-agent
 
-ENV PYTHONPATH=/app
-ENV MODULE_NAME=src.sparql_llm.api
+RUN pip install -e ".[cpu]" "../sparql-llm"
+
+ENV PYTHONPATH=/app/packages/expasy-agent
+ENV MODULE_NAME=src.expasy_agent.api
 # ENV VARIABLE_NAME=app

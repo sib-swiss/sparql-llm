@@ -1,3 +1,5 @@
+export const queryLinkLabels = {label: "Run and edit the query", title: "Open the SPARQL query in an editor in a new tab"};
+
 export function extractSparqlQuery(markdownContent: string) {
   // Regular expression to match SPARQL queries within code blocks
   const queryRegex = /```sparql([\s\S]*?)```/g;
@@ -11,9 +13,7 @@ export function extractSparqlQuery(markdownContent: string) {
   const endpointMatch = lastQuery.match(endpointRegex);
   const endpointUrl = endpointMatch ? endpointMatch[1] : null;
   if (!endpointUrl) return null;
-  // console.log({endpointUrl, lastQuery});
-  // return {endpointUrl, lastQuery};
-  return `https://sib-swiss.github.io/sparql-editor/?endpoint=${endpointUrl}&query=${encodeURIComponent(lastQuery)}`;
+  return getEditorUrl(lastQuery, endpointUrl)
   // return <a
   //   class="my-3 px-3 py-1 text-sm text-black dark:text-white bg-gray-300 hover:bg-gray-400 dark:bg-gray-700 dark:hover:bg-gray-800 rounded-lg"
   //   href="https://sib-swiss.github.io/sparql-editor/?endpoint=${endpointUrl}&query=${encodeURIComponent(lastQuery)}"
@@ -21,6 +21,10 @@ export function extractSparqlQuery(markdownContent: string) {
   // >
   //   Run and edit the query
   // </a>
+}
+
+export function getEditorUrl(query: string, endpointUrl: string = "") {
+  return `https://sib-swiss.github.io/sparql-editor/?${(endpointUrl) ? `endpoint=${endpointUrl}&` : ""}query=${encodeURIComponent(query)}`;
 }
 
 export function getLangForDocType(docType: string) {
@@ -38,10 +42,14 @@ export function getLangForDocType(docType: string) {
   }
 }
 
+// Get filters for color hex here: https://codepen.io/sosuke/pen/Pjoqqp
 export const style = `chat-with-context {
   button:hover {
     filter: brightness(90%);
   }
+}
+.iconBtn {
+  filter: invert(44%) sepia(22%) saturate(496%) hue-rotate(176deg) brightness(93%) contrast(79%);
 }
 @keyframes spin {
   to {

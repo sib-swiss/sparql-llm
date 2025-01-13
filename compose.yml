@@ -1,5 +1,4 @@
 services:
-
   vectordb:
     # https://hub.docker.com/r/qdrant/qdrant/tags
     image: docker.io/qdrant/qdrant:v1.11.3
@@ -33,6 +32,53 @@ services:
     # entrypoint: uvicorn src.sparql_llm.api:app --host 0.0.0.0 --port 80
     env_file:
       - .env
+
+  langgraph-redis:
+    image: redis:6
+    restart: unless-stopped
+    healthcheck:
+      test: redis-cli ping
+      interval: 10s
+      timeout: 1s
+      retries: 5
+
+  langgraph-postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./data/langgraph-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -U postgres
+      start_period: 10s
+      timeout: 1s
+      retries: 5
+      interval: 10s
+
+  langgraph-api:
+    # image: ${IMAGE_NAME}
+    # NOTE: build the image locally first
+    image: langgraph-expasy-agent
+    # ports:
+    #   - "8123:8000"
+    depends_on:
+      langgraph-redis:
+        condition: service_healthy
+      langgraph-postgres:
+        condition: service_healthy
+      vectordb:
+        condition: service_healthy
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      REDIS_URI: redis://langgraph-redis:6379
+      LANGCHAIN_TRACING_V2: false
+      POSTGRES_URI: postgres://postgres:postgres@langgraph-postgres:5432/postgres?sslmode=disable
+
 
 # TODO: add ollama
 

@@ -204,7 +204,7 @@ print("\n".join(issues))
 4. Run the script to index the resources (SPARQL endpoints listed in config file):
 
    ```sh
-   docker compose run api python src/sparql_llm/index.py
+   docker compose run api python src/expasy_agent/index.py
    ```
 
 > [!WARNING]

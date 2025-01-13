@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chat with context dev</title>
     <meta name="description" content="Chat with context development page" />
-    <!-- <link rel="icon" type="image/png" href="../demo/src/sib-logo.png" /> -->
+    <link rel="icon" type="image/png" href="./demo/sib-logo.png" />
 
     <script type="module" src="./src/chat-with-context.tsx"></script>
     <!-- <link href="./src/style.css" rel="stylesheet" /> -->
@@ -34,13 +34,13 @@
             title="Source code on GitHub"
             class="px-4 py-2 m-1 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500"
           >
-            <i data-feather="github"></i>
+            <img src="./demo/github.svg" alt="GitHub logo" />
           </button>
         </a>
       </nav>
 
-      <div class="text-center mb-5 prose max-w-6xl mx-auto pb-5 border-b">
-        <h2 class="text-xl font-semibold">
+      <div class="text-left text-sm mb-5 prose max-w-3xl mx-auto pb-5 border-b">
+        <h2 class="text-xl text-center font-semibold border-b pb-2">
           Ask Expasy
           <div
             class="inline-block ml-3 px-3 py-1 bg-red-600 text-white text-sm font-semibold rounded-full justify-center items-center"
@@ -48,21 +48,46 @@
             Beta
           </div>
         </h2>
-        <p class="border-t pt-5">
-          Assistant to navigate resources from the Swiss Institute of Bioinformatics. Particularly knowledgeable about
-          UniProt, OMA, Bgee, RheaDB, and SwissLipids. But still learning.
+        <p>
+          <strong>ExpasyGPT</strong> is reshaping how researchers explore life science data, streamlining searches across
+          the <a href="https://www.sib.swiss/">SIB Swiss Institute of Bioinformatics</a>’ databases (learn more
+          <a href="/about-chat">here</a>). This AI-driven tool is powered by metadata and example queries from SPARQL
+          endpoints like:
+        </p>
+        <ul style="list-style: inside;">
+          <li>
+            <a href="http://www.uniprot.org/uniprot/" target="_blank">UniProt</a>, an expertly curated database of
+            proteins
+          </li>
+          <li><a href="https://omabrowser.org/oma/home/" target="_blank">OMA</a>, the orthologous matrix</li>
+          <li><a href="https://www.bgee.org/" target="_blank">Bgee</a>, an expertly curated gene expression database</li>
+          <li>
+            <a href="https://www.rhea-db.org/" target="_blank">Rhea</a>, an expertly curated database of biochemical
+            reactions
+          </li>
+          <li>
+            <a href="http://www.swisslipids.org/#/" target="_blank">SwissLipids</a>, an expertly curated database of
+            lipids.
+          </li>
+        </ul>
+        <p>
+          As the service evolves, it will integrate additional endpoints from the
+          <a href="/search/SPARQL" target="_blank">SIB Knowledge Graph</a>.
         </p>
         <p>
-          Contact kru@sib.swiss if you have any feedback or suggestions. Questions asked here are stored for research
-          purposes, see the <a href="https://www.sib.swiss/privacy-policy">SIB privacy policy</a> for more information.
+          <strong>We value your input!</strong> For any questions or suggestions, feel free to reach out to the
+          <a href="/contact" target="_blank">Expasy helpdesk</a>.
         </p>
       </div>
 
       <div class="flex-grow mx-5">
         <!-- api="https://chat.expasy.org/" -->
-        <!-- api="http://localhost:8000/" -->
+        <!-- Our API: api="http://localhost:8000/" -->
+        <!-- LangGraph dev: api="http://localhost:2024/" -->
+        <!-- LangGraph prod: api="http://localhost:8123/" -->
+        <!-- LangServe: api="http://localhost:8001/langgraph/" -->
         <chat-with-context
-          api="http://localhost:8000/"
+          api="http://localhost:2024/"
           api-key="%EXPASY_API_KEY%"
           examples="Which resources are available at the SIB?,How can I get the HGNC symbol for the protein P68871?,What are the rat orthologs of the human TP53?,Where is expressed the gene ACE2 in human?,Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations,List the genes in primates orthologous to genes expressed in the fruit fly eye"
         ></chat-with-context>

@@ -3,3 +3,5 @@
 data/
 __pycache__/
 .*_cache
+dist/
+node_modules/

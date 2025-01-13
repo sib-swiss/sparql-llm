@@ -16,8 +16,28 @@ services:
       - 8000:80
     volumes:
       - ./src:/app/src
+      - ./packages:/app/packages
       # - ./prestart.sh:/app/prestart.sh
     entrypoint: /start-reload.sh
+
+  # langgraph-redis:
+  #   extends:
+  #     file: compose.yml
+  #     service: langgraph-redis
+
+  # langgraph-postgres:
+  #   extends:
+  #     file: compose.yml
+  #     service: langgraph-postgres
+  #   ports:
+  #     - 5433:5432
+
+  # langgraph-api:
+  #   extends:
+  #     file: compose.yml
+  #     service: langgraph-api
+  #   ports:
+  #     - 8123:8000
 
   # In case you need a GPU-enabled workspace
   # workspace:

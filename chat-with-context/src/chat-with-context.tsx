@@ -1,81 +1,55 @@
-import {createSignal, For, createEffect, Accessor, Setter} from "solid-js";
+import {createSignal, For, createEffect} from "solid-js";
 import {customElement, noShadowDOM} from "solid-element";
 import {marked} from "marked";
 import DOMPurify from "dompurify";
 import hljs from "highlight.js/lib/core";
 import "highlight.js/styles/default.min.css";
-import feather from "feather-icons";
 
-import {extractSparqlQuery, getLangForDocType, style} from "./utils";
+import {getLangForDocType, style} from "./utils";
 import {hljsDefineSparql, hljsDefineTurtle} from "./highlight";
+import sendLogo from "./assets/send.svg";
+import xLogo from "./assets/x.svg";
+import editLogo from "./assets/edit.svg";
+import squareLogo from "./assets/square.svg";
+import thumbsDownLogo from "./assets/thumbs-down.svg";
+import thumbsUpLogo from "./assets/thumbs-up.svg";
 import "./style.css";
+import {streamResponse, ChatState} from "./providers";
 
-// https://github.com/solidjs/solid/blob/main/packages/solid-element/README.md
+// Get icons svg from https://feathericons.com/
+// SolidJS custom element: https://github.com/solidjs/solid/blob/main/packages/solid-element/README.md
 // https://github.com/solidjs/templates/tree/main/ts-tailwindcss
 
-type RefenceDocument = {
-  score: number;
-  payload: {
-    doc_type: string;
-    endpoint_url: string;
-    question: string;
-    answer: string;
-  };
-};
-
-type Links = {
-  url: string;
-  label: string;
-  title: string;
-};
-
-type Message = {
-  role: "assistant" | "user";
-  content: Accessor<string>;
-  setContent: Setter<string>;
-  docs: RefenceDocument[];
-  links: Accessor<Links[]>;
-  setLinks: Setter<Links[]>;
-};
-
-const queryLinkLabels = {label: "Run and edit the query", title: "Open the SPARQL query in an editor in a new tab"};
 
 /**
  * Custom element to create a chat interface with a context-aware assistant.
  * @example <chat-with-context api="http://localhost:8000/"></chat-with-context>
  */
-customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props => {
+customElement("chat-with-context", {api: "", examples: "", apiKey: "", feedbackApi: ""}, props => {
   noShadowDOM();
   hljs.registerLanguage("ttl", hljsDefineTurtle);
   hljs.registerLanguage("sparql", hljsDefineSparql);
 
-  const [messages, setMessages] = createSignal<Message[]>([]);
   const [warningMsg, setWarningMsg] = createSignal("");
   const [loading, setLoading] = createSignal(false);
-  const [abortController, setAbortController] = createSignal(new AbortController());
   const [feedbackSent, setFeedbackSent] = createSignal(false);
   const [selectedTab, setSelectedTab] = createSignal("");
 
-  const apiUrl = props.api.endsWith("/") ? props.api : props.api + "/";
   if (props.api === "") setWarningMsg("Please provide an API URL for the chat component to work.");
-  const examples = props.examples.split(",").map(value => value.trim());
 
-  createEffect(() => {
-    feather.replace();
-    fixInputHeight();
-  });
+  const state = new ChatState({apiUrl: props.api, apiKey: props.apiKey});
+  const feedbackApi = props.feedbackApi
+    ? props.feedbackApi.endsWith("/")
+      ? props.feedbackApi
+      : props.feedbackApi + "/"
+    : state.apiUrl;
   let chatContainerEl!: HTMLDivElement;
   let inputTextEl!: HTMLTextAreaElement;
-
-  const appendMessage = (msgContent: string, role: "assistant" | "user" = "assistant", docs: RefenceDocument[] = []) => {
-    const [content, setContent] = createSignal(msgContent);
-    const [links, setLinks] = createSignal<Links[]>([]);
-    const newMsg: Message = {content, setContent, role, docs, links, setLinks};
-    const query = extractSparqlQuery(msgContent);
-    if (query) newMsg.setLinks([{url: query, ...queryLinkLabels}]);
-    setMessages(messages => [...messages, newMsg]);
-    feather.replace();
-  };
+  const examples = props.examples.split(",").map(value => value.trim());
+  createEffect(() => {
+    state.scrollToInput = () => inputTextEl.scrollIntoView({behavior: "smooth"});
+    fixInputHeight();
+  });
 
   const highlightAll = () => {
     document.querySelectorAll("pre code:not(.hljs)").forEach(block => {
@@ -92,125 +66,31 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
     }
     inputTextEl.value = "";
     setLoading(true);
-    appendMessage(question, "user");
+    setWarningMsg("");
     setTimeout(() => fixInputHeight(), 0);
+    const startTime = Date.now();
     try {
-      const startTime = Date.now();
-      // NOTE: the 2 works but for now we want to always run validation
-      const streamResponse = true;
-      const response = await fetch(`${apiUrl}chat`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        signal: abortController().signal,
-        body: JSON.stringify({
-          messages: messages().map(({content, role}) => ({content: content(), role})),
-          model: "gpt-4o",
-          // model: "azure_ai/mistral-large",
-          max_tokens: 50,
-          stream: streamResponse,
-          api_key: props.apiKey,
-        }),
-      });
-
-      // Handle response differently if streaming or not
-      if (streamResponse) {
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let buffer = "";
-        // Iterate stream response
-        while (true) {
-          if (reader) {
-            const {value, done} = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, {stream: true});
-            let boundary = buffer.lastIndexOf("\n");
-            // Add a small artificial delay to make streaming feel more natural
-            // if (boundary > 10000) await new Promise(resolve => setTimeout(resolve, 10));
-            console.log(boundary, buffer)
-            if (boundary !== -1) {
-              const chunk = buffer.slice(0, boundary);
-              buffer = buffer.slice(boundary + 1);
-              for (const line of chunk.split("\n").filter(line => line.trim() !== "")) {
-                if (line === "data: [DONE]") {
-                  return;
-                }
-                if (line.startsWith("data: ")) {
-                  // console.log(line)
-                  try {
-                    const json = JSON.parse(line.substring(6));
-                    if (json.docs) {
-                      // Docs always come before the message
-                      appendMessage("", "assistant", json.docs);
-                    } else {
-                      const newContent = json.choices[0].delta?.content;
-                      if (newContent) {
-                        messages()[messages().length - 1].setContent(content => content + newContent);
-                      }
-                    }
-                  } catch (error) {
-                    console.warn("Failed to parse JSON", error);
-                    setWarningMsg("An error occurred. Please try again.");
-                  }
-                }
-              }
-            }
-          }
-        }
-        const lastMsg = messages()[messages().length - 1];
-        // Process any remaining data in the buffer
-        if (buffer.length > 0) {
-          try {
-            const json = JSON.parse(buffer.substring(6));
-            const newContent = json.choices[0].delta?.content;
-            if (newContent) {
-              lastMsg.setContent(content => content + newContent);
-            }
-            setWarningMsg("");
-          } catch (error) {
-            console.warn("Failed to parse remaining JSON", error);
-            setWarningMsg("An error occurred. Please try again.");
-          }
-        }
-        // Extract query once message complete
-        const query = extractSparqlQuery(lastMsg.content());
-        if (query) lastMsg.setLinks([{url: query, ...queryLinkLabels}]);
-      } else {
-        // Don't stream, await full response with additional checks done on the server
-        try {
-          const data = await response.json();
-          console.log("Complete response", data);
-          const respMsg = data.choices[0].message.content;
-          appendMessage(respMsg, "assistant", data.docs);
-          setWarningMsg("");
-        } catch (error) {
-          console.error("Error getting API response", error, response);
-          setWarningMsg("An error occurred. Please try again.");
-        }
-      }
-      console.log(`Request completed in ${(Date.now() - startTime) / 1000} seconds`);
+      await streamResponse(state, question);
     } catch (error) {
-      if (error instanceof Error && error.name !== 'AbortError') {
+      if (error instanceof Error && error.name !== "AbortError") {
         console.error("An error occurred when querying the API", error);
         setWarningMsg("An error occurred when querying the API. Please try again or contact an admin.");
       }
-      // setWarningMsg("An error occurred when querying the API. Please try again or contact an admin.");
     }
     setLoading(false);
     setFeedbackSent(false);
     highlightAll();
-    feather.replace();
-    inputTextEl.scrollIntoView({behavior: "smooth"});
+    state.scrollToInput();
+    console.log(`Request completed in ${(Date.now() - startTime) / 1000} seconds`);
   }
 
   function sendFeedback(positive: boolean) {
-    fetch(`${apiUrl}feedback`, {
+    fetch(`${feedbackApi}feedback`, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
         like: positive,
-        messages: messages(),
+        messages: state.messages(),
       }),
     });
     setFeedbackSent(true);
@@ -223,97 +103,151 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
   }
 
   return (
-    <div class={`chat-with-context w-full h-full flex flex-col ${messages().length === 0 ? "justify-center" : ""}`}>
+    <div class={`chat-with-context w-full h-full flex flex-col ${state.messages().length === 0 ? "justify-center" : ""}`}>
       <style>{style}</style>
       {/* Main chat container */}
-      <div ref={chatContainerEl} class={`overflow-y-auto ${messages().length !== 0 ? "flex-grow" : ""}`}>
-        <For each={messages()}>
+      <div ref={chatContainerEl} class={`overflow-y-auto ${state.messages().length !== 0 ? "flex-grow" : ""}`}>
+        <For each={state.messages()}>
           {(msg, iMsg) => (
             <div class={`w-full flex flex-col flex-grow ${msg.role === "user" ? "items-end" : ""}`}>
               <div class={`py-2.5 mb-2 ${msg.role === "user" ? "bg-gray-300 rounded-3xl px-5" : ""}`}>
+                <div class="flex flex-col items-start">
+                  <For each={msg.steps()}>
+                    {(step, iStep) =>
+                      step.retrieved_docs.length > 0 ? (
+                        <>
+                          {/* Add reference docs dialog */}
+                          <button
+                            class="text-gray-400 ml-8 mb-4"
+                            title={`Click to see the documents used to generate the response\n\nNode: ${step.node_id}`}
+                            onClick={() => {
+                              (
+                                document.getElementById(`source-dialog-${iMsg()}-${iStep()}`) as HTMLDialogElement
+                              ).showModal();
+                              setSelectedTab(step.retrieved_docs[0].metadata.doc_type);
+                              highlightAll();
+                            }}
+                          >
+                            {step.label}
+                          </button>
+                          <dialog
+                            id={`source-dialog-${iMsg()}-${iStep()}`}
+                            class="bg-white dark:bg-gray-800 m-3 rounded-3xl shadow-md w-full"
+                          >
+                            <button
+                              id={`close-dialog-${iMsg()}-${iStep()}`}
+                              class="fixed top-2 right-8 m-3 px-2 text-xl text-slate-500 bg-gray-200 dark:bg-gray-700 rounded-3xl"
+                              title="Close references"
+                              onClick={() =>
+                                (
+                                  document.getElementById(`source-dialog-${iMsg()}-${iStep()}`) as HTMLDialogElement
+                                ).close()
+                              }
+                            >
+                              <img src={xLogo} alt="Close the dialog" class="iconBtn" />
+                            </button>
+                            <article class="prose max-w-full p-3">
+                              <div class="flex space-x-2 mb-4">
+                                <For each={Array.from(new Set(step.retrieved_docs.map(doc => doc.metadata.doc_type)))}>
+                                  {docType => (
+                                    <button
+                                      class={`px-4 py-2 rounded-lg transition-all ${
+                                        selectedTab() === docType
+                                          ? "bg-gray-600 text-white shadow-md"
+                                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                      }`}
+                                      onClick={() => {
+                                        setSelectedTab(docType);
+                                        highlightAll();
+                                      }}
+                                      title="Show only this type of document"
+                                    >
+                                      {docType}
+                                    </button>
+                                  )}
+                                </For>
+                              </div>
+                              <For each={step.retrieved_docs.filter(doc => doc.metadata.doc_type === selectedTab())}>
+                                {(doc, iDoc) => (
+                                  <>
+                                    <p>
+                                      <code class="mr-1">
+                                        {iDoc() + 1} - {Math.round(doc.metadata.score * 1000) / 1000}
+                                      </code>
+                                      {doc.metadata.question} (
+                                      <a href={doc.metadata.endpoint_url} target="_blank">
+                                        {doc.metadata.endpoint_url}
+                                      </a>
+                                      )
+                                    </p>
+                                    {getLangForDocType(doc.metadata.doc_type).startsWith("language-") ? (
+                                      <pre>
+                                        <code class={`${getLangForDocType(doc.metadata.doc_type)}`}>
+                                          {doc.metadata.answer}
+                                        </code>
+                                      </pre>
+                                    ) : (
+                                      <p>{doc.metadata.answer}</p>
+                                    )}
+                                  </>
+                                )}
+                              </For>
+                            </article>
+                          </dialog>
+                        </>
+                      ) : step.details ? (
+                        <>
+                          {/* Dialog to show more details in markdown */}
+                          <button
+                            class="text-gray-400 ml-8 mb-4"
+                            title={`Click to see the documents used to generate the response\n\nNode: ${step.node_id}`}
+                            onClick={() => {
+                              (
+                                document.getElementById(`step-dialog-${iMsg()}-${iStep()}`) as HTMLDialogElement
+                              ).showModal();
+                              highlightAll();
+                            }}
+                          >
+                            {step.label}
+                          </button>
+                          <dialog
+                            id={`step-dialog-${iMsg()}-${iStep()}`}
+                            class="bg-white dark:bg-gray-800 m-3 rounded-3xl shadow-md w-full"
+                          >
+                            <button
+                              id={`close-dialog-${iMsg()}-${iStep()}`}
+                              class="fixed top-2 right-8 m-3 px-2 text-xl text-slate-500 bg-gray-200 dark:bg-gray-700 rounded-3xl"
+                              title="Close step details"
+                              onClick={() =>
+                                (
+                                  document.getElementById(`step-dialog-${iMsg()}-${iStep()}`) as HTMLDialogElement
+                                ).close()
+                              }
+                            >
+                              <img src={xLogo} alt="Close the dialog" class="iconBtn" />
+                            </button>
+                            <article
+                              class="prose max-w-full p-6"
+                              // eslint-disable-next-line solid/no-innerhtml
+                              innerHTML={DOMPurify.sanitize(marked.parse(step.details) as string)}
+                            />
+                          </dialog>
+                        </>
+                      ) : (
+                        // Display regular step
+                        <p class="text-gray-400 ml-8 mb-4" title={`Node: ${step.node_id}`}>
+                          {step.label}
+                        </p>
+                      )
+                    }
+                  </For>
+                </div>
                 <article
                   class="prose max-w-full"
                   // eslint-disable-next-line solid/no-innerhtml
                   innerHTML={DOMPurify.sanitize(marked.parse(msg.content()) as string)}
                 />
 
-                {/* Add reference docs dialog */}
-                {msg.docs.length > 0 && (
-                  <>
-                    <button
-                      class="my-3 mr-1 px-3 py-1 text-sm bg-gray-300 dark:bg-gray-700 rounded-3xl align-middle"
-                      title="See the documents used to generate the response"
-                      onClick={() => {
-                        (document.getElementById(`source-dialog-${iMsg()}`) as HTMLDialogElement).showModal();
-                        setSelectedTab(msg.docs[0].payload.doc_type);
-                        highlightAll();
-                      }}
-                    >
-                      See relevant references
-                    </button>
-                    <dialog
-                      id={`source-dialog-${iMsg()}`}
-                      class="bg-white dark:bg-gray-800 m-3 rounded-3xl shadow-md w-full"
-                    >
-                      <button
-                        id={`close-dialog-${iMsg()}`}
-                        class="fixed top-2 right-8 m-3 px-2 text-xl text-slate-500 bg-gray-200 dark:bg-gray-700 rounded-3xl"
-                        title="Close references"
-                        onClick={() =>
-                          (document.getElementById(`source-dialog-${iMsg()}`) as HTMLDialogElement).close()
-                        }
-                      >
-                        <i data-feather="x" />
-                      </button>
-                      <article class="prose max-w-full p-3">
-                        <div class="flex space-x-2 mb-4">
-                          <For each={Array.from(new Set(msg.docs.map(doc => doc.payload.doc_type)))}>
-                          {(docType) =>
-                          <button
-                            class={`px-4 py-2 rounded-lg transition-all ${
-                              selectedTab() === docType
-                                ? 'bg-gray-600 text-white shadow-md'
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                              }`
-                            }
-                            onClick={() => {
-                              setSelectedTab(docType);
-                              highlightAll();
-                            }}
-                            title="Show only this type of document"
-                          >
-                            {docType}
-                          </button>
-                          }</For>
-                        </div>
-                        <For each={msg.docs.filter(doc => doc.payload.doc_type === selectedTab())}>
-                        {(doc, iDoc) => (
-                          <>
-                            <p>
-                              <code class="mr-1">
-                                {iDoc() + 1} - {Math.round(doc.score * 1000) / 1000}
-                              </code>
-                              {doc.payload.question} (
-                              <a href={doc.payload.endpoint_url} target="_blank">
-                                {doc.payload.endpoint_url}
-                              </a>
-                              )
-                            </p>
-                            {getLangForDocType(doc.payload.doc_type).startsWith("language-") ? (
-                              <pre>
-                                <code class={`${getLangForDocType(doc.payload.doc_type)}`}>
-                                  {doc.payload.answer}
-                                </code>
-                              </pre>
-                            ) : (
-                              <p>{doc.payload.answer}</p>
-                            )}
-                          </>
-                        )}</For>
-                      </article>
-                    </dialog>
-                  </>
-                )}
                 {/* Add links, e.g. to Run and edit the query */}
                 <For each={msg.links()}>
                   {link => (
@@ -325,26 +259,27 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
                   )}
                 </For>
                 {/* Show feedback buttons only for last message */}
-                {msg.role === "assistant" && iMsg() === messages().length - 1 && !feedbackSent() && (
-                  <>
-                    <button
-                      class="mr-1 my-3 px-3 py-1 text-sm hover:bg-gray-300 dark:hover:bg-gray-800 rounded-3xl align-middle"
-                      title="Report a good response"
-                      onClick={() => sendFeedback(true)}
-                    >
-                      {/* @ts-ignore */}
-                      <i height="20px" width="20px" class="text-sm align-middle" data-feather="thumbs-up" />
-                    </button>
-                    <button
-                      class="my-3 px-3 py-1 text-sm hover:bg-gray-300 dark:hover:bg-gray-800 rounded-3xl align-middle"
-                      title="Report a bad response"
-                      onClick={() => sendFeedback(false)}
-                    >
-                      {/* @ts-ignore */}
-                      <i height="20px" width="20px" data-feather="thumbs-down" />
-                    </button>
-                  </>
-                )}
+                {msg.role === "assistant" &&
+                  iMsg() === state.messages().length - 1 &&
+                  state.lastMsg().content() &&
+                  !feedbackSent() && (
+                    <>
+                      <button
+                        class="mr-1 my-3 px-3 py-1 text-sm hover:bg-gray-300 dark:hover:bg-gray-800 rounded-3xl align-middle"
+                        title="Report a good response"
+                        onClick={() => sendFeedback(true)}
+                      >
+                        <img src={thumbsUpLogo} alt="Thumbs up" height="20px" width="20px" class="iconBtn" />
+                      </button>
+                      <button
+                        class="my-3 px-3 py-1 text-sm hover:bg-gray-300 dark:hover:bg-gray-800 rounded-3xl align-middle"
+                        title="Report a bad response"
+                        onClick={() => sendFeedback(false)}
+                      >
+                        <img src={thumbsDownLogo} alt="Thumbs down" height="20px" width="20px" class="iconBtn" />
+                      </button>
+                    </>
+                  )}
               </div>
             </div>
           )}
@@ -361,7 +296,7 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
       )}
 
       {/* List of examples */}
-      {messages().length < 1 && (
+      {state.messages().length < 1 && (
         <div class="py-2 px-4 justify-center items-center text-sm flex flex-col space-y-2">
           <For each={examples}>
             {example => (
@@ -379,9 +314,8 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
         onSubmit={event => {
           event.preventDefault();
           // Only abort if it's a click event (not from pressing Enter)
-          if (event.type === 'submit' && event.submitter && loading()) {
-            abortController().abort();
-            setAbortController(new AbortController());
+          if (event.type === "submit" && event.submitter && loading()) {
+            state.abortRequest();
           }
           submitInput(inputTextEl.value);
         }}
@@ -391,7 +325,7 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
             ref={inputTextEl}
             autofocus
             class="flex-grow px-4 py-2 h-auto border border-slate-400 bg-slate-200 dark:bg-slate-700 dark:border-slate-500 rounded-3xl focus:outline-none focus:ring focus:ring-blue-200 dark:focus:ring-blue-400 overflow-y-hidden resize-none"
-            placeholder="Ask Expasy..."
+            placeholder="Ask a question"
             rows="1"
             onKeyDown={event => {
               if (event.key === "Enter" && !event.shiftKey) {
@@ -405,25 +339,21 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: ""}, props =>
             type="submit"
             title={loading() ? "Stop generation" : "Send question"}
             class="ml-2 px-4 py-2 rounded-3xl text-slate-500 bg-slate-200 dark:text-slate-400 dark:bg-slate-700"
-            // disabled={loading()}
           >
-            {loading() ? <i data-feather="square" /> : <i data-feather="send" />}
-            {/*  <i data-feather="loader" class="animate-spin" />  */}
+            {loading() ? (
+              <img src={squareLogo} alt="Stop generation" class="iconBtn" />
+            ) : (
+              <img src={sendLogo} alt="Send question" class="iconBtn" />
+            )}
+            {/* <img src={loaderLogo} alt="Loading" class="iconBtn animate-spin" /> */}
           </button>
           <button
             title="Start a new conversation"
             class="ml-2 px-4 py-2 rounded-3xl text-slate-500 bg-slate-200 dark:text-slate-400 dark:bg-slate-700"
-            onClick={() => setMessages([])}
+            onClick={() => state.setMessages([])}
           >
-            <i data-feather="edit" />
+            <img src={editLogo} alt="Start a new conversation" class="iconBtn" />
           </button>
-          {/* <div
-            class="ml-4 tooltip-top"
-            title="⚠️ Will check if the queries sent are valid SPARQL, no streaming response, slower"
-          >
-            <input type="checkbox" id="checks-checkbox" class="mr-2" />
-            <label for="checks-checkbox">Run additional checks</label>
-          </div> */}
         </div>
       </form>
     </div>

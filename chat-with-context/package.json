@@ -28,6 +28,9 @@
     "version": "npm run lint && npm run build && npm publish"
   },
   "dependencies": {
+    "@langchain/core": "^0.3.27",
+    "@langchain/langgraph": "^0.2.39",
+    "@langchain/langgraph-sdk": "^0.0.33",
     "dompurify": "^3.2.3",
     "feather-icons": "^4.29.2",
     "highlight.js": "^11.10.0",

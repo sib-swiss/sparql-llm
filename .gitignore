@@ -1,14 +1,19 @@
 .env
+
+# Python
 .venv
 dist/
-data/
 __pycache__/
+*.egg-info/
 .*_cache
 .coverage
+.langgraph_api/
+uv.lock
 
+# Data
+data/
 notebooks/*.csv
 notebooks/*.txt
 entities_embeddings*.csv
-uv.lock
 
-src/sparql_llm/webapp
+packages/expasy-agent/src/expasy_agent/webapp

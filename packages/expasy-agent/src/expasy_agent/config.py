@@ -176,7 +176,11 @@ Try to always answer with one query, if the answer lies in different endpoints, 
 
     logs_filepath: str = "/logs/user_questions.log"
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="allow",
+    )
 
 
 settings = Settings()

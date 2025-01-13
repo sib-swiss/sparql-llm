@@ -11,7 +11,7 @@ from qdrant_client.http.models import (
 )
 from rdflib import RDF, ConjunctiveGraph, Namespace
 
-from sparql_llm.config import get_embedding_model, get_vectordb, settings
+from expasy_agent.config import get_embedding_model, get_vectordb, settings
 from sparql_llm.sparql_examples_loader import SparqlExamplesLoader
 from sparql_llm.sparql_void_shapes_loader import SparqlVoidShapesLoader
 from sparql_llm.utils import get_prefixes_for_endpoints
@@ -133,15 +133,6 @@ def load_ontology(endpoint: dict[str, str]) -> list[Document]:
 
 def init_vectordb(vectordb_host: str = settings.vectordb_host) -> None:
     """Initialize the vectordb with example queries and ontology descriptions from the SPARQL endpoints"""
-    vectordb = get_vectordb(vectordb_host)
-
-    if vectordb.collection_exists(settings.docs_collection_name):
-        vectordb.delete_collection(settings.docs_collection_name)
-    vectordb.create_collection(
-        collection_name=settings.docs_collection_name,
-        vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
-    )
-    embedding_model = get_embedding_model()
     docs: list[Document] = []
 
     endpoints_urls = [endpoint["endpoint_url"] for endpoint in settings.endpoints]
@@ -186,17 +177,45 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
     )
 
     print(f"Generating embeddings for {len(docs)} documents")
-    embeddings = embedding_model.embed([q.page_content for q in docs])
     start_time = time.time()
-    vectordb.upsert(
+
+    from langchain_community.embeddings import FastEmbedEmbeddings
+    from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
+
+    # Using Qdrant client
+    # vectordb = get_vectordb(vectordb_host)
+    # if vectordb.collection_exists(settings.docs_collection_name):
+    #     vectordb.delete_collection(settings.docs_collection_name)
+    # vectordb.create_collection(
+    #     collection_name=settings.docs_collection_name,
+    #     vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
+    # )
+    # embedding_model = get_embedding_model()
+    # embeddings = embedding_model.embed([q.page_content for q in docs])
+
+    # vectordb.upsert(
+    #     collection_name=settings.docs_collection_name,
+    #     points=models.Batch(
+    #         ids=list(range(1, len(docs) + 1)),
+    #         vectors=embeddings,
+    #         payloads=[doc.metadata for doc in docs],
+    #     ),
+    #     # wait=False, # Waiting for indexing to finish or not
+    # )
+
+    # Using LangChain
+    vectordb = QdrantVectorStore.from_documents(
+        docs,
+        # url="http://localhost:6333/",
+        host=settings.vectordb_host,
         collection_name=settings.docs_collection_name,
-        points=models.Batch(
-            ids=list(range(1, len(docs) + 1)),
-            vectors=embeddings,
-            payloads=[doc.metadata for doc in docs],
-        ),
-        # wait=False, # Waiting for indexing to finish or not
+        embedding=FastEmbedEmbeddings(model_name="BAAI/bge-large-en-v1.5"),
+        # sparse_embedding=FastEmbedSparse(model_name="Qdrant/bm25"),
+        # retrieval_mode=RetrievalMode.HYBRID,
+        prefer_grpc=True,
+        force_recreate=True,
     )
+
     print(
         f"Done generating and indexing {len(docs)} documents into the vectordb in {time.time() - start_time} seconds"
     )
