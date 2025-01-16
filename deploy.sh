@@ -18,7 +18,7 @@ elif [ "$1" = "logs" ]; then
 
 elif [ "$1" = "index" ]; then
     echo "🔎 Indexing endpoints in the vector database"
-    ssh_cmd "podman-compose run api python src/expasy_agent/indexing/index_endpoints.py"
+    ssh_cmd "podman-compose exec api python src/expasy_agent/indexing/index_endpoints.py"
 
 elif [ "$1" = "likes" ]; then
     mkdir -p data/prod

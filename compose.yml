@@ -10,6 +10,9 @@ services:
       # - ./qdrant_config.yml:/qdrant/config/production.yaml
     environment:
       - QDRANT_ALLOW_RECOVERY_MODE=true
+    ports:
+      - 6333:6333
+      - 6334:6334
     # command:
     #   - ./qdrant --config-path /qdrant/config/production.yaml
 
@@ -28,8 +31,7 @@ services:
       - ./data/fastembed_cache:/tmp/fastembed_cache
       - ./data/logs:/logs
       - ./data/embeddings:/app/data/embeddings
-      - ./src:/app/src
-    # entrypoint: uvicorn src.sparql_llm.api:app --host 0.0.0.0 --port 80
+      - ./packages:/app/packages
     env_file:
       - .env
 
