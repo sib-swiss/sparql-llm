@@ -29,3 +29,6 @@ elif [ "$1" = "likes" ]; then
 else
     ssh_cmd "git pull ; podman-compose up --force-recreate -d"
 fi
+
+# Fix connectivities issues between api and vectordb... (become podman compose is completly broken)
+# podman exec -it api bash

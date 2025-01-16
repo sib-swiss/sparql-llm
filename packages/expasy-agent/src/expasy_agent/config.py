@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     # vectordb_host: str = "vectordb"
     # vectordb_host: str = "localhost"
     # NOTE: old hack to fix a bug with podman internal network, can be removed soon
-    vectordb_host: str = "10.89.0.2"
+    vectordb_host: str = "10.89.1.2"
 
     docs_collection_name: str = "expasy"
     entities_collection_name: str = "entities"
