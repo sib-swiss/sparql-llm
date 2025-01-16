@@ -1,4 +1,4 @@
-from expasy_agent.configuration import Configuration
+from expasy_agent.config import Configuration
 
 
 def test_configuration_empty() -> None:

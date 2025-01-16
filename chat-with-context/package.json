@@ -20,7 +20,7 @@
     "build": "vite build",
     "build:css": "npx tailwindcss build -o temp.css && echo \".chat-with-context {\" > src/style.css && cat temp.css >> src/style.css && echo \"}\" >> src/style.css && rm temp.css && postcss src/style.css --use postcss-nested --no-map -o src/style.css",
     "oldbuild:css": "npx tailwindcss build -o temp.css && echo \".chat-with-context {\" > src/style.css && cat temp.css >> src/style.css && echo \"}\" >> src/style.css && rm temp.css && postcss src/style.css --use postcss-nested --no-map -o src/style.css",
-    "build:demo": "rm -rf ../src/sparql_llm/webapp && cd demo && vite build",
+    "build:demo": "rm -rf ../packages/expasy-agent/src/expasy_agent/webapp && cd demo && vite build",
     "test": "npm run lint && vitest run",
     "fmt": "prettier --write . && eslint \"**/*.{ts,tsx,html,json}\" --fix",
     "lint": "prettier --check . && eslint \"**/*.{ts,tsx,html,json}\"",
@@ -28,9 +28,11 @@
     "version": "npm run lint && npm run build && npm publish"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^1.0.18",
     "@langchain/core": "^0.3.27",
     "@langchain/langgraph": "^0.2.39",
     "@langchain/langgraph-sdk": "^0.0.33",
+    "ai": "^4.0.33",
     "dompurify": "^3.2.3",
     "feather-icons": "^4.29.2",
     "highlight.js": "^11.10.0",

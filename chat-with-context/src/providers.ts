@@ -1,6 +1,8 @@
 import {Accessor, createSignal, Setter} from "solid-js";
 import {Client} from "@langchain/langgraph-sdk";
 import {RemoteRunnable} from "@langchain/core/runnables/remote";
+import {streamText} from 'ai';
+import {createOpenAI} from '@ai-sdk/openai';
 // import { RemoteGraph } from "@langchain/langgraph/remote";
 // import { isAIMessageChunk } from "@langchain/core/messages";
 
@@ -45,16 +47,19 @@ export type Message = {
 export class ChatState {
   apiUrl: string;
   apiKey: string;
+  model: string;
   messages: Accessor<Message[]>;
   setMessages: Setter<Message[]>;
   abortController: AbortController;
 
-  constructor({apiUrl, apiKey}: {
+  constructor({apiUrl, apiKey, model}: {
     apiUrl: string;
     apiKey: string;
+    model: string;
   }) {
     this.apiUrl = apiUrl.endsWith("/") ? apiUrl : apiUrl + "/";
     this.apiKey = apiKey;
+    this.model = model;
 
     const [messages, setMessages] = createSignal<Message[]>([]);
     this.messages = messages;
@@ -102,31 +107,136 @@ export class ChatState {
 // Stream a response from various LLM agent providers (OpenAI-like, LangGraph, LangServe)
 export async function streamResponse(state: ChatState, question: string) {
   state.appendMessage(question, "user");
-  if (state.apiUrl.endsWith(":2024/") || state.apiUrl.endsWith(":8123/") || state.apiUrl.endsWith("/langgraph/")) {
+  console.log(state.apiUrl)
+  if (state.apiUrl.endsWith(":2024/") || state.apiUrl.endsWith(":8123/")) {
     // Query LangGraph API
     await streamLangGraphApi(state);
 
-  } else if (state.apiUrl.endsWith("/langgraph")) {
+  } else if (state.apiUrl.endsWith("/langgraph/")) {
     // Query LangGraph through LangServe API
-    await streamLangServe(state);
+    await streamCustomLangGraph(state);
 
   } else {
     // Query the OpenAI-compatible chat API
     await streamOpenAILikeApi(state);
+    // await streamCustomLangGraph(statse);
   }
 }
 
-async function streamLangServe(state: ChatState) {
-  // TODO: Query LangGraph through LangServe API
-  const remoteChain = new RemoteRunnable({
-    url: state.apiUrl,
+async function processLangGraphChunk(state: ChatState, chunk: any) {
+  if (chunk.event === "error") {
+    throw new Error(`An error occurred. Please try again. ${chunk.data.error}: ${chunk.data.message}`);
+  }
+  // Handle updates to the state
+  if (chunk.event === "updates") {
+    for (const nodeId of Object.keys(chunk.data)) {
+      const nodeData = chunk.data[nodeId];
+      if (nodeData.retrieved_docs) {
+        // Retrieved docs sent
+        state.appendStepToLastMsg(
+          `📚️ Using ${nodeData.retrieved_docs.length} documents`,
+          nodeId,
+          nodeData.retrieved_docs,
+        );
+      }
+      // Handle extracted entities (SPARQL queries here)
+      if (nodeData.extracted_entities) {
+        // const extractedEntities = nodeData.extracted_entities;
+        // Retrieved extracted_entities sent
+        if (nodeData.extracted_entities.sparql_query) {
+          state.lastMsg().setLinks([
+            {
+              url: getEditorUrl(nodeData.extracted_entities.sparql_query, nodeData.extracted_entities.sparql_endpoint_url),
+              ...queryLinkLabels,
+            },
+          ]);
+        }
+      }
+      // Handle post-generation validation
+      if (nodeData.validation) {
+        for (const validationStep of nodeData.validation) {
+          // Handle messages related to tools (includes post generation validation)
+          state.appendStepToLastMsg(
+            validationStep.label,
+            nodeId,
+            [],
+            validationStep.details,
+          );
+          if (validationStep.type === "recall") {
+            // When recall-model is called, the model will re-generate the response, so we need to update the message
+            // If the update contains a message with a fix (e.g. done during post generation validation)
+            state.lastMsg().setContent("");
+          } else if (validationStep.fixed_message) {
+            state.lastMsg().setContent(validationStep.fixed_message);
+          }
+        }
+      }
+    }
+  }
+  // Handle messages from the model
+  if (chunk.event === "messages") {
+    const [msg, metadata] = chunk.data;
+    // const {message, metadata} = chunk.data;
+    // console.log("MESSAGES", msg, metadata);
+    if (msg.tool_calls?.length > 0) {
+      // Tools calls requested by the model
+      const toolNames = msg.tool_calls.map((tool_call: any) => tool_call.name).join(", ");
+      if (toolNames) state.appendStepToLastMsg(`💭 Calling tools: ${toolNames}`, metadata.langgraph_node);
+    }
+    if (msg.content && msg.type === "tool") {
+      // If tool called by model
+      state.appendStepToLastMsg(`🔧 Tool ${msg.name} result: ${msg.content}`, metadata.langgraph_node);
+
+    } else if (msg.content && msg.type === "AIMessageChunk") {
+      // Response from the model
+      state.appendContentToLastMsg(msg.content);
+    }
+  }
+}
+
+async function streamCustomLangGraph(state: ChatState) {
+  const response = await fetch(`${state.apiUrl}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${state.apiKey}`
+    },
+    signal: state.abortController.signal,
+    body: JSON.stringify({
+      messages: state.messages().map(({content, role}) => ({content: content(), role})),
+      model: state.model,
+      // model: "azure_ai/mistral-large",
+      max_tokens: 500,
+      stream: true,
+    }),
   });
-  const stream = await remoteChain.stream({
-    // messages: [{role: "human", content: state.lastMsg().content()}],
-    messages: state.messages().map(({content, role}) => ({content: content(), role})),
-  });
-  for await (const chunk of stream) {
-    console.log(chunk);
+
+  state.appendMessage("", "assistant");
+  const reader = response.body?.getReader()!;
+  const decoder = new TextDecoder("utf-8");
+  let partialLine = ""; // Buffer for incomplete lines
+
+  // Iterate stream response
+  while (true) {
+    if (reader) {
+      const {value, done} = await reader.read();
+      if (done) break;
+      const chunkStr = decoder.decode(value, {stream: true});
+      // Combine with any leftover data from the previous iteration
+      const combined = partialLine + chunkStr;
+      for (const line of combined.split("\n").filter(line => line.trim() !== "")) {
+        // if (line === "data: [DONE]") return;
+        // if (line.startsWith("data: ")) {
+        console.log(line)
+        try {
+          const json = JSON.parse(line);
+          processLangGraphChunk(state, json)
+          partialLine = "";
+        } catch {
+          partialLine += line;
+        }
+      }
+    }
   }
 }
 
@@ -148,105 +258,28 @@ async function streamLangGraphApi(state: ChatState) {
   });
   state.appendMessage("", "assistant");
   for await (const chunk of streamResponse) {
-    // console.log(chunk.event, chunk);
-    if (chunk.event === "updates") {
-      // Handle updates to the state
-      if (chunk.data.retrieve?.retrieved_docs) {
-        // Retrieved docs sent
-        state.appendStepToLastMsg(
-          `📚️ Using ${chunk.data.retrieve.retrieved_docs.length} documents`,
-          "retrieve",
-          chunk.data.retrieve.retrieved_docs,
-        );
-      }
-      if (chunk.data.validate_output?.extracted_entities) {
-        const extractedEntities = chunk.data.validate_output?.extracted_entities;
-        // Retrieved extracted_entities sent
-        if (extractedEntities.sparql_query) {
-          state.lastMsg().setLinks([
-            {
-              url: getEditorUrl(extractedEntities.sparql_query, extractedEntities.sparql_endpoint_url),
-              ...queryLinkLabels,
-            },
-          ]);
-        }
-      }
-    }
-    if (chunk.event === "messages") {
-      // Handle messages from the model
-      const [msg, metadata] = chunk.data;
-      // console.log("MESSAGES", msg, metadata);
-      if (msg.tool_calls?.length > 0) {
-        // Tools calls requested by the model
-        const toolNames = msg.tool_calls.map((tool_call: any) => tool_call.name).join(", ");
-        if (toolNames) state.appendStepToLastMsg(`💭 Calling tools: ${toolNames}`, metadata.langgraph_node);
-      }
-      if (msg.content && msg.type === "tool") {
-        // Response from a tool
-        state.appendStepToLastMsg(`🔧 Tool ${msg.name} result: ${msg.content}`, metadata.langgraph_node);
-      } else if (msg.content && msg.type === "AIMessageChunk") {
-        // Response from the model
-        state.appendContentToLastMsg(msg.content);
-      }
-
-      if (msg.name) {
-        // Handle messages related to validation
-        const originalContent = state.lastMsg().content();
-        if (msg.name.startsWith("fix-")) {
-          // If the update contains a message with a fix (e.g. done during post generation validation)
-          const msgName = msg.name.slice(4);
-          state.appendStepToLastMsg(
-            `✅ Fixed the generated SPARQL query automatically (${msgName})`,
-            "validate_output",
-            [],
-            `${msgName[0].toUpperCase() + msgName.slice(1)} corrected from the query generated in the original response.\n\n## Original response\n\n${originalContent}`,
-          );
-          state.lastMsg().setContent(msg.content);
-        }
-        if (msg.name === "recall-model") {
-          // If the update contains a message with a fix (e.g. done during post generation validation)
-          state.appendStepToLastMsg(
-            `🐞 Generated query invalid, fixing it`,
-            "validate_output",
-            [],
-            `The query generated in the original response is not valid according to the endpoints schema.\n\n## Original response\n\n${originalContent}\n\n## Validation results\n\n${msg.additional_kwargs?.validation_results}`,
-          );
-          state.lastMsg().setContent("");
-        }
-      }
-    }
-    if (chunk.event === "error") {
-      throw new Error(`An error occurred. Please try again. ${chunk.data.error}: ${chunk.data.message}`);
-    }
+    processLangGraphChunk(state, chunk);
   }
 }
 
+
 async function streamOpenAILikeApi(state: ChatState) {
-  const response = await fetch(`${state.apiUrl}chat`, {
+  const response = await fetch(`${state.apiUrl}chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Authorization: `Bearer ${state.apiKey}`
     },
     signal: state.abortController.signal,
     body: JSON.stringify({
       messages: state.messages().map(({content, role}) => ({content: content(), role})),
-      model: "gpt-4o-mini",
+      model: state.model,
       // model: "azure_ai/mistral-large",
       max_tokens: 500,
       stream: true,
-      api_key: state.apiKey,
+      // api_key: state.apiKey,
     }),
   });
-
-  // TODO: try this way of streaming: https://github.com/vercel/ai/blob/main/packages/ui-utils/src/process-text-stream.ts#L1
-
-  // Handle response differently if streaming or not
-  // if (streamResponse) {
-  // for await (const chunk of response.body) {
-  //   // if (signal.aborted) break; // just break out of loop
-  //   // Do something with the chunk
-  //   console.log(chunk)
-  // }
 
   state.appendMessage("", "assistant");
   const reader = response.body?.getReader()!;
@@ -258,14 +291,14 @@ async function streamOpenAILikeApi(state: ChatState) {
     if (reader) {
       const {value, done} = await reader.read();
       if (done) break;
-      const chunk = decoder.decode(value, {stream: true});
+      const chunkStr = decoder.decode(value, {stream: true});
       // Combine with any leftover data from the previous iteration
-      const combined = partialLine + chunk;
+      const combined = partialLine + chunkStr;
       if (partialLine) partialLine = "";
       for (const line of combined.split("\n").filter(line => line.trim() !== "")) {
         if (line === "data: [DONE]") return;
         if (line.startsWith("data: ")) {
-          // console.log(line)
+          console.log(line)
           try {
             const json = JSON.parse(line.substring(6));
             if (json.retrieved_docs) {
@@ -277,7 +310,7 @@ async function streamOpenAILikeApi(state: ChatState) {
             } else {
               const newContent = json.choices[0].delta?.content;
               if (newContent) {
-                console.log(newContent);
+                // console.log(newContent);
                 state.appendContentToLastMsg(newContent);
               }
             }
@@ -288,52 +321,6 @@ async function streamOpenAILikeApi(state: ChatState) {
       }
     }
   }
-
-  // https://developer.mozilla.org/en-US/docs/Web/API/Streams_API/Using_readable_streams
-  // if (reader) {
-  //   const readableStream = new ReadableStream({
-  //     start(controller) {
-  //         async function pump() {
-  //             while (true) {
-  //                 const { done, value } = await reader.read();
-  //                 if (done) {
-  //                     controller.close();
-  //                     break;
-  //                 }
-  //                 // const chunk = decoder.decode(value, { stream: true });
-  //                 controller.enqueue(decoder.decode(value, { stream: true }));
-  //             }
-  //         }
-  //         pump();
-  //     },
-  //   });
-  //   for await (const chunk of readableStream) {
-  //     const combined = partialLine + chunk;
-  //     if (partialLine) partialLine = "";
-  //     // Combine with any leftover data from the previous iteration
-  //     for (const line of combined.split("\n").filter(line => line.trim() !== "")) {
-  //       if (line === "data: [DONE]") return;
-  //       if (line.startsWith("data: ")) {
-  //         // console.log(line)
-  //         try {
-  //           const json = JSON.parse(line.substring(6));
-  //           if (json.retrieved_docs) {
-  //             appendStepToLastMsg(`📚️ Using ${json.retrieved_docs.length} documents`, "retrieve", json.retrieved_docs);
-  //           } else {
-  //             const newContent = json.choices[0].delta?.content;
-  //             if (newContent) {
-  //               // console.log(newContent);
-  //               appendContentToLastMsg(newContent);
-  //             }
-  //           }
-  //         } catch {
-  //           partialLine = line;
-  //           console.log("Partial line", partialLine);
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
 
   // Extract query once message complete
   const query = extractSparqlQuery(state.lastMsg().content());
@@ -352,3 +339,17 @@ async function streamOpenAILikeApi(state: ChatState) {
   //   }
   // }
 }
+
+// async function streamLangServe(state: ChatState) {
+//   // TODO: Query LangGraph through LangServe API
+//   const remoteChain = new RemoteRunnable({
+//     url: state.apiUrl,
+//   });
+//   const stream = await remoteChain.stream({
+//     // messages: [{role: "human", content: state.lastMsg().content()}],
+//     messages: state.messages().map(({content, role}) => ({content: content(), role})),
+//   });
+//   for await (const chunk of stream) {
+//     console.log(chunk);
+//   }
+// }

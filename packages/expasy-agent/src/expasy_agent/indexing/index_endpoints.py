@@ -4,20 +4,18 @@ import requests
 from bs4 import BeautifulSoup
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-from qdrant_client import models
-from qdrant_client.http.models import (
-    Distance,
-    VectorParams,
-)
+from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
 from rdflib import RDF, ConjunctiveGraph, Namespace
-
-from expasy_agent.config import get_embedding_model, get_vectordb, settings
 from sparql_llm.sparql_examples_loader import SparqlExamplesLoader
 from sparql_llm.sparql_void_shapes_loader import SparqlVoidShapesLoader
 from sparql_llm.utils import get_prefixes_for_endpoints
 
+from expasy_agent.config import Configuration, settings
+from expasy_agent.nodes.retrieval import make_text_encoder
+
 SCHEMA = Namespace("http://schema.org/")
 
+configuration = Configuration()
 
 def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
     """Extract datasets descriptions from the schema.org metadata in homepage of the endpoint"""
@@ -94,6 +92,7 @@ def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
 
 
 def load_ontology(endpoint: dict[str, str]) -> list[Document]:
+    """Get documents from the OWL ontology URL given for each SPARQL endpoint."""
     if "ontology" not in endpoint:
         return []
     # g = ConjunctiveGraph(store="Oxigraph")
@@ -179,10 +178,9 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
     print(f"Generating embeddings for {len(docs)} documents")
     start_time = time.time()
 
-    from langchain_community.embeddings import FastEmbedEmbeddings
-    from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
-
     # Using Qdrant client
+    # from qdrant_client import models
+    # from qdrant_client.http.models import Distance, VectorParams
     # vectordb = get_vectordb(vectordb_host)
     # if vectordb.collection_exists(settings.docs_collection_name):
     #     vectordb.delete_collection(settings.docs_collection_name)
@@ -209,7 +207,7 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
         # url="http://localhost:6333/",
         host=settings.vectordb_host,
         collection_name=settings.docs_collection_name,
-        embedding=FastEmbedEmbeddings(model_name="BAAI/bge-large-en-v1.5"),
+        embedding=make_text_encoder(configuration.embedding_model),
         # sparse_embedding=FastEmbedSparse(model_name="Qdrant/bm25"),
         # retrieval_mode=RetrievalMode.HYBRID,
         prefer_grpc=True,
@@ -260,6 +258,3 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
 
 if __name__ == "__main__":
     init_vectordb()
-    print(
-        f"VectorDB initialized with {get_vectordb().get_collection(settings.docs_collection_name).points_count} vectors"
-    )

@@ -1,4 +1,4 @@
-FROM docker.io/tiangolo/uvicorn-gunicorn-fastapi:python3.11
+FROM docker.io/python:3.11
 
 WORKDIR /app
 
@@ -11,12 +11,15 @@ RUN pip install --upgrade pip
 
 
 COPY . /app/
-# COPY ./scripts/prestart.sh /app/
 
 WORKDIR /app/packages/expasy-agent
 
 RUN pip install -e ".[cpu]" "../sparql-llm"
 
-ENV PYTHONPATH=/app/packages/expasy-agent
-ENV MODULE_NAME=src.expasy_agent.api
-# ENV VARIABLE_NAME=app
+# ENV PYTHONPATH=/app/packages/expasy-agent
+# ENV MODULE_NAME=src.expasy_agent.api
+
+# https://github.com/tiangolo/uvicorn-gunicorn-docker/blob/master/docker-images/gunicorn_conf.py
+
+CMD ["uvicorn", "src.expasy_agent.api", "--host", "0.0.0.0", "--port", "80", "--workers", "4"]
+# CMD ["uvicorn", "src.expasy_agent.api", "--host", "0.0.0.0", "--port", "80", "--workers", "4", "--http", "h11"]

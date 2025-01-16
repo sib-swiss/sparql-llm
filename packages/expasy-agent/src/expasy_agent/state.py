@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Sequence
+from typing import Any, Optional, Sequence
 
 from langchain_core.documents import Document
 from langchain_core.messages import AnyMessage
@@ -38,6 +38,13 @@ class InputState:
     updating by ID to maintain an "append-only" state unless a message with the same ID is provided.
     """
 
+@dataclass
+class ValidationState:
+    """Structure for validation results."""
+    type: str
+    label: str
+    details: str
+    fixed_message: Optional[str] = None
 
 @dataclass
 class State(InputState):
@@ -56,7 +63,8 @@ class State(InputState):
 
     # Additional attributes can be added here as needed.
     retrieved_docs: list[Document] = field(default_factory=list)
-    try_count: int = field(default=0)
+    validation: list[ValidationState] = field(default_factory=list)
     extracted_entities: dict[str, Any] = field(default_factory=dict)
+    try_count: int = field(default=0)
 
     # api_connections: Dict[str, Any] = field(default_factory=dict)

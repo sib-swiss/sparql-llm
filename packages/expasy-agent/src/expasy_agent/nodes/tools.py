@@ -20,7 +20,7 @@ def multiply(a: int, b: int) -> int:
 # from langchain_core.runnables import RunnableConfig
 # from langchain_core.tools import InjectedToolArg
 # from typing_extensions import Annotated
-# from expasy_agent.configuration import Configuration
+# from expasy_agent.config import Configuration
 
 # async def search(
 #     query: str, *, config: Annotated[RunnableConfig, InjectedToolArg]

@@ -16,11 +16,11 @@ from sparql_llm.validate_sparql import (
 )
 
 from expasy_agent.config import settings
-from expasy_agent.state import State
+from expasy_agent.state import State, ValidationState
 
 
-async def validate_sparql(state: State) -> dict[str, list[AIMessage]]:
-    """Validate output of a LLM, e.g. SPARQL queries generated.
+async def validate_output(state: State) -> dict[str, list[AIMessage]]:
+    """LangGraph node to validate the output of a LLM call, e.g. SPARQL queries generated.
 
     Args:
         state (State): The current state of the conversation.
@@ -31,11 +31,11 @@ async def validate_sparql(state: State) -> dict[str, list[AIMessage]]:
     """
     last_msg = state.messages[-1]
     responses = []
+    new_messages = []
     generated_sparqls = extract_sparql_queries(last_msg.content)
     for gen_query in generated_sparqls:
-        sparql_issues = []
         errors = []
-        # last_msg.additional_kwargs = {"extracted": {"sparql_query": gen_query["query"], "sparql_endpoint_url": gen_query["endpoint_url"]}}
+        # 1. Check if the query is syntactically valid, auto fix prefixes if needed
         try:
             # Try to parse, to fix prefixes and rare structural issues
             prepareQuery(gen_query["query"])
@@ -46,25 +46,40 @@ async def validate_sparql(state: State) -> dict[str, list[AIMessage]]:
                 fixed_msg = last_msg.content.replace(gen_query["query"], fixed_query)
                 gen_query["query"] = fixed_query
                 # Pass the fixed msg to the client
-                responses.append(AIMessage(content=fixed_msg, name="fix-prefixes"))
+                # responses.append(AIMessage(content=fixed_msg, name="fix-prefixes"))
+                responses.append(ValidationState(
+                    type="prefixes",
+                    label="✅ Fixed the prefixes of the generated SPARQL query automatically",
+                    details=f"Prefixes corrected from the query generated in the original response.\n### Original response\n{last_msg.content}",
+                    fixed_message=fixed_msg,
+                ))
                 # Check if other errors are present
                 errors = [line for line in str(e).splitlines() if "Unknown namespace prefix" not in line]
-        # Validate the SPARQL query based on schema from VoID description
+
+        # 2. Validate the SPARQL query based on schema from VoID description
         if gen_query["endpoint_url"] and not errors:
-            sparql_issues = validate_sparql_with_void(gen_query["query"], gen_query["endpoint_url"], prefix_converter)
-            errors = errors + list(sparql_issues)
+            errors = list(validate_sparql_with_void(gen_query["query"], gen_query["endpoint_url"], prefix_converter))
+
+        # 3. Recall the LLM to try to fix errors
         if errors:
-            # Ask the LLM to try to fix it
-            # https://python.langchain.com/api_reference/core/messages/langchain_core.messages.ai.AIMessage.html
-            validation_msg = "- " + "\n- ".join(errors)
-            responses.append(AIMessage(
-                content=f"Fix the SPARQL query helping yourself with the error message and context from previous messages in a way that it is a fully valid query.\n\nSPARQL query: {gen_query['query']}\n\nError messages:\n{validation_msg}",
-                name="recall-model",
-                additional_kwargs={"validation_results": validation_msg},
+            error_str = "- " + "\n- ".join(errors)
+            validation_msg = f"The query generated in the original response is not valid according to the endpoints schema.\n### Original response\n{last_msg.content}\n### Erroneous SPARQL query\n```sparql\n{gen_query['query']}\n```\n### Validation results\n{error_str}"
+            responses.append(ValidationState(
+                type="recall",
+                label="🐞 Generated query invalid, fixing it",
+                details=validation_msg,
+            ))
+            # Add a new message to ask the model to fix the error
+            new_messages.append(AIMessage(
+                content=f"Fix the SPARQL query helping yourself with the error message and context from previous messages in a way that it is a fully valid query.\n\nSPARQL query: {gen_query['query']}\n\nError messages:\n{error_str}",
+                name="recall",
+                # additional_kwargs={"validation_results": error_str},
             ))
 
-    resp = {"messages": responses, "try_count": state.try_count+1}
-    # resp["validation_results"] = {"message": validation_msg, "recall": True}
+    # TODO: add warning that we could not fix the issues
+    # if state.try_count > configuration.max_try_fix_sparql and errors:
+
+    all_responses = {"validation": responses, "messages": new_messages, "try_count": state.try_count+1}
     extracted = {}
     if generated_sparqls:
         if generated_sparqls[-1]["query"]:
@@ -72,9 +87,9 @@ async def validate_sparql(state: State) -> dict[str, list[AIMessage]]:
         if generated_sparqls[-1]["endpoint_url"]:
             extracted["sparql_endpoint_url"] = generated_sparqls[-1]["endpoint_url"]
     if extracted:
-        resp["extracted_entities"] = extracted
+        all_responses["extracted_entities"] = extracted
     # Return the model's response as a list to be added to existing messages
-    return resp
+    return all_responses
 
 
 # TODO: get endpoints config

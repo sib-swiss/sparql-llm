@@ -204,7 +204,7 @@ print("\n".join(issues))
 4. Run the script to index the resources (SPARQL endpoints listed in config file):
 
    ```sh
-   docker compose run api python src/expasy_agent/index.py
+   docker compose run api python src/expasy_agent/indexing/index_endpoints.py
    ```
 
 > [!WARNING]
@@ -213,7 +213,7 @@ print("\n".join(issues))
 >
 > ```sh
 > pip install -e ".[chat,gpu]"
-> python src/sparql_llm/index_entities.py
+> python src/expasy_agent/indexing/index_entities.py
 > ```
 >
 > Then move the entities collection containing the embeddings in `data/qdrant/collections/entities` before starting the stack

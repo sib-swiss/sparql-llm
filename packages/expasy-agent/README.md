@@ -105,19 +105,25 @@ LangGraph Studio also integrates with [LangSmith](https://smith.langchain.com/) 
 
 ### Run in dev
 
-On http://127.0.0.1:2024:
+Run LanGraph official API On http://127.0.0.1:2024:
 
 ```sh
 uv run --extra cpu langgraph dev
 ```
 
-Run tests:
+Run custom LangGraph API on http://loalhost:8000/langgraph/:
+
+```sh
+uv run --extra cpu uvicorn src.expasy_agent.api:app --reload
+```
+
+### Test
 
 ```sh
 uv run --extra cpu --env-file .env pytest
 ```
 
-Build for prod:
+### Build for prod
 
 ```sh
 uv run langgraph build -t langgraph-expasy-agent
@@ -138,6 +144,7 @@ uv run --extra cpu uvicorn src.expasy_agent.langserve:app --reload
 - `ai` npm pkg: https://sdk.vercel.ai/docs/introduction
 - Custom OpenAI API URL: https://sdk.vercel.ai/docs/guides/llama-3_1#getting-started-with-the-ai-sdk
 - Solid `ai` components: https://www.npmjs.com/package/@ai-sdk/solid
+- `ai` streamText: https://github.com/vercel/ai/blob/main/packages/ai/core/generate-text/stream-text.ts#L106
 
 ### Links
 

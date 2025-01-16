@@ -1,47 +1,23 @@
+"""API to deploy the Expasy Agent service from LangGraph."""
+
+import asyncio
 import json
 import logging
 import os
 import pathlib
 import re
-import sys
-from collections.abc import AsyncGenerator
 from datetime import datetime
-from typing import Any, Generator, Optional
+from typing import Any, Optional
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from langchain_core.messages import AIMessage
-from langchain_core.runnables import RunnableConfig
-from litellm import completion
-from openai import OpenAI, Stream
-from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from pydantic import BaseModel
-from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
-from rdflib.plugins.sparql.algebra import translateQuery
-from rdflib.plugins.sparql.parser import parseQuery
-from sparql_llm.utils import get_prefix_converter
-from sparql_llm.validate_sparql import add_missing_prefixes, extract_sparql_queries, validate_sparql_with_void
 from starlette.middleware.cors import CORSMiddleware
 
-from expasy_agent.config import get_prefixes_dict, settings
-from expasy_agent.index import get_embedding_model, get_vectordb
-from expasy_agent.nodes.retrieval import format_docs, retrieve
-from expasy_agent.nodes.validation import validate_sparql
-from expasy_agent.state import State
-
-# If the user is asking about a named entity warn him that they should check if this entity exist with one of the query used to find named entity
-# And we provide the this list of queries, and the LLM figure out which query can be used to find the named entity
-# https://github.com/biosoda/bioquery/blob/master/biosoda_frontend/src/biosodadata.json#L1491
-
-# and do not put service call to the endpoint the query is run on
-# Add a LIMIT 100 to the query and even sub-queries if you are unsure about the size of the result.
-# You can deconstruct complex queries in many smaller queries, but always propose one final query to the user (federated if needed), but be careful to use the right crossref (xref) when using an identifier from an endpoint in another endpoint.
-# When writing the SPARQL query try to factorize the predicates/objects of a subject as much as possible, so that the user can understand the query and the results.
-
-STARTUP_PROMPT = "Here is a list of reference questions and query answers relevant to the user question that will help you answer the user question accurately:"
-INTRO_USER_QUESTION_PROMPT = "The question from the user is:"
+from expasy_agent.config import settings
+from expasy_agent.graph import graph
 
 llm_model = "gpt-4o"
 # llm_model = "azure_ai/mistral-large"
@@ -55,7 +31,7 @@ llm_model = "gpt-4o"
 # llm_model: str = "hf:meta-lama/Meta-Llama-3.1-405B-Instruct"
 
 app = FastAPI(
-    title="Expasy Chat",
+    title="Expasy GPT",
     description="""This service helps users to use resources from the Swiss Institute of Bioinformatics,
 such as SPARQL endpoints, to get information about proteins, genes, and other biological entities.""",
 )
@@ -69,22 +45,13 @@ app.add_middleware(
 )
 
 # Create logs file if it doesn't exist
-if not os.path.exists(settings.logs_filepath):
-    pathlib.Path(settings.logs_filepath).parent.mkdir(parents=True, exist_ok=True)
-    pathlib.Path(settings.logs_filepath).touch()
-logging.basicConfig(filename=settings.logs_filepath, level=logging.INFO, format="%(asctime)s - %(message)s")
-
-vectordb = get_vectordb()
-embedding_model = get_embedding_model()
-prefixes_map = get_prefixes_dict()
-prefix_converter = get_prefix_converter(prefixes_map)
-
-
-class SearchResult(BaseModel):
-    response: str
-    hits_sparql: list[ScoredPoint]
-    full_prompt: str
-
+try:
+    if not os.path.exists(settings.logs_filepath):
+        pathlib.Path(settings.logs_filepath).parent.mkdir(parents=True, exist_ok=True)
+        pathlib.Path(settings.logs_filepath).touch()
+    logging.basicConfig(filename=settings.logs_filepath, level=logging.INFO, format="%(asctime)s - %(message)s")
+except Exception:
+    logging.warning(f"⚠️ Logs filepath {settings.logs_filepath} not writable.")
 
 class Message(BaseModel):
     role: str
@@ -98,87 +65,44 @@ class ChatCompletionRequest(BaseModel):
     temperature: Optional[float] = 0.0
     stream: Optional[bool] = False
     validate_output: Optional[bool] = True
-    api_key: Optional[str] = None
+    headers: Optional[dict[str, str]] = {}
 
 
-async def stream_response(request: ChatCompletionRequest):
-    request.messages = [msg for msg in request.messages if msg.role != "system"]
-    request.messages = [Message(role="system", content=settings.system_prompt), *request.messages]
+def convert_chunk_to_dict(obj: Any) -> Any:
+    """Convert a langgraph chunk object to a dict."""
+    # {'retrieve': {'retrieved_docs': [Document(metadata={'endpoint_url':
+    # When sending a msg LangGraph sends a tuple with the message and the metadata
+    if isinstance(obj, tuple):
+        # Message and metadata
+        return [convert_chunk_to_dict(obj[0]), convert_chunk_to_dict(obj[1])]
+    elif isinstance(obj, list):
+        return [convert_chunk_to_dict(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {k: convert_chunk_to_dict(v) for k, v in obj.items()}
+    elif hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    elif hasattr(obj, "dict"):
+        return obj.dict()
+    elif hasattr(obj, "__dict__"):
+        return obj.__dict__
+    else:
+        return obj
 
-    question: str = request.messages[-1].content if request.messages else ""
-    logging.info(f"User question: {question}")
 
-    # We build a big prompt with the most relevant queries retrieved from similarity search engine (could be increased)
-    prompt = f"{STARTUP_PROMPT}\n\n"
-    state = State(messages=request.messages)
-    config = RunnableConfig()
+async def stream_response(inputs: dict[str, list]):
+    """Stream the response from the assistant."""
+    # messages-tuple
+    async for event, chunk in graph.astream(inputs, stream_mode=["messages", "updates"]):
+        # print(event)
+        chunk_dict = convert_chunk_to_dict({
+            "event": event,
+            "data": chunk,
+        })
+        yield f"{json.dumps(chunk_dict)}\n"
+        # yield stream_dict(chunk)
+        await asyncio.sleep(0)
 
-    # TODO: use langchain retriever to also add sparse embeddings Qdrant/bm25 for the query to work
-    state.retrieved_docs = (await retrieve(state, config))["retrieved_docs"]
-    prompt += format_docs(state.retrieved_docs)
-
-
-    # query_embeddings = next(iter(embedding_model.embed([question])))
-    # # 1. Get the most relevant examples SPARQL queries from the search engine
-    # query_hits = vectordb.search(
-    #     collection_name=settings.docs_collection_name,
-    #     query_vector=query_embeddings,
-    #     query_filter=Filter(
-    #         must=[
-    #             FieldCondition(
-    #                 key="doc_type",
-    #                 match=MatchValue(value="SPARQL endpoints query examples"),
-    #             )
-    #         ]
-    #     ),
-    #     limit=settings.retrieved_queries_count,
-    # )
-    # for query_hit in query_hits:
-    #     prompt += f"{query_hit.payload['question']}:\n\n```sparql\n# {query_hit.payload['endpoint_url']}\n{query_hit.payload['answer']}\n```\n\n"
-    #     # prompt += f"{query_hit.payload['question']}\nQuery to run in SPARQL endpoint {query_hit.payload['endpoint_url']}\n\n{query_hit.payload['answer']}\n\n"
-
-    # # 2. Get the most relevant documents other than SPARQL query examples from the search engine (ShEx shapes, general infos)
-    # docs_hits = vectordb.search(
-    #     collection_name=settings.docs_collection_name,
-    #     query_vector=query_embeddings,
-    #     query_filter=Filter(
-    #         should=[
-    #             FieldCondition(
-    #                 key="doc_type",
-    #                 match=MatchValue(value="SPARQL endpoints classes schema"),
-    #             ),
-    #             FieldCondition(
-    #                 key="doc_type",
-    #                 match=MatchValue(value="General information"),
-    #             ),
-    #             # NOTE: we don't add ontology documents yet, not clean enough
-    #             # FieldCondition(
-    #             #     key="doc_type",
-    #             #     match=MatchValue(value="Ontology"),
-    #             # ),
-    #         ]
-    #     ),
-    #     limit=settings.retrieved_docs_count,
-    #     # group_by="iri",
-    #     # with_payload=True,
-    # )
-    # # TODO: vectordb.search_groups(
-    # # https://qdrant.tech/documentation/concepts/search/#search-groups
-    # # TODO: hybrid search? https://qdrant.github.io/fastembed/examples/Hybrid_Search/#about-qdrant
-    # # we might want to group by iri for shex docs https://qdrant.tech/documentation/concepts/hybrid-queries/?q=hybrid+se#grouping
-    # # https://qdrant.tech/documentation/concepts/search/#search-groups
-
-    # prompt += "Here is some additional information that could be useful to answer the user question:\n\n"
-    # # for docs_hit in docs_hits.groups:
-    # for docs_hit in docs_hits:
-    #     if docs_hit.payload["doc_type"] == "SPARQL endpoints classes schema":
-    #         prompt += f"ShEx shape for {docs_hit.payload['question']} in {docs_hit.payload['endpoint_url']}:\n```\n{docs_hit.payload['answer']}\n```\n\n"
-    #     # elif docs_hit.payload["doc_type"] == "Ontology":
-    #     #     prompt += f"Relevant part of the ontology for {docs_hit.payload['endpoint_url']}:\n```turtle\n{docs_hit.payload['question']}\n```\n\n"
-    #     else:
-    #         prompt += f"Information about: {docs_hit.payload['question']}\nRelated to SPARQL endpoint {docs_hit.payload['endpoint_url']}\n\n{docs_hit.payload['answer']}\n\n"
-
-    # 3. Extract potential entities from the user question (experimental)
+    # TODO: Extract potential entities from the user question (experimental)
     # entities_list = extract_entities(question)
     # for entity in entities_list:
     #     prompt += f'\n\nEntities found in the user question for "{" ".join(entity["term"])}":\n\n'
@@ -189,226 +113,91 @@ async def stream_response(request: ChatCompletionRequest):
     # prompt += "\nIf the user is asking for a named entity, and this entity cannot be found in the endpoint, warn them about the fact we could not find it in the endpoints.\n\n"
 
 
-    # 4. Add the user question to the prompt
-    prompt += f"\n{INTRO_USER_QUESTION_PROMPT}\n{question}"
-    print(prompt)
-
-    # Use messages from the request to keep memory of previous messages sent by the client
-    # Replace the question asked by the user with the big prompt with all contextual infos
-    request.messages[-1].content = prompt
-    state.messages[-1].content = prompt
-
-    if request.stream:
-        yield stream_dict({
-            "retrieved_docs": [hit.model_dump() for hit in state.retrieved_docs],
-            "full_prompt": prompt,
-        })
-        sys.stdout.flush()
-
-    # Send the prompt to OpenAI to get a response
-    # response = client.chat.completions.create(
-    #     model=request.model,
-    #     messages=request.messages,
-    #     stream=request.stream,
-    #     temperature=request.temperature,
-    #     # response_format={ "type": "json_object" },
-    # )
-    # NOTE: to get response as JSON object check https://github.com/jxnl/instructor or https://github.com/outlines-dev/outlines
-
-    # 5. Query LLM with litellm
-    response = completion(
-        model=request.model,
-        messages=request.messages,
-        stream=request.stream,
-    )
-    print(len(state.retrieved_docs))
-    # NOTE: the responresponsese is similar to OpenAI API, but we add the list of hits and the full prompt used to ask the question
-    # response.docs = retrieved_docs
-    # response.full_prompt = prompt
-
-    # 6. Stream the response from the LLM
-    full_msg = ""
-    for chunk in response:
-        if chunk.choices[0].finish_reason:
-            break
-        # print(chunk)
-        # ChatCompletionChunk(id='chatcmpl-9UxmYAx6E5Y3BXdI7YEVDmbOh9S2X',
-        # choices=[Choice(delta=ChoiceDelta(content='', function_call=None, role='assistant', tool_calls=None), finish_reason=None, index=0, logprobs=None)],
-        # created=1717166670, model='gpt-4o-2024-05-13', object='chat.completion.chunk', system_fingerprint='fp_319be4768e', usage=None)
-        resp_chunk = {
-            "id": chunk.id,
-            "object": "chat.completion.chunk",
-            "created": chunk.created,
-            "model": chunk.model,
-            "choices": [{"delta": {"content": chunk.choices[0].delta.content}}],
-        }
-        full_msg += chunk.choices[0].delta.content
-        yield stream_dict(resp_chunk)
-        # sys.stdout.flush()
-
-    yield stream_dict({"choices": [{"message": {"content": full_msg}}]})
-    state.messages.append(AIMessage(type="ai", content=full_msg))
-
-    # TODO: choose exactly which Message class to use... LangChain BaseMessage or OpenAI ChatCompletionChunk
-    # TODO: 7. Validate the SPARQL queries in the response and fix them if needed
-    # Then send a "fix" msg to let the client know the message needs to be replaced
-    if request.validate_output:
-        resp = await validate_sparql(state)
-        for msg in resp["messages"]:
-            # Messages pushed by the node
-            yield stream_dict(msg)
-        # messages.append(Message(role="assistant", content=full_msg))
-        # validate_and_fix_sparql(resp, response, request.model)
-    # TODO: If contains a message with name `recall-model` we need to call the model again
 
 def stream_dict(d: dict) -> str:
     """Stream a dictionary as a JSON string."""
     return f"data: {json.dumps(d)}\n\n"
 
-@app.post("/chat")
-async def chat(request: ChatCompletionRequest):
+
+# @app.post("/chat/completions")
+@app.post("/langgraph")
+async def chat(request: Request):
     """Chat with the assistant main endpoint."""
-    if settings.expasy_api_key and request.api_key != settings.expasy_api_key:
+    auth_header = request.headers.get("Authorization")
+    if settings.expasy_api_key and (not auth_header or not auth_header.startswith("Bearer ")):
+        raise ValueError("Missing or invalid Authorization header")
+    if settings.expasy_api_key and auth_header.split(" ")[1] != settings.expasy_api_key:
         raise ValueError("Invalid API key")
 
+    request = ChatCompletionRequest(**await request.json())
+    # request.messages = [msg for msg in request.messages if msg.role != "system"]
+    # request.messages = [Message(role="system", content=settings.system_prompt), *request.messages]
+
+    question: str = request.messages[-1].content if request.messages else ""
+    logging.info(f"User question: {question}")
+    if not question:
+        raise ValueError("No question provided")
+
+    inputs = {
+        "messages": [(msg.role, msg.content) for msg in request.messages],
+    }
+
+    # request.stream = False
     if request.stream:
         return StreamingResponse(
-            stream_response(request), media_type="text/event-stream"
+            stream_response(inputs),
+            media_type="text/event-stream",
             # media_type="application/x-ndjson"
         )
-    # If not streaming response, we stream the agent and get the last response
-    for chunk_str in stream_response(request):
-        chunk = json.loads(chunk_str.substr(6))
-        if "choices" in chunk and "message" in chunk["choices"][0]:
-            request.messages.append(Message(role="assistant", content=chunk["choices"][0]["message"]["content"]))
-            response = ChatCompletion(
-                id=chunk.id,
-                choices=chunk["choices"],
-                created=chunk.created,
-                model=chunk.model,
-                object="chat.completion.chunk",
-            )
-            response = (
-                validate_and_fix_sparql(request, response) if request.validate_output else response
-            )
-            return response
-    raise ValueError("No response from the model")
+
+    response = await graph.ainvoke(inputs)
+    # print(response)
+    return response
 
 
-def validate_and_fix_sparql(
-    request: ChatCompletionRequest, resp: ChatCompletion | None = None, try_count: int = 0
-) -> ChatCompletion:
-    """Recursive function to validate the SPARQL queries in the chat response and fix them if needed."""
-    if try_count >= settings.max_try_fix_sparql:
-        resp.choices[
-            0
-        ].message.content = f"{resp.choices[0].message.content}\n\nThe SPARQL query could not be fixed after multiple tries. Please do it yourself!"
-        return resp
-    # generated_sparqls = extract_sparql_queries(resp.choices[0].message.content)
-    generated_sparqls = extract_sparql_queries(request.messages[-1].content)
-    # print("generated_sparqls", generated_sparqls)
-    error_detected = False
-    for gen_query in generated_sparqls:
-        try:
-            translateQuery(parseQuery(gen_query["query"]))
-            if gen_query["endpoint_url"]:
-                issues = validate_sparql_with_void(gen_query["query"], gen_query["endpoint_url"], prefix_converter)
-                if len(issues) > 0:
-                    issues_str = "\n".join(issues)
-                    raise ValueError(f"Validation issues:\n{issues_str}")
-            else:
-                print("Endpoint URL not provided with the query")
-
-        except Exception as e:
-            if "Unknown namespace prefix" in str(e):
-                resp.choices[0].message.content = resp.choices[0].message.content.replace(
-                    gen_query["query"], add_missing_prefixes(gen_query["query"], prefixes_map)
-                )
-            else:
-                # Ask the LLM to try to fix it
-                print(f"Error in SPARQL query try #{try_count}: {e}\n{gen_query['query']}")
-                error_detected = True
-                try_count += 1
-                fix_prompt = f"""There is an error in the generated SPARQL query:
-`{e}`
-
-SPARQL query:
-{gen_query["query"]}
-
-Fix the SPARQL query helping yourself with the error message and context from previous messages in a way that it is a fully valid query.
-"""
-                # Which is part of this answer:
-                # {md_resp}
-                # messages.append({"role": "assistant", "content": fix_prompt})
-                request.messages.append(Message(role="assistant", content=fix_prompt))
-                # fixing_resp = client.chat.completions.create(
-                #     model=llm_model,
-                #     messages=messages,
-                #     stream=False,
-                # )
-                fixing_resp = completion(
-                    model=request.model,
-                    messages=request.messages,
-                    stream=False,
-                )
-                # md_resp = response.choices[0].message.content
-                fixed_sparqls = extract_sparql_queries(fixing_resp.choices[0].message.content)
-                for fixed_query in fixed_sparqls:
-                    resp.usage.prompt_tokens += fixing_resp.usage.prompt_tokens
-                    resp.usage.completion_tokens += fixing_resp.usage.completion_tokens
-                    resp.usage.total_tokens += fixing_resp.usage.total_tokens
-                    resp.choices[0].message.content = resp.choices[0].message.content.replace(
-                        gen_query["query"], fixed_query["query"]
-                    )
-    if error_detected:
-        # Check again the fixed query
-        return validate_and_fix_sparql(request, resp, try_count)
-    return resp
-
-
-
-def extract_entities(sentence: str) -> list[dict[str, str]]:
-    score_threshold = 0.8
-    sentence_splitted = re.findall(r"\b\w+\b", sentence)
-    window_size = len(sentence_splitted)
-    entities_list = []
-    while window_size > 0 and window_size <= len(sentence_splitted):
-        window_start = 0
-        window_end = window_start + window_size
-        while window_end <= len(sentence_splitted):
-            term = sentence_splitted[window_start:window_end]
-            print("term", term)
-            term_embeddings = next(iter(embedding_model.embed([" ".join(term)])))
-            query_hits = vectordb.search(
-                collection_name=settings.entities_collection_name,
-                query_vector=term_embeddings,
-                limit=10,
-            )
-            matchs = []
-            for query_hit in query_hits:
-                if query_hit.score > score_threshold:
-                    matchs.append(query_hit)
-            if len(matchs) > 0:
-                entities_list.append(
-                    {
-                        "matchs": matchs,
-                        "term": term,
-                        "start_index": window_start,
-                        "end_index": window_end,
-                    }
-                )
-            # term_search = reduce(lambda x, y: "{} {}".format(x, y), sentence_splitted[window_start:window_end])
-            # resultSearch = index.search(term_search)
-            # if resultSearch is not None and len(resultSearch) > 0:
-            #     selected_hit = resultSearch[0]
-            #     if selected_hit['score'] > MAX_SCORE_PARSER_TRIPLES:
-            #         selected_hit = None
-            #     if selected_hit is not None and selected_hit not in matchs:
-            #         matchs.append(selected_hit)
-            window_start += 1
-            window_end = window_start + window_size
-        window_size -= 1
-    return entities_list
+# TODO: improve and integrate in retrieval step + use langchain retriever
+# def extract_entities(sentence: str) -> list[dict[str, str]]:
+#     score_threshold = 0.8
+#     sentence_splitted = re.findall(r"\b\w+\b", sentence)
+#     window_size = len(sentence_splitted)
+#     entities_list = []
+#     while window_size > 0 and window_size <= len(sentence_splitted):
+#         window_start = 0
+#         window_end = window_start + window_size
+#         while window_end <= len(sentence_splitted):
+#             term = sentence_splitted[window_start:window_end]
+#             print("term", term)
+#             term_embeddings = next(iter(embedding_model.embed([" ".join(term)])))
+#             query_hits = vectordb.search(
+#                 collection_name=settings.entities_collection_name,
+#                 query_vector=term_embeddings,
+#                 limit=10,
+#             )
+#             matchs = []
+#             for query_hit in query_hits:
+#                 if query_hit.score > score_threshold:
+#                     matchs.append(query_hit)
+#             if len(matchs) > 0:
+#                 entities_list.append(
+#                     {
+#                         "matchs": matchs,
+#                         "term": term,
+#                         "start_index": window_start,
+#                         "end_index": window_end,
+#                     }
+#                 )
+#             # term_search = reduce(lambda x, y: "{} {}".format(x, y), sentence_splitted[window_start:window_end])
+#             # resultSearch = index.search(term_search)
+#             # if resultSearch is not None and len(resultSearch) > 0:
+#             #     selected_hit = resultSearch[0]
+#             #     if selected_hit['score'] > MAX_SCORE_PARSER_TRIPLES:
+#             #         selected_hit = None
+#             #     if selected_hit is not None and selected_hit not in matchs:
+#             #         matchs.append(selected_hit)
+#             window_start += 1
+#             window_end = window_start + window_size
+#         window_size -= 1
+#     return entities_list
 
 
 class FeedbackRequest(BaseModel):
@@ -480,7 +269,7 @@ def chat_ui(request: Request) -> Any:
         {
             "request": request,
             "expasy_key": settings.expasy_api_key,
-            "api_url": "https://chat.expasy.org/",
+            "api_url": "https://chat.expasy.org/langgraph/",
             "examples": ",".join([
                 "Which resources are available at the SIB?",
                 "How can I get the HGNC symbol for the protein P68871?",

@@ -1,3 +1,5 @@
+#!/bin/bash
+
 ssh_cmd() {
     ssh expasychat "sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; $1'"
 }
@@ -14,8 +16,8 @@ elif [ "$1" = "logs" ]; then
     ssh_cmd "podman-compose logs api"
 
 elif [ "$1" = "index" ]; then
-    echo "🔎 Indexing the vector database"
-    ssh_cmd "podman-compose run api python src/sparql_llm/index.py"
+    echo "🔎 Indexing endpoints in the vector database"
+    ssh_cmd "podman-compose run api python src/expasy_agent/indexing/index_endpoints.py"
 
 elif [ "$1" = "likes" ]; then
     mkdir -p data/prod

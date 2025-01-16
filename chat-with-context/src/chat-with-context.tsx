@@ -37,7 +37,11 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: "", feedbackA
 
   if (props.api === "") setWarningMsg("Please provide an API URL for the chat component to work.");
 
-  const state = new ChatState({apiUrl: props.api, apiKey: props.apiKey});
+  const state = new ChatState({
+    apiUrl: props.api,
+    apiKey: props.apiKey,
+    model: "gpt-4o-mini",
+  });
   const feedbackApi = props.feedbackApi
     ? props.feedbackApi.endsWith("/")
       ? props.feedbackApi

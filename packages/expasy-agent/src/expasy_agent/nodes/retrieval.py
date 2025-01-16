@@ -16,7 +16,7 @@ from langchain_core.vectorstores import VectorStoreRetriever
 from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
-from expasy_agent.configuration import Configuration, IndexConfiguration
+from expasy_agent.config import Configuration, IndexConfiguration
 from expasy_agent.state import State
 from expasy_agent.utils import get_message_text
 
