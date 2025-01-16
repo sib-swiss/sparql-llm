@@ -6,7 +6,7 @@ ssh_cmd() {
 
 if [ "$1" = "build" ]; then
     echo "📦️ Re-building"
-    scp ./packages/expasy-agent/src/expasy_agent/webapp expasychat:/var/containers/podman/sparql-llm/packages/expasy-agent/src/expasy_agent/webapp
+    scp -r ./packages/expasy-agent/src/expasy_agent/webapp expasychat:/var/containers/podman/sparql-llm/packages/expasy-agent/src/expasy_agent/webapp
     ssh_cmd "git pull ; podman-compose up --force-recreate --build -d"
 
 elif [ "$1" = "clean" ]; then
