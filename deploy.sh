@@ -32,3 +32,4 @@ fi
 
 # Fix connectivities issues between api and vectordb... (become podman compose is completly broken)
 # podman exec -it api bash
+# podman inspect vectordb | grep IPAddress

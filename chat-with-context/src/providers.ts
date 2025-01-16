@@ -107,7 +107,6 @@ export class ChatState {
 // Stream a response from various LLM agent providers (OpenAI-like, LangGraph, LangServe)
 export async function streamResponse(state: ChatState, question: string) {
   state.appendMessage(question, "user");
-  console.log(state.apiUrl)
   if (state.apiUrl.endsWith(":2024/") || state.apiUrl.endsWith(":8123/")) {
     // Query LangGraph API
     await streamLangGraphApi(state);
@@ -227,7 +226,7 @@ async function streamCustomLangGraph(state: ChatState) {
       for (const line of combined.split("\n").filter(line => line.trim() !== "")) {
         // if (line === "data: [DONE]") return;
         // if (line.startsWith("data: ")) {
-        console.log(line)
+        // console.log(line)
         try {
           const json = JSON.parse(line);
           processLangGraphChunk(state, json)
@@ -298,7 +297,7 @@ async function streamOpenAILikeApi(state: ChatState) {
       for (const line of combined.split("\n").filter(line => line.trim() !== "")) {
         if (line === "data: [DONE]") return;
         if (line.startsWith("data: ")) {
-          console.log(line)
+          // console.log(line)
           try {
             const json = JSON.parse(line.substring(6));
             if (json.retrieved_docs) {
