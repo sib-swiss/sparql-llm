@@ -238,13 +238,6 @@ def get_user_logs(request: LogsRequest):
 
     return list(questions)
 
-# templates = Jinja2Templates(directory="src/sparql_llm/templates")
-# app.mount(
-#     "/static",
-#     StaticFiles(directory="src/sparql_llm/static"),
-#     name="static",
-# )
-
 # Serve website built from SolidJS
 templates = Jinja2Templates(directory="src/expasy_agent/webapp")
 app.mount(
@@ -252,14 +245,6 @@ app.mount(
     StaticFiles(directory="src/expasy_agent/webapp/assets"),
     name="static",
 )
-
-# app.mount(
-#     "/",
-#     StaticFiles(
-#         directory=pkg_resources.resource_filename("sparql_llm", "webapp"), html=True
-#     ),
-#     name="static",
-# )
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def chat_ui(request: Request) -> Any:

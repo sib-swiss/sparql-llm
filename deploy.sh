@@ -1,13 +1,21 @@
 #!/bin/bash
 
+# SSH connections:
+# expasychat is connecting to the server with your user
+# expasychatpodman is connecting to the server with the podman user (used to run the containers)
+
 ssh_cmd() {
     ssh expasychat "sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; $1'"
 }
 
 if [ "$1" = "build" ]; then
     echo "📦️ Re-building"
-    scp -r ./packages/expasy-agent/src/expasy_agent/webapp expasychat:/var/containers/podman/sparql-llm/packages/expasy-agent/src/expasy_agent/webapp
-    ssh_cmd "git pull ; podman-compose up --force-recreate --build -d"
+    cd chat-with-context
+    npm run build:demo
+    cd ..
+    ssh_cmd "git pull ; rm -rf packages/expasy-agent/src/expasy_agent/webapp"
+    scp -r ./packages/expasy-agent/src/expasy_agent/webapp expasychatpodman:/var/containers/podman/sparql-llm/packages/expasy-agent/src/expasy_agent/
+    ssh_cmd "podman-compose up --force-recreate --build -d"
 
 elif [ "$1" = "clean" ]; then
     echo "🧹 Cleaning up the vector database"
