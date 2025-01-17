@@ -24,7 +24,7 @@ import {streamResponse, ChatState} from "./providers";
  * Custom element to create a chat interface with a context-aware assistant.
  * @example <chat-with-context api="http://localhost:8000/"></chat-with-context>
  */
-customElement("chat-with-context", {api: "", examples: "", apiKey: "", feedbackApi: ""}, props => {
+customElement("chat-with-context", {chatEndpoint: "", examples: "", apiKey: "", feedbackEndpoint: ""}, props => {
   noShadowDOM();
   hljs.registerLanguage("ttl", hljsDefineTurtle);
   hljs.registerLanguage("sparql", hljsDefineSparql);
@@ -34,24 +34,27 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: "", feedbackA
   const [feedbackSent, setFeedbackSent] = createSignal(false);
   const [selectedTab, setSelectedTab] = createSignal("");
 
-  if (props.api === "") setWarningMsg("Please provide an API URL for the chat component to work.");
+  const [feedbackEndpoint, setFeedbackEndpoint] = createSignal("");
 
   const state = new ChatState({
-    apiUrl: props.api,
+    // eslint-disable-next-line solid/reactivity
+    apiUrl: props.chatEndpoint,
+    // eslint-disable-next-line solid/reactivity
     apiKey: props.apiKey,
     model: "gpt-4o-mini",
   });
-  const feedbackApi = props.feedbackApi
-    ? props.feedbackApi.endsWith("/")
-      ? props.feedbackApi
-      : props.feedbackApi + "/"
-    : state.apiUrl;
   let chatContainerEl!: HTMLDivElement;
   let inputTextEl!: HTMLTextAreaElement;
+  // eslint-disable-next-line solid/reactivity
   const examples = props.examples.split(",").map(value => value.trim());
+
   createEffect(() => {
+    if (props.chatEndpoint === "") setWarningMsg("Please provide an API URL for the chat component to work.");
+
     state.scrollToInput = () => inputTextEl.scrollIntoView({behavior: "smooth"});
     fixInputHeight();
+
+    setFeedbackEndpoint(props.feedbackEndpoint.endsWith("/") ? props.feedbackEndpoint : props.feedbackEndpoint + "/");
   });
 
   const highlightAll = () => {
@@ -88,7 +91,7 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: "", feedbackA
   }
 
   function sendFeedback(positive: boolean) {
-    fetch(`${feedbackApi}feedback`, {
+    fetch(feedbackEndpoint(), {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
@@ -264,7 +267,8 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: "", feedbackA
                   )}
                 </For>
                 {/* Show feedback buttons only for last message */}
-                {msg.role === "assistant" &&
+                {feedbackEndpoint() &&
+                  msg.role === "assistant" &&
                   iMsg() === state.messages().length - 1 &&
                   state.lastMsg().content() &&
                   !feedbackSent() && (

@@ -51,8 +51,8 @@
         <p>
           <strong>ExpasyGPT</strong> is reshaping how researchers explore life science data, streamlining searches
           across the <a href="https://www.sib.swiss/">SIB Swiss Institute of Bioinformatics</a>’ databases (learn more
-          <a href="https://www.expasy.org/about-chat">here</a>). This AI-driven tool is powered by metadata and example queries from SPARQL
-          endpoints like:
+          <a href="https://www.expasy.org/about-chat">here</a>). This AI-driven tool is powered by metadata and example
+          queries from SPARQL endpoints like:
         </p>
         <ul style="list-style: inside">
           <li>
@@ -83,7 +83,13 @@
       </div>
 
       <div class="flex-grow mx-5">
-        <chat-with-context api="{{ api_url }}" api-key="{{ expasy_key }}" examples="{{ examples }}"></chat-with-context>
+        <chat-with-context
+          chat-endpoint="{{ chat_endpoint }}"
+          feedback-endpoint="{{ feedback_endpoint }}"
+          api-key="{{ api_key }}"
+          examples="{{ examples }}"
+        >
+        </chat-with-context>
       </div>
     </div>
   </body>

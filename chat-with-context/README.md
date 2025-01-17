@@ -30,7 +30,12 @@ A web component to easily deploy an interface for a chat with context. It is the
 2. Use the custom element in your HTML/JSX/TSX code:
 
    ```html
-   <chat-with-context api="http://localhost:8000/"></chat-with-context>
+   <chat-with-context
+     chat-endpoint="http://localhost:8000/chat/"
+     feedback-endpoint="http://localhost:8000/feedback/"
+     api-key="public_apikey_used_by_frontend_to_prevent_abuse_from_robots"
+     examples="Which resources are available at the SIB?,How can I get the HGNC symbol for the protein P68871?,What are the rat orthologs of the human TP53?,Where is expressed the gene ACE2 in human?,Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations,List the genes in primates orthologous to genes expressed in the fruit fly eye"
+   ></chat-with-context>
    ```
 
 > [!WARNING]
@@ -58,7 +63,12 @@ Create a `index.html` file with:
 
   <body>
     <div>
-      <chat-with-context api="http://localhost:8000/"></chat-with-context>
+      <chat-with-context
+        chat-endpoint="http://localhost:8000/chat/"
+        feedback-endpoint="http://localhost:8000/feedback/"
+        api-key="public_apikey_used_by_frontend_to_prevent_abuse_from_robots"
+        examples="Which resources are available at the SIB?,How can I get the HGNC symbol for the protein P68871?,What are the rat orthologs of the human TP53?,Where is expressed the gene ACE2 in human?,Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations,List the genes in primates orthologous to genes expressed in the fruit fly eye"
+      ></chat-with-context>
     </div>
   </body>
 </html>
