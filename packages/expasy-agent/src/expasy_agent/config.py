@@ -10,7 +10,6 @@ from langchain_core.runnables import RunnableConfig, ensure_config
 from openai import OpenAI
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from qdrant_client import QdrantClient
-from sparql_llm.utils import get_prefixes_for_endpoints
 
 from expasy_agent import prompts
 
@@ -37,10 +36,10 @@ class Settings(BaseSettings):
     ontology_chunk_size: int = 3000
     ontology_chunk_overlap: int = 200
 
-    # vectordb_host: str = "vectordb"
+    vectordb_host: str = "vectordb"
     # vectordb_host: str = "localhost"
-    # NOTE: old hack to fix a bug with podman internal network, can be removed soon
-    vectordb_host: str = "10.89.1.2"
+    # NOTE: disguting hack to fix a bug with podman internal network
+    # vectordb_host: str = "10.89.1.2"
 
     docs_collection_name: str = "expasy"
     entities_collection_name: str = "entities"

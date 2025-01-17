@@ -28,13 +28,10 @@
     "version": "npm run lint && npm run build && npm publish"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^1.0.18",
     "@langchain/core": "^0.3.27",
     "@langchain/langgraph": "^0.2.39",
     "@langchain/langgraph-sdk": "^0.0.33",
-    "ai": "^4.0.33",
     "dompurify": "^3.2.3",
-    "feather-icons": "^4.29.2",
     "highlight.js": "^11.10.0",
     "marked": "^15.0.3",
     "solid-element": "^1.9.1",
@@ -47,7 +44,6 @@
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@types/eslint__js": "^8.42.3",
-    "@types/feather-icons": "^4.29.4",
     "@types/node": "^22.10.2",
     "@types/sparqljs": "^3.1.12",
     "auto-changelog": "^2.5.0",

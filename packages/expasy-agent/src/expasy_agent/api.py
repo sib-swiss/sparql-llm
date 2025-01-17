@@ -120,7 +120,7 @@ def stream_dict(d: dict) -> str:
 
 
 # @app.post("/chat/completions")
-@app.post("/langgraph")
+@app.post("/chat")
 async def chat(request: Request):
     """Chat with the assistant main endpoint."""
     auth_header = request.headers.get("Authorization")
@@ -263,13 +263,13 @@ app.mount(
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def chat_ui(request: Request) -> Any:
-    """Render the chat UI using jinja2 + HTML"""
+    """Render the chat UI using jinja2 + HTML."""
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request,
             "expasy_key": settings.expasy_api_key,
-            "api_url": "https://chat.expasy.org/langgraph/",
+            "api_url": "https://chat.expasy.org/chat/",
             "examples": ",".join([
                 "Which resources are available at the SIB?",
                 "How can I get the HGNC symbol for the protein P68871?",

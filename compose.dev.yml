@@ -16,11 +16,9 @@ services:
       - 8000:80
     volumes:
       - ./packages:/app/packages
+    environment:
+      - VECTORDB_HOST=vectordb
     command: ["uvicorn", "src.expasy_agent.api:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
-    # command: ["uvicorn", "src.expasy_agent.api:app", "--host", "0.0.0.0", "--port", "80", "--http", "httptools"]
-    # command: ["uvicorn", "src.expasy_agent.api:app", "--host", "0.0.0.0", "--port", "80", "--http", "h11"]
-    # h11 written in python, httptools in C
-    # entrypoint: /start-reload.sh --http h11
 
   # langgraph-redis:
   #   extends:

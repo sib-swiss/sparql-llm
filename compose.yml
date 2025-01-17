@@ -10,9 +10,6 @@ services:
       # - ./qdrant_config.yml:/qdrant/config/production.yaml
     environment:
       - QDRANT_ALLOW_RECOVERY_MODE=true
-    ports:
-      - 6333:6333
-      - 6334:6334
     # command:
     #   - ./qdrant --config-path /qdrant/config/production.yaml
 
@@ -25,8 +22,9 @@ services:
     ports:
       - 443:80
     environment:
-      - MAX_WORKERS=6
-      # cf. https://github.com/tiangolo/uvicorn-gunicorn-docker/blob/master/docker-images/gunicorn_conf.py
+      # NOTE: disguting hack to fix a bug with podman internal network (podman devs are not competent, this bug comes and goes)
+      - VECTORDB_HOST=10.89.1.2
+      # https://github.com/tiangolo/uvicorn-gunicorn-docker/blob/master/docker-images/gunicorn_conf.py
     volumes:
       - ./data/fastembed_cache:/tmp/fastembed_cache
       - ./data/logs:/logs

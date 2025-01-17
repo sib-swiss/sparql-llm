@@ -20,7 +20,6 @@ import {streamResponse, ChatState} from "./providers";
 // SolidJS custom element: https://github.com/solidjs/solid/blob/main/packages/solid-element/README.md
 // https://github.com/solidjs/templates/tree/main/ts-tailwindcss
 
-
 /**
  * Custom element to create a chat interface with a context-aware assistant.
  * @example <chat-with-context api="http://localhost:8000/"></chat-with-context>
@@ -107,7 +106,9 @@ customElement("chat-with-context", {api: "", examples: "", apiKey: "", feedbackA
   }
 
   return (
-    <div class={`chat-with-context w-full h-full flex flex-col ${state.messages().length === 0 ? "justify-center" : ""}`}>
+    <div
+      class={`chat-with-context w-full h-full flex flex-col ${state.messages().length === 0 ? "justify-center" : ""}`}
+    >
       <style>{style}</style>
       {/* Main chat container */}
       <div ref={chatContainerEl} class={`overflow-y-auto ${state.messages().length !== 0 ? "flex-grow" : ""}`}>

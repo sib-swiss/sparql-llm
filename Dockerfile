@@ -21,5 +21,5 @@ RUN pip install -e ".[cpu]" "../sparql-llm"
 
 # https://github.com/tiangolo/uvicorn-gunicorn-docker/blob/master/docker-images/gunicorn_conf.py
 
-CMD ["uvicorn", "src.expasy_agent.api:app", "--host", "0.0.0.0", "--port", "80", "--workers", "8"]
+CMD ["uvicorn", "src.expasy_agent.api:app", "--host", "0.0.0.0", "--port", "80", "--workers", "6"]
 # CMD ["uvicorn", "src.expasy_agent.api", "--host", "0.0.0.0", "--port", "80", "--workers", "4", "--http", "h11"]

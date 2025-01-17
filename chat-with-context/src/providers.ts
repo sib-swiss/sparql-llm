@@ -1,8 +1,5 @@
 import {Accessor, createSignal, Setter} from "solid-js";
 import {Client} from "@langchain/langgraph-sdk";
-import {RemoteRunnable} from "@langchain/core/runnables/remote";
-import {streamText} from 'ai';
-import {createOpenAI} from '@ai-sdk/openai';
 // import { RemoteGraph } from "@langchain/langgraph/remote";
 // import { isAIMessageChunk } from "@langchain/core/messages";
 
@@ -52,11 +49,7 @@ export class ChatState {
   setMessages: Setter<Message[]>;
   abortController: AbortController;
 
-  constructor({apiUrl, apiKey, model}: {
-    apiUrl: string;
-    apiKey: string;
-    model: string;
-  }) {
+  constructor({apiUrl, apiKey, model}: {apiUrl: string; apiKey: string; model: string}) {
     this.apiUrl = apiUrl.endsWith("/") ? apiUrl : apiUrl + "/";
     this.apiKey = apiKey;
     this.model = model;
@@ -70,7 +63,7 @@ export class ChatState {
   abortRequest = () => {
     this.abortController.abort();
     this.abortController = new AbortController();
-  }
+  };
 
   lastMsg = () => this.messages()[this.messages().length - 1];
 
@@ -102,23 +95,18 @@ export class ChatState {
   };
 }
 
-
-
 // Stream a response from various LLM agent providers (OpenAI-like, LangGraph, LangServe)
 export async function streamResponse(state: ChatState, question: string) {
   state.appendMessage(question, "user");
   if (state.apiUrl.endsWith(":2024/") || state.apiUrl.endsWith(":8123/")) {
     // Query LangGraph API
     await streamLangGraphApi(state);
-
-  } else if (state.apiUrl.endsWith("/langgraph/")) {
-    // Query LangGraph through LangServe API
-    await streamCustomLangGraph(state);
-
-  } else {
+  } else if (state.apiUrl.endsWith("/completions/")) {
     // Query the OpenAI-compatible chat API
     await streamOpenAILikeApi(state);
-    // await streamCustomLangGraph(statse);
+  } else {
+    // Query LangGraph through our custom API
+    await streamCustomLangGraph(state);
   }
 }
 
@@ -145,7 +133,10 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
         if (nodeData.extracted_entities.sparql_query) {
           state.lastMsg().setLinks([
             {
-              url: getEditorUrl(nodeData.extracted_entities.sparql_query, nodeData.extracted_entities.sparql_endpoint_url),
+              url: getEditorUrl(
+                nodeData.extracted_entities.sparql_query,
+                nodeData.extracted_entities.sparql_endpoint_url,
+              ),
               ...queryLinkLabels,
             },
           ]);
@@ -155,12 +146,7 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
       if (nodeData.validation) {
         for (const validationStep of nodeData.validation) {
           // Handle messages related to tools (includes post generation validation)
-          state.appendStepToLastMsg(
-            validationStep.label,
-            nodeId,
-            [],
-            validationStep.details,
-          );
+          state.appendStepToLastMsg(validationStep.label, nodeId, [], validationStep.details);
           if (validationStep.type === "recall") {
             // When recall-model is called, the model will re-generate the response, so we need to update the message
             // If the update contains a message with a fix (e.g. done during post generation validation)
@@ -185,7 +171,6 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
     if (msg.content && msg.type === "tool") {
       // If tool called by model
       state.appendStepToLastMsg(`🔧 Tool ${msg.name} result: ${msg.content}`, metadata.langgraph_node);
-
     } else if (msg.content && msg.type === "AIMessageChunk") {
       // Response from the model
       state.appendContentToLastMsg(msg.content);
@@ -198,7 +183,7 @@ async function streamCustomLangGraph(state: ChatState) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${state.apiKey}`
+      Authorization: `Bearer ${state.apiKey}`,
     },
     signal: state.abortController.signal,
     body: JSON.stringify({
@@ -229,7 +214,7 @@ async function streamCustomLangGraph(state: ChatState) {
         // console.log(line)
         try {
           const json = JSON.parse(line);
-          processLangGraphChunk(state, json)
+          processLangGraphChunk(state, json);
           partialLine = "";
         } catch {
           partialLine += line;
@@ -261,13 +246,12 @@ async function streamLangGraphApi(state: ChatState) {
   }
 }
 
-
 async function streamOpenAILikeApi(state: ChatState) {
   const response = await fetch(`${state.apiUrl}chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${state.apiKey}`
+      Authorization: `Bearer ${state.apiKey}`,
     },
     signal: state.abortController.signal,
     body: JSON.stringify({
