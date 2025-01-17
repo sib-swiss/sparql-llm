@@ -254,8 +254,8 @@ def chat_ui(request: Request) -> Any:
         {
             "request": request,
             "api_key": settings.expasy_api_key,
-            "chat_endpoint": "https://chat.expasy.org/chat/",
-            "feedback_endpoint": "https://chat.expasy.org/feedback/",
+            "chat_endpoint": "https://chat.expasy.org/chat",
+            "feedback_endpoint": "https://chat.expasy.org/feedback",
             "examples": ",".join([
                 "Which resources are available at the SIB?",
                 "How can I get the HGNC symbol for the protein P68871?",

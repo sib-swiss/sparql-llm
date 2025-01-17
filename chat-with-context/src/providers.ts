@@ -50,7 +50,8 @@ export class ChatState {
   abortController: AbortController;
 
   constructor({apiUrl, apiKey, model}: {apiUrl: string; apiKey: string; model: string}) {
-    this.apiUrl = apiUrl.endsWith("/") ? apiUrl : apiUrl + "/";
+    // this.apiUrl = apiUrl.endsWith("/") ? apiUrl : apiUrl + "/";
+    this.apiUrl = apiUrl;
     this.apiKey = apiKey;
     this.model = model;
 

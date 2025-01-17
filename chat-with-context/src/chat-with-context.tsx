@@ -54,7 +54,8 @@ customElement("chat-with-context", {chatEndpoint: "", examples: "", apiKey: "", 
     state.scrollToInput = () => inputTextEl.scrollIntoView({behavior: "smooth"});
     fixInputHeight();
 
-    setFeedbackEndpoint(props.feedbackEndpoint.endsWith("/") ? props.feedbackEndpoint : props.feedbackEndpoint + "/");
+    setFeedbackEndpoint(props.feedbackEndpoint);
+    // setFeedbackEndpoint(props.feedbackEndpoint.endsWith("/") ? props.feedbackEndpoint : props.feedbackEndpoint + "/");
   });
 
   const highlightAll = () => {
