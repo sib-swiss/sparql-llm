@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     logs_api_key: str = ""
     azure_inference_credential: str = ""
     azure_inference_endpoint: str = ""
-    # llm_model: str = "gpt-4o"
-    # cheap_llm_model: str = "gpt-4o-mini"
+    # llm_model: str = "openai/gpt-4o"
+    # cheap_llm_model: str = "openai/gpt-4o-mini"
 
     # https://qdrant.github.io/fastembed/examples/Supported_Models/
     embedding_model: str = "BAAI/bge-large-en-v1.5"
@@ -214,8 +214,8 @@ class Configuration(IndexConfiguration):
 
     model: Annotated[str, {"__template_metadata__": {"kind": "llm"}}] = field(
         # default="anthropic/claude-3-5-sonnet-20240620",
-        # default="openai/gpt-4o",
-        default="openai/gpt-4o-mini",
+        # default="openai/gpt-4o-mini",
+        default="openai/gpt-4o",
         metadata={
             "description": "The name of the language model to use for the agent's main interactions. "
             "Should be in the form: provider/model-name."

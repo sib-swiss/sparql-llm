@@ -19,9 +19,9 @@ from starlette.middleware.cors import CORSMiddleware
 from expasy_agent.config import settings
 from expasy_agent.graph import graph
 
-# llm_model = "gpt-4o"
+# llm_model = "openai/gpt-4o"
 # llm_model = "azure_ai/mistral-large"
-# llm_model: str = "gpt-4o-mini"
+# llm_model: str = "openai/gpt-4o-mini"
 
 # Models from glhf:
 # llm_model: str = "hf:meta-llama/Meta-Llama-3.1-8B-Instruct"
@@ -60,7 +60,7 @@ class Message(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     messages: list[Message]
-    model: Optional[str] = "gpt-4o"
+    model: Optional[str] = "openai/gpt-4o"
     max_tokens: Optional[int] = 512
     temperature: Optional[float] = 0.0
     stream: Optional[bool] = False
@@ -93,9 +93,9 @@ def convert_chunk_to_dict(obj: Any) -> Any:
         return obj
 
 
-async def stream_response(inputs: dict[str, list]):
+async def stream_response(inputs: dict[str, list], config):
     """Stream the response from the assistant."""
-    async for event, chunk in graph.astream(inputs, stream_mode=["messages", "updates"]):
+    async for event, chunk in graph.astream(inputs, stream_mode=["messages", "updates"], config=config):
         # print(event)
         chunk_dict = convert_chunk_to_dict({
             "event": event,
@@ -141,6 +141,7 @@ async def chat(request: Request):
     if not question:
         raise ValueError("No question provided")
 
+    config = {"configurable": {"model": request.model}}
     inputs = {
         "messages": [(msg.role, msg.content) for msg in request.messages],
     }
@@ -148,12 +149,12 @@ async def chat(request: Request):
     # request.stream = False
     if request.stream:
         return StreamingResponse(
-            stream_response(inputs),
+            stream_response(inputs, config),
             media_type="text/event-stream",
             # media_type="application/x-ndjson"
         )
 
-    response = await graph.ainvoke(inputs)
+    response = await graph.ainvoke(inputs, config=config)
     # print(response)
     return response
 

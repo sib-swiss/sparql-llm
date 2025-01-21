@@ -24,7 +24,7 @@ import {streamResponse, ChatState} from "./providers";
  * Custom element to create a chat interface with a context-aware assistant.
  * @example <chat-with-context api="http://localhost:8000/"></chat-with-context>
  */
-customElement("chat-with-context", {chatEndpoint: "", examples: "", apiKey: "", feedbackEndpoint: "", model: "gpt-4o"}, props => {
+customElement("chat-with-context", {chatEndpoint: "", examples: "", apiKey: "", feedbackEndpoint: "", model: "openai/gpt-4o"}, props => {
   noShadowDOM();
   hljs.registerLanguage("ttl", hljsDefineTurtle);
   hljs.registerLanguage("sparql", hljsDefineSparql);
