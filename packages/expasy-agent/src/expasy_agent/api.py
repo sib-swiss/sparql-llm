@@ -96,16 +96,12 @@ def convert_chunk_to_dict(obj: Any) -> Any:
 async def stream_response(inputs: dict[str, list], config):
     """Stream the response from the assistant."""
     async for event, chunk in graph.astream(inputs, stream_mode=["messages", "updates"], config=config):
-        # print(event)
         chunk_dict = convert_chunk_to_dict({
             "event": event,
             "data": chunk,
         })
-        if event == "updates":
-            print(chunk_dict)
         yield f"data: {json.dumps(chunk_dict)}\n\n"
-        # yield stream_dict(chunk)
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0)
 
     # TODO: Extract potential entities from the user question (experimental)
     # entities_list = extract_entities(question)

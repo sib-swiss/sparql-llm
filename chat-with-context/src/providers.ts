@@ -115,14 +115,13 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
   if (chunk.event === "error") {
     throw new Error(`An error occurred. Please try again. ${chunk.data.error}: ${chunk.data.message}`);
   }
-  // console.log("UPDATES", chunk);
   // Handle updates to the state
   if (chunk.event === "updates") {
-    console.log("UPDATES", chunk);
+    // console.log("UPDATES", chunk);
     for (const nodeId of Object.keys(chunk.data)) {
       const nodeData = chunk.data[nodeId];
+      // Retrieved docs sent
       if (nodeData.retrieved_docs) {
-        // Retrieved docs sent
         state.appendStepToLastMsg(
           `📚️ Using ${nodeData.retrieved_docs.length} documents`,
           nodeId,
@@ -201,27 +200,24 @@ async function streamCustomLangGraph(state: ChatState) {
   state.appendMessage("", "assistant");
   const reader = response.body?.getReader()!;
   const decoder = new TextDecoder("utf-8");
-  let partialLine = ""; // Buffer for incomplete lines
-
+  let buffer = ""; // Buffer for incomplete chunks
   // Iterate stream response
   while (true) {
     if (reader) {
       const {value, done} = await reader.read();
       if (done) break;
       const chunkStr = decoder.decode(value, {stream: true});
-      // Combine with any leftover data from the previous iteration
-      const combined = partialLine + chunkStr;
-      for (const line of combined.split("\n").filter(line => line.trim() !== "")) {
-        // console.log(line)
+      buffer += chunkStr;
+      let lines = buffer.split("\n");
+      // Keep the last line if it's incomplete
+      buffer = lines.pop() || "";
+      for (const line of lines.filter(line => line.trim() !== "")) {
         if (line.startsWith("data: ")) {
           try {
             const json = JSON.parse(line.substring(6));
-            // if (json.event === "updates") console.log(json, line, combined)
             processLangGraphChunk(state, json);
-            partialLine = "";
           } catch (e) {
-            console.log("Partial line", e, line);
-            partialLine += line;
+            console.log("Error parsing line", e, line);
           }
         }
       }
