@@ -210,8 +210,6 @@ async function streamCustomLangGraph(state: ChatState) {
       // Combine with any leftover data from the previous iteration
       const combined = partialLine + chunkStr;
       for (const line of combined.split("\n").filter(line => line.trim() !== "")) {
-        // if (line === "data: [DONE]") return;
-        // if (line.startsWith("data: ")) {
         // console.log(line)
         try {
           const json = JSON.parse(line);

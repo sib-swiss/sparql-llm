@@ -14,7 +14,6 @@ Website: https://www.w3.org/TR/sparql11-query/, http://www.w3.org/TR/sparql11-up
 
 It's quite horrible highlighting https://github.com/highlightjs/highlightjs-turtle Variables are same colors as prefixed URIs...
 There is also https://github.com/redmer/highlightjs-sparql but it is even worse because it imports a ttl language that does not exist, hats off
-Only one solution: use YASGUI
 */
 
 export function hljsDefineTurtle(hljs: any) {

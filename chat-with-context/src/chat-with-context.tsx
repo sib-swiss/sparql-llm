@@ -24,7 +24,7 @@ import {streamResponse, ChatState} from "./providers";
  * Custom element to create a chat interface with a context-aware assistant.
  * @example <chat-with-context api="http://localhost:8000/"></chat-with-context>
  */
-customElement("chat-with-context", {chatEndpoint: "", examples: "", apiKey: "", feedbackEndpoint: ""}, props => {
+customElement("chat-with-context", {chatEndpoint: "", examples: "", apiKey: "", feedbackEndpoint: "", model: "gpt-4o"}, props => {
   noShadowDOM();
   hljs.registerLanguage("ttl", hljsDefineTurtle);
   hljs.registerLanguage("sparql", hljsDefineSparql);
@@ -32,7 +32,8 @@ customElement("chat-with-context", {chatEndpoint: "", examples: "", apiKey: "", 
   const [warningMsg, setWarningMsg] = createSignal("");
   const [loading, setLoading] = createSignal(false);
   const [feedbackSent, setFeedbackSent] = createSignal(false);
-  const [selectedTab, setSelectedTab] = createSignal("");
+  const [selectedDocsTab, setSelectedDocsTab] = createSignal("");
+  const [dialogOpen, setDialogOpen] = createSignal("");
 
   const [feedbackEndpoint, setFeedbackEndpoint] = createSignal("");
 
@@ -41,13 +42,15 @@ customElement("chat-with-context", {chatEndpoint: "", examples: "", apiKey: "", 
     apiUrl: props.chatEndpoint,
     // eslint-disable-next-line solid/reactivity
     apiKey: props.apiKey,
-    model: "gpt-4o-mini",
+    // eslint-disable-next-line solid/reactivity
+    model: props.model,
   });
   let chatContainerEl!: HTMLDivElement;
   let inputTextEl!: HTMLTextAreaElement;
   // eslint-disable-next-line solid/reactivity
   const examples = props.examples.split(",").map(value => value.trim());
 
+  // Fix the height of the chat input
   createEffect(() => {
     if (props.chatEndpoint === "") setWarningMsg("Please provide an API URL for the chat component to work.");
 
@@ -58,6 +61,30 @@ customElement("chat-with-context", {chatEndpoint: "", examples: "", apiKey: "", 
     // setFeedbackEndpoint(props.feedbackEndpoint.endsWith("/") ? props.feedbackEndpoint : props.feedbackEndpoint + "/");
   });
 
+  const openDialog = (dialogId: string) => {
+    setDialogOpen(dialogId);
+    (document.getElementById(dialogId) as HTMLDialogElement).showModal();
+    history.pushState({ dialogOpen: true }, '');
+    highlightAll();
+  }
+
+  const closeDialog = () => {
+    (document.getElementById(dialogOpen()) as HTMLDialogElement).close()
+    setDialogOpen("");
+    // history.back();
+  }
+
+  // Close open dialogs with the browser navigation "go back one page" button
+  createEffect(() => {
+    window.addEventListener('popstate', (event) => {
+      if (dialogOpen()) {
+        event.preventDefault();
+        closeDialog();
+      }
+    });
+  });
+
+
   const highlightAll = () => {
     document.querySelectorAll("pre code:not(.hljs)").forEach(block => {
       hljs.highlightElement(block as HTMLElement);
@@ -67,10 +94,7 @@ customElement("chat-with-context", {chatEndpoint: "", examples: "", apiKey: "", 
   // Send the user input to the chat API
   async function submitInput(question: string) {
     if (!question.trim()) return;
-    if (loading()) {
-      // setWarningMsg("⏳ Thinking...");
-      return;
-    }
+    if (loading()) return;
     inputTextEl.value = "";
     setLoading(true);
     setWarningMsg("");
@@ -80,7 +104,7 @@ customElement("chat-with-context", {chatEndpoint: "", examples: "", apiKey: "", 
       await streamResponse(state, question);
     } catch (error) {
       if (error instanceof Error && error.name !== "AbortError") {
-        console.error("An error occurred when querying the API", error);
+        console.error("An error occurred when querying the API:", error);
         setWarningMsg("An error occurred when querying the API. Please try again or contact an admin.");
       }
     }
@@ -125,33 +149,26 @@ customElement("chat-with-context", {chatEndpoint: "", examples: "", apiKey: "", 
                     {(step, iStep) =>
                       step.retrieved_docs.length > 0 ? (
                         <>
-                          {/* Add reference docs dialog */}
+                          {/* Dialog to show more details about retrieved documents */}
                           <button
                             class="text-gray-400 ml-8 mb-4"
                             title={`Click to see the documents used to generate the response\n\nNode: ${step.node_id}`}
                             onClick={() => {
-                              (
-                                document.getElementById(`source-dialog-${iMsg()}-${iStep()}`) as HTMLDialogElement
-                              ).showModal();
-                              setSelectedTab(step.retrieved_docs[0].metadata.doc_type);
-                              highlightAll();
+                              setSelectedDocsTab(step.retrieved_docs[0].metadata.doc_type);
+                              openDialog(`step-dialog-${iMsg()}-${iStep()}`);
                             }}
                           >
                             {step.label}
                           </button>
                           <dialog
-                            id={`source-dialog-${iMsg()}-${iStep()}`}
+                            id={`step-dialog-${iMsg()}-${iStep()}`}
                             class="bg-white dark:bg-gray-800 m-3 rounded-3xl shadow-md w-full"
                           >
                             <button
                               id={`close-dialog-${iMsg()}-${iStep()}`}
                               class="fixed top-2 right-8 m-3 px-2 text-xl text-slate-500 bg-gray-200 dark:bg-gray-700 rounded-3xl"
-                              title="Close references"
-                              onClick={() =>
-                                (
-                                  document.getElementById(`source-dialog-${iMsg()}-${iStep()}`) as HTMLDialogElement
-                                ).close()
-                              }
+                              title="Close documents details"
+                              onClick={() => closeDialog()}
                             >
                               <img src={xLogo} alt="Close the dialog" class="iconBtn" />
                             </button>
@@ -161,12 +178,12 @@ customElement("chat-with-context", {chatEndpoint: "", examples: "", apiKey: "", 
                                   {docType => (
                                     <button
                                       class={`px-4 py-2 rounded-lg transition-all ${
-                                        selectedTab() === docType
+                                        selectedDocsTab() === docType
                                           ? "bg-gray-600 text-white shadow-md"
                                           : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                                       }`}
                                       onClick={() => {
-                                        setSelectedTab(docType);
+                                        setSelectedDocsTab(docType);
                                         highlightAll();
                                       }}
                                       title="Show only this type of document"
@@ -176,7 +193,7 @@ customElement("chat-with-context", {chatEndpoint: "", examples: "", apiKey: "", 
                                   )}
                                 </For>
                               </div>
-                              <For each={step.retrieved_docs.filter(doc => doc.metadata.doc_type === selectedTab())}>
+                              <For each={step.retrieved_docs.filter(doc => doc.metadata.doc_type === selectedDocsTab())}>
                                 {(doc, iDoc) => (
                                   <>
                                     <p>
@@ -206,16 +223,11 @@ customElement("chat-with-context", {chatEndpoint: "", examples: "", apiKey: "", 
                         </>
                       ) : step.details ? (
                         <>
-                          {/* Dialog to show more details in markdown */}
+                          {/* Dialog to show more details about a step in markdown */}
                           <button
                             class="text-gray-400 ml-8 mb-4"
                             title={`Click to see the documents used to generate the response\n\nNode: ${step.node_id}`}
-                            onClick={() => {
-                              (
-                                document.getElementById(`step-dialog-${iMsg()}-${iStep()}`) as HTMLDialogElement
-                              ).showModal();
-                              highlightAll();
-                            }}
+                            onClick={() => {openDialog(`step-dialog-${iMsg()}-${iStep()}`)}}
                           >
                             {step.label}
                           </button>
@@ -227,11 +239,7 @@ customElement("chat-with-context", {chatEndpoint: "", examples: "", apiKey: "", 
                               id={`close-dialog-${iMsg()}-${iStep()}`}
                               class="fixed top-2 right-8 m-3 px-2 text-xl text-slate-500 bg-gray-200 dark:bg-gray-700 rounded-3xl"
                               title="Close step details"
-                              onClick={() =>
-                                (
-                                  document.getElementById(`step-dialog-${iMsg()}-${iStep()}`) as HTMLDialogElement
-                                ).close()
-                              }
+                              onClick={() => closeDialog()}
                             >
                               <img src={xLogo} alt="Close the dialog" class="iconBtn" />
                             </button>

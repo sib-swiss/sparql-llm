@@ -19,7 +19,7 @@ from starlette.middleware.cors import CORSMiddleware
 from expasy_agent.config import settings
 from expasy_agent.graph import graph
 
-llm_model = "gpt-4o"
+# llm_model = "gpt-4o"
 # llm_model = "azure_ai/mistral-large"
 # llm_model: str = "gpt-4o-mini"
 
@@ -60,7 +60,7 @@ class Message(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     messages: list[Message]
-    model: Optional[str] = llm_model
+    model: Optional[str] = "gpt-4o"
     max_tokens: Optional[int] = 512
     temperature: Optional[float] = 0.0
     stream: Optional[bool] = False
@@ -69,7 +69,11 @@ class ChatCompletionRequest(BaseModel):
 
 
 def convert_chunk_to_dict(obj: Any) -> Any:
-    """Convert a langgraph chunk object to a dict."""
+    """Recursively convert a langgraph chunk object to a dict.
+
+    Required because LangGraph objects are not serializable by default.
+    And they use a mix of tuples, dataclasses (BaseMessage) and pydantic BaseModel (BaseMessage).
+    """
     # {'retrieve': {'retrieved_docs': [Document(metadata={'endpoint_url':
     # When sending a msg LangGraph sends a tuple with the message and the metadata
     if isinstance(obj, tuple):
@@ -91,7 +95,6 @@ def convert_chunk_to_dict(obj: Any) -> Any:
 
 async def stream_response(inputs: dict[str, list]):
     """Stream the response from the assistant."""
-    # messages-tuple
     async for event, chunk in graph.astream(inputs, stream_mode=["messages", "updates"]):
         # print(event)
         chunk_dict = convert_chunk_to_dict({
@@ -121,7 +124,7 @@ def stream_dict(d: dict) -> str:
 
 # @app.post("/chat/completions")
 @app.post("/chat")
-async def chat(request: Request):
+async def chat(request: ChatCompletionRequest):
     """Chat with the assistant main endpoint."""
     auth_header = request.headers.get("Authorization")
     if settings.expasy_api_key and (not auth_header or not auth_header.startswith("Bearer ")):
@@ -129,7 +132,7 @@ async def chat(request: Request):
     if settings.expasy_api_key and auth_header.split(" ")[1] != settings.expasy_api_key:
         raise ValueError("Invalid API key")
 
-    request = ChatCompletionRequest(**await request.json())
+    # request = ChatCompletionRequest(**await request.json())
     # request.messages = [msg for msg in request.messages if msg.role != "system"]
     # request.messages = [Message(role="system", content=settings.system_prompt), *request.messages]
 
