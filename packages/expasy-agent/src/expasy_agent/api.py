@@ -115,11 +115,6 @@ async def stream_response(inputs: dict[str, list], config):
 
 
 
-def stream_dict(d: dict) -> str:
-    """Stream a dictionary as a JSON string."""
-    return f"data: {json.dumps(d)}\n\n"
-
-
 # @app.post("/chat/completions")
 @app.post("/chat")
 async def chat(request: Request):
