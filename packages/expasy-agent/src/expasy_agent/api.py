@@ -124,7 +124,7 @@ def stream_dict(d: dict) -> str:
 
 # @app.post("/chat/completions")
 @app.post("/chat")
-async def chat(request: ChatCompletionRequest):
+async def chat(request: Request):
     """Chat with the assistant main endpoint."""
     auth_header = request.headers.get("Authorization")
     if settings.expasy_api_key and (not auth_header or not auth_header.startswith("Bearer ")):
@@ -132,7 +132,7 @@ async def chat(request: ChatCompletionRequest):
     if settings.expasy_api_key and auth_header.split(" ")[1] != settings.expasy_api_key:
         raise ValueError("Invalid API key")
 
-    # request = ChatCompletionRequest(**await request.json())
+    request = ChatCompletionRequest(**await request.json())
     # request.messages = [msg for msg in request.messages if msg.role != "system"]
     # request.messages = [Message(role="system", content=settings.system_prompt), *request.messages]
 
