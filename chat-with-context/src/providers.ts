@@ -213,19 +213,32 @@ async function streamCustomLangGraph(state: ChatState) {
       const combined = partialLine + chunkStr;
       for (const line of combined.split("\n").filter(line => line.trim() !== "")) {
         // console.log(line)
-        try {
-          const json = JSON.parse(line);
-          // if (json.event === "updates") console.log(json, line, combined)
-          processLangGraphChunk(state, json);
-          partialLine = "";
-        } catch (e) {
-          console.log("Partial line", e, line);
-          partialLine += line;
+        if (line.startsWith("data: ")) {
+          try {
+            const json = JSON.parse(line.substring(6));
+            // if (json.event === "updates") console.log(json, line, combined)
+            processLangGraphChunk(state, json);
+            partialLine = "";
+          } catch (e) {
+            console.log("Partial line", e, line);
+            partialLine += line;
+          }
         }
       }
     }
   }
 }
+
+// buffer += chunk;
+//     let parts = buffer.split('\n');
+//     buffer = parts.pop(); // Keep the incomplete part
+
+//     parts.forEach(part => {
+//         if (part) {
+//             const json = JSON.parse(part);
+//             // Process complete json object
+//         }
+//     });
 
 async function streamLangGraphApi(state: ChatState) {
   const client = new Client({apiUrl: state.apiUrl});

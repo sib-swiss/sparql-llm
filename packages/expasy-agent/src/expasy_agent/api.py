@@ -103,9 +103,9 @@ async def stream_response(inputs: dict[str, list], config):
         })
         if event == "updates":
             print(chunk_dict)
-        yield f"{json.dumps(chunk_dict)}\n"
+        yield f"data: {json.dumps(chunk_dict)}\n\n"
         # yield stream_dict(chunk)
-        await asyncio.sleep(0.1)  # 100ms delay between chunks
+        await asyncio.sleep(0.01)
 
     # TODO: Extract potential entities from the user question (experimental)
     # entities_list = extract_entities(question)
