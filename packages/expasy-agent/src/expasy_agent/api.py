@@ -103,7 +103,7 @@ async def stream_response(inputs: dict[str, list], config):
         })
         yield f"{json.dumps(chunk_dict)}\n"
         # yield stream_dict(chunk)
-        await asyncio.sleep(0)
+        await asyncio.sleep(0.01)  # 100ms delay between chunks
 
     # TODO: Extract potential entities from the user question (experimental)
     # entities_list = extract_entities(question)

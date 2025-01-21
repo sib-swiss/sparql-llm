@@ -115,8 +115,10 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
   if (chunk.event === "error") {
     throw new Error(`An error occurred. Please try again. ${chunk.data.error}: ${chunk.data.message}`);
   }
+  console.log("UPDATES", chunk);
   // Handle updates to the state
   if (chunk.event === "updates") {
+    console.log("UPDATES", chunk);
     for (const nodeId of Object.keys(chunk.data)) {
       const nodeData = chunk.data[nodeId];
       if (nodeData.retrieved_docs) {
@@ -215,7 +217,8 @@ async function streamCustomLangGraph(state: ChatState) {
           const json = JSON.parse(line);
           processLangGraphChunk(state, json);
           partialLine = "";
-        } catch {
+        } catch (e) {
+          console.log("Partial line", e, line);
           partialLine += line;
         }
       }
