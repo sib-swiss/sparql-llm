@@ -115,7 +115,7 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
   if (chunk.event === "error") {
     throw new Error(`An error occurred. Please try again. ${chunk.data.error}: ${chunk.data.message}`);
   }
-  console.log("UPDATES", chunk);
+  // console.log("UPDATES", chunk);
   // Handle updates to the state
   if (chunk.event === "updates") {
     console.log("UPDATES", chunk);
@@ -215,6 +215,7 @@ async function streamCustomLangGraph(state: ChatState) {
         // console.log(line)
         try {
           const json = JSON.parse(line);
+          // if (json.event === "updates") console.log(json, line, combined)
           processLangGraphChunk(state, json);
           partialLine = "";
         } catch (e) {
