@@ -49,7 +49,7 @@ export class ChatState {
   setMessages: Setter<Message[]>;
   abortController: AbortController;
 
-  constructor({apiUrl, apiKey, model}: {apiUrl: string; apiKey: string; model: string}) {
+  constructor({apiUrl = "", apiKey = "", model = "openai/gpt-4o"}: {apiUrl?: string; apiKey?: string; model?: string}) {
     // this.apiUrl = apiUrl.endsWith("/") ? apiUrl : apiUrl + "/";
     this.apiUrl = apiUrl;
     this.apiKey = apiKey;

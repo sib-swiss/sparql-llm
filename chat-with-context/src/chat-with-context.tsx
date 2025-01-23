@@ -32,48 +32,42 @@ customElement(
     hljs.registerLanguage("ttl", hljsDefineTurtle);
     hljs.registerLanguage("sparql", hljsDefineSparql);
 
+    const [examples, setExamples] = createSignal<string[]>([]);
     const [warningMsg, setWarningMsg] = createSignal("");
     const [loading, setLoading] = createSignal(false);
-    const [feedbackSent, setFeedbackSent] = createSignal(false);
-    const [selectedDocsTab, setSelectedDocsTab] = createSignal("");
     const [dialogOpen, setDialogOpen] = createSignal("");
+    const [selectedDocsTab, setSelectedDocsTab] = createSignal("");
 
     const [feedbackEndpoint, setFeedbackEndpoint] = createSignal("");
+    const [feedbackSent, setFeedbackSent] = createSignal(false);
 
-    const state = new ChatState({
-      // eslint-disable-next-line solid/reactivity
-      apiUrl: props.chatEndpoint,
-      // eslint-disable-next-line solid/reactivity
-      apiKey: props.apiKey,
-      // eslint-disable-next-line solid/reactivity
-      model: props.model,
-    });
+    const state = new ChatState({});
     let chatContainerEl!: HTMLDivElement;
     let inputTextEl!: HTMLTextAreaElement;
-    // eslint-disable-next-line solid/reactivity
-    const examples = props.examples.split(",").map(value => value.trim());
 
-    // Fix the height of the chat input
     createEffect(() => {
       if (props.chatEndpoint === "") setWarningMsg("Please provide an API URL for the chat component to work.");
-
+      state.apiUrl = props.chatEndpoint;
+      state.apiKey = props.apiKey;
+      state.model = props.model;
       state.scrollToInput = () => inputTextEl.scrollIntoView({behavior: "smooth"});
-      fixInputHeight();
-
+      setExamples(props.examples.split(",").map(value => value.trim()));
       setFeedbackEndpoint(props.feedbackEndpoint);
-      // setFeedbackEndpoint(props.feedbackEndpoint.endsWith("/") ? props.feedbackEndpoint : props.feedbackEndpoint + "/");
+      fixInputHeight();
     });
 
     const openDialog = (dialogId: string) => {
       setDialogOpen(dialogId);
       (document.getElementById(dialogId) as HTMLDialogElement).showModal();
       history.pushState({dialogOpen: true}, "");
+      document.body.style.overflow = "hidden";
       highlightAll();
     };
 
     const closeDialog = () => {
       (document.getElementById(dialogOpen()) as HTMLDialogElement).close();
       setDialogOpen("");
+      document.body.style.overflow = "";
       // history.back();
     };
 
@@ -324,7 +318,7 @@ customElement(
         {/* List of examples */}
         {state.messages().length < 1 && (
           <div class="py-2 px-4 justify-center items-center text-sm flex flex-col space-y-2">
-            <For each={examples}>
+            <For each={examples()}>
               {example => (
                 <button
                   onClick={() => submitInput(example)}
