@@ -48,9 +48,9 @@ WHERE {
             }
         }
     } UNION {
-        ?ls void:subjectsTarget ?subjectClass ;
+        ?linkset void:subjectsTarget [ void:class ?subjectClass ] ;
             void:linkPredicate ?prop ;
-            void:objectsTarget ?objectClass .
+            void:objectsTarget [ void:class ?objectClass ] .
     }
 }"""
 
