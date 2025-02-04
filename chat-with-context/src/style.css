@@ -2,4 +2,20 @@
   @tailwind base;
   @tailwind components;
   @tailwind utilities;
+
+  think {
+    display: block;
+    color: #666;
+    margin: 1em 0;
+    padding-left: 1em;
+    border-left: 3px solid #ddd;
+    background-color: #f5f5f5;
+    width: fit-content;
+  }
+
+  /* Optional: Add subtle padding and background */
+  think {
+      padding: 0.5em 1em;
+      border-radius: 4px;
+  }
 }

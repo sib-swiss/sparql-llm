@@ -26,7 +26,7 @@ import {streamResponse, ChatState} from "./providers";
  */
 customElement(
   "chat-with-context",
-  {chatEndpoint: "", examples: "", apiKey: "", feedbackEndpoint: "", model: "openai/gpt-4o"},
+  {chatEndpoint: "", examples: "", apiKey: "", feedbackEndpoint: "", model: ""},
   props => {
     noShadowDOM();
     hljs.registerLanguage("ttl", hljsDefineTurtle);
@@ -159,6 +159,7 @@ customElement(
                             <dialog
                               id={`step-dialog-${iMsg()}-${iStep()}`}
                               class="bg-white dark:bg-gray-800 m-3 rounded-3xl shadow-md w-full"
+                              onClose={() => closeDialog()}
                             >
                               <button
                                 id={`close-dialog-${iMsg()}-${iStep()}`}
@@ -236,6 +237,7 @@ customElement(
                             <dialog
                               id={`step-dialog-${iMsg()}-${iStep()}`}
                               class="bg-white dark:bg-gray-800 m-3 rounded-3xl shadow-md w-full"
+                              onClose={() => closeDialog()}
                             >
                               <button
                                 id={`close-dialog-${iMsg()}-${iStep()}`}
@@ -248,12 +250,13 @@ customElement(
                               <article
                                 class="prose max-w-full p-6"
                                 // eslint-disable-next-line solid/no-innerhtml
-                                innerHTML={DOMPurify.sanitize(marked.parse(step.details) as string)}
+                                innerHTML={DOMPurify.sanitize(marked.parse(step.details) as string, {ADD_TAGS: ['think']})}
+                                // innerHTML={marked.parse(step.details) as string}
                               />
                             </dialog>
                           </>
                         ) : (
-                          // Display regular step
+                          // Display basic step without details
                           <p class="text-gray-400 ml-8 mb-4" title={`Node: ${step.node_id}`}>
                             {step.label}
                           </p>
@@ -264,7 +267,8 @@ customElement(
                   <article
                     class="prose max-w-full"
                     // eslint-disable-next-line solid/no-innerhtml
-                    innerHTML={DOMPurify.sanitize(marked.parse(msg.content()) as string)}
+                    innerHTML={DOMPurify.sanitize(marked.parse(msg.content()) as string, {ADD_TAGS: ['think']})}
+                    // innerHTML={marked.parse(msg.content()) as string}
                   />
 
                   {/* Add links, e.g. to Run and edit the query */}

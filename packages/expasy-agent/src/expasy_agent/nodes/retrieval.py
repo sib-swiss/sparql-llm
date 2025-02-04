@@ -15,10 +15,10 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.vectorstores import VectorStoreRetriever
 from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
 from qdrant_client.models import FieldCondition, Filter, MatchValue
+from sparql_llm.utils import get_message_text
 
-from expasy_agent.config import Configuration, IndexConfiguration
+from expasy_agent.config import Configuration, settings
 from expasy_agent.state import State
-from expasy_agent.utils import get_message_text
 
 
 async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Document]]:
@@ -48,7 +48,7 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
             )
         ]
     )
-    with make_retriever(configuration) as retriever:
+    with make_qdrant_retriever(configuration) as retriever:
         example_queries_docs = await retriever.ainvoke(human_input, config)
 
     # Search anything else that is not a query example, e.g. SPARQL endpoints classes schema
@@ -60,7 +60,7 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
             )
         ]
     )
-    with make_retriever(configuration) as retriever:
+    with make_qdrant_retriever(configuration) as retriever:
         other_docs = await retriever.ainvoke(human_input, config)
     return {"retrieved_docs": example_queries_docs + other_docs}
 
@@ -83,14 +83,12 @@ def make_text_encoder(embedding_model: str) -> Embeddings:
 
 # https://python.langchain.com/docs/integrations/vectorstores/qdrant/
 @contextmanager
-def make_qdrant_retriever(
-    configuration: IndexConfiguration, embedding_model: Embeddings
-) -> Generator["ScoredRetriever", None, None]:
+def make_qdrant_retriever(configuration: Configuration) -> Generator["ScoredRetriever", None, None]:
     """Configure this agent to connect to a specific Qdrant index."""
+    embedding_model = make_text_encoder(settings.embedding_model)
     vectordb = QdrantVectorStore.from_existing_collection(
-        url=configuration.vectordb_url,
-        # host="vectordb",
-        collection_name=configuration.collection_name,
+        url=settings.vectordb_url,
+        collection_name=settings.docs_collection_name,
         embedding=embedding_model,
         # sparse_embedding=FastEmbedSparse(model_name=configuration.sparse_embedding_model),
         # retrieval_mode=RetrievalMode.HYBRID,
@@ -151,28 +149,6 @@ class ScoredRetriever(VectorStoreRetriever):
         # return list(example_queries_docs) + list(other_docs)
 
 
-@contextmanager
-def make_retriever(configuration: Configuration) -> Generator[VectorStoreRetriever, None, None]:
-    """Create a retriever for the agent, based on the current configuration."""
-    embedding_model = make_text_encoder(configuration.embedding_model)
-    # user_id = configuration.user_id
-    # if not user_id:
-    #     raise ValueError("Please provide a valid user_id in the configuration.")
-    match configuration.retriever_provider:
-        case "qdrant":
-            with make_qdrant_retriever(configuration, embedding_model) as retriever:
-                yield retriever
-        # case "mongodb":
-        #     with make_mongodb_retriever(configuration, embedding_model) as retriever:
-        #         yield retriever
-        case _:
-            raise ValueError(
-                "Unrecognized retriever_provider in configuration. "
-                f"Expected one of: {', '.join(Configuration.__annotations__['retriever_provider'].__args__)}\n"
-                f"Got: {configuration.retriever_provider}"
-            )
-
-
 ## Document formatting
 
 def _format_doc(doc: Document) -> str:
@@ -227,70 +203,3 @@ def format_docs(docs: Optional[list[Document]]) -> str:
     return f"""<documents>
 {formatted}
 </documents>"""
-
-GET_PREFIXES_QUERY = """PREFIX sh: <http://www.w3.org/ns/shacl#>
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-SELECT DISTINCT ?prefix ?namespace
-WHERE {
-    [] sh:namespace ?namespace ;
-        sh:prefix ?prefix .
-} ORDER BY ?prefix"""
-
-
-# @contextmanager
-# def make_elastic_retriever(
-#     configuration: IndexConfiguration, embedding_model: Embeddings
-# ) -> Generator[VectorStoreRetriever, None, None]:
-#     """Configure this agent to connect to a specific elastic index."""
-#     from langchain_elasticsearch import ElasticsearchStore
-
-#     connection_options = {}
-#     if configuration.retriever_provider == "elastic-local":
-#         connection_options = {
-#             "es_user": os.environ["ELASTICSEARCH_USER"],
-#             "es_password": os.environ["ELASTICSEARCH_PASSWORD"],
-#         }
-#     else:
-#         connection_options = {"es_api_key": os.environ["ELASTICSEARCH_API_KEY"]}
-#     vstore = ElasticsearchStore(
-#         **connection_options,  # type: ignore
-#         es_url=os.environ["ELASTICSEARCH_URL"],
-#         index_name="langchain_index",
-#         embedding=embedding_model,
-#     )
-#     search_kwargs = configuration.search_kwargs
-#     # search_filter = search_kwargs.setdefault("filter", [])
-#     # search_filter.append({"term": {"metadata.user_id": configuration.user_id}})
-#     yield vstore.as_retriever(search_kwargs=search_kwargs)
-
-# @contextmanager
-# def make_pinecone_retriever(
-#     configuration: IndexConfiguration, embedding_model: Embeddings
-# ) -> Generator[VectorStoreRetriever, None, None]:
-#     """Configure this agent to connect to a specific pinecone index."""
-#     from langchain_pinecone import PineconeVectorStore
-
-#     search_kwargs = configuration.search_kwargs
-#     # search_filter = search_kwargs.setdefault("filter", {})
-#     # search_filter.update({"user_id": configuration.user_id})
-#     vstore = PineconeVectorStore.from_existing_index(
-#         os.environ["PINECONE_INDEX_NAME"], embedding=embedding_model
-#     )
-#     yield vstore.as_retriever(search_kwargs=search_kwargs)
-
-# @contextmanager
-# def make_mongodb_retriever(
-#     configuration: IndexConfiguration, embedding_model: Embeddings
-# ) -> Generator[VectorStoreRetriever, None, None]:
-#     """Configure this agent to connect to a specific MongoDB Atlas index & namespaces."""
-#     from langchain_mongodb.vectorstores import MongoDBAtlasVectorSearch
-
-#     vstore = MongoDBAtlasVectorSearch.from_connection_string(
-#         os.environ["MONGODB_URI"],
-#         namespace="langgraph_retrieval_agent.default",
-#         embedding=embedding_model,
-#     )
-#     search_kwargs = configuration.search_kwargs
-#     # pre_filter = search_kwargs.setdefault("pre_filter", {})
-#     # pre_filter["user_id"] = {"$eq": configuration.user_id}
-#     yield vstore.as_retriever(search_kwargs=search_kwargs)

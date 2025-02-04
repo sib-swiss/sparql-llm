@@ -55,6 +55,18 @@ Manually trigger installing the dependencies in a local virtual environment:
 hatch -v env create
 ```
 
+Upgrade `uv`:
+
+```sh
+uv self update
+```
+
+Clean `uv` cache:
+
+```sh
+uv cache clean
+```
+
 ## 🏷️ New release process
 
 Get a PyPI API token at [pypi.org/manage/account](https://pypi.org/manage/account).

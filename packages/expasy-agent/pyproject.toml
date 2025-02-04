@@ -21,6 +21,9 @@ dependencies = [
     "langchain >=0.2.14",
     "langchain-community >=0.2.17",
     "langchain-openai >=0.1.22",
+    "langchain-azure-ai >=0.1.0",
+    "langchain-groq >=0.2.4",
+    "langchain-deepseek-official >=0.1.0",
     # "langchain-anthropic >=0.1.23",
     # "langchain-fireworks >=0.1.7",
     "langchain-qdrant",
@@ -30,13 +33,13 @@ dependencies = [
     # Our API dependencies
     "sparql-llm",
     "rdflib",
+    # "oxrdflib",
     "curies-rs",
     "fastapi",
     "uvicorn[standard]",
     "pydantic >=2.0.0",
     "pydantic-settings",
     "openai",
-    "azure-ai-inference",
     "litellm",
     "jinja2",
     "tqdm",
@@ -44,12 +47,12 @@ dependencies = [
 
 [project.optional-dependencies]
 cpu = [
-    # "onnxruntime",
     "fastembed",
+    # "onnxruntime",
 ]
 gpu = [
-    # "onnxruntime-gpu",
     "fastembed-gpu",
+    # "onnxruntime-gpu",
 ]
 
 
@@ -107,7 +110,7 @@ lint.select = [
     "E",    # pycodestyle
     "F",    # pyflakes
     "I",    # isort
-    "D",    # pydocstyle
+    # "D",    # pydocstyle
     "D401", # First line should be in imperative mood
     "T201",
     "UP",

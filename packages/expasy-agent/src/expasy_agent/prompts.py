@@ -3,14 +3,19 @@
 SYSTEM_PROMPT = """You are Expasy, an assistant that helps users to navigate the resources and databases from the Swiss Institute of Bioinformatics.
 Depending on the user request and provided context, you may provide general information about the resources available at the SIB, or help the user to formulate a query to run on a SPARQL endpoint.
 If answering with a query:
-Put the SPARQL query inside a markdown codeblock with the "sparql" language tag, and indicate the URL of the endpoint on which the query should be executed in a comment at the start of the query (no additional text, just the endpoint URL directly as comment, always and only 1 endpoint).
+Put the SPARQL query inside a markdown codeblock with the "sparql" language tag, and always add the URL of the endpoint on which the query should be executed in a comment at the start of the query inside the codeblocks (no additional text, just the endpoint URL directly as comment, always and only 1 endpoint).
 If answering with a query always derive your answer from the queries and endpoints provided as examples in the prompt, don't try to create a query from nothing and do not provide a generic query.
 Try to always answer with one query, if the answer lies in different endpoints, provide a federated query. Do not add more codeblocks than necessary.
 
 Here is a list of documents (reference questions and query answers, classes schema or general endpoints information) relevant to the user question that will help you answer the user question accurately:
 
 {retrieved_docs}
+
+And entities extracted from the user question that could be find in the endpoints. If the user is asking for a named entity, and this entity cannot be found in the endpoint, warn them about the fact we could not find it in the endpoints.
+
+{extracted_entities}
 """
+
 # try to make it as efficient as possible to avoid timeout due to how large the datasets are, make sure the query written is valid SPARQL,
 # If the answer to the question is in the provided context, do not provide a query, just provide the answer, unless explicitly asked.
 
@@ -44,48 +49,11 @@ Here is a list of documents (reference questions and query answers, classes sche
 
 # # query_embeddings = next(iter(embedding_model.embed([question])))
 # # # 1. Get the most relevant examples SPARQL queries from the search engine
-# # query_hits = vectordb.search(
-# #     collection_name=settings.docs_collection_name,
-# #     query_vector=query_embeddings,
-# #     query_filter=Filter(
-# #         must=[
-# #             FieldCondition(
-# #                 key="doc_type",
-# #                 match=MatchValue(value="SPARQL endpoints query examples"),
-# #             )
-# #         ]
-# #     ),
-# #     limit=settings.retrieved_queries_count,
-# # )
 # # for query_hit in query_hits:
 # #     prompt += f"{query_hit.payload['question']}:\n\n```sparql\n# {query_hit.payload['endpoint_url']}\n{query_hit.payload['answer']}\n```\n\n"
 # #     # prompt += f"{query_hit.payload['question']}\nQuery to run in SPARQL endpoint {query_hit.payload['endpoint_url']}\n\n{query_hit.payload['answer']}\n\n"
 
 # # # 2. Get the most relevant documents other than SPARQL query examples from the search engine (ShEx shapes, general infos)
-# # docs_hits = vectordb.search(
-# #     collection_name=settings.docs_collection_name,
-# #     query_vector=query_embeddings,
-# #     query_filter=Filter(
-# #         should=[
-# #             FieldCondition(
-# #                 key="doc_type",
-# #                 match=MatchValue(value="SPARQL endpoints classes schema"),
-# #             ),
-# #             FieldCondition(
-# #                 key="doc_type",
-# #                 match=MatchValue(value="General information"),
-# #             ),
-# #             # NOTE: we don't add ontology documents yet, not clean enough
-# #             # FieldCondition(
-# #             #     key="doc_type",
-# #             #     match=MatchValue(value="Ontology"),
-# #             # ),
-# #         ]
-# #     ),
-# #     limit=settings.retrieved_docs_count,
-# #     # group_by="iri",
-# #     # with_payload=True,
-# # )
 # # # TODO: vectordb.search_groups(
 # # # https://qdrant.tech/documentation/concepts/search/#search-groups
 # # # TODO: hybrid search? https://qdrant.github.io/fastembed/examples/Hybrid_Search/#about-qdrant

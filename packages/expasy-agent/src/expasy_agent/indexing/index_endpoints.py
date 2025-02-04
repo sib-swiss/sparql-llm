@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
-from rdflib import RDF, ConjunctiveGraph, Namespace
+from rdflib import RDF, Dataset, Namespace
 from sparql_llm.sparql_examples_loader import SparqlExamplesLoader
 from sparql_llm.sparql_void_shapes_loader import SparqlVoidShapesLoader
 from sparql_llm.utils import get_prefixes_for_endpoints
@@ -15,7 +15,7 @@ from expasy_agent.nodes.retrieval import make_text_encoder
 
 SCHEMA = Namespace("http://schema.org/")
 
-configuration = Configuration()
+# configuration = Configuration()
 
 def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
     """Extract datasets descriptions from the schema.org metadata in homepage of the endpoint"""
@@ -40,11 +40,12 @@ def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
         if not json_ld_tags:
             raise Exception("No JSON-LD script tags found")
 
-        g = ConjunctiveGraph()
+        g = Dataset()
         for json_ld_tag in json_ld_tags:
-            json_ld_content = json_ld_tag.string
-            # print(json_ld_content)
+            json_ld_content = str(json_ld_tag.string)
+            # print(json_ld_content, type(json_ld_content))
             if json_ld_content:
+                # TODO: error here now, even if JSON-LD is valid
                 g.parse(data=json_ld_content, format="json-ld")
                 # json_ld_content = json.loads(json_ld_content)
                 question = f"What are the general metadata about {endpoint['label']} resource? (description, creators, maintainers, license, dates, version, etc)"
@@ -95,21 +96,20 @@ def load_ontology(endpoint: dict[str, str]) -> list[Document]:
     """Get documents from the OWL ontology URL given for each SPARQL endpoint."""
     if "ontology" not in endpoint:
         return []
-    # g = ConjunctiveGraph(store="Oxigraph")
-    g = ConjunctiveGraph()
-    # Hackity hack to handle UniProt ontology in XML format but with .owl extension
-    if endpoint["label"] == "UniProt":
-        g.parse(endpoint["ontology"], format="xml")
-    else:
+    # g = Dataset(store="Oxigraph")
+    g = Dataset()
+    try:
+        # Hackity hack to handle UniProt ontology in XML format but with .owl extension
         g.parse(endpoint["ontology"], format="ttl")
-    # try:
-    #     g.parse(endpoint["ontology"], format="ttl")
-    # except Exception as e:
-    #     g.parse(endpoint["ontology"], format="xml")
+    except Exception:
+        g.parse(endpoint["ontology"], format="xml")
+
+    ontology_chunk_size = 3000
+    ontology_chunk_overlap = 200
 
     # Chunking the ontology is done here
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=settings.ontology_chunk_size, chunk_overlap=settings.ontology_chunk_overlap
+        chunk_size=ontology_chunk_size, chunk_overlap=ontology_chunk_overlap
     )
     splits = text_splitter.create_documents([g.serialize(format="ttl")])
 
@@ -130,7 +130,7 @@ def load_ontology(endpoint: dict[str, str]) -> list[Document]:
     return docs
 
 
-def init_vectordb(vectordb_host: str = settings.vectordb_host) -> None:
+def init_vectordb() -> None:
     """Initialize the vectordb with example queries and ontology descriptions from the SPARQL endpoints"""
     docs: list[Document] = []
 
@@ -178,10 +178,23 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
     print(f"Generating embeddings for {len(docs)} documents")
     start_time = time.time()
 
-    # Using Qdrant client
+    # Using LangChain
+    QdrantVectorStore.from_documents(
+        docs,
+        # url="http://localhost:6333/",
+        url=settings.vectordb_url,
+        collection_name=settings.docs_collection_name,
+        embedding=make_text_encoder(settings.embedding_model),
+        # sparse_embedding=FastEmbedSparse(model_name="Qdrant/bm25"),
+        # retrieval_mode=RetrievalMode.HYBRID,
+        prefer_grpc=True,
+        force_recreate=True,
+    )
+
+    # Using fastembed and Qdrant client directly
     # from qdrant_client import models
     # from qdrant_client.http.models import Distance, VectorParams
-    # vectordb = get_vectordb(vectordb_host)
+    # vectordb = get_vectordb(settings.vectordb_url)
     # if vectordb.collection_exists(settings.docs_collection_name):
     #     vectordb.delete_collection(settings.docs_collection_name)
     # vectordb.create_collection(
@@ -201,59 +214,9 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
     #     # wait=False, # Waiting for indexing to finish or not
     # )
 
-    # Using LangChain
-    vectordb = QdrantVectorStore.from_documents(
-        docs,
-        # url="http://localhost:6333/",
-        host=settings.vectordb_host,
-        collection_name=settings.docs_collection_name,
-        embedding=make_text_encoder(configuration.embedding_model),
-        # sparse_embedding=FastEmbedSparse(model_name="Qdrant/bm25"),
-        # retrieval_mode=RetrievalMode.HYBRID,
-        prefer_grpc=True,
-        force_recreate=True,
-    )
-
     print(
         f"Done generating and indexing {len(docs)} documents into the vectordb in {time.time() - start_time} seconds"
     )
-
-    # NOTE: Loading entities embeddings to the vectordb is done in another script, because too long
-    # if not vectordb.collection_exists(settings.entities_collection_name):
-    #     vectordb.create_collection(
-    #         collection_name=settings.entities_collection_name,
-    #         vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
-    #     )
-    # # if vectordb.get_collection(settings.entities_collection_name).points_count == 0:
-    # load_entities_embeddings_to_vectordb()
-
-
-    # docs = []
-    # # TODO: Add entities list to the vectordb
-    # for entity in entities_list.values():
-    #     res = query_sparql(entity["query"], entity["endpoint"])
-    #     for entity_res in res["results"]["bindings"]:
-    #         docs.append(
-    #             Document(
-    #                 page_content=entity_res["label"],
-    #                 metadata={
-    #                     "label": entity_res["label"],
-    #                     "uri": entity_res["uri"],
-    #                     "endpoint_url": entity["endpoint"],
-    #                     "entity_type": entity["uri"],
-    #                 },
-    #             )
-    #         )
-    # print(f"Generating embeddings for {len(docs)} entities")
-    # vectordb.upsert(
-    #     collection_name="entities",
-    #     points=models.Batch(
-    #         ids=list(range(1, len(docs) + 1)),
-    #         vectors=embeddings,
-    #         payloads=[doc.metadata for doc in docs],
-    #     ),
-    #     # wait=False, # Waiting for indexing to finish or not
-    # )
 
 
 if __name__ == "__main__":

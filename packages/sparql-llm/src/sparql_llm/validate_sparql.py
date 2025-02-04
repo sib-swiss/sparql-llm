@@ -227,8 +227,12 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: O
 
         return issues
 
-    query_dict = sparql_query_to_dict(query, endpoint_url)
     issues_msgs: set[str] = set()
+    try:
+        query_dict = sparql_query_to_dict(query, endpoint_url)
+    except Exception as e:
+        issues_msgs.add(f"Error parsing the SPARQL query: {e!s}")
+        return issues_msgs
 
     # Go through the query BGPs and check if they match the VoID description
     for endpoint, subj_dict in query_dict.items():

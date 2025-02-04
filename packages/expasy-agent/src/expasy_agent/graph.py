@@ -10,7 +10,8 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 
-from expasy_agent.config import Configuration
+from expasy_agent.config import Configuration, settings
+from expasy_agent.nodes.extraction import extract_entities
 from expasy_agent.nodes.llm import call_model
 from expasy_agent.nodes.retrieval import retrieve
 from expasy_agent.nodes.tools import TOOLS
@@ -33,10 +34,6 @@ def route_model_output(state: State, config: RunnableConfig) -> Literal["__end__
     """
     configuration = Configuration.from_runnable_config(config)
     last_msg = state.messages[-1]
-    if not isinstance(last_msg, AIMessage):
-        raise ValueError(
-            f"Expected AIMessage in output edges, but got {type(last_msg).__name__}"
-        )
     if state.try_count > configuration.max_try_fix_sparql:
         return "__end__"
     # Check for tool calls first
@@ -47,6 +44,8 @@ def route_model_output(state: State, config: RunnableConfig) -> Literal["__end__
         for validation_step in state.validation:
             if validation_step.type == "recall":
                 return "call_model"
+    if not isinstance(last_msg, AIMessage):
+        raise ValueError(f"Expected AIMessage in output edges, but got {type(last_msg).__name__}")
     return "__end__"
 
 
@@ -62,7 +61,12 @@ builder.add_node(validate_output)
 # Add edges
 builder.add_edge("__start__", "retrieve")
 builder.add_edge("retrieve", "call_model")
+builder.add_edge("extract_entities", "call_model")
 builder.add_edge("call_model", "validate_output")
+
+# Entity extraction node
+builder.add_node(extract_entities)
+builder.add_edge("__start__", "extract_entities")
 
 # Add a conditional edge to determine the next step after `validate_output`
 builder.add_conditional_edges(
@@ -75,9 +79,5 @@ builder.add_conditional_edges(
 builder.add_edge("tools", "call_model")
 
 # Compile the builder into an executable graph
-# You can customize this by adding interrupt points for state updates
-graph = builder.compile(
-    interrupt_before=[],  # Add node names here to update state before they're called
-    interrupt_after=[],  # Add node names here to update state after they're called
-)
-graph.name = "Expasy Agent"  # This customizes the name in LangSmith
+graph = builder.compile()
+graph.name = settings.app_name  # This customizes the name in LangSmith

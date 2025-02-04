@@ -47,6 +47,12 @@ class ValidationState:
     fixed_message: Optional[str] = None
 
 @dataclass
+class StructuredOutput:
+    """Structure for structured infos extracted from the LLM output."""
+    sparql_query: str
+    sparql_endpoint_url: str
+
+@dataclass
 class State(InputState):
     """Represents the complete state of the agent, extending InputState with additional attributes.
 
@@ -63,8 +69,11 @@ class State(InputState):
 
     # Additional attributes can be added here as needed.
     retrieved_docs: list[Document] = field(default_factory=list)
-    validation: list[ValidationState] = field(default_factory=list)
     extracted_entities: dict[str, Any] = field(default_factory=dict)
+    validation: list[ValidationState] = field(default_factory=list)
     try_count: int = field(default=0)
 
+    structured_output: list[StructuredOutput] = field(default_factory=list)
+
+    # token_usage: dict[str, str] = field(default_factory=dict)
     # api_connections: Dict[str, Any] = field(default_factory=dict)

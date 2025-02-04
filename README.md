@@ -161,16 +161,18 @@ print("\n".join(issues))
 
 > [!WARNING]
 >
-> To deploy the complete chat system right now you will need to fork this repository, change the configuration in `src/sparql_llm/config.py` and `compose.yml`, then deploy with docker/podman compose.
+> To deploy the complete chat system right now you will need to fork this repository, change the configuration in `packages/expasy-agent/src/expasy_agent/config.py` and `compose.yml`, then deploy with docker/podman compose.
 >
 > It can easily be adapted to use any LLM served through an OpenAI-compatible API. We plan to make configuration and deployment of complete SPARQL LLM chat system easier in the future, let us know if you are interested in the GitHub issues!
+
+Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](https://docs.astral.sh/uv/getting-started/installation/) if you want to run scripts outside of docker.
 
 1. Create a `.env` file at the root of the repository to provide secrets and API keys:
 
    ```sh
    OPENAI_API_KEY=sk-proj-YYY
    GLHF_API_KEY=APIKEY_FOR_glhf.chat_USED_FOR_TEST_OPEN_SOURCE_MODELS
-   EXPASY_API_KEY=NOT_SO_SECRET_API_KEY_USED_BY_FRONTEND_TO_AVOID_SPAM_FROM_CRAWLERS
+   CHAT_API_KEY=NOT_SO_SECRET_API_KEY_USED_BY_FRONTEND_TO_AVOID_SPAM_FROM_CRAWLERS
    LOGS_API_KEY=SECRET_PASSWORD_TO_EASILY_ACCESS_LOGS_THROUGH_THE_API
    ```
 
@@ -201,10 +203,10 @@ print("\n".join(issues))
    * OpenAPI Swagger UI available at http://localhost:8000/docs
    * Vector database dashboard UI available at http://localhost:6333/dashboard
 
-4. Run the script to index the resources (SPARQL endpoints listed in config file):
+4. When he stack is up you can run the script to index the SPARQL endpoints from within the container (need to do it once):
 
    ```sh
-   docker compose run api python src/expasy_agent/indexing/index_endpoints.py
+   docker compose exec api uv run src/expasy_agent/indexing/index_endpoints.py
    ```
 
 > [!WARNING]
@@ -212,15 +214,16 @@ print("\n".join(issues))
 > **Experimental entities indexing**: it can take a lot of time to generate embeddings for entities. So we recommend to run the script to generate embeddings on a machine with GPU (does not need to be a powerful one, but at least with a GPU, checkout [fastembed GPU docs](https://qdrant.github.io/fastembed/examples/FastEmbed_GPU/) to install the GPU drivers and dependencies)
 >
 > ```sh
-> pip install -e ".[chat,gpu]"
-> python src/expasy_agent/indexing/index_entities.py
+> uv run --with gpu packages/expasy-agent/src/expasy_agent/indexing/index_entities.py
 > ```
 >
 > Then move the entities collection containing the embeddings in `data/qdrant/collections/entities` before starting the stack
 
+All data from the containers are stored persistently in the `data` folder (e.g. vectordb)
+
 ## 🧑‍💻 Contributing
 
-Checkout the [CONTRIBUTING.md](https://github.com/sib-swiss/sparql-llm/blob/main/CONTRIBUTING.md) page for more details on how to run the package in development and make a contribution.
+Checkout the [CONTRIBUTING.md](https://github.com/sib-swiss/sparql-llm/blob/main/CONTRIBUTING.md) page for more details on how to run the `sparql-llm` package in development and make a contribution.
 
 ## 🪶 How to cite this work
 

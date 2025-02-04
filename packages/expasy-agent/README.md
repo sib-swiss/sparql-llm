@@ -114,7 +114,7 @@ uv run --extra cpu langgraph dev
 Run custom LangGraph API on http://loalhost:8000/langgraph/:
 
 ```sh
-uv run --extra cpu uvicorn src.expasy_agent.api:app --reload
+uv run --extra cpu uvicorn src.expasy_agent.main:app --reload
 ```
 
 ### Test
@@ -129,12 +129,6 @@ uv run --extra cpu --env-file .env pytest
 uv run langgraph build -t langgraph-expasy-agent
 uv run langgraph up
 docker compose up
-```
-
-Experimental FastAPI integration with LangServe (https://js.langchain.com/v0.1/docs/ecosystem/langserve/):
-
-```sh
-uv run --extra cpu uvicorn src.expasy_agent.langserve:app --reload
 ```
 
 ### Llama Index and UI

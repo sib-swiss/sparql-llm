@@ -17,3 +17,4 @@ notebooks/*.txt
 entities_embeddings*.csv
 
 packages/expasy-agent/src/expasy_agent/webapp
+packages/sparql-llm/src/sparql_llm/webapp

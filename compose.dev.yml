@@ -17,8 +17,16 @@ services:
     volumes:
       - ./packages:/app/packages
     environment:
-      - VECTORDB_HOST=vectordb
-    command: ["uvicorn", "src.expasy_agent.api:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
+      - VECTORDB_URL=http://vectordb:6334/
+      # - DEFAULT_LLM_MODEL=groq/deepseek-r1-distill-llama-70b
+      # - DEFAULT_LLM_MODEL=groq/llama-3.3-70b-versatile
+      # - DEFAULT_LLM_MODEL=deepseek/deepseek-reasoner
+      # - DEFAULT_LLM_MODEL=deepseek/deepseek-chat
+      # - DEFAULT_LLM_MODEL=azure/Mistral-Large-2411
+      # - DEFAULT_LLM_MODEL=azure/DeepSeek-R1
+      - DEFAULT_LLM_MODEL=openai/o3-mini
+      # - DEFAULT_LLM_MODEL=openai/gpt-4o-mini
+    entrypoint: ["uv", "run", "uvicorn", "src.expasy_agent.main:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
 
   # langgraph-redis:
   #   extends:

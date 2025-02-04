@@ -22,8 +22,8 @@ services:
     ports:
       - 443:80
     environment:
-      # NOTE: disguting hack to fix a bug with podman internal network (podman devs are not competent, this bug comes and goes)
-      - VECTORDB_HOST=10.89.1.2
+      # NOTE: disguting hack to fix a bug with podman internal network on prod server
+      - VECTORDB_URL=http://10.89.1.2:6334/
       # https://github.com/tiangolo/uvicorn-gunicorn-docker/blob/master/docker-images/gunicorn_conf.py
     volumes:
       - ./data/fastembed_cache:/tmp/fastembed_cache

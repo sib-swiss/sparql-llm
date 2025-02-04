@@ -1,7 +1,7 @@
 {
   "dependencies": ["."],
   "graphs": {
-    "agent": "./src/expasy_agent/graph.py:graph"
+    "agent": "./src/expasy_agent/main.py:graph"
   },
   "env": ".env"
 }

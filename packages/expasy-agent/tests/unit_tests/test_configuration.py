@@ -1,5 +1,5 @@
-from expasy_agent.config import Configuration
+from sparql_llm.langgraph.config import SparqlAgentConfiguration
 
 
 def test_configuration_empty() -> None:
-    Configuration.from_runnable_config({})
+    SparqlAgentConfiguration.from_runnable_config({})

@@ -3,6 +3,23 @@ from typing import Any, Optional
 
 import requests
 from curies_rs import Converter
+from langchain_core.messages import BaseMessage
+
+# LLM utilities
+
+def get_message_text(msg: BaseMessage) -> str:
+    """Get the text content of a message."""
+    content = msg.content
+    if isinstance(content, str):
+        return content
+    elif isinstance(content, dict):
+        return content.get("text", "")
+    else:
+        txts = [c if isinstance(c, str) else (c.get("text") or "") for c in content]
+        return "".join(txts).strip()
+
+
+# SPARQL utilities
 
 GET_PREFIXES_QUERY = """PREFIX sh: <http://www.w3.org/ns/shacl#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>

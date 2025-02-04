@@ -49,7 +49,7 @@ export class ChatState {
   setMessages: Setter<Message[]>;
   abortController: AbortController;
 
-  constructor({apiUrl = "", apiKey = "", model = "openai/gpt-4o"}: {apiUrl?: string; apiKey?: string; model?: string}) {
+  constructor({apiUrl = "", apiKey = "", model = ""}: {apiUrl?: string; apiKey?: string; model?: string}) {
     // this.apiUrl = apiUrl.endsWith("/") ? apiUrl : apiUrl + "/";
     this.apiUrl = apiUrl;
     this.apiKey = apiKey;
@@ -115,6 +115,7 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
   if (chunk.event === "error") {
     throw new Error(`An error occurred. Please try again. ${chunk.data.error}: ${chunk.data.message}`);
   }
+  // console.log(chunk);
   // Handle updates to the state
   if (chunk.event === "updates") {
     // console.log("UPDATES", chunk);
@@ -128,16 +129,30 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
           nodeData.retrieved_docs,
         );
       }
-      // Handle extracted entities (SPARQL queries here)
+      // Handle entities extracted from the user input
       if (nodeData.extracted_entities) {
+        state.appendStepToLastMsg(
+          `⚗️ Extracted ${nodeData.extracted_entities.length} potential entities`,
+          nodeId,
+          [],
+          nodeData.extracted_entities.map((entity: any) =>
+            `\n\nEntities found in the user question for "${entity.term.join(" ")}":\n\n` +
+            entity.matchs.map((match: any) =>
+              `- ${match.payload.label} with IRI <${match.payload.uri}> in endpoint ${match.payload.endpoint_url}\n\n`
+            ).join('')
+          ).join(''),
+        );
+      }
+      // Handle things extracted from output (SPARQL queries here)
+      if (nodeData.structured_output) {
         // const extractedEntities = nodeData.extracted_entities;
         // Retrieved extracted_entities sent
-        if (nodeData.extracted_entities.sparql_query) {
+        if (nodeData.structured_output.sparql_query) {
           state.lastMsg().setLinks([
             {
               url: getEditorUrl(
-                nodeData.extracted_entities.sparql_query,
-                nodeData.extracted_entities.sparql_endpoint_url,
+                nodeData.structured_output.sparql_query,
+                nodeData.structured_output.sparql_endpoint_url,
               ),
               ...queryLinkLabels,
             },
@@ -168,11 +183,16 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
     if (msg.tool_calls?.length > 0) {
       // Tools calls requested by the model
       const toolNames = msg.tool_calls.map((tool_call: any) => tool_call.name).join(", ");
-      if (toolNames) state.appendStepToLastMsg(`💭 Calling tools: ${toolNames}`, metadata.langgraph_node);
+      if (toolNames) state.appendStepToLastMsg(`🔧 Calling tools: ${toolNames}`, metadata.langgraph_node);
     }
     if (msg.content && msg.type === "tool") {
       // If tool called by model
-      state.appendStepToLastMsg(`🔧 Tool ${msg.name} result: ${msg.content}`, metadata.langgraph_node);
+      state.appendStepToLastMsg(`⚗️ Tool ${msg.name} result: ${msg.content}`, metadata.langgraph_node);
+    } else if (msg.content === "</think>" && msg.type === "AIMessageChunk") {
+      // Putting thinking process in a separate step
+      state.appendContentToLastMsg(msg.content);
+      state.appendStepToLastMsg("💭 Thought process", metadata.langgraph_node, [], state.lastMsg().content());
+      state.lastMsg().setContent("");
     } else if (msg.content && msg.type === "AIMessageChunk") {
       // Response from the model
       state.appendContentToLastMsg(msg.content);
@@ -190,10 +210,8 @@ async function streamCustomLangGraph(state: ChatState) {
     signal: state.abortController.signal,
     body: JSON.stringify({
       messages: state.messages().map(({content, role}) => ({content: content(), role})),
-      model: state.model,
-      // model: "azure_ai/mistral-large",
-      max_tokens: 500,
       stream: true,
+      ...(state.model ? {model: state.model} : {}),
     }),
   });
 
@@ -212,6 +230,7 @@ async function streamCustomLangGraph(state: ChatState) {
       // Keep the last line if it's incomplete
       buffer = lines.pop() || "";
       for (const line of lines.filter(line => line.trim() !== "")) {
+        if (line === "data: [DONE]") return;
         if (line.startsWith("data: ")) {
           try {
             const json = JSON.parse(line.substring(6));
@@ -224,17 +243,6 @@ async function streamCustomLangGraph(state: ChatState) {
     }
   }
 }
-
-// buffer += chunk;
-//     let parts = buffer.split('\n');
-//     buffer = parts.pop(); // Keep the incomplete part
-
-//     parts.forEach(part => {
-//         if (part) {
-//             const json = JSON.parse(part);
-//             // Process complete json object
-//         }
-//     });
 
 async function streamLangGraphApi(state: ChatState) {
   const client = new Client({apiUrl: state.apiUrl});

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
-from typing import Annotated, Any, Literal, Optional, Type, TypeVar
+from typing import Annotated, Any, Optional, Type, TypeVar
 
 from fastembed import TextEmbedding
 from langchain_core.runnables import RunnableConfig, ensure_config
@@ -18,37 +18,17 @@ from expasy_agent import prompts
 
 
 class Settings(BaseSettings):
-    openai_api_key: str = ""
-    glhf_api_key: str = ""
-    expasy_api_key: str = ""
-    logs_api_key: str = ""
-    azure_inference_credential: str = ""
-    azure_inference_endpoint: str = ""
-    # llm_model: str = "openai/gpt-4o"
-    # cheap_llm_model: str = "openai/gpt-4o-mini"
+    """Define the service settings for the agent that can be set using environment variables."""
 
-    # https://qdrant.github.io/fastembed/examples/Supported_Models/
-    embedding_model: str = "BAAI/bge-large-en-v1.5"
-    embedding_dimensions: int = 1024
-    # embedding_model: str = "jinaai/jina-embeddings-v2-base-en"
-    # embedding_dimensions: int = 768
-
-    ontology_chunk_size: int = 3000
-    ontology_chunk_overlap: int = 200
-
-    vectordb_host: str = "vectordb"
-    # vectordb_host: str = "localhost"
-    # NOTE: disguting hack to fix a bug with podman internal network
-    # vectordb_host: str = "10.89.1.2"
-
-    docs_collection_name: str = "expasy"
-    entities_collection_name: str = "entities"
-
+    # The list of endpoints that will be indexed and supported by the service
     endpoints: list[dict[str, str]] = [
         {
+            # The label of the endpoint for clearer display
             "label": "UniProt",
+            # The URL of the SPARQL endpoint from which most informations will be extracted
             "endpoint_url": "https://sparql.uniprot.org/sparql/",
-            "homepage": "https://www.uniprot.org/",
+            # Optional, homepage from which we can extract more information using the JSON-LD context
+            # "homepage": "https://www.uniprot.org/",
             "ontology": "https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl",
         },
         {
@@ -78,22 +58,22 @@ class Settings(BaseSettings):
             "endpoint_url": "https://beta.sparql.swisslipids.org/",
             "homepage": "https://www.swisslipids.org",
         },
-        # Nothing in those endpoints:
         {
             "label": "Rhea",
             "endpoint_url": "https://sparql.rhea-db.org/sparql/",
             "homepage": "https://www.rhea-db.org/",
         },
+        # No metadata in these endpoints
+        # {
+        #     "label": "OrthoDB",
+        #     "endpoint_url": "https://sparql.orthodb.org/sparql/",
+        #     "homepage": "https://www.orthodb.org/",
+        # },
         # {
         #     "label": "MetaNetx",
         #     "endpoint_url": "https://rdf.metanetx.org/sparql/",
         #     "homepage": "https://www.metanetx.org/",
         # },
-        {
-            "label": "OrthoDB",
-            "endpoint_url": "https://sparql.orthodb.org/sparql/",
-            "homepage": "https://www.orthodb.org/",
-        },
         # Error querying NExtProt
         # {
         #     "label": "NextProt",
@@ -108,6 +88,42 @@ class Settings(BaseSettings):
         # },
     ]
 
+    # List of example questions to display in the chat UI
+    example_questions: list[str] = [
+        "Which resources are available at the SIB?",
+        "How can I get the HGNC symbol for the protein P68871?",
+        "What are the rat orthologs of the human TP53?",
+        "Where is expressed the gene ACE2 in human?",
+        "Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations",
+        "List the genes in primates orthologous to genes expressed in the fruit fly eye",
+    ]
+
+    # The name of the application used for display
+    app_name: str = "Expasy GPT"
+    # Public API key used by the frontend to access the chatbot and prevent abuse from bots
+    chat_api_key: str = ""
+    # Secret API key used by admins to access log file easily from the API
+    logs_api_key: str = ""
+
+    # Settings for the vector store
+    # https://qdrant.github.io/fastembed/examples/Supported_Models/
+    embedding_model: str = "BAAI/bge-large-en-v1.5"
+    # embedding_dimensions: int = 1024
+    # sparse_embedding_model: str = "Qdrant/bm25"
+    vectordb_url: str = "http://vectordb:6334/"
+    docs_collection_name: str = "expasy"
+    entities_collection_name: str = "entities"
+
+    # Default settings for the agent that can be changed at runtime
+    default_llm_model: str = "openai/gpt-4o"
+    # default_llm_model: str = "azure/DeepSeek-R1"
+
+    # default_number_of_retrieved_docs: int = 15
+    default_number_of_retrieved_docs: int = 10
+    default_max_try_fix_sparql: int = 3
+    default_temperature: float = 0.0
+    default_max_tokens: int = 120000
+
     logs_filepath: str = "/logs/user_questions.log"
 
     model_config = SettingsConfigDict(
@@ -116,65 +132,108 @@ class Settings(BaseSettings):
         extra="allow",
     )
 
+    # External services API keys
+    azure_inference_credential: str = ""
+    azure_inference_endpoint: str = ""
+    # openai_api_key: str = ""
+    # glhf_api_key: str = ""
+
 settings = Settings()
 
 
+
+
 @dataclass(kw_only=True)
-class IndexConfiguration:
-    """Configuration class for indexing and retrieval operations.
+class Configuration:
+    """The configuration for the agent that can be changed at runtime when calling the agent."""
 
-    This class defines the parameters needed for configuring the indexing and
-    retrieval processes, including user identification, embedding model selection,
-    retriever provider choice, and search parameters.
-    """
-
-    vectordb_url: str = field(
-        default=f"http://{settings.vectordb_host}:6334/",
-        # default="http://localhost:6334/",
-        metadata={"description": "URL for the vector store API, e.g. qdrant."},
-    )
-    collection_name: str = field(
-        default="expasy",
-        metadata={"description": "Name of collection, e.g. for qdrant."},
-    )
-    embedding_model: Annotated[
-        str,
-        {"__template_metadata__": {"kind": "embeddings"}},
-    ] = field(
-        # default="BAAI/bge-large-en-v1.5",
-        default=settings.embedding_model,
+    system_prompt: str = field(
+        default=prompts.SYSTEM_PROMPT,
         metadata={
-            "description": "Name of the embedding model to use. Must be a valid embedding model name supported by FastEmbed."
+            "description": "The system prompt to use for the agent's interactions."
+            "This prompt sets the context and behavior for the agent."
         },
     )
-    sparse_embedding_model: Annotated[
-        str,
-        {"__template_metadata__": {"kind": "embeddings"}},
-    ] = field(
-        default="Qdrant/bm25",
-        metadata={"description": "Sparse embedding model supported by FastEmbed."},
+
+    validate_output: bool = field(
+        default=True,
+        metadata={
+            "description": "Wherever to validate or not the output of the LLM (e.g. SPARQL queries generated)."
+        },
     )
 
-    retriever_provider: Annotated[
-        Literal["qdrant", "elastic", "elastic-local", "pinecone", "mongodb"],
-        {"__template_metadata__": {"kind": "retriever"}},
-    ] = field(
-        default="qdrant",
+    model: Annotated[str, {"__template_metadata__": {"kind": "llm"}}] = field(
+        default=settings.default_llm_model,
         metadata={
-            "description": "The vector store provider to use for retrieval. Options are 'qdrant', 'elastic', 'pinecone', or 'mongodb'."
+            "description": "The name of the language model to use for the agent's main interactions."
+            "Should be in the form: provider/model-name."
+        },
+    )
+
+    temperature: Annotated[float, {"__template_metadata__": {"kind": "llm"}}] = field(
+        default=settings.default_temperature,
+        metadata={
+            "description": "The temperature of the language model."
+            "Should be between 0.0 and 1.0. Higher values make the model more creative but less deterministic."
+        },
+    )
+    max_tokens: Annotated[int, {"__template_metadata__": {"kind": "llm"}}] = field(
+        default=settings.default_max_tokens,
+        metadata={
+            "description": "The maximum number of tokens to generate in the response."
+            "Should be between 4000 and 120000 (depends on the model context window)."
         },
     )
 
     # Number of retrieved docs
     search_kwargs: dict[str, Any] = field(
-        default_factory=lambda: {"k": 15},
+        default_factory=lambda: {"k": settings.default_number_of_retrieved_docs},
         # default_factory=dict,
         metadata={
             "description": "Additional keyword arguments to pass to the search function of the retriever."
         },
     )
 
-    # user_id: str = field(metadata={"description": "Unique identifier for the user."})
+    max_try_fix_sparql: int = field(
+        default=settings.default_max_try_fix_sparql,
+        metadata={
+            "description": "The maximum number of tries when calling the model to fix a SPARQL query."
+        },
+    )
+
+    # vectordb_url: str = field(
+    #     default=settings.vectordb_url,
+    #     metadata={"description": "URL for the vector store API, e.g. qdrant."},
+    # )
+    # collection_name: str = field(
+    #     default="expasy",
+    #     metadata={"description": "Name of collection, e.g. for qdrant."},
+    # )
+    # embedding_model: Annotated[
+    #     str,
+    #     {"__template_metadata__": {"kind": "embeddings"}},
+    # ] = field(
+    #     default=settings.embedding_model,
+    #     metadata={
+    #         "description": "Name of the embedding model to use. Must be a valid embedding model name supported by FastEmbed."
+    #     },
+    # )
+    # sparse_embedding_model: Annotated[
+    #     str,
+    #     {"__template_metadata__": {"kind": "embeddings"}},
+    # ] = field(
+    #     default="Qdrant/bm25",
+    #     metadata={"description": "Sparse embedding model supported by FastEmbed."},
+    # )
+    # retriever_provider: Annotated[
+    #     Literal["qdrant", "elastic", "elastic-local", "pinecone", "mongodb"],
+    #     {"__template_metadata__": {"kind": "retriever"}},
+    # ] = field(
+    #     default="qdrant",
+    #     metadata={
+    #         "description": "The vector store provider to use for retrieval. Options are 'qdrant', 'elastic', 'pinecone', or 'mongodb'."
+    #     },
+    # )
 
     @classmethod
     def from_runnable_config(
@@ -197,37 +256,8 @@ class IndexConfiguration:
         return cls(**{k: v for k, v in configurable.items() if k in _fields})
 
 
-T = TypeVar("T", bound=IndexConfiguration)
+T = TypeVar("T", bound=Configuration)
 
-
-@dataclass(kw_only=True)
-class Configuration(IndexConfiguration):
-    """The configuration for the agent."""
-
-    system_prompt: str = field(
-        default=prompts.SYSTEM_PROMPT,
-        metadata={
-            "description": "The system prompt to use for the agent's interactions. "
-            "This prompt sets the context and behavior for the agent."
-        },
-    )
-
-    model: Annotated[str, {"__template_metadata__": {"kind": "llm"}}] = field(
-        # default="anthropic/claude-3-5-sonnet-20240620",
-        # default="openai/gpt-4o-mini",
-        default="openai/gpt-4o",
-        metadata={
-            "description": "The name of the language model to use for the agent's main interactions. "
-            "Should be in the form: provider/model-name."
-        },
-    )
-
-    max_try_fix_sparql: int = field(
-        default=3,
-        metadata={
-            "description": "The maximum number of tries when calling the model to fix a SPARQL query."
-        },
-    )
 
 
 # NOTE: still in use by tests, to be replaced with litellm
@@ -247,11 +277,11 @@ def get_embedding_model(gpu: bool = False) -> TextEmbedding:
     return TextEmbedding(settings.embedding_model)
 
 
-def get_vectordb(host=settings.vectordb_host) -> QdrantClient:
-    return QdrantClient(
-        host=host,
-        prefer_grpc=True,
-    )
+# def get_vectordb(host=settings.vectordb_url) -> QdrantClient:
+#     return QdrantClient(
+#         host=host,
+#         prefer_grpc=True,
+#     )
 
 
 # https://learn.microsoft.com/en-us/azure/ai-studio/reference/reference-model-inference-api?tabs=python

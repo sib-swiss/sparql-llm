@@ -38,10 +38,10 @@ package = false
 # https://docs.astral.sh/uv/concepts/projects/workspaces
 [tool.uv.workspace]
 members = ["packages/*"]
-# members = [
-#     "langgraph",
-#     "mcp-sparql",
-# ]
+
+[tool.uv.sources]
+sparql-llm = { workspace = true }
+expasy-agent = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -54,6 +54,8 @@ dev = [
     "ipykernel",
     "python-dotenv",
     "pandas",
+    "sparql-llm",
+    "expasy-agent[cpu]",
     # "oxrdflib",
     # "langchain-community",
     # "jupyter",
