@@ -116,37 +116,33 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
     throw new Error(`An error occurred. Please try again. ${chunk.data.error}: ${chunk.data.message}`);
   }
   // console.log(chunk);
-  // Handle updates to the state
+  // Handle updates to the state (nodes that are retrieving stuff without querying the LLM usually)
   if (chunk.event === "updates") {
     // console.log("UPDATES", chunk);
     for (const nodeId of Object.keys(chunk.data)) {
       const nodeData = chunk.data[nodeId];
-      // Retrieved docs sent
       if (nodeData.retrieved_docs) {
+        // Retrieved docs sent
         state.appendStepToLastMsg(
           `📚️ Using ${nodeData.retrieved_docs.length} documents`,
           nodeId,
           nodeData.retrieved_docs,
         );
-      }
-      // Handle entities extracted from the user input
-      if (nodeData.extracted_entities) {
+      } else if (nodeData.extracted_entities) {
+        // Handle entities extracted from the user input
         state.appendStepToLastMsg(
           `⚗️ Extracted ${nodeData.extracted_entities.length} potential entities`,
           nodeId,
           [],
           nodeData.extracted_entities.map((entity: any) =>
-            `\n\nEntities found in the user question for "${entity.term.join(" ")}":\n\n` +
+            `\n\nEntities found in the user question for "${entity.text}":\n\n` +
             entity.matchs.map((match: any) =>
               `- ${match.payload.label} with IRI <${match.payload.uri}> in endpoint ${match.payload.endpoint_url}\n\n`
             ).join('')
           ).join(''),
         );
-      }
-      // Handle things extracted from output (SPARQL queries here)
-      if (nodeData.structured_output) {
-        // const extractedEntities = nodeData.extracted_entities;
-        // Retrieved extracted_entities sent
+      } else if (nodeData.structured_output) {
+        // Handle things extracted from output (SPARQL queries here)
         if (nodeData.structured_output.sparql_query) {
           state.lastMsg().setLinks([
             {
@@ -158,9 +154,8 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
             },
           ]);
         }
-      }
-      // Handle post-generation validation
-      if (nodeData.validation) {
+      } else if (nodeData.validation) {
+        // Handle post-generation validation
         for (const validationStep of nodeData.validation) {
           // Handle messages related to tools (includes post generation validation)
           state.appendStepToLastMsg(validationStep.label, nodeId, [], validationStep.details);
@@ -172,6 +167,9 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
             state.lastMsg().setContent(validationStep.fixed_message);
           }
         }
+      } else {
+        // Handle other updates
+        state.appendStepToLastMsg(`💭 ${nodeId.replace("_", " ")}`, nodeId);
       }
     }
   }

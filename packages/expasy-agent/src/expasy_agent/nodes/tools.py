@@ -20,7 +20,7 @@ def multiply(a: int, b: int) -> int:
 # TODO: Extract potential entities from the user question (experimental)
 # entities_list = extract_entities(question)
 # for entity in entities_list:
-#     prompt += f'\n\nEntities found in the user question for "{" ".join(entity["term"])}":\n\n'
+#     prompt += f'\n\nEntities found in the user question for "{" ".join(entity["text"])}":\n\n'
 #     for match in entity["matchs"]:
 #         prompt += f"- {match.payload['label']} with IRI <{match.payload['uri']}> in endpoint {match.payload['endpoint_url']}\n\n"
 # if len(entities_list) == 0:

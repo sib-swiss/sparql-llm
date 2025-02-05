@@ -61,12 +61,12 @@ builder.add_node(validate_output)
 # Add edges
 builder.add_edge("__start__", "retrieve")
 builder.add_edge("retrieve", "call_model")
-builder.add_edge("extract_entities", "call_model")
 builder.add_edge("call_model", "validate_output")
 
 # Entity extraction node
 builder.add_node(extract_entities)
 builder.add_edge("__start__", "extract_entities")
+builder.add_edge("extract_entities", "call_model")
 
 # Add a conditional edge to determine the next step after `validate_output`
 builder.add_conditional_edges(

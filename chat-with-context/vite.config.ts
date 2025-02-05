@@ -13,7 +13,7 @@ export default defineConfig({
     port: 3000,
   },
   envDir: "../",
-  envPrefix: "EXPASY_",
+  envPrefix: "CHAT_",
   build: {
     outDir: "dist",
     target: ["esnext"],

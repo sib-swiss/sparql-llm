@@ -174,7 +174,7 @@ class Configuration:
         default=settings.default_temperature,
         metadata={
             "description": "The temperature of the language model."
-            "Should be between 0.0 and 1.0. Higher values make the model more creative but less deterministic."
+            "Should be between 0.0 and 2.0. Higher values make the model more creative but less deterministic."
         },
     )
     max_tokens: Annotated[int, {"__template_metadata__": {"kind": "llm"}}] = field(

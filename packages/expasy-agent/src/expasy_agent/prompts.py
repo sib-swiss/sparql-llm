@@ -16,6 +16,8 @@ And entities extracted from the user question that could be find in the endpoint
 {extracted_entities}
 """
 
+
+
 # try to make it as efficient as possible to avoid timeout due to how large the datasets are, make sure the query written is valid SPARQL,
 # If the answer to the question is in the provided context, do not provide a query, just provide the answer, unless explicitly asked.
 
