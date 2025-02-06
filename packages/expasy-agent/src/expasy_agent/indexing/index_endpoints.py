@@ -185,7 +185,7 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
         url=settings.vectordb_url,
         collection_name=settings.docs_collection_name,
         embedding=make_text_encoder(settings.embedding_model),
-        # sparse_embedding=FastEmbedSparse(model_name="Qdrant/bm25"),
+        # sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
         # retrieval_mode=RetrievalMode.HYBRID,
         prefer_grpc=True,
         force_recreate=True,

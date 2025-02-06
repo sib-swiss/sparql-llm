@@ -108,8 +108,7 @@ class Settings(BaseSettings):
     # Settings for the vector store
     # https://qdrant.github.io/fastembed/examples/Supported_Models/
     embedding_model: str = "BAAI/bge-large-en-v1.5"
-    # embedding_dimensions: int = 1024
-    # sparse_embedding_model: str = "Qdrant/bm25"
+    sparse_embedding_model: str = "Qdrant/bm25"
     vectordb_url: str = "http://vectordb:6334/"
     docs_collection_name: str = "expasy"
     entities_collection_name: str = "entities"

@@ -41,6 +41,30 @@ def load_chat_model(configuration: Configuration) -> BaseChatModel:
             temperature=configuration.temperature,
         )
 
+    if provider == "together":
+        # https://python.langchain.com/docs/integrations/chat/together/
+        from langchain_together import ChatTogether
+        return ChatTogether(
+            # model="meta-llama/Llama-3-70b-chat-hf",
+            model=model_name,
+            temperature=configuration.temperature,
+            max_tokens=configuration.max_tokens,
+            timeout=None,
+            max_retries=2,
+        )
+
+    if provider == "hf":
+        # https://python.langchain.com/docs/integrations/chat/huggingface/
+        from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
+        return ChatHuggingFace(llm=HuggingFaceEndpoint(
+            # repo_id="HuggingFaceH4/zephyr-7b-beta",
+            repo_id=model_name,
+            task="text-generation",
+            max_new_tokens=configuration.max_tokens,
+            do_sample=False,
+            repetition_penalty=1.03,
+        ))
+
     if provider == "azure":
         # https://learn.microsoft.com/en-us/azure/ai-studio/how-to/develop/langchain
         from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel

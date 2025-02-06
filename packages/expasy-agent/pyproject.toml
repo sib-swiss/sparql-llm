@@ -23,6 +23,8 @@ dependencies = [
     "langchain-openai >=0.1.22",
     "langchain-azure-ai >=0.1.0",
     "langchain-groq >=0.2.4",
+    # "langchain-huggingface", # This will install torch and many heavy nvidia dependencies
+    "langchain-together",
     "langchain-deepseek-official >=0.1.0",
     # "langchain-anthropic >=0.1.23",
     # "langchain-fireworks >=0.1.7",

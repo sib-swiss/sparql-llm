@@ -1,11 +1,13 @@
-import os
+from http import client
 import time
 
 from langchain_core.documents import Document
+from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
 from qdrant_client import QdrantClient, models
 from sparql_llm.utils import query_sparql
 
 from expasy_agent.config import get_embedding_model, settings
+from expasy_agent.nodes.retrieval import make_text_encoder
 
 # NOTE: Run the script to extract entities from endpoints and generate embeddings for them (long):
 # ssh adsicore
@@ -13,8 +15,8 @@ from expasy_agent.config import get_embedding_model, settings
 # nohup uv run --extra gpu src/expasy_agent/indexing/index_entities.py &
 
 
-entities_embeddings_dir = os.path.join("data", "embeddings")
-entities_embeddings_filepath = os.path.join(entities_embeddings_dir, "entities_embeddings.csv")
+# entities_embeddings_dir = os.path.join("data", "embeddings")
+# entities_embeddings_filepath = os.path.join(entities_embeddings_dir, "entities_embeddings.csv")
 
 
 def retrieve_index_data(entity: dict, docs: list[Document], pagination: (int, int) = None):
@@ -256,31 +258,46 @@ def generate_embeddings_for_entities():
     # entities_res = query_sparql(entity["query"], entity["endpoint"])["results"]["bindings"]
     # print(f"Found {len(entities_res)} entities for {entity['label']} in {entity['endpoint']}")
 
-    print(f"Done querying in {time.time() - start_time} seconds, generating embeddings for {len(docs)} entities")
+    print(f"Done querying SPARQL endpoints in {(time.time() - start_time) / 60:.2f} minutes, generating embeddings for {len(docs)} entities...")
 
     # Uncomment the next line to test with a smaller number of entities
     # docs = docs[:10]
-
-    embeddings = embedding_model.embed([q.page_content for q in docs])
-
-    if not os.path.exists(entities_embeddings_dir):
-        os.makedirs(entities_embeddings_dir)
 
     vectordb_local = QdrantClient(
         path="data/qdrant",
         # host=host,
         prefer_grpc=True,
     )
-    vectordb_local.upsert(
+
+    # Using LangChain
+    QdrantVectorStore.from_documents(
+        docs,
+        # url=settings.vectordb_url,
+        client=vectordb_local,
         collection_name=settings.entities_collection_name,
-        points=models.Batch(
-            ids=list(range(1, len(docs) + 1)),
-            vectors=embeddings,
-            payloads=[doc.metadata for doc in docs],
-        ),
+        embedding=make_text_encoder(settings.embedding_model),
+        sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
+        retrieval_mode=RetrievalMode.HYBRID,
+        prefer_grpc=True,
+        force_recreate=True,
     )
 
-    print(f"Done generating embeddings for {len(docs)} entities in {(time.time() - start_time) / 60:.2f} minutes")
+    # Directly using Qdrant client
+    # embeddings = embedding_model.embed([q.page_content for q in docs])
+    # vectordb_local.recreate_collection(
+    #     collection_name="demo_collection",
+    #     vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
+    # )
+    # vectordb_local.upsert(
+    #     collection_name=settings.entities_collection_name,
+    #     points=models.Batch(
+    #         ids=list(range(1, len(docs) + 1)),
+    #         vectors=embeddings,
+    #         payloads=[doc.metadata for doc in docs],
+    #     ),
+    # )
+
+    print(f"Done generating and indexing embeddings in collection {settings.entities_collection_name} for {len(docs)} entities in {(time.time() - start_time) / 60:.2f} minutes")
 
 
 if __name__ == "__main__":
