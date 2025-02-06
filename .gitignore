@@ -15,6 +15,7 @@ data/
 notebooks/*.csv
 notebooks/*.txt
 entities_embeddings*.csv
+nohup.out
 
 packages/expasy-agent/src/expasy_agent/webapp
 packages/sparql-llm/src/sparql_llm/webapp

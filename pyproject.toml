@@ -57,10 +57,6 @@ dev = [
     "sparql-llm",
     "expasy-agent[cpu]",
     # "oxrdflib",
-    # "langchain-community",
-    # "jupyter",
-    # "ipywidgets",
-    # "tqdm",
 ]
 
 [project.urls]

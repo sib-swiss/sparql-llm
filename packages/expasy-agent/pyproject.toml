@@ -19,7 +19,8 @@ dependencies = [
     "python-dotenv >=1.0.1",
     "langgraph >=0.2.61",
     "langchain >=0.2.14",
-    "langchain-community >=0.2.17",
+    # "langchain-community >=0.3.17",
+    "langchain-community @ git+https://github.com/langchain-ai/langchain.git#subdirectory=libs/community",
     "langchain-openai >=0.1.22",
     "langchain-azure-ai >=0.1.0",
     "langchain-groq >=0.2.4",
@@ -52,11 +53,9 @@ dependencies = [
 [project.optional-dependencies]
 cpu = [
     "fastembed",
-    # "onnxruntime",
 ]
 gpu = [
     "fastembed-gpu",
-    # "onnxruntime-gpu",
 ]
 
 

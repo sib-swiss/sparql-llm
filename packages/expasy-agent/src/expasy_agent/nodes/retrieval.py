@@ -70,13 +70,6 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
 def make_text_encoder(embedding_model: str) -> Embeddings:
     """Connect to the configured text encoder."""
     return FastEmbedEmbeddings(model_name=embedding_model)
-    # provider, model = embedding_model.split("/", maxsplit=1)
-    # match provider:
-    #     case "cohere":
-    #         from langchain_cohere import CohereEmbeddings
-    #         return CohereEmbeddings(model=model)  # type: ignore
-    #     case _:
-    #         raise ValueError(f"Unsupported embedding provider: {provider}")
 
 
 ## Retriever constructors
