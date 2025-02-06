@@ -214,9 +214,9 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 > **Experimental entities indexing**: it can take a lot of time to generate embeddings for entities. So we recommend to run the script to generate embeddings on a machine with GPU (does not need to be a powerful one, but at least with a GPU, checkout [fastembed GPU docs](https://qdrant.github.io/fastembed/examples/FastEmbed_GPU/) to install the GPU drivers and dependencies)
 >
 > ```sh
-> docker compose -f compose.dev.yml up vectordb
+> docker compose -f compose.dev.yml up vectordb -d
 > cd packages/expasy-agent
-> nohup VECTORDB_URL=http://localhost:6334 uv run --extra gpu src/expasy_agent/indexing/index_entities.py --gpu &
+> VECTORDB_URL=http://localhost:6334 nohup uv run --extra gpu src/expasy_agent/indexing/index_entities.py --gpu &
 > ```
 >
 > Then move the entities collection containing the embeddings in `data/qdrant/collections/entities` before starting the stack

@@ -253,7 +253,7 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
             retrieve_index_data(entity, docs)
 
     # Uncomment the next line to test with a smaller number of entities
-    docs = docs[:100]
+    # docs = docs[:100]
 
     print(f"Done querying SPARQL endpoints in {(time.time() - start_time) / 60:.2f} minutes, generating embeddings for {len(docs)} entities...")
 
