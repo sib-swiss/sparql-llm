@@ -3,10 +3,11 @@ import time
 
 from langchain_core.documents import Document
 from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
+from qdrant_client import QdrantClient, models
 from sparql_llm.utils import query_sparql
 
 from expasy_agent.config import settings
-from expasy_agent.nodes.retrieval import make_text_encoder
+from expasy_agent.nodes.retrieval import make_dense_encoder
 
 # NOTE: Run the script to extract entities from endpoints and generate embeddings for them (long):
 # ssh adsicore
@@ -41,20 +42,6 @@ def retrieve_index_data(entity: dict, docs: list[Document], pagination: (int, in
 def generate_embeddings_for_entities(gpu: bool = False) -> None:
     start_time = time.time()
     entities_list = {
-        "genex:AnatomicalEntity": {
-            "uri": "http://purl.org/genex#AnatomicalEntity",
-            "label": "Anatomical entity",
-            "description": "An anatomical entity can be an organism part (e.g. brain, blood, liver and so on) or a material anatomical entity such as a cell.",
-            "endpoint": "https://www.bgee.org/sparql/",
-            "pagination": False,
-            "query": """PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    PREFIX genex: <http://purl.org/genex#>
-    SELECT DISTINCT ?uri ?label
-    WHERE {
-        ?uri a genex:AnatomicalEntity ;
-            rdfs:label ?label .
-    }""",
-        },
         "bgee_species": {
             "uri": "http://purl.uniprot.org/core/Taxon",
             "label": "species",
@@ -67,6 +54,20 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
         ?uri a up:Taxon ;
             up:rank up:Species ;
             up:scientificName ?label .
+    }""",
+        },
+        "genex:AnatomicalEntity": {
+            "uri": "http://purl.org/genex#AnatomicalEntity",
+            "label": "Anatomical entity",
+            "description": "An anatomical entity can be an organism part (e.g. brain, blood, liver and so on) or a material anatomical entity such as a cell.",
+            "endpoint": "https://www.bgee.org/sparql/",
+            "pagination": False,
+            "query": """PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    PREFIX genex: <http://purl.org/genex#>
+    SELECT DISTINCT ?uri ?label
+    WHERE {
+        ?uri a genex:AnatomicalEntity ;
+            rdfs:label ?label .
     }""",
         },
         "efo:EFO_0000399": {
@@ -250,36 +251,30 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
         else:
             retrieve_index_data(entity, docs)
 
-    # Uncomment the next line to test with a smaller number of entities
-    # docs = docs[:100]
-
     print(f"Done querying SPARQL endpoints in {(time.time() - start_time) / 60:.2f} minutes, generating embeddings for {len(docs)} entities...")
 
-
-    from qdrant_client import QdrantClient, models
-
-    qdrant_client = QdrantClient(url=settings.vectordb_url)
+    qdrant_client = QdrantClient(url=settings.vectordb_url, prefer_grpc=True)
     if qdrant_client.collection_exists(settings.entities_collection_name):
         qdrant_client.delete_collection(settings.entities_collection_name)
+
+    # Initialize collection in Qdrant vectordb with hybrid retrieval mode (dense and sparse vectors)
+    # With indexes loaded on disk to avoid OOM errors when indexing large collections
     qdrant_client.create_collection(
         collection_name=settings.entities_collection_name,
         vectors_config=models.VectorParams(size=settings.embedding_dimensions, distance=models.Distance.COSINE, on_disk=True),
         hnsw_config=models.HnswConfigDiff(on_disk=True),
+        sparse_vectors_config={QdrantVectorStore.SPARSE_VECTOR_NAME: models.SparseVectorParams()},
     )
 
-    # Using LangChain
     vectordb = QdrantVectorStore(
-        # url=settings.vectordb_url,
         client=qdrant_client,
         collection_name=settings.entities_collection_name,
-        embedding=make_text_encoder(settings.embedding_model, gpu),
-        # sparse_embedding=FastEmbedSparse(
-        #     model_name=settings.sparse_embedding_model,
-        #     batch_size=1024,
-        # ),
-        # retrieval_mode=RetrievalMode.HYBRID,
-        # force_recreate=True,
-        # hnsw_config=models.HnswConfigDiff(on_disk=True),
+        embedding=make_dense_encoder(settings.embedding_model, gpu),
+        sparse_embedding=FastEmbedSparse(
+            model_name=settings.sparse_embedding_model,
+            batch_size=1024,
+        ),
+        retrieval_mode=RetrievalMode.HYBRID,
     )
     vectordb.add_documents(docs, batch_size=1024)
 
@@ -289,16 +284,7 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
     # from qdrant_client import QdrantClient, models
     # embedding_model = TextEmbedding(settings.embedding_model, providers=["CUDAExecutionProvider"])
     # embeddings = embedding_model.embed([q.page_content for q in docs])
-    # vectordb_local = QdrantClient(
-    #     # url=settings.vectordb_url,
-    #     # path="data/qdrant",
-    #     prefer_grpc=True,
-    # )
-    # vectordb_local.recreate_collection(
-    #     collection_name=settings.entities_collection_name,
-    #     # vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
-    # )
-    # vectordb_local.upsert(
+    # qdrant_client.upsert(
     #     collection_name=settings.entities_collection_name,
     #     points=models.Batch(
     #         ids=list(range(1, len(docs) + 1)),

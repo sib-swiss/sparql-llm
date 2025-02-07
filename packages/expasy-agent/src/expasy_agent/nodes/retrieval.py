@@ -67,7 +67,7 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
 
 ## Encoder constructors
 
-def make_text_encoder(embedding_model: str, gpu: bool = False) -> Embeddings:
+def make_dense_encoder(embedding_model: str, gpu: bool = False) -> Embeddings:
     """Connect to the configured text encoder."""
     return FastEmbedEmbeddings(
         model_name=embedding_model,
@@ -94,7 +94,7 @@ def make_qdrant_retriever(configuration: Configuration) -> Generator["ScoredRetr
     vectordb = QdrantVectorStore.from_existing_collection(
         url=settings.vectordb_url,
         collection_name=settings.docs_collection_name,
-        embedding=make_text_encoder(settings.embedding_model),
+        embedding=make_dense_encoder(settings.embedding_model),
         # sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
         # retrieval_mode=RetrievalMode.HYBRID,
         prefer_grpc=True,

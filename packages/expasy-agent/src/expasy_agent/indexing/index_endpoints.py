@@ -11,7 +11,7 @@ from sparql_llm.sparql_void_shapes_loader import SparqlVoidShapesLoader
 from sparql_llm.utils import get_prefixes_for_endpoints
 
 from expasy_agent.config import Configuration, settings
-from expasy_agent.nodes.retrieval import make_text_encoder
+from expasy_agent.nodes.retrieval import make_dense_encoder
 
 SCHEMA = Namespace("http://schema.org/")
 
@@ -184,7 +184,7 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
         # url="http://localhost:6333/",
         url=settings.vectordb_url,
         collection_name=settings.docs_collection_name,
-        embedding=make_text_encoder(settings.embedding_model),
+        embedding=make_dense_encoder(settings.embedding_model),
         # sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
         # retrieval_mode=RetrievalMode.HYBRID,
         prefer_grpc=True,

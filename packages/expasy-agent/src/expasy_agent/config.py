@@ -5,10 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field, fields
 from typing import Annotated, Any, Optional, Type, TypeVar
 
-from fastembed import TextEmbedding
 from langchain_core.runnables import RunnableConfig, ensure_config
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from qdrant_client import QdrantClient
 
 from expasy_agent import prompts
 
@@ -259,11 +257,11 @@ class Configuration:
 T = TypeVar("T", bound=Configuration)
 
 
-
-def get_embedding_model(gpu: bool = False) -> TextEmbedding:
-    if gpu:
-        return TextEmbedding(settings.embedding_model, providers=["CUDAExecutionProvider"])
-    return TextEmbedding(settings.embedding_model)
+# from fastembed import TextEmbedding
+# def get_embedding_model(gpu: bool = False) -> TextEmbedding:
+#     if gpu:
+#         return TextEmbedding(settings.embedding_model, providers=["CUDAExecutionProvider"])
+#     return TextEmbedding(settings.embedding_model)
 
 
 # def get_vectordb(host=settings.vectordb_url) -> QdrantClient:

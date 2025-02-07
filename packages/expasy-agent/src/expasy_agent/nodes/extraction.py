@@ -5,10 +5,10 @@ import spacy
 from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_core.runnables import RunnableConfig
 from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
-from qdrant_client import QdrantClient
+# from qdrant_client import QdrantClient
 from sparql_llm.utils import get_message_text
 
-from expasy_agent.config import Configuration, get_embedding_model, settings
+from expasy_agent.config import Configuration, settings
 from expasy_agent.state import State
 
 
@@ -57,6 +57,7 @@ async def extract_entities(state: State, config: RunnableConfig) -> dict[str, li
         embedding=FastEmbedEmbeddings(model_name=settings.embedding_model),
         sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
         retrieval_mode=RetrievalMode.HYBRID,
+        prefer_grpc=True,
     )
 
     # Search for matches in the indexed entities
@@ -68,7 +69,7 @@ async def extract_entities(state: State, config: RunnableConfig) -> dict[str, li
         )
         matchs = []
         for doc, score in query_hits:
-            print(f"* [SIM={score:3f}] {doc.page_content} [{doc.metadata}]")
+            # print(f"* [SIM={score:3f}] {doc.page_content} [{doc.metadata}]")
             doc.metadata["score"] = score
             matchs.append(doc)
         entities_list.append(
@@ -79,7 +80,7 @@ async def extract_entities(state: State, config: RunnableConfig) -> dict[str, li
                 # "end_index": None,
             }
         )
-
+    return {"extracted_entities": entities_list}
 
     ## Initialize the Qdrant client and the embedding model
     # vectordb = QdrantClient(url=settings.vectordb_url, prefer_grpc=True)
@@ -103,7 +104,7 @@ async def extract_entities(state: State, config: RunnableConfig) -> dict[str, li
     #             # "end_index": None,
     #         }
     #     )
-    return {"extracted_entities": entities_list}
+    # return {"extracted_entities": entities_list}
 
     ## Using BioBERT
     # from transformers import AutoTokenizer, AutoModelForTokenClassification
