@@ -259,15 +259,16 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
     from qdrant_client import QdrantClient, models
 
     qdrant_client = QdrantClient(url=settings.vectordb_url)
-    qdrant_client.recreate_collection(
+    if qdrant_client.collection_exists(settings.entities_collection_name):
+        qdrant_client.delete_collection(settings.entities_collection_name)
+    qdrant_client.create_collection(
         collection_name=settings.entities_collection_name,
         vectors_config=models.VectorParams(size=settings.embedding_dimensions, distance=models.Distance.COSINE, on_disk=True),
         hnsw_config=models.HnswConfigDiff(on_disk=True),
     )
 
     # Using LangChain
-    QdrantVectorStore.from_documents(
-        docs,
+    vectordb = QdrantVectorStore(
         # url=settings.vectordb_url,
         client=qdrant_client,
         collection_name=settings.entities_collection_name,
@@ -280,6 +281,7 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
         # force_recreate=True,
         # hnsw_config=models.HnswConfigDiff(on_disk=True),
     )
+    vectordb.add_documents(docs, batch_size=1024)
 
     # Directly using Qdrant client
     # from fastembed import TextEmbedding
