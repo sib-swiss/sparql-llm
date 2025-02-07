@@ -29,9 +29,10 @@ elif [ "$1" = "index" ]; then
     ssh_cmd "podman-compose exec api python src/expasy_agent/indexing/index_endpoints.py"
 
 elif [ "$1" = "import-entities-index" ]; then
-    echo "Imported from adsicore which has GPU to generate them"
-    scp -R adsicore:/mnt/scratch/sparql-llm/packages/expasy-agent/src/expasy_agent/data/qdrant/collections/entities ./data/qdrant/collections/entities
-    # scp -R adsicore:/mnt/scratch/sparql-llm/packages/expasy-agent/src/expasy_agent/data/qdrant/collections/entities expasychatpodman:/var/containers/podman/sparql-llm/data/qdrant/collections/entities
+    echo "Import entities embeddings from adsicore which has GPU to generate them"
+    scp -r adsicore:/mnt/scratch/sparql-llm/data/qdrant/collections/entities ./data/qdrant/collections/entities
+    # scp -r adsicore:/mnt/scratch/sparql-llm/data/qdrant/collections/entities expasychatpodman:/var/containers/podman/sparql-llm/data/qdrant/collections/entities
+    # zip -r data/entities.zip data/qdrant/collections/entities
 
 elif [ "$1" = "likes" ]; then
     mkdir -p data/prod

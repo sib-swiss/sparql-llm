@@ -1,13 +1,11 @@
 import argparse
 import time
 
-from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_core.documents import Document
 from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
-from qdrant_client import QdrantClient, models
 from sparql_llm.utils import query_sparql
 
-from expasy_agent.config import get_embedding_model, settings
+from expasy_agent.config import settings
 from expasy_agent.nodes.retrieval import make_text_encoder
 
 # NOTE: Run the script to extract entities from endpoints and generate embeddings for them (long):
@@ -257,34 +255,46 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
 
     print(f"Done querying SPARQL endpoints in {(time.time() - start_time) / 60:.2f} minutes, generating embeddings for {len(docs)} entities...")
 
+
+    from qdrant_client import QdrantClient, models
+
+    qdrant_client = QdrantClient(url=settings.vectordb_url)
+    qdrant_client.recreate_collection(
+        collection_name=settings.entities_collection_name,
+        vectors_config=models.VectorParams(size=settings.embedding_dimensions, distance=models.Distance.COSINE, on_disk=True),
+        hnsw_config=models.HnswConfigDiff(on_disk=True),
+    )
+
     # Using LangChain
     QdrantVectorStore.from_documents(
         docs,
-        url=settings.vectordb_url,
+        # url=settings.vectordb_url,
+        client=qdrant_client,
         collection_name=settings.entities_collection_name,
-        embedding=FastEmbedEmbeddings(
-            model_name=settings.embedding_model,
-            gpu=gpu,
-            # threads=100,
-        ),
-        # embedding=make_text_encoder(settings.embedding_model),
-        sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
-        retrieval_mode=RetrievalMode.HYBRID,
-        prefer_grpc=True,
-        force_recreate=True,
+        embedding=make_text_encoder(settings.embedding_model, gpu),
+        # sparse_embedding=FastEmbedSparse(
+        #     model_name=settings.sparse_embedding_model,
+        #     batch_size=1024,
+        # ),
+        # retrieval_mode=RetrievalMode.HYBRID,
+        # force_recreate=True,
+        # hnsw_config=models.HnswConfigDiff(on_disk=True),
     )
 
     # Directly using Qdrant client
-    # embedding_model = get_embedding_model(gpu=True)
+    # from fastembed import TextEmbedding
+    # from langchain_community.embeddings import FastEmbedEmbeddings
+    # from qdrant_client import QdrantClient, models
+    # embedding_model = TextEmbedding(settings.embedding_model, providers=["CUDAExecutionProvider"])
     # embeddings = embedding_model.embed([q.page_content for q in docs])
     # vectordb_local = QdrantClient(
-    #     url=settings.vectordb_url,
+    #     # url=settings.vectordb_url,
     #     # path="data/qdrant",
     #     prefer_grpc=True,
     # )
     # vectordb_local.recreate_collection(
-    #     collection_name="demo_collection",
-    #     vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
+    #     collection_name=settings.entities_collection_name,
+    #     # vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
     # )
     # vectordb_local.upsert(
     #     collection_name=settings.entities_collection_name,

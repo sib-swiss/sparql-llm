@@ -1,10 +1,10 @@
 FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
 # https://docs.astral.sh/uv/guides/integration/docker
 
-# RUN apt-get update && apt-get install -y \
-#     gcc \
-#     build-essential \
-#     && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y git && \
+    # gcc build-essential \
+    rm -rf /var/lib/apt/lists/*
 
 # COPY pyproject.toml /app/pyproject.toml
 # COPY packages/expasy-agent/pyproject.toml /app/packages/expasy-agent/pyproject.toml

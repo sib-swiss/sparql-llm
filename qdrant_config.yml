@@ -1,0 +1,5 @@
+# # https://qdrant.tech/documentation/guides/configuration/#configuration-options
+# storage:
+#   hnsw_index:
+#     # Store HNSW index on disk. If set to false, index will be stored in RAM. Default: false
+#     on_disk: true

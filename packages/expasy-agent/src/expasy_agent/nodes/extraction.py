@@ -1,11 +1,12 @@
 """Extract potential entities from the user question (experimental)."""
-import re
 from typing import Any
 
+import spacy
+from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_core.runnables import RunnableConfig
+from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
 from qdrant_client import QdrantClient
 from sparql_llm.utils import get_message_text
-import spacy
 
 from expasy_agent.config import Configuration, get_embedding_model, settings
 from expasy_agent.state import State
@@ -38,39 +39,70 @@ async def extract_entities(state: State, config: RunnableConfig) -> dict[str, li
         dict[str, list[Document]]: A dictionary with a single key "retrieved_docs"
         containing a list of retrieved Document objects.
     """
+    configuration = Configuration.from_runnable_config(config)
     user_input = get_message_text(state.messages[-1])
-
-    vectordb = QdrantClient(url=settings.vectordb_url, prefer_grpc=True)
-    embedding_model = get_embedding_model()
     score_threshold = 0.8
+    results_count = 5
     entities_list = []
 
-    # Extract potential entities with scispaCy https://allenai.github.io/scispacy/
+    # Extract potential entities with sciSpaCy https://allenai.github.io/scispacy/
     # NOTE: more expensive alternative could be to use the BioBERT model
     nlp = spacy.load("en_core_sci_md")
     potential_entities = nlp(user_input).ents
     print(potential_entities)
 
+    vectordb = QdrantVectorStore.from_existing_collection(
+        url=settings.vectordb_url,
+        collection_name=settings.entities_collection_name,
+        embedding=FastEmbedEmbeddings(model_name=settings.embedding_model),
+        sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
+        retrieval_mode=RetrievalMode.HYBRID,
+    )
+
     # Search for matches in the indexed entities
-    entities_embeddings = embedding_model.embed([entity.text for entity in potential_entities])
-    for i, entity_embeddings in enumerate(entities_embeddings):
-        query_hits = vectordb.search(
-            collection_name=settings.entities_collection_name,
-            query_vector=entity_embeddings,
-            limit=10,
+    for potential_entity in potential_entities:
+        query_hits = vectordb.similarity_search_with_score(
+            query=potential_entity.text,
+            k=results_count,
+            score_threshold=score_threshold,
         )
         matchs = []
-        for query_hit in query_hits:
-            if query_hit.score > score_threshold:
-                matchs.append(query_hit)
+        for doc, score in query_hits:
+            print(f"* [SIM={score:3f}] {doc.page_content} [{doc.metadata}]")
+            doc.metadata["score"] = score
+            matchs.append(doc)
         entities_list.append(
             {
                 "matchs": matchs,
-                "text": potential_entities[i].text,
+                "text": potential_entity.text,
                 # "start_index": None,
                 # "end_index": None,
             }
         )
+
+
+    ## Initialize the Qdrant client and the embedding model
+    # vectordb = QdrantClient(url=settings.vectordb_url, prefer_grpc=True)
+    # embedding_model = get_embedding_model()
+    # entities_embeddings = embedding_model.embed([entity.text for entity in potential_entities])
+    # for i, entity_embeddings in enumerate(entities_embeddings):
+    #     query_hits = vectordb.search(
+    #         collection_name=settings.entities_collection_name,
+    #         query_vector=entity_embeddings,
+    #         limit=results_count,
+    #     )
+    #     matchs = []
+    #     for query_hit in query_hits:
+    #         if query_hit.score > score_threshold:
+    #             matchs.append(query_hit)
+    #     entities_list.append(
+    #         {
+    #             "matchs": matchs,
+    #             "text": potential_entities[i].text,
+    #             # "start_index": None,
+    #             # "end_index": None,
+    #         }
+    #     )
     return {"extracted_entities": entities_list}
 
     ## Using BioBERT

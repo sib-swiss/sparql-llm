@@ -45,17 +45,18 @@ expasy-agent = { workspace = true }
 
 [dependency-groups]
 dev = [
-    "pytest",
-    "pytest-cov",
-    "ruff",
-    "mypy",
-    "pyright",
-    "SPARQLWrapper",
-    "ipykernel",
-    "python-dotenv",
-    "pandas",
+    "pytest >=8.3.4",
+    "pytest-cov >=6.0.0",
+    "ruff >=0.9.5",
+    "mypy >=1.15.0",
+    "pre-commit >=4.1.0",
+    "ipykernel >=6.29.5",
+    "python-dotenv >=1.0.1",
+    "pandas >=2.2.3",
+    "SPARQLWrapper >=2.0.0",
     "sparql-llm",
     "expasy-agent[cpu]",
+    # "pyright",
     # "oxrdflib",
 ]
 

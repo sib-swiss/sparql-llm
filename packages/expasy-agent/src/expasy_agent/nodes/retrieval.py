@@ -67,10 +67,23 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
 
 ## Encoder constructors
 
-def make_text_encoder(embedding_model: str) -> Embeddings:
+def make_text_encoder(embedding_model: str, gpu: bool = False) -> Embeddings:
     """Connect to the configured text encoder."""
-    return FastEmbedEmbeddings(model_name=embedding_model)
+    return FastEmbedEmbeddings(
+        model_name=embedding_model,
+        providers=["CUDAExecutionProvider"] if gpu else None,
+        batch_size=1024,
+    )
 
+# def make_vectordb(collection_name: str, gpu: bool = False):
+#     """Connect to the configured vector database."""
+#     return QdrantVectorStore(
+#         url=settings.vectordb_url,
+#         collection_name=collection_name,
+#         embedding=make_text_encoder(settings.embedding_model, gpu),
+#         sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model, batch_size=1024),
+#         retrieval_mode=RetrievalMode.HYBRID,
+#     )
 
 ## Retriever constructors
 
@@ -78,17 +91,20 @@ def make_text_encoder(embedding_model: str) -> Embeddings:
 @contextmanager
 def make_qdrant_retriever(configuration: Configuration) -> Generator["ScoredRetriever", None, None]:
     """Configure this agent to connect to a specific Qdrant index."""
-    embedding_model = make_text_encoder(settings.embedding_model)
     vectordb = QdrantVectorStore.from_existing_collection(
         url=settings.vectordb_url,
         collection_name=settings.docs_collection_name,
-        embedding=embedding_model,
-        # sparse_embedding=FastEmbedSparse(model_name=configuration.sparse_embedding_model),
+        embedding=make_text_encoder(settings.embedding_model),
+        # sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
         # retrieval_mode=RetrievalMode.HYBRID,
         prefer_grpc=True,
     )
     yield ScoredRetriever(vectorstore=vectordb, search_kwargs=configuration.search_kwargs)
     # yield vectordb.as_retriever(search_kwargs=configuration.search_kwargs)
+
+
+# TODO: to avoid generating twice embeddings for the same query, we could use a custom vectorstore
+# vectordb.asimilarity_search_with_score_by_vector()
 
 # https://python.langchain.com/docs/how_to/custom_retriever/#example
 # https://api.python.langchain.com/en/latest/_modules/langchain_core/vectorstores.html#VectorStore.as_retriever
@@ -99,6 +115,21 @@ class ScoredRetriever(VectorStoreRetriever):
     async def _aget_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun
     ) -> list[Document]:
+
+        # # query_embedding = await self.vectorstore._aembed_query(query)
+        # query_embedding = await self.vectorstore.embeddings.aembed_query(query)
+
+        # docs, scores = await self.vectorstore.asimilarity_search_with_score(
+        #     query_embedding,
+        #     k,
+        #     filter=filter,
+        #     search_params=search_params,
+        #     offset=offset,
+        #     score_threshold=score_threshold,
+        #     consistency=consistency,
+        #     **kwargs,
+        # )
+
         docs, scores = zip(
             *self.vectorstore.similarity_search_with_score(query, **self.search_kwargs)
         )

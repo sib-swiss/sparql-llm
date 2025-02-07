@@ -7,7 +7,6 @@ from typing import Annotated, Any, Optional, Type, TypeVar
 
 from fastembed import TextEmbedding
 from langchain_core.runnables import RunnableConfig, ensure_config
-from openai import OpenAI
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from qdrant_client import QdrantClient
 
@@ -108,7 +107,9 @@ class Settings(BaseSettings):
     # Settings for the vector store
     # https://qdrant.github.io/fastembed/examples/Supported_Models/
     embedding_model: str = "BAAI/bge-large-en-v1.5"
+    embedding_dimensions: int = 1024
     sparse_embedding_model: str = "Qdrant/bm25"
+    # sparse_embedding_model: str = "prithivida/Splade_PP_en_v1"
     vectordb_url: str = "http://vectordb:6334/"
     docs_collection_name: str = "expasy"
     entities_collection_name: str = "entities"
@@ -257,17 +258,6 @@ class Configuration:
 
 T = TypeVar("T", bound=Configuration)
 
-
-
-# NOTE: still in use by tests, to be replaced with litellm
-def get_llm_client(model: str) -> OpenAI:
-    if model.startswith("hf:"):
-        # Automatically use glhf API key if the model starts with "hf:"
-        return OpenAI(
-            api_key=settings.glhf_api_key,
-            base_url="https://glhf.chat/api/openai/v1",
-        )
-    return OpenAI()
 
 
 def get_embedding_model(gpu: bool = False) -> TextEmbedding:

@@ -10,9 +10,9 @@ services:
       - ./data/qdrant:/qdrant/storage
       # - ./qdrant_config.yml:/qdrant/config/production.yaml
     environment:
+      - QDRANT__TELEMETRY_DISABLED=true
       - QDRANT_ALLOW_RECOVERY_MODE=true
-    # command:
-    #   - ./qdrant --config-path /qdrant/config/production.yaml
+    # command: ./qdrant --config-path /qdrant/config/production.yaml
 
   api:
     build: .
