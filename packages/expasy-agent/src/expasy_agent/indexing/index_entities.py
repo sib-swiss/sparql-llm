@@ -253,7 +253,7 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
 
     print(f"Done querying SPARQL endpoints in {(time.time() - start_time) / 60:.2f} minutes, generating embeddings for {len(docs)} entities...")
 
-    qdrant_client = QdrantClient(url=settings.vectordb_url, prefer_grpc=True)
+    qdrant_client = QdrantClient(url=settings.vectordb_url, prefer_grpc=True, timeout=600)
     if qdrant_client.collection_exists(settings.entities_collection_name):
         qdrant_client.delete_collection(settings.entities_collection_name)
 
@@ -276,7 +276,7 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
         ),
         retrieval_mode=RetrievalMode.HYBRID,
     )
-    vectordb.add_documents(docs, batch_size=1024)
+    vectordb.add_documents(docs, batch_size=256)
 
     # Directly using Qdrant client
     # from fastembed import TextEmbedding
