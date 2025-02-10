@@ -39,6 +39,13 @@ dependencies = [
     "langchain-core >=0.3.34",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest >=8.3.4",
+    "pytest-cov >=6.0.0",
+    "ruff >=0.9.5",
+    "mypy >=1.15.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/sib-swiss/sparql-llm"
