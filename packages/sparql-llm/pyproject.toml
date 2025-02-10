@@ -58,3 +58,12 @@ packages = ["src/sparql_llm"]
 # If you need to import packages from git URLs:
 # [tool.hatch.metadata]
 # allow-direct-references = true
+
+[tool.pytest.ini_options]
+addopts = [
+    "-vvv",           # Verbose level 3
+    "--durations=10", # Show 10 slowest tests durations
+    "--cov=src",
+    "--color=yes",
+    "--cov-report=term-missing",
+]
