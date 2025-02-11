@@ -30,20 +30,20 @@ export function getEditorUrl(query: string, endpointUrl: string = "") {
   return `https://sib-swiss.github.io/sparql-editor/?${endpointUrl ? `endpoint=${endpointUrl}&` : ""}query=${encodeURIComponent(query)}`;
 }
 
-export function getLangForDocType(docType: string) {
-  switch (docType) {
-    case "SPARQL endpoints query examples":
-      return "language-sparql";
-    // case "General information":
-    //   return "language-json";
-    case "SPARQL endpoints classes schema":
-      return "language-turtle";
-    case "Ontology":
-      return "language-turtle";
-    default:
-      return "";
-  }
-}
+// export function getLangForDocType(docType: string) {
+//   switch (docType) {
+//     case "SPARQL endpoints query examples":
+//       return "language-sparql";
+//     // case "General information":
+//     //   return "language-json";
+//     case "SPARQL endpoints classes schema":
+//       return "language-turtle";
+//     case "Ontology":
+//       return "language-turtle";
+//     default:
+//       return "";
+//   }
+// }
 
 // Get filters for color hex here: https://codepen.io/sosuke/pen/Pjoqqp
 export const style = `chat-with-context {

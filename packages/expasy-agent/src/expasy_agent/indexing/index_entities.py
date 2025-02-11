@@ -30,7 +30,7 @@ def retrieve_index_data(entity: dict, docs: list[Document], pagination: (int, in
                 page_content=entity_res["label"]["value"],
                 metadata={
                     "label": entity_res["label"]["value"],
-                    "uri": entity_res["uri"]["value"],
+                    "iri": entity_res["uri"]["value"],
                     "endpoint_url": entity["endpoint"],
                     "entity_type": entity["uri"],
                 },
@@ -142,7 +142,7 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
     WHERE {
         ?uri a up:Taxon ;
             up:rank up:Species ;
-            up:scientificName ?label .
+            up:scientificName|up:commonName ?label .
     }""",
         },
         "oma_species": {
@@ -270,13 +270,13 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
         client=qdrant_client,
         collection_name=settings.entities_collection_name,
         embedding=make_dense_encoder(settings.embedding_model, gpu),
-        sparse_embedding=FastEmbedSparse(
-            model_name=settings.sparse_embedding_model,
-            batch_size=1024,
-        ),
+        sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
         retrieval_mode=RetrievalMode.HYBRID,
     )
-    vectordb.add_documents(docs, batch_size=256)
+    vectordb.add_documents(docs, batch_size=64)
+    # TODO: Check how much times it takes with default batch size of 64
+    # vectordb.add_documents(docs, batch_size=256)
+    # Done generating and indexing embeddings in collection entities for 7 960 941 entities in 204.51 minutes
 
     # Directly using Qdrant client
     # from fastembed import TextEmbedding

@@ -1,164 +1,88 @@
-"""Extract potential entities from the user question (experimental)."""
-from typing import Any
+"""Node to call the model.
 
-import spacy
-from langchain_community.embeddings import FastEmbedEmbeddings
+Works with a chat model with tool calling support.
+"""
+
+from typing import Any, Dict, List, Literal, Optional
+
+from langchain_core.messages import AIMessage
+from langchain_core.messages.base import BaseMessage
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
-from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
-# from qdrant_client import QdrantClient
-from sparql_llm.utils import get_message_text
+from pydantic import BaseModel, Field
 
 from expasy_agent.config import Configuration, settings
-from expasy_agent.state import State
+from expasy_agent.prompts import EXTRACTION_PROMPT, INTRODUCTION_PROMPT
+from expasy_agent.state import State, StepOutput
+from expasy_agent.utils import load_chat_model
 
+# https://python.langchain.com/docs/how_to/structured_output
+class StructuredQuestion(BaseModel):
+    """Extracted."""
 
-def format_extracted_entities(entities_list: list[Any]) -> str:
-    if len(entities_list) == 0:
-        return "No entities found in the user question that matches entities in the endpoints. "
-    prompt = ""
-    for entity in entities_list:
-        prompt += f'\n\nEntities found in the user question for "{" ".join(entity["text"])}":\n\n'
-        for match in entity["matchs"]:
-            prompt += f"- {match.payload['label']} with IRI <{match.payload['uri']}> in endpoint {match.payload['endpoint_url']}\n\n"
-        # prompt += "\nIf the user is asking for a named entity, and this entity cannot be found in the endpoint, warn them about the fact we could not find it in the endpoints.\n\n"
-    return prompt
-
-
-
-async def extract_entities(state: State, config: RunnableConfig) -> dict[str, list[Any]]:
-    """Extract potential entities from the latest message in the state.
-
-    This function takes the current state and configuration, uses the latest query
-    from the state to extract relevant entities.
-
-    Args:
-        state (State): The current state containing queries and the retriever.
-        config (RunnableConfig | None, optional): Configuration for the retrieval process.
-
-    Returns:
-        dict[str, list[Document]]: A dictionary with a single key "retrieved_docs"
-        containing a list of retrieved Document objects.
-    """
-    configuration = Configuration.from_runnable_config(config)
-    user_input = get_message_text(state.messages[-1])
-    score_threshold = 0.8
-    results_count = 5
-    entities_list = []
-
-    # Extract potential entities with sciSpaCy https://allenai.github.io/scispacy/
-    # NOTE: more expensive alternative could be to use the BioBERT model
-    nlp = spacy.load("en_core_sci_md")
-    potential_entities = nlp(user_input).ents
-    print(potential_entities)
-
-    vectordb = QdrantVectorStore.from_existing_collection(
-        url=settings.vectordb_url,
-        collection_name=settings.entities_collection_name,
-        embedding=FastEmbedEmbeddings(model_name=settings.embedding_model),
-        sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
-        retrieval_mode=RetrievalMode.HYBRID,
-        prefer_grpc=True,
+    intent: Literal["general_information", "access_resources"] = Field(
+        description="Intent extracted from the user question"
+    )
+    extracted_classes: list[str] = Field(
+        description="List of classes extracted from the user question"
+    )
+    extracted_entities: list[str] = Field(
+        description="List of entities extracted from the user question"
+    )
+    question_steps: list[str] = Field(
+        default_factory=list,
+        description="List of steps extracted from the user question"
     )
 
-    # Search for matches in the indexed entities
-    for potential_entity in potential_entities:
-        query_hits = vectordb.similarity_search_with_score(
-            query=potential_entity.text,
-            k=results_count,
-            score_threshold=score_threshold,
-        )
-        matchs = []
-        for doc, score in query_hits:
-            # print(f"* [SIM={score:3f}] {doc.page_content} [{doc.metadata}]")
-            doc.metadata["score"] = score
-            matchs.append(doc)
-        entities_list.append(
-            {
-                "matchs": matchs,
-                "text": potential_entity.text,
-                # "start_index": None,
-                # "end_index": None,
-            }
-        )
-    return {"extracted_entities": entities_list}
+async def extract_user_question(state: State, config: RunnableConfig) -> Dict[str, List[AIMessage]]:
+    """Call the LLM powering our "agent".
 
-    ## Initialize the Qdrant client and the embedding model
-    # vectordb = QdrantClient(url=settings.vectordb_url, prefer_grpc=True)
-    # embedding_model = get_embedding_model()
-    # entities_embeddings = embedding_model.embed([entity.text for entity in potential_entities])
-    # for i, entity_embeddings in enumerate(entities_embeddings):
-    #     query_hits = vectordb.search(
-    #         collection_name=settings.entities_collection_name,
-    #         query_vector=entity_embeddings,
-    #         limit=results_count,
-    #     )
-    #     matchs = []
-    #     for query_hit in query_hits:
-    #         if query_hit.score > score_threshold:
-    #             matchs.append(query_hit)
-    #     entities_list.append(
-    #         {
-    #             "matchs": matchs,
-    #             "text": potential_entities[i].text,
-    #             # "start_index": None,
-    #             # "end_index": None,
-    #         }
-    #     )
-    # return {"extracted_entities": entities_list}
+    This function prepares the prompt, initializes the model, and processes the response.
 
-    ## Using BioBERT
-    # from transformers import AutoTokenizer, AutoModelForTokenClassification
-    # from transformers import pipeline
+    Args:
+        state (State): The current state of the conversation.
+        config (RunnableConfig): Configuration for the model run.
 
-    # # Load BioBERT model and tokenizer
-    # model_name = "dmis-lab/biobert-v1.1"
-    # tokenizer = AutoTokenizer.from_pretrained(model_name)
-    # model = AutoModelForTokenClassification.from_pretrained(model_name)
+    Returns:
+        dict: A dictionary containing the model's response message.
+    """
+    configuration = Configuration.from_runnable_config(config)
 
-    # # Create NER pipeline
-    # ner_pipeline = pipeline("ner", model=model, tokenizer=tokenizer, aggregation_strategy="simple")
+    model = load_chat_model(configuration).with_structured_output(StructuredQuestion)
 
-    # # Extract entities
-    # results = ner_pipeline(user_input)
-    # for entity in results:
-    #     print(f"{entity['word']} ({entity['entity_group']})")
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", EXTRACTION_PROMPT),
+        ("placeholder", "{messages}"),
+    ])
+    message_value = await prompt_template.ainvoke({
+        "messages": state.messages,
+    }, config)
 
-    ## Old way
-    # sentence_splitted = re.findall(r"\b\w+\b", user_input)
-    # window_size = len(sentence_splitted)
-    # while window_size > 0 and window_size <= len(sentence_splitted):
-    #     window_start = 0
-    #     window_end = window_start + window_size
-    #     while window_end <= len(sentence_splitted):
-    #         term = sentence_splitted[window_start:window_end]
-    #         # print("term", term)
-    #         term_embeddings = next(iter(embedding_model.embed([" ".join(term)])))
-    #         query_hits = vectordb.search(
-    #             collection_name=settings.entities_collection_name,
-    #             query_vector=term_embeddings,
-    #             limit=10,
-    #         )
-    #         matchs = []
-    #         for query_hit in query_hits:
-    #             if query_hit.score > score_threshold:
-    #                 matchs.append(query_hit)
-    #         if len(matchs) > 0:
-    #             entities_list.append(
-    #                 {
-    #                     "matchs": matchs,
-    #                     "term": term,
-    #                     "start_index": window_start,
-    #                     "end_index": window_end,
-    #                 }
-    #             )
-    #         # term_search = reduce(lambda x, y: "{} {}".format(x, y), sentence_splitted[window_start:window_end])
-    #         # resultSearch = index.search(term_search)
-    #         # if resultSearch is not None and len(resultSearch) > 0:
-    #         #     selected_hit = resultSearch[0]
-    #         #     if selected_hit['score'] > MAX_SCORE_PARSER_TRIPLES:
-    #         #         selected_hit = None
-    #         #     if selected_hit is not None and selected_hit not in matchs:
-    #         #         matchs.append(selected_hit)
-    #         window_start += 1
-    #         window_end = window_start + window_size
-    #     window_size -= 1
+    # print(message_value)
+    # print(message_value.messages[0].content)
+    structured_question: StructuredQuestion = await model.ainvoke(
+        message_value,
+        {**config, "configurable": {"stream": False}}
+    )
+
+    # print(structured_question)
+
+    return {
+        "structured_question": structured_question,
+        "steps": [StepOutput(
+            label=f"⚗️ Extracted {len(structured_question.question_steps)} steps and {len(structured_question.extracted_classes)} classes",
+            details=f"""Intent: {structured_question.intent.replace('_', ' ')}
+
+Steps to answer the user question:
+
+{chr(10).join(f'- {step}' for step in structured_question.question_steps)}
+
+Potential classes:
+
+{chr(10).join(f'- {cls}' for cls in structured_question.extracted_classes)}
+
+Potential entities:
+
+{chr(10).join(f'- {entity}' for entity in structured_question.extracted_entities)}"""
+        )]
+    }

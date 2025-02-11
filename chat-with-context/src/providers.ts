@@ -5,17 +5,17 @@ import {Client} from "@langchain/langgraph-sdk";
 
 import {extractSparqlQuery, getEditorUrl, queryLinkLabels} from "./utils";
 
-// Types of objects used when interacting with LLM agents
-type RefenceDocument = {
-  page_content: string;
-  metadata: {
-    doc_type: string;
-    endpoint_url: string;
-    question: string;
-    answer: string;
-    score: number;
-  };
-};
+// // Types of objects used when interacting with LLM agents
+// type RefenceDocument = {
+//   page_content: string;
+//   metadata: {
+//     doc_type: string;
+//     endpoint_url: string;
+//     question: string;
+//     answer: string;
+//     score: number;
+//   };
+// };
 
 type Links = {
   url: string;
@@ -24,11 +24,11 @@ type Links = {
 };
 
 type Step = {
-  // id: string;
   node_id: string;
   label: string;
-  retrieved_docs: RefenceDocument[];
-  details: string; // Markdown details about the step
+  details: string; // Details about the step as markdown string
+  substeps?: {label: string, details: string}[];
+  // retrieved_docs?: RefenceDocument[];
 };
 
 export type Message = {
@@ -85,12 +85,12 @@ export class ChatState {
   };
 
   appendStepToLastMsg = (
-    label: string,
     node_id: string,
-    retrieved_docs: RefenceDocument[] = [],
+    label: string,
     details: string = "",
+    substeps: {label: string, details: string}[] = [],
   ) => {
-    this.lastMsg().setSteps(steps => [...steps, {node_id, label, retrieved_docs, details}]);
+    this.lastMsg().setSteps(steps => [...steps, {node_id, label, details, substeps}]);
     this.scrollToInput();
     // this.inputTextEl.scrollIntoView({behavior: "smooth"});
   };
@@ -118,31 +118,27 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
   // console.log(chunk);
   // Handle updates to the state (nodes that are retrieving stuff without querying the LLM usually)
   if (chunk.event === "updates") {
-    // console.log("UPDATES", chunk);
+    console.log("UPDATES", chunk);
     for (const nodeId of Object.keys(chunk.data)) {
       const nodeData = chunk.data[nodeId];
-      if (nodeData.retrieved_docs) {
-        // Retrieved docs sent
-        state.appendStepToLastMsg(
-          `📚️ Using ${nodeData.retrieved_docs.length} documents`,
-          nodeId,
-          nodeData.retrieved_docs,
-        );
-      } else if (nodeData.extracted_entities) {
-        // Handle entities extracted from the user input
-        state.appendStepToLastMsg(
-          `⚗️ Extracted ${nodeData.extracted_entities.length} potential entities`,
-          nodeId,
-          [],
-          nodeData.extracted_entities.map((entity: any) =>
-            `\n\nEntities found in the user question for "${entity.text}":\n\n` +
-            entity.matchs.map((match: any) =>
-              `- ${match.payload.label} with IRI <${match.payload.uri}> in endpoint ${match.payload.endpoint_url}\n\n`
-            ).join('')
-          ).join(''),
-        );
-      } else if (nodeData.structured_output) {
-        // Handle things extracted from output (SPARQL queries here)
+      if (!nodeData) continue;
+      if (nodeData.steps) {
+        // Handle most generic steps output sent by the agent
+        for (const step of nodeData.steps) {
+          state.appendStepToLastMsg(nodeId, step.label, step.details, step.substeps);
+          // Handle step specific to post-generation validation
+          if (step.type === "recall") {
+            // When `recall` is called, the model will re-generate the response, so we need to update the message
+            state.lastMsg().setContent("");
+          } else if (step.fixed_message) {
+            // If the update contains a message with a fix
+            state.lastMsg().setContent(step.fixed_message);
+          }
+        }
+      }
+      if (nodeData.structured_output) {
+        // Special case to handle things extracted from output
+        // Here we add links to open the SPARQL query in an editor
         if (nodeData.structured_output.sparql_query) {
           state.lastMsg().setLinks([
             {
@@ -154,44 +150,44 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
             },
           ]);
         }
-      } else if (nodeData.validation) {
-        // Handle post-generation validation
-        for (const validationStep of nodeData.validation) {
-          // Handle messages related to tools (includes post generation validation)
-          state.appendStepToLastMsg(validationStep.label, nodeId, [], validationStep.details);
-          if (validationStep.type === "recall") {
-            // When recall-model is called, the model will re-generate the response, so we need to update the message
-            // If the update contains a message with a fix (e.g. done during post generation validation)
-            state.lastMsg().setContent("");
-          } else if (validationStep.fixed_message) {
-            state.lastMsg().setContent(validationStep.fixed_message);
-          }
-        }
-      } else {
-        // Handle other updates
-        state.appendStepToLastMsg(`💭 ${nodeId.replace("_", " ")}`, nodeId);
       }
+      // if (nodeData.validation) {
+      //   // Handle post-generation validation
+      //   for (const validationStep of nodeData.validation) {
+      //     // Handle messages related to tools (includes post generation validation)
+      //     state.appendStepToLastMsg(nodeId, validationStep.label, validationStep.details);
+      //     if (validationStep.type === "recall") {
+      //       // When recall-model is called, the model will re-generate the response, so we need to update the message
+      //       // If the update contains a message with a fix (e.g. done during post generation validation)
+      //       state.lastMsg().setContent("");
+      //     } else if (validationStep.fixed_message) {
+      //       state.lastMsg().setContent(validationStep.fixed_message);
+      //     }
+      //   }
+      // }
     }
   }
   // Handle messages from the model
   if (chunk.event === "messages") {
     const [msg, metadata] = chunk.data;
+    if (metadata.structured_output_format) return;
     // const {message, metadata} = chunk.data;
     // console.log("MESSAGES", msg, metadata);
     if (msg.tool_calls?.length > 0) {
       // Tools calls requested by the model
       const toolNames = msg.tool_calls.map((tool_call: any) => tool_call.name).join(", ");
-      if (toolNames) state.appendStepToLastMsg(`🔧 Calling tools: ${toolNames}`, metadata.langgraph_node);
+      if (toolNames) state.appendStepToLastMsg(metadata.langgraph_node, `🔧 Calling tools: ${toolNames}`);
     }
     if (msg.content && msg.type === "tool") {
       // If tool called by model
-      state.appendStepToLastMsg(`⚗️ Tool ${msg.name} result: ${msg.content}`, metadata.langgraph_node);
+      state.appendStepToLastMsg(metadata.langgraph_node, `⚗️ Tool ${msg.name} result: ${msg.content}`);
     } else if (msg.content === "</think>" && msg.type === "AIMessageChunk") {
       // Putting thinking process in a separate step
       state.appendContentToLastMsg(msg.content);
-      state.appendStepToLastMsg("💭 Thought process", metadata.langgraph_node, [], state.lastMsg().content());
+      state.appendStepToLastMsg(metadata.langgraph_node, "💭 Thought process", state.lastMsg().content());
       state.lastMsg().setContent("");
     } else if (msg.content && msg.type === "AIMessageChunk") {
+      // console.log("AIMessageChunk", msg, metadata);
       // Response from the model
       state.appendContentToLastMsg(msg.content);
     }

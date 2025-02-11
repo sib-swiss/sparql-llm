@@ -31,6 +31,8 @@ elif [ "$1" = "index" ]; then
 elif [ "$1" = "import-entities-index" ]; then
     echo "Import entities embeddings from adsicore which has GPU to generate them"
     scp -r adsicore:/mnt/scratch/sparql-llm/data/qdrant/collections/entities ./data/qdrant/collections/entities
+    # ssh adsicore "tar cJf - /mnt/scratch/sparql-llm/data/qdrant/collections/entities" | tar xJf - -C ./data/qdrant/collections/entities
+
     # scp -r adsicore:/mnt/scratch/sparql-llm/data/qdrant/collections/entities expasychatpodman:/var/containers/podman/sparql-llm/data/qdrant/collections/entities
     # zip -r data/entities.zip data/qdrant/collections/entities
 

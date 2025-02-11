@@ -11,9 +11,10 @@ from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 
 from expasy_agent.config import Configuration, settings
-from expasy_agent.nodes.extraction import extract_entities
+from expasy_agent.nodes.extraction import extract_user_question
 from expasy_agent.nodes.llm import call_model
 from expasy_agent.nodes.retrieval import retrieve
+from expasy_agent.nodes.retrieve_entities import resolve_entities
 from expasy_agent.nodes.tools import TOOLS
 from expasy_agent.nodes.validation import validate_output
 from expasy_agent.state import InputState, State
@@ -24,7 +25,7 @@ from expasy_agent.state import InputState, State
 def route_model_output(state: State, config: RunnableConfig) -> Literal["__end__", "tools", "call_model"]:
     """Determine the next node based on the model's output.
 
-    This function checks if the model's last message contains tool calls.
+    This function checks if the model's last message contains tool calls or if a recall is requested by validation.
 
     Args:
         state (State): The current state of the conversation.
@@ -34,16 +35,19 @@ def route_model_output(state: State, config: RunnableConfig) -> Literal["__end__
     """
     configuration = Configuration.from_runnable_config(config)
     last_msg = state.messages[-1]
+
     if state.try_count > configuration.max_try_fix_sparql:
         return "__end__"
+
     # Check for tool calls first
     if isinstance(last_msg, AIMessage) and last_msg.tool_calls:
         return "tools"
+
     # Check if recall requested by validate_output
-    if state.validation:
-        for validation_step in state.validation:
-            if validation_step.type == "recall":
-                return "call_model"
+    print(state.steps)
+    if len(state.steps) > 0 and state.steps[-1].type == "recall":
+        return "call_model"
+
     if not isinstance(last_msg, AIMessage):
         raise ValueError(f"Expected AIMessage in output edges, but got {type(last_msg).__name__}")
     return "__end__"
@@ -53,20 +57,23 @@ def route_model_output(state: State, config: RunnableConfig) -> Literal["__end__
 builder = StateGraph(State, input=InputState, config_schema=Configuration)
 
 # Define the nodes we will cycle between
+
+builder.add_node(extract_user_question)
 builder.add_node(retrieve)
 builder.add_node(call_model)
 builder.add_node("tools", ToolNode(TOOLS))
 builder.add_node(validate_output)
 
 # Add edges
-builder.add_edge("__start__", "retrieve")
+builder.add_edge("__start__", "extract_user_question")
+builder.add_edge("extract_user_question", "retrieve")
 builder.add_edge("retrieve", "call_model")
 builder.add_edge("call_model", "validate_output")
 
 # Entity extraction node
-builder.add_node(extract_entities)
-builder.add_edge("__start__", "extract_entities")
-builder.add_edge("extract_entities", "call_model")
+builder.add_node(resolve_entities)
+builder.add_edge("extract_user_question", "resolve_entities")
+builder.add_edge("resolve_entities", "call_model")
 
 # Add a conditional edge to determine the next step after `validate_output`
 builder.add_conditional_edges(

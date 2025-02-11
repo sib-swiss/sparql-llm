@@ -3,14 +3,36 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional, Sequence
+from typing import Any, Literal, Optional, Sequence
 
 from langchain_core.documents import Document
 from langchain_core.messages import AnyMessage
 from langgraph.graph import add_messages
 from langgraph.managed import IsLastStep
+from pydantic import BaseModel, Field
 from typing_extensions import Annotated
 
+
+# https://python.langchain.com/docs/how_to/structured_output
+class StructuredQuestion(BaseModel):
+    """Structured informations extracted from the user question."""
+
+    intent: Literal["general_information", "access_resources"] = Field(
+        default="access_resources",
+        description="Intent extracted from the user question"
+    )
+    extracted_classes: list[str] = Field(
+        default_factory=list,
+        description="List of classes extracted from the user question"
+    )
+    extracted_entities: list[str] = Field(
+        default_factory=list,
+        description="List of entities extracted from the user question"
+    )
+    question_steps: list[str] = Field(
+        default_factory=list,
+        description="List of steps extracted from the user question"
+    )
 
 @dataclass
 class InputState:
@@ -38,19 +60,39 @@ class InputState:
     updating by ID to maintain an "append-only" state unless a message with the same ID is provided.
     """
 
-@dataclass
-class ValidationState:
-    """Structure for validation results."""
-    type: str
+
+class StepOutput(BaseModel):
+    """Represents a step the agent went through to generate the answer."""
+
     label: str
-    details: str
+    """The human-readable title for this step to be displayed to the user."""
+
+    details: str = Field(default="")
+    """Details of the steps results in markdown to be displayed to the user. It can be either a markdown string or a list of StepOutput."""
+
+    substeps: Optional[list[StepOutput]] = Field(default_factory=list)
+    """Optional substeps for a step."""
+
+    type: Literal["context", "fix-message", "recall"] = Field(default="context")
+    """The type of the step."""
+
     fixed_message: Optional[str] = None
+    """The fixed message to replace the last message sent to the user."""
+
 
 @dataclass
 class StructuredOutput:
     """Structure for structured infos extracted from the LLM output."""
     sparql_query: str
     sparql_endpoint_url: str
+
+
+def add_to_list(original_list: list, new_items: list) -> list:
+    """We need to do this crazy copy workaround to avoid mutable side effects that comes with LangGraph state..."""
+    new = original_list.copy()
+    new.extend(new_items)
+    return new
+
 
 @dataclass
 class State(InputState):
@@ -60,20 +102,22 @@ class State(InputState):
     """
 
     is_last_step: IsLastStep = field(default=False)
-    """
-    Indicates whether the current step is the last one before the graph raises an error.
+    """Indicates whether the current step is the last one before the graph raises an error.
 
     This is a 'managed' variable, controlled by the state machine rather than user code.
     It is set to 'True' when the step count reaches recursion_limit - 1.
     """
 
+    structured_question: StructuredQuestion = field(default_factory=StructuredQuestion)
+
     # Additional attributes can be added here as needed.
     retrieved_docs: list[Document] = field(default_factory=list)
     extracted_entities: dict[str, Any] = field(default_factory=dict)
-    validation: list[ValidationState] = field(default_factory=list)
     try_count: int = field(default=0)
+
+    steps: Annotated[list[StepOutput], add_to_list] = field(default_factory=list)
 
     structured_output: list[StructuredOutput] = field(default_factory=list)
 
+    # TODO: cumulated token usage
     # token_usage: dict[str, str] = field(default_factory=dict)
-    # api_connections: Dict[str, Any] = field(default_factory=dict)

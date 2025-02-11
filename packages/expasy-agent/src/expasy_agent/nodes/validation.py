@@ -17,7 +17,7 @@ from sparql_llm.validate_sparql import (
 )
 
 from expasy_agent.config import Configuration, settings
-from expasy_agent.state import State, ValidationState
+from expasy_agent.state import State, StepOutput
 
 
 async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any]:
@@ -31,11 +31,11 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
         dict: A dictionary containing the model's response message.
     """
     configuration = Configuration.from_runnable_config(config)
-    if not configuration.validate_output:
+    if not configuration.enable_output_validation:
         return {}
     # Remove the thought process <think> tags from the last message
     last_msg = re.sub(r"<think>.*?</think>", "", state.messages[-1].content, flags=re.DOTALL)
-    validation_results = []
+    validation_steps: list[StepOutput] = []
     new_messages = []
     generated_sparqls = extract_sparql_queries(last_msg)
     for gen_query in generated_sparqls:
@@ -51,8 +51,8 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
                 fixed_msg = last_msg.replace(gen_query["query"], fixed_query)
                 gen_query["query"] = fixed_query
                 # Pass the fixed msg to the client
-                validation_results.append(ValidationState(
-                    type="prefixes",
+                validation_steps.append(StepOutput(
+                    type="fix-message",
                     label="✅ Fixed the prefixes of the generated SPARQL query automatically",
                     details=f"Prefixes corrected from the query generated in the original response.\n### Original response\n{last_msg}",
                     fixed_message=fixed_msg,
@@ -68,7 +68,7 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
         if errors:
             error_str = "- " + "\n- ".join(errors)
             validation_msg = f"The query generated in the original response is not valid according to the endpoints schema.\n### Validation results\n{error_str}\n### Erroneous SPARQL query\n```sparql\n{gen_query['query']}\n```\n### Original response\n{last_msg}\n"
-            validation_results.append(ValidationState(
+            validation_steps.append(StepOutput(
                 type="recall",
                 label="🐞 Generated query invalid, fixing it",
                 details=validation_msg,
@@ -80,17 +80,17 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
                 # additional_kwargs={"validation_results": error_str},
             ))
 
-    # TODO: add warning that we could not fix the issues
-    # if state.try_count > configuration.max_try_fix_sparql and errors:
-
-    response = {"validation": validation_results, "messages": new_messages, "try_count": state.try_count+1}
+    response = {
+        "steps": validation_steps,
+        "messages": new_messages,
+        "try_count": state.try_count+1,
+    }
     extracted = {}
     if generated_sparqls:
         if generated_sparqls[-1]["query"]:
             extracted["sparql_query"] = generated_sparqls[-1]["query"]
         if generated_sparqls[-1]["endpoint_url"]:
             extracted["sparql_endpoint_url"] = generated_sparqls[-1]["endpoint_url"]
-    if extracted:
         response["structured_output"] = extracted
     return response
 

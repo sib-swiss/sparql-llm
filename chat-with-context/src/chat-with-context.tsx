@@ -5,7 +5,7 @@ import DOMPurify from "dompurify";
 import hljs from "highlight.js/lib/core";
 import "highlight.js/styles/default.min.css";
 
-import {getLangForDocType, style} from "./utils";
+import {style} from "./utils";
 import {hljsDefineSparql, hljsDefineTurtle} from "./highlight";
 import sendLogo from "./assets/send.svg";
 import xLogo from "./assets/x.svg";
@@ -65,9 +65,10 @@ customElement(
     };
 
     const closeDialog = () => {
-      (document.getElementById(dialogOpen()) as HTMLDialogElement).close();
-      setDialogOpen("");
       document.body.style.overflow = "";
+      const dialogEl = document.getElementById(dialogOpen()) as HTMLDialogElement;
+      if (dialogEl) dialogEl.close();
+      setDialogOpen("");
       // history.back();
     };
 
@@ -142,126 +143,105 @@ customElement(
                 <div class={`py-2.5 mb-2 ${msg.role === "user" ? "bg-gray-300 rounded-3xl px-5" : ""}`}>
                   <div class="flex flex-col items-start">
                     <For each={msg.steps()}>
-                      {(step, iStep) =>
-                        step.retrieved_docs.length > 0 ? (
+                        {(step, iStep) =>
+                        step.substeps && step.substeps.length > 0 ? (
                           <>
-                            {/* Dialog to show more details about retrieved documents */}
+                          {/* Dialog to show more details about retrieved documents */}
+                          <button
+                            class="text-gray-400 ml-8 mb-4"
+                            title={`Click to see the documents used to generate the response\n\nNode: ${step.node_id}`}
+                            onClick={() => {
+                              setSelectedDocsTab(step.substeps?.[0]?.label || '');
+                              openDialog(`step-dialog-${iMsg()}-${iStep()}`);
+                            }}
+                          >
+                            {step.label}
+                          </button>
+                          <dialog
+                            id={`step-dialog-${iMsg()}-${iStep()}`}
+                            class="bg-white dark:bg-gray-800 m-3 rounded-3xl shadow-md w-full"
+                            onClose={() => closeDialog()}
+                          >
                             <button
-                              class="text-gray-400 ml-8 mb-4"
-                              title={`Click to see the documents used to generate the response\n\nNode: ${step.node_id}`}
-                              onClick={() => {
-                                setSelectedDocsTab(step.retrieved_docs[0].metadata.doc_type);
-                                openDialog(`step-dialog-${iMsg()}-${iStep()}`);
-                              }}
+                            id={`close-dialog-${iMsg()}-${iStep()}`}
+                            class="fixed top-2 right-8 m-3 px-2 text-xl text-slate-500 bg-gray-200 dark:bg-gray-700 rounded-3xl"
+                            title="Close documents details"
+                            onClick={() => closeDialog()}
                             >
-                              {step.label}
+                            <img src={xLogo} alt="Close the dialog" class="iconBtn" />
                             </button>
-                            <dialog
-                              id={`step-dialog-${iMsg()}-${iStep()}`}
-                              class="bg-white dark:bg-gray-800 m-3 rounded-3xl shadow-md w-full"
-                              onClose={() => closeDialog()}
-                            >
-                              <button
-                                id={`close-dialog-${iMsg()}-${iStep()}`}
-                                class="fixed top-2 right-8 m-3 px-2 text-xl text-slate-500 bg-gray-200 dark:bg-gray-700 rounded-3xl"
-                                title="Close documents details"
-                                onClick={() => closeDialog()}
-                              >
-                                <img src={xLogo} alt="Close the dialog" class="iconBtn" />
-                              </button>
-                              <article class="prose max-w-full p-3">
-                                <div class="flex space-x-2 mb-4">
-                                  <For
-                                    each={Array.from(new Set(step.retrieved_docs.map(doc => doc.metadata.doc_type)))}
-                                  >
-                                    {docType => (
-                                      <button
-                                        class={`px-4 py-2 rounded-lg transition-all ${
-                                          selectedDocsTab() === docType
-                                            ? "bg-gray-600 text-white shadow-md"
-                                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                                        }`}
-                                        onClick={() => {
-                                          setSelectedDocsTab(docType);
-                                          highlightAll();
-                                        }}
-                                        title="Show only this type of document"
-                                      >
-                                        {docType}
-                                      </button>
-                                    )}
-                                  </For>
-                                </div>
-                                <For
-                                  each={step.retrieved_docs.filter(doc => doc.metadata.doc_type === selectedDocsTab())}
+                            <article class="prose max-w-full p-3">
+                            <div class="flex space-x-2 mb-4">
+                              <For each={step.substeps.map(substep => substep.label)}>
+                              {label => (
+                                <button
+                                class={`px-4 py-2 rounded-lg transition-all ${
+                                  selectedDocsTab() === label
+                                  ? "bg-gray-600 text-white shadow-md"
+                                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                }`}
+                                onClick={() => {
+                                  setSelectedDocsTab(label);
+                                  highlightAll();
+                                }}
+                                title={`Show ${label}`}
                                 >
-                                  {(doc, iDoc) => (
-                                    <>
-                                      <p>
-                                        <code class="mr-1">
-                                          {iDoc() + 1} - {Math.round(doc.metadata.score * 1000) / 1000}
-                                        </code>
-                                        {doc.metadata.question} (
-                                        <a href={doc.metadata.endpoint_url} target="_blank">
-                                          {doc.metadata.endpoint_url}
-                                        </a>
-                                        )
-                                      </p>
-                                      {getLangForDocType(doc.metadata.doc_type).startsWith("language-") ? (
-                                        <pre>
-                                          <code class={`${getLangForDocType(doc.metadata.doc_type)}`}>
-                                            {doc.metadata.answer}
-                                          </code>
-                                        </pre>
-                                      ) : (
-                                        <p>{doc.metadata.answer}</p>
-                                      )}
-                                    </>
-                                  )}
-                                </For>
-                              </article>
-                            </dialog>
+                                {label}
+                                </button>
+                              )}
+                              </For>
+                            </div>
+                            <For each={step.substeps.filter(substep => substep.label === selectedDocsTab())}>
+                              {substep => (
+                              <article
+                                class="prose max-w-full"
+                                // eslint-disable-next-line solid/no-innerhtml
+                                innerHTML={DOMPurify.sanitize(marked.parse(substep.details) as string, {ADD_TAGS: ['think']})}
+                              />
+                              )}
+                            </For>
+                            </article>
+                          </dialog>
                           </>
                         ) : step.details ? (
                           <>
-                            {/* Dialog to show more details about a step in markdown */}
+                          {/* Dialog to show more details about a step in markdown */}
+                          <button
+                            class="text-gray-400 ml-8 mb-4"
+                            title={`Click to see the documents used to generate the response\n\nNode: ${step.node_id}`}
+                            onClick={() => {
+                            openDialog(`step-dialog-${iMsg()}-${iStep()}`);
+                            }}
+                          >
+                            {step.label}
+                          </button>
+                          <dialog
+                            id={`step-dialog-${iMsg()}-${iStep()}`}
+                            class="bg-white dark:bg-gray-800 m-3 rounded-3xl shadow-md w-full"
+                            onClose={() => closeDialog()}
+                          >
                             <button
-                              class="text-gray-400 ml-8 mb-4"
-                              title={`Click to see the documents used to generate the response\n\nNode: ${step.node_id}`}
-                              onClick={() => {
-                                openDialog(`step-dialog-${iMsg()}-${iStep()}`);
-                              }}
+                            id={`close-dialog-${iMsg()}-${iStep()}`}
+                            class="fixed top-2 right-8 m-3 px-2 text-xl text-slate-500 bg-gray-200 dark:bg-gray-700 rounded-3xl"
+                            title="Close step details"
+                            onClick={() => closeDialog()}
                             >
-                              {step.label}
+                            <img src={xLogo} alt="Close the dialog" class="iconBtn" />
                             </button>
-                            <dialog
-                              id={`step-dialog-${iMsg()}-${iStep()}`}
-                              class="bg-white dark:bg-gray-800 m-3 rounded-3xl shadow-md w-full"
-                              onClose={() => closeDialog()}
-                            >
-                              <button
-                                id={`close-dialog-${iMsg()}-${iStep()}`}
-                                class="fixed top-2 right-8 m-3 px-2 text-xl text-slate-500 bg-gray-200 dark:bg-gray-700 rounded-3xl"
-                                title="Close step details"
-                                onClick={() => closeDialog()}
-                              >
-                                <img src={xLogo} alt="Close the dialog" class="iconBtn" />
-                              </button>
-                              <article
-                                class="prose max-w-full p-6"
-                                // eslint-disable-next-line solid/no-innerhtml
-                                innerHTML={DOMPurify.sanitize(marked.parse(step.details) as string, {ADD_TAGS: ['think']})}
-                                // innerHTML={marked.parse(step.details) as string}
-                              />
-                            </dialog>
+                            <article
+                            class="prose max-w-full p-6"
+                            // eslint-disable-next-line solid/no-innerhtml
+                            innerHTML={DOMPurify.sanitize(marked.parse(step.details) as string, {ADD_TAGS: ['think']})}
+                            />
+                          </dialog>
                           </>
                         ) : (
                           // Display basic step without details
                           <p class="text-gray-400 ml-8 mb-4" title={`Node: ${step.node_id}`}>
-                            {step.label}
+                          {step.label}
                           </p>
                         )
-                      }
+                        }
                     </For>
                   </div>
                   <article

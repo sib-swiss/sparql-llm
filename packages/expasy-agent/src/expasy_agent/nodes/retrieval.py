@@ -15,10 +15,10 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.vectorstores import VectorStoreRetriever
 from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
 from qdrant_client.models import FieldCondition, Filter, MatchValue
-from sparql_llm.utils import get_message_text
 
 from expasy_agent.config import Configuration, settings
-from expasy_agent.state import State
+from expasy_agent.state import State, StepOutput
+from expasy_agent.utils import get_message_text
 
 
 async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Document]]:
@@ -37,32 +37,69 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
         containing a list of retrieved Document objects.
     """
     configuration = Configuration.from_runnable_config(config)
-    human_input = get_message_text(state.messages[-1])
-    # print("human_input", human_input)
-    # Search SPARQL query examples
-    configuration.search_kwargs["filter"] = Filter(
-        must=[
-            FieldCondition(
-                key="metadata.doc_type",
-                match=MatchValue(value="SPARQL endpoints query examples"),
-            )
-        ]
-    )
-    with make_qdrant_retriever(configuration) as retriever:
-        example_queries_docs = await retriever.ainvoke(human_input, config)
+    docs: list[Document] = []
 
-    # Search anything else that is not a query example, e.g. SPARQL endpoints classes schema
-    configuration.search_kwargs["filter"] = Filter(
-        must_not=[
-            FieldCondition(
-                key="metadata.doc_type",
-                match=MatchValue(value="SPARQL endpoints query examples"),
-            )
-        ]
-    )
-    with make_qdrant_retriever(configuration) as retriever:
-        other_docs = await retriever.ainvoke(human_input, config)
-    return {"retrieved_docs": example_queries_docs + other_docs}
+    if state.structured_question.intent == "general_information":
+        user_question = get_message_text(state.messages[-1])
+        with make_qdrant_retriever(configuration) as retriever:
+            docs += await retriever.ainvoke(user_question, config)
+    else:
+        # Handles when user asks for access to resources
+        configuration.search_kwargs["filter"] = Filter(
+            must=[
+                FieldCondition(
+                    key="metadata.doc_type",
+                    match=MatchValue(value="SPARQL endpoints query examples"),
+                )
+            ]
+        )
+        with make_qdrant_retriever(configuration) as retriever:
+            for step in state.structured_question.question_steps:
+                # Make sure we don't add duplicate docs
+                docs.extend(doc for doc in await retriever.ainvoke(step, config) if doc.metadata.get("answer") not in {existing_doc.metadata.get("answer") for existing_doc in docs})
+
+        # Search anything else that is not a query example, e.g. SPARQL endpoints classes schema
+        configuration.search_kwargs["filter"] = Filter(
+            must_not=[
+                FieldCondition(
+                    key="metadata.doc_type",
+                    match=MatchValue(value="SPARQL endpoints query examples"),
+                )
+            ]
+        )
+        with make_qdrant_retriever(configuration) as retriever:
+            # all_docs += await retriever.ainvoke(human_input, config)
+            for extracted_class in state.structured_question.extracted_classes:
+                # docs_classes += await retriever.ainvoke(extracted_class, config)
+                docs.extend(doc for doc in await retriever.ainvoke(extracted_class, config) if doc.metadata.get("answer") not in {existing_doc.metadata.get("answer") for existing_doc in docs})
+
+    # Create substeps for each doc type
+    substeps: list[StepOutput] = []
+    docs_by_type: dict[str, list[Document]] = {}
+    for doc in docs:
+        doc_type = doc.metadata.get("doc_type", "Miscellaneous")
+        if doc_type not in docs_by_type:
+            docs_by_type[doc_type] = []
+        docs_by_type[doc_type].append(doc)
+    substeps += [
+        StepOutput(
+            label=doc_type,
+            details=format_docs(docs)
+        )
+        for doc_type, docs in docs_by_type.items()
+    ]
+
+    # print(format_docs(docs_examples + docs_classes))
+
+    return {
+        "retrieved_docs": docs,
+        "steps": [
+            StepOutput(
+                label=f"📚️ Using {len(docs)} documents",
+                substeps=substeps,
+            ),
+        ],
+    }
 
 
 ## Encoder constructors
@@ -72,7 +109,7 @@ def make_dense_encoder(embedding_model: str, gpu: bool = False) -> Embeddings:
     return FastEmbedEmbeddings(
         model_name=embedding_model,
         providers=["CUDAExecutionProvider"] if gpu else None,
-        batch_size=1024,
+        # batch_size=1024,
     )
 
 # def make_vectordb(collection_name: str, gpu: bool = False):
@@ -103,9 +140,8 @@ def make_qdrant_retriever(configuration: Configuration) -> Generator["ScoredRetr
     # yield vectordb.as_retriever(search_kwargs=configuration.search_kwargs)
 
 
-# TODO: to avoid generating twice embeddings for the same query, we could use a custom vectorstore
+# TODO: to avoid generating twice embeddings for the same query? we could use a custom vectorstore
 # vectordb.asimilarity_search_with_score_by_vector()
-
 # https://python.langchain.com/docs/how_to/custom_retriever/#example
 # https://api.python.langchain.com/en/latest/_modules/langchain_core/vectorstores.html#VectorStore.as_retriever
 # VectorStoreRetriever(vectorstore=self, tags=tags, **kwargs)
@@ -184,12 +220,17 @@ def _format_doc(doc: Document) -> str:
     Returns:
         str: The formatted document as an XML string.
     """
-    metadata = doc.metadata or {}
     if doc.metadata.get("answer"):
         endpoint_info = f" ({doc.metadata.get('endpoint_url')})" if doc.metadata.get("endpoint_url") else ""
-        return f"<document>\n{doc.page_content}{endpoint_info}:\n{doc.metadata.get('answer')}\n</document>"
+        doc_lang = ""
+        doc_type = str(doc.metadata.get("doc_type", "")).lower()
+        if "query" in doc_type:
+            doc_lang = "sparql"
+        elif "schema" in doc_type:
+            doc_lang = "shex"
+        return f"<document>\n{doc.page_content}{endpoint_info}:\n\n```{doc_lang}\n{doc.metadata.get('answer')}\n```\n</document>"
 
-    meta = "".join(f" {k}={v!r}" for k, v in metadata.items())
+    meta = "".join(f" {k}={v!r}" for k, v in doc.metadata.items())
     if meta:
         meta = f" {meta}"
     return f"<document{meta}>\n{doc.page_content}\n</document>"

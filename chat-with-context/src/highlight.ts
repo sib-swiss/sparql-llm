@@ -99,7 +99,7 @@ export function hljsDefineTurtle(hljs: any) {
   return {
     case_insensitive: true,
     keywords: KEYWORDS,
-    aliases: ["turtle", "ttl", "n3", "ntriples"],
+    aliases: ["turtle", "ttl", "n3", "ntriples", "shex", "trig"],
     contains: [
       LANGTAG,
       DATATYPE,

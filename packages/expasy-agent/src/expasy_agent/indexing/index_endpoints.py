@@ -153,6 +153,21 @@ def init_vectordb() -> None:
         # NOTE: we dont use the ontology for now, schema from shex is better
         # docs += load_ontology(endpoint)
 
+    resources_summary_question = "Which resources are available through this system?"
+    docs.append(
+        Document(
+            page_content=resources_summary_question,
+            metadata={
+                "question": resources_summary_question,
+                "answer": "This system helps to access the following resources from the Swiss Institute of Bioinformatics:"
+                    + "\n- ".join([f"{endpoint.get('label', '')}: {endpoint['endpoint_url']}" for endpoint in settings.endpoints]),
+                # "endpoint_url": "https://sparql.uniprot.org/sparql/",
+                "iri": "http://www.uniprot.org/help/about",
+                "doc_type": "General information",
+            },
+        )
+    )
+
     # NOTE: Manually add infos for UniProt since we cant retrieve it for now. Taken from https://www.uniprot.org/help/about
     uniprot_description_question = "What is the SIB resource UniProt about?"
     docs.append(

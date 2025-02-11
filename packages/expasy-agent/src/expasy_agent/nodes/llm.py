@@ -13,67 +13,11 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 
 from expasy_agent.config import Configuration, settings
-from expasy_agent.nodes.extraction import format_extracted_entities
 from expasy_agent.nodes.retrieval import format_docs
+from expasy_agent.nodes.retrieve_entities import format_extracted_entities
 from expasy_agent.nodes.tools import TOOLS
 from expasy_agent.state import State
-
-
-def load_chat_model(configuration: Configuration) -> BaseChatModel:
-    """Load a chat model from a fully specified name.
-
-    Args:
-        fully_specified_name (str): String in the format 'provider/model'.
-    """
-    provider, model_name = configuration.model.split("/", maxsplit=1)
-    if provider == "groq":
-        from langchain_groq import ChatGroq
-        return ChatGroq(
-            model_name=model_name,
-            temperature=configuration.temperature,
-        )
-
-    if provider == "deepseek":
-        # https://python.langchain.com/docs/integrations/chat/deepseek/
-        from langchain_deepseek import ChatDeepSeek
-        return ChatDeepSeek(
-            model=model_name,
-            temperature=configuration.temperature,
-        )
-
-    if provider == "together":
-        # https://python.langchain.com/docs/integrations/chat/together/
-        from langchain_together import ChatTogether
-        return ChatTogether(
-            # model="meta-llama/Llama-3-70b-chat-hf",
-            model=model_name,
-            temperature=configuration.temperature,
-            max_tokens=configuration.max_tokens,
-            timeout=None,
-            max_retries=2,
-        )
-
-    if provider == "hf":
-        # https://python.langchain.com/docs/integrations/chat/huggingface/
-        from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
-        return ChatHuggingFace(llm=HuggingFaceEndpoint(
-            # repo_id="HuggingFaceH4/zephyr-7b-beta",
-            repo_id=model_name,
-            task="text-generation",
-            max_new_tokens=configuration.max_tokens,
-            do_sample=False,
-            repetition_penalty=1.03,
-        ))
-
-    if provider == "azure":
-        # https://learn.microsoft.com/en-us/azure/ai-studio/how-to/develop/langchain
-        from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel
-        return AzureAIChatCompletionsModel(
-            endpoint=settings.azure_inference_endpoint,
-            credential=settings.azure_inference_credential,
-            model_name=model_name,
-        )
-    return init_chat_model(model_name, model_provider=provider)
+from expasy_agent.utils import load_chat_model
 
 
 async def call_model(state: State, config: RunnableConfig) -> Dict[str, List[AIMessage]]:
@@ -97,14 +41,17 @@ async def call_model(state: State, config: RunnableConfig) -> Dict[str, List[AIM
         "messages": state.messages,
     }
     structured_prompt["retrieved_docs"] = format_docs(state.retrieved_docs)
-    structured_prompt["extracted_entities"] = format_extracted_entities(state.extracted_entities)
+
+    if configuration.enable_entities_resolution:
+        structured_prompt["extracted_entities"] = format_extracted_entities(state.extracted_entities)
+    else:
+        structured_prompt["extracted_entities"] = ""
 
     prompt_template = ChatPromptTemplate.from_messages([
         ("system", configuration.system_prompt),
         ("placeholder", "{messages}"),
     ])
     message_value = await prompt_template.ainvoke(structured_prompt, config)
-    # print(message_value)
     # print(message_value.messages[0].content)
     response_msg: BaseMessage = await model.ainvoke(message_value, config)
 
@@ -120,14 +67,3 @@ async def call_model(state: State, config: RunnableConfig) -> Dict[str, List[AIM
         }
     # Return the model response as a list to be added to existing messages
     return {"messages": [response_msg]}
-
-# # Another way to format the prompt
-# system_message = configuration.system_prompt.format(
-#     system_time=datetime.now(tz=timezone.utc).isoformat()
-# )
-# response = cast(
-#     AIMessage,
-#     await model.ainvoke(
-#         [{"role": "system", "content": system_message}, *state.messages], config
-#     ),
-# )
