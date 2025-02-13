@@ -1,4 +1,4 @@
-FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 # https://docs.astral.sh/uv/guides/integration/docker
 
 RUN apt-get update && \

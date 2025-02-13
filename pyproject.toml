@@ -47,29 +47,19 @@ expasy-agent = { workspace = true }
 dev = [
     "pytest >=8.3.4",
     "pytest-cov >=6.0.0",
-    "ruff >=0.9.5",
+    "ruff >=0.9.6",
     "mypy >=1.15.0",
     "pre-commit >=4.1.0",
     "ipykernel >=6.29.5",
-    "python-dotenv >=1.0.1",
     "pandas >=2.2.3",
     "SPARQLWrapper >=2.0.0",
     "sparql-llm",
     "expasy-agent[cpu]",
+    # "python-dotenv >=1.0.1",
     # "pyright",
     # "oxrdflib",
 ]
 
-[project.urls]
-Homepage = "https://github.com/sib-swiss/sparql-llm"
-Documentation = "https://github.com/sib-swiss/sparql-llm"
-History = "https://github.com/sib-swiss/sparql-llm/releases"
-Tracker = "https://github.com/sib-swiss/sparql-llm/issues"
-Source = "https://github.com/sib-swiss/sparql-llm"
-
-
-# [tool.hatch.envs.default]
-# post-install-commands = []
 
 # uv pip compile pyproject.toml -o requirements.txt
 # uv run python packages/expasy-agent/src/expasy_agent/embed_entities.py

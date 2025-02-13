@@ -62,11 +62,9 @@ path = "src/sparql_llm/__init__.py"
 [tool.hatch.build.targets.wheel]
 packages = ["src/sparql_llm"]
 
-# If you need to import packages from git URLs:
-# [tool.hatch.metadata]
-# allow-direct-references = true
-
 [tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope="session"
 addopts = [
     "-vvv",           # Verbose level 3
     "--durations=10", # Show 10 slowest tests durations

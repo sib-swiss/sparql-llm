@@ -1,19 +1,18 @@
+import logging
 import os
-from collections import defaultdict
+import sys
 import time
+from collections import defaultdict
 
-import pandas as pd
 import httpx
-
+import pandas as pd
 from langchain_core.messages import HumanMessage, SystemMessage
-
-from expasy_agent.prompts import RESOLUTION_PROMPT
-from expasy_agent.nodes.llm import load_chat_model
-from expasy_agent.config import Configuration, settings
 from sparql_llm.utils import query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries
-import logging
-import sys
+
+from expasy_agent.config import Configuration, settings
+from expasy_agent.prompts import RESOLUTION_PROMPT
+from expasy_agent.utils import load_chat_model
 
 file_time_prefix = time.strftime("%Y%m%d_%H%M")
 bench_folder = os.path.join("data", "benchmarks")
@@ -22,9 +21,9 @@ os.makedirs(bench_folder, exist_ok=True)
 # Setup logging to both console and file
 logging.basicConfig(
     level=logging.INFO,
-    format='%(message)s\n',
+    format="%(message)s\n",
     handlers=[
-        logging.FileHandler(os.path.join(bench_folder, f"{file_time_prefix}_tests_output.md"), mode='w'),
+        logging.FileHandler(os.path.join(bench_folder, f"{file_time_prefix}_tests_output.md"), mode="w"),
         logging.StreamHandler(sys.stdout)
     ]
 )
@@ -563,10 +562,7 @@ models = {
     #     "price_output": 4.4,
     # },
     # Before adding extraction step: 🎯 RAG with validation - Success: 27, Different results: 9, No results: 4, Error: 2
-    # After adding extraction (missing uniprot void though)
-    # 🎯 RAG without validation - Success: 28, Different results: 10, No results: 4, Error: 6
-    # 🎯 RAG with validation - Success: 28, Different results: 6, No results: 3, Error: 11
-    # Fixed uniprot
+    # After adding extraction
     # 🎯 RAG without validation - Success: 27, Different results: 11, No results: 2, Error: 8
     # 🎯 RAG with validation - Success: 31, Different results: 10, No results: 4, Error: 3
     # Price before fixing the token_usage gathering: 0.01421

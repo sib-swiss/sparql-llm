@@ -18,36 +18,30 @@ dependencies = [
     # LangGraph dependencies
     "langgraph >=0.2.61",
     "langchain >=0.3.14",
-    # "langchain-community >=0.3.17",
-    "langchain-community @ git+https://github.com/langchain-ai/langchain.git#subdirectory=libs/community",
-    # "langchain-community @ git+https://github.com/vemonet/langchain.git@fix-fastembed-gpu#subdirectory=libs/community",
+    "langchain-community >=0.3.17",
     "langchain-openai >=0.1.22",
     "langchain-azure-ai >=0.1.0",
     "langchain-groq >=0.2.4",
     "langchain-together >=0.3.0",
+    "langchain-qdrant @ git+https://github.com/langchain-ai/langchain.git#subdirectory=libs/partners/qdrant",
+    "qdrant-client >=1.13.0",
     # "langchain-huggingface", # This will install torch and many heavy nvidia dependencies
     # "langchain-deepseek >=0.1.1",
     # "langchain-anthropic >=0.1.23",
     # "langchain-fireworks >=0.1.7",
-    # "langchain-qdrant",
-    "langchain-qdrant @ git+https://github.com/langchain-ai/langchain.git#subdirectory=libs/partners/qdrant",
-    "qdrant-client >=1.13.0",
+    # "langchain-qdrant >=0.2.1",
     # Dependencies to deploy the API
     "sparql-llm >=0.0.3",
-    "httpx >=0.27.2",
     "rdflib >=7.0.0",
+    "httpx >=0.27.2",
     "fastapi >=0.115.8",
     "uvicorn[standard] >=0.34.0",
     "pydantic >=2.10.0",
     "pydantic-settings >=2.7.0",
-    # Extract potential entities from text
-    "scispacy >=0.5.5",
-    "en_core_sci_md @ https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_md-0.5.4.tar.gz",
-    # Not used anymore
-    # "python-dotenv >=1.0.1",
-    # "litellm",
-    # "openai",
-    # "tqdm",
+    "jinja2 >=3.1.5",
+    # Extract potential entities from text without LLM
+    # "scispacy >=0.5.5",
+    # "en_core_sci_md @ https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_md-0.5.4.tar.gz",
 ]
 
 [project.optional-dependencies]
@@ -68,7 +62,6 @@ dev = [
     "ruff >=0.9.5",
     "mypy >=1.15.0",
     "pre-commit >=4.1.0",
-    # "httpx",
 ]
 
 [tool.uv.sources]
@@ -103,8 +96,6 @@ packages = ["langgraph.templates.expasy_agent", "expasy_agent"]
 # Required for onnxruntime-gpu on CUDA 12
 [tool.uv.pip]
 extra-index-url = ["https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/"]
-# [tool.hatch.envs.default.env-vars]
-# PIP_EXTRA_INDEX_URL = "https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/"
 
 [tool.ruff]
 lint.select = [
@@ -145,6 +136,6 @@ lint.ignore = [
     "E501",
 ]
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D", "UP"]
+"tests/*" = ["D", "UP", "S101"]
 [tool.ruff.lint.pydocstyle]
 convention = "google"

@@ -11,49 +11,31 @@ git clone https://github.com/sib-swiss/sparql-llm
 cd sparql-llm
 ```
 
-## 🐣 Install dependencies
-
-> This repository uses [`hatch`](https://hatch.pypa.io/latest/) to easily handle scripts and virtual environments. Checkout the `pyproject.toml` file for more details on the scripts available. You can also just install dependencies with `pip install ".[chat,test]"` and run the python scripts in `src`
-
-Install [Hatch](https://hatch.pypa.io), this will automatically handle virtual environments and make sure all dependencies are installed when you run a script in the project:
-
-```bash
-pipx install hatch
-```
+Requirements: [`uv`](https://docs.astral.sh/uv/getting-started/installation/) to easily handle scripts and virtual environments.
 
 ## ☑️ Run tests
 
 Make sure the existing tests still work by running the test suite and linting checks. Note that any pull requests to the fairworkflows repository on github will automatically trigger running of the test suite;
 
 ```bash
-hatch run test
+cd packages/sparql-llm
+uv run pytest
 ```
 
 To display all logs when debugging:
 
 ```bash
-hatch run test -s
+uv run test -s
 ```
 
 ## 🧹 Format code
 
 ```bash
-hatch run fmt
+uv run ruff format
+uv run ruff check --fix
 ```
 
 ## ♻️ Reset the environment
-
-In case you are facing issues with dependencies not updating properly you can easily reset the virtual environment with:
-
-```bash
-hatch env prune
-```
-
-Manually trigger installing the dependencies in a local virtual environment:
-
-```bash
-hatch -v env create
-```
 
 Upgrade `uv`:
 

@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Script to help deploy the system on the server
 # SSH connections:
 # expasychat is connecting to the server with your user
 # expasychatpodman is connecting to the server with the podman user (used to run the containers)

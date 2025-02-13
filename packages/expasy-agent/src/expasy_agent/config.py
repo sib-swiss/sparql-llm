@@ -21,10 +21,11 @@ class Settings(BaseSettings):
             "label": "UniProt",
             # The URL of the SPARQL endpoint from which most informations will be extracted
             "endpoint_url": "https://sparql.uniprot.org/sparql/",
+            "void_file": "https://sparql.uniprot.org/.well-known/void/",
+            # "void_file": "https://sparql.uniprot.org/.well-known/void/",
             # Optional, homepage from which we can extract more information using the JSON-LD context
             # "homepage": "https://www.uniprot.org/",
-            "ontology": "https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl",
-            "void_file": "https://sparql.uniprot.org/.well-known/void/",
+            # "ontology": "https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl",
         },
         {
             "label": "Bgee",
@@ -132,8 +133,6 @@ class Settings(BaseSettings):
     # External services API keys
     azure_inference_credential: str = ""
     azure_inference_endpoint: str = ""
-    # openai_api_key: str = ""
-    # glhf_api_key: str = ""
 
 settings = Settings()
 

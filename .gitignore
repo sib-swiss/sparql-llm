@@ -14,12 +14,6 @@ uv.lock
 data/
 notebooks/*.csv
 notebooks/*.txt
-entities_embeddings*.csv
 nohup.out
 
-tests_output_*.md
-tests_results.csv
-tests_results_latex.txt
-
 packages/expasy-agent/src/expasy_agent/webapp
-packages/sparql-llm/src/sparql_llm/webapp

@@ -6,7 +6,7 @@ import httpx
 import rdflib
 from curies_rs import Converter
 
-# SPARQL utilities
+# Prefixes utilities
 
 GET_PREFIXES_QUERY = """PREFIX sh: <http://www.w3.org/ns/shacl#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -35,6 +35,8 @@ def get_prefix_converter(prefix_dict: dict[str, str]) -> Converter:
     return Converter.from_prefix_map(json.dumps(prefix_dict))
 
 
+# VoID description utilities
+
 GET_VOID_DESC = """PREFIX up: <http://purl.uniprot.org/core/>
 PREFIX void: <http://rdfs.org/ns/void#>
 PREFIX void-ext: <http://ldf.fi/void-ext#>
@@ -61,7 +63,7 @@ WHERE {
 # A dictionary to store triples like structure: dict[subject][predicate] = list[object]
 # Also used to store VoID description of an endpoint: dict[subject_cls][predicate] = list[object_cls/datatype]
 TripleDict = dict[str, dict[str, list[str]]]
-# Quite simlar to the VoidDict type, but we also store the endpoints in an outer dict
+# The VoidDict type, but we also store the endpoints URLs in an outer dict
 SparqlTriplesDict = dict[str, TripleDict]
 
 

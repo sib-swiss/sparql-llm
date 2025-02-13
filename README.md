@@ -8,7 +8,12 @@
 
 </div>
 
-This project provides reusable components and a complete web service to enhance the capabilities of Large Language Models (LLMs) in generating [SPARQL](https://www.w3.org/TR/sparql11-overview/) queries for specific endpoints. By integrating Retrieval-Augmented Generation (RAG) and SPARQL query validation through endpoint schemas, this system ensures more accurate and relevant query generation on large scale knowledge graphs.
+This project provides tools to enhance the capabilities of Large Language Models (LLMs) in generating [SPARQL](https://www.w3.org/TR/sparql11-overview/) queries for specific endpoints:
+
+- reusable components in `packages/sparql-llm` and published as the [`sparql-llm`](https://pypi.org/project/sparql-llm/) pip package
+- a complete chat web service in `packages/expasy-agent`
+
+The system integrates Retrieval-Augmented Generation (RAG) and SPARQL query validation through endpoint schemas, to ensure more accurate and relevant query generation on large scale knowledge graphs.
 
 The components are designed to work either independently or as part of a full chat-based system that can be deployed for a set of SPARQL endpoints. It **requires endpoints to include metadata** such as [SPARQL query examples](https://github.com/sib-swiss/sparql-examples) and endpoint descriptions using the [Vocabulary of Interlinked Datasets (VoID)](https://www.w3.org/TR/void/), which can be automatically generated using the [void-generator](https://github.com/JervenBolleman/void-generator).
 
@@ -103,80 +108,76 @@ It will return a list of issues described in natural language, with hints on how
 ```python
 from sparql_llm import validate_sparql_with_void
 
-sparql_query = """PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+sparql_query = """PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX up: <http://purl.uniprot.org/core/>
 PREFIX taxon: <http://purl.uniprot.org/taxonomy/>
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX orth: <http://purl.org/net/orth#>
-PREFIX dcterms: <http://purl.org/dc/terms/>
 PREFIX obo: <http://purl.obolibrary.org/obo/>
 PREFIX lscr: <http://purl.org/lscr#>
 PREFIX genex: <http://purl.org/genex#>
 PREFIX sio: <http://semanticscience.org/resource/>
-SELECT DISTINCT ?diseaseLabel ?humanProtein ?hgncSymbol ?orthologRatProtein ?orthologRatGene
+SELECT DISTINCT ?humanProtein ?orthologRatProtein ?orthologRatGene
 WHERE {
-    SERVICE <https://sparql.uniprot.org/sparql> {
-        SELECT DISTINCT * WHERE {
-            ?humanProtein a up:Protein ;
-                up:organism/up:scientificName 'Homo sapiens' ;
-                up:annotation ?annotation ;
-                rdfs:seeAlso ?hgnc .
-            ?hgnc up:database <http://purl.uniprot.org/database/HGNC> ;
-                rdfs:label ?hgncSymbol . # comment
-            ?annotation a up:Disease_Annotation ;
-                up:disease ?disease .
-            ?disease a up:Disease ;
-                rdfs:label ?diseaseLabel . # skos:prefLabel
-            FILTER CONTAINS(?diseaseLabel, "cancer")
-        }
-    }
-    SERVICE <https://sparql.omabrowser.org/sparql/> {
-        SELECT ?humanProtein ?orthologRatProtein ?orthologRatGene WHERE {
-            ?humanProteinOma a orth:Protein ;
-                lscr:xrefUniprot ?humanProtein .
-            ?orthologRatProtein a orth:Protein ;
-                sio:SIO_010078 ?orthologRatGene ; # 79
-                orth:organism/obo:RO_0002162/up:scientificNam 'Rattus norvegicus' .
-            ?cluster a orth:OrthologsCluster .
-            ?cluster orth:hasHomologousMember ?node1 .
-            ?cluster orth:hasHomologousMember ?node2 .
-            ?node1 orth:hasHomologousMember* ?humanProteinOma .
-            ?node2 orth:hasHomologousMember* ?orthologRatProtein .
-            FILTER(?node1 != ?node2)
-        }
-    }
+    ?humanProtein a orth:Protein ;
+        lscr:xrefUniprot <http://purl.uniprot.org/uniprot/Q9Y2T1> .
+    ?orthologRatProtein a orth:Protein ;
+        sio:SIO_010078 ?orthologRatGene ;
+        orth:organism/obo:RO_0002162/up:name 'Rattus norvegicus' .
+    ?cluster a orth:OrthologsCluster .
+    ?cluster orth:hasHomologousMember ?node1 .
+    ?cluster orth:hasHomologousMember ?node2 .
+    ?node1 orth:hasHomologousMember* ?humanProtein .
+    ?node2 orth:hasHomologousMember* ?orthologRatProtein .
+    FILTER(?node1 != ?node2)
     SERVICE <https://www.bgee.org/sparql/> {
-        ?orthologRatGene genex:isExpressedIn ?anatEntity ;
+        ?orthologRatGene a orth:Gene ;
+            genex:expressedIn ?anatEntity ;
             orth:organism ?ratOrganism .
         ?anatEntity rdfs:label 'brain' .
         ?ratOrganism obo:RO_0002162 taxon:10116 .
     }
 }"""
 
-issues = validate_sparql_with_void(sparql_query, "https://sparql.uniprot.org/sparql/")
+issues = validate_sparql_with_void(sparql_query, "https://sparql.omabrowser.org/sparql/")
 print("\n".join(issues))
 ```
+
+> Checkout the [CONTRIBUTING.md](https://github.com/sib-swiss/sparql-llm/blob/main/CONTRIBUTING.md) page for more details on how to run the `sparql-llm` package in development and make a contribution.
 
 ## 🚀 Complete chat system
 
 > [!WARNING]
 >
-> To deploy the complete chat system right now you will need to fork this repository, change the configuration in `packages/expasy-agent/src/expasy_agent/config.py` and `compose.yml`, then deploy with docker/podman compose.
+> To deploy the complete chat system right now you will need to fork/clone this repository, change the configuration in `packages/expasy-agent/src/expasy_agent/config.py` and `compose.yml`, then deploy with docker/podman compose.
 >
 > It can easily be adapted to use any LLM served through an OpenAI-compatible API. We plan to make configuration and deployment of complete SPARQL LLM chat system easier in the future, let us know if you are interested in the GitHub issues!
 
 Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](https://docs.astral.sh/uv/getting-started/installation/) if you want to run scripts outside of docker.
 
-1. Create a `.env` file at the root of the repository to provide secrets and API keys:
+1. Explore and change the system configuration in `packages/expasy-agent/src/expasy_agent/config.py`
+
+2. Create a `.env` file at the root of the repository to provide secrets and API keys:
 
    ```sh
-   OPENAI_API_KEY=sk-proj-YYY
-   GLHF_API_KEY=APIKEY_FOR_glhf.chat_USED_FOR_TEST_OPEN_SOURCE_MODELS
    CHAT_API_KEY=NOT_SO_SECRET_API_KEY_USED_BY_FRONTEND_TO_AVOID_SPAM_FROM_CRAWLERS
    LOGS_API_KEY=SECRET_PASSWORD_TO_EASILY_ACCESS_LOGS_THROUGH_THE_API
+   
+   OPENAI_API_KEY=sk-proj-YYY
+   GROQ_API_KEY=gsk_YYY
+   HUGGINGFACEHUB_API_TOKEN=
+   TOGETHER_API_KEY=
+   DEEPSEEK_API_KEY=
+   
+   GLHF_API_KEY=glhf_43fb9eb000f0c3d93be7c57cf30edf4d
+   AZURE_INFERENCE_CREDENTIAL=
+   AZURE_INFERENCE_ENDPOINT=https://project-id.services.ai.azure.com/models
+   
+   LANGSMITH_PROJECT=expasy-agent
+   LANGSMITH_API_KEY=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
+   
    ```
 
-2. Build the chat UI webpage (will be better integrated in the workflow in the future):
+3. Build the chat UI webpage:
 
    ```sh
    cd chat-with-context
@@ -185,15 +186,7 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
    cd ..
    ```
 
-3. Start the vector database and web server
-
-   In production (you might need to make some changes to the `compose.yml` file to adapt it to your server/proxy setup):
-
-   ```bash
-   docker compose up
-   ```
-
-   Start the stack locally for development, with code from `src` folder mounted in the container and automatic API reload on changes to the code:
+4. **Start** the vector database and web server locally for development, with code from the `packages` folder mounted in the container and automatic API reload on changes to the code:
 
    ```bash
    docker compose -f compose.dev.yml up
@@ -203,7 +196,15 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
    * OpenAPI Swagger UI available at http://localhost:8000/docs
    * Vector database dashboard UI available at http://localhost:6333/dashboard
 
-4. When he stack is up you can run the script to index the SPARQL endpoints from within the container (need to do it once):
+   In production, you will need to make some changes to the `compose.yml` file to adapt it to your server/proxy setup:
+
+   ```bash
+   docker compose up
+   ```
+
+   > All data from the containers are stored persistently in the `data` folder (e.g. vectordb indexes)
+
+5. When the stack is up you can run the script to **index** the SPARQL endpoints from within the container (need to do it once):
 
    ```sh
    docker compose exec api uv run src/expasy_agent/indexing/index_endpoints.py
@@ -211,7 +212,7 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 
 > [!WARNING]
 >
-> **Experimental entities indexing**: it can take a lot of time to generate embeddings for entities. So we recommend to run the script to generate embeddings on a machine with GPU (does not need to be a powerful one, but at least with a GPU, checkout [fastembed GPU docs](https://qdrant.github.io/fastembed/examples/FastEmbed_GPU/) to install the GPU drivers and dependencies)
+> **Experimental entities indexing**: it can take a lot of time to generate embeddings for millions of entities. So we recommend to run the script to generate embeddings on a machine with GPU (does not need to be a powerful one, but at least with a GPU, checkout [fastembed GPU docs](https://qdrant.github.io/fastembed/examples/FastEmbed_GPU/) to install the GPU drivers and dependencies)
 >
 > ```sh
 > docker compose -f compose.dev.yml up vectordb -d
@@ -221,11 +222,13 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 >
 > Then move the entities collection containing the embeddings in `data/qdrant/collections/entities` before starting the stack
 
-All data from the containers are stored persistently in the `data` folder (e.g. vectordb)
+There is a benchmarking scripts for the system that will run a list of questions and compare their results to a reference SPARQL queries, with and without query validation, against a list of LLM providers. You will need to change the list of queries if you want to use it for different endpoints. You will need to start the stack in development mode to run it:
 
-## 🧑‍💻 Contributing
+```sh
+uv run packages/expasy-agent/tests/benchmark.py
+```
 
-Checkout the [CONTRIBUTING.md](https://github.com/sib-swiss/sparql-llm/blob/main/CONTRIBUTING.md) page for more details on how to run the `sparql-llm` package in development and make a contribution.
+> It takes time to run and will log the output and results in `data/benchmarks`
 
 ## 🪶 How to cite this work
 

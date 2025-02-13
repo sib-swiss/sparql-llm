@@ -45,4 +45,4 @@ jobs:
           path: src/
       - name: Run tests with pytest
         run: |
-          uv run pytest tests/unit_tests
+          uv run pytest
