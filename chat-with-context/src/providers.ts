@@ -3,7 +3,7 @@ import {Client} from "@langchain/langgraph-sdk";
 // import { RemoteGraph } from "@langchain/langgraph/remote";
 // import { isAIMessageChunk } from "@langchain/core/messages";
 
-import {extractSparqlQuery, getEditorUrl, queryLinkLabels} from "./utils";
+import {getEditorUrl, queryLinkLabels} from "./utils";
 
 // // Types of objects used when interacting with LLM agents
 // type RefenceDocument = {
@@ -75,8 +75,8 @@ export class ChatState {
     const [steps, setSteps] = createSignal<Step[]>([]);
     const [links, setLinks] = createSignal<Links[]>([]);
     const newMsg: Message = {content, setContent, steps, setSteps, role, links, setLinks};
-    const query = extractSparqlQuery(msgContent);
-    if (query) newMsg.setLinks([{url: query, ...queryLinkLabels}]);
+    // const query = extractSparqlQuery(msgContent);
+    // if (query) newMsg.setLinks([{url: query, ...queryLinkLabels}]);
     this.setMessages(messages => [...messages, newMsg]);
   };
 
@@ -126,6 +126,7 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
         // Handle most generic steps output sent by the agent
         for (const step of nodeData.steps) {
           state.appendStepToLastMsg(nodeId, step.label, step.details, step.substeps);
+          // console.log("STEP", step);
           // Handle step specific to post-generation validation
           if (step.type === "recall") {
             // When `recall` is called, the model will re-generate the response, so we need to update the message
@@ -151,20 +152,6 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
           ]);
         }
       }
-      // if (nodeData.validation) {
-      //   // Handle post-generation validation
-      //   for (const validationStep of nodeData.validation) {
-      //     // Handle messages related to tools (includes post generation validation)
-      //     state.appendStepToLastMsg(nodeId, validationStep.label, validationStep.details);
-      //     if (validationStep.type === "recall") {
-      //       // When recall-model is called, the model will re-generate the response, so we need to update the message
-      //       // If the update contains a message with a fix (e.g. done during post generation validation)
-      //       state.lastMsg().setContent("");
-      //     } else if (validationStep.fixed_message) {
-      //       state.lastMsg().setContent(validationStep.fixed_message);
-      //     }
-      //   }
-      // }
     }
   }
   // Handle messages from the model
@@ -239,6 +226,7 @@ async function streamCustomLangGraph(state: ChatState) {
 }
 
 async function streamLangGraphApi(state: ChatState) {
+  // Experimental, would need to be updated to properly uses steps output
   const client = new Client({apiUrl: state.apiUrl});
   const graphName = "agent";
 
@@ -261,6 +249,7 @@ async function streamLangGraphApi(state: ChatState) {
 }
 
 async function streamOpenAILikeApi(state: ChatState) {
+  // Experimental, would need to be updated to properly uses steps output
   const response = await fetch(`${state.apiUrl}chat/completions`, {
     method: "POST",
     headers: {
@@ -320,33 +309,6 @@ async function streamOpenAILikeApi(state: ChatState) {
   }
 
   // Extract query once message complete
-  const query = extractSparqlQuery(state.lastMsg().content());
-  if (query) state.lastMsg().setLinks([{url: query, ...queryLinkLabels}]);
-  // } else {
-  //   // When not streaming, await full response with additional checks done on the server
-  //   try {
-  //     const data = await response.json();
-  //     console.log("Complete response", data);
-  //     const respMsg = data.choices[0].message.content;
-  //     appendMessage(respMsg, "assistant");
-  //     setWarningMsg("");
-  //   } catch (error) {
-  //     console.error("Error getting API response", error, response);
-  //     setWarningMsg("An error occurred. Please try again.");
-  //   }
-  // }
+  // const query = extractSparqlQuery(state.lastMsg().content());
+  // if (query) state.lastMsg().setLinks([{url: query, ...queryLinkLabels}]);
 }
-
-// async function streamLangServe(state: ChatState) {
-//   // TODO: Query LangGraph through LangServe API
-//   const remoteChain = new RemoteRunnable({
-//     url: state.apiUrl,
-//   });
-//   const stream = await remoteChain.stream({
-//     // messages: [{role: "human", content: state.lastMsg().content()}],
-//     messages: state.messages().map(({content, role}) => ({content: content(), role})),
-//   });
-//   for await (const chunk of stream) {
-//     console.log(chunk);
-//   }
-// }

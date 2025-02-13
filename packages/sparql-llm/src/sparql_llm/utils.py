@@ -1,7 +1,9 @@
 import json
+import time
 from typing import Any, Optional
 
-import requests
+import httpx
+import rdflib
 from curies_rs import Converter
 
 # SPARQL utilities
@@ -59,13 +61,47 @@ WHERE {
 # A dictionary to store triples like structure: dict[subject][predicate] = list[object]
 # Also used to store VoID description of an endpoint: dict[subject_cls][predicate] = list[object_cls/datatype]
 TripleDict = dict[str, dict[str, list[str]]]
+# Quite simlar to the VoidDict type, but we also store the endpoints in an outer dict
+SparqlTriplesDict = dict[str, TripleDict]
 
 
-def get_void_dict(endpoint_url: str) -> TripleDict:
-    """Get a dict of VoID description of an endpoint: dict[subject_cls][predicate] = list[object_cls/datatype]"""
+def get_void_for_endpoint(endpoint_url: str, void_file: Optional[str] = None) -> TripleDict:
+    """Get a dict of VoID description of a SPARQL endpoint directly from the endpoint or from a VoID description URL.
+
+    Formatted as: dict[subject_cls][predicate] = list[object_cls/datatype]"""
     void_dict: TripleDict = {}
     try:
-        for void_triple in query_sparql(GET_VOID_DESC, endpoint_url)["results"]["bindings"]:
+        if void_file:
+            g = rdflib.Graph()
+            if void_file.startswith(("http://", "https://")):
+                # Handle URL case
+                with httpx.Client() as client:
+                    for attempt in range(10):
+                        # Retry a few times in case of HTTP errors, e.g. https://sparql.uniprot.org/.well-known/void/
+                        try:
+                            resp = client.get(void_file, headers={"Accept": "text/turtle"}, follow_redirects=True)
+                            resp.raise_for_status()
+                            if resp.text.strip() == "":
+                                raise ValueError(f"Empty response for VoID description from {void_file}")
+                            g.parse(data=resp.text, format="turtle")
+                            break
+                        except Exception as e:
+                            if attempt == 3:
+                                raise e
+                            time.sleep(1)
+                            continue
+            else:
+                # Handle local file case
+                g.parse(void_file, format="turtle")
+            results = g.query(GET_VOID_DESC)
+            bindings = [
+                {str(k): {"value": str(v)} for k, v in row.asdict().items()}
+                for row in results
+            ]
+        else:
+            bindings = query_sparql(GET_VOID_DESC, endpoint_url)["results"]["bindings"]
+
+        for void_triple in bindings:
             if void_triple["subjectClass"]["value"] not in void_dict:
                 void_dict[void_triple["subjectClass"]["value"]] = {}
             if void_triple["prop"]["value"] not in void_dict[void_triple["subjectClass"]["value"]]:
@@ -79,35 +115,38 @@ def get_void_dict(endpoint_url: str) -> TripleDict:
                     void_triple["objectDatatype"]["value"]
                 )
         if len(void_dict) == 0:
-            raise Exception("No VoID description found in the endpoint")
+            raise Exception("No VoID description found")
     except Exception as e:
-        print(f"Could not retrieve VoID description for endpoint {endpoint_url}: {e}")
+        print(f"Could not retrieve VoID description from {void_file if void_file else endpoint_url}: {e}")
     return void_dict
 
 
-def query_sparql(query: str, endpoint_url: str, post: bool = False, timeout: Optional[int] = None) -> Any:
-    """Execute a SPARQL query on a SPARQL endpoint using requests"""
-    if post:
-        resp = requests.post(
-            endpoint_url,
-            headers={
-                "Accept": "application/sparql-results+json",
-                # "User-agent": "sparqlwrapper 2.0.1a0 (rdflib.github.io/sparqlwrapper)"
-            },
-            data={"query": query},
-            timeout=timeout,
+def query_sparql(query: str, endpoint_url: str, post: bool = False, timeout: Optional[int] = None, client: Optional[httpx.Client] = None) -> Any:
+    """Execute a SPARQL query on a SPARQL endpoint using httpx"""
+    should_close = False
+    if client is None:
+        client = httpx.Client(
+            follow_redirects=True,
+            headers={"Accept": "application/sparql-results+json"},
+            timeout=timeout
         )
-    else:
-        # NOTE: We prefer GET because in the past it seemed like some endpoints at the SIB were having issues with POST
-        # But not sure if this is still the case
-        resp = requests.get(
-            endpoint_url,
-            headers={
-                "Accept": "application/sparql-results+json",
-                # "User-agent": "sparqlwrapper 2.0.1a0 (rdflib.github.io/sparqlwrapper)"
-            },
-            params={"query": query},
-            timeout=timeout,
-        )
-    resp.raise_for_status()
-    return resp.json()
+        should_close = True
+
+    try:
+        if post:
+            resp = client.post(
+                endpoint_url,
+                data={"query": query},
+            )
+        else:
+            # NOTE: We prefer GET because in the past it seemed like some endpoints at the SIB were having issues with POST
+            # But not sure if this is still the case
+            resp = client.get(
+                endpoint_url,
+                params={"query": query},
+            )
+        resp.raise_for_status()
+        return resp.json()
+    finally:
+        if should_close:
+            client.close()

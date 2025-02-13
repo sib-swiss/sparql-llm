@@ -7,7 +7,13 @@ from rdflib import Namespace, Variable
 from rdflib.paths import AlternativePath, MulPath, Path, SequencePath
 from rdflib.plugins.sparql import prepareQuery
 
-from sparql_llm.utils import TripleDict, get_prefix_converter, get_prefixes_for_endpoints, get_void_dict
+from sparql_llm.utils import (
+    SparqlTriplesDict,
+    TripleDict,
+    get_prefix_converter,
+    get_prefixes_for_endpoints,
+    get_void_for_endpoint,
+)
 
 queries_pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
 endpoint_pattern = re.compile(r"^#.*(https?://[^\s]+)", re.MULTILINE)
@@ -56,9 +62,6 @@ up = Namespace("http://purl.uniprot.org/core/")
 rh = Namespace("http://rdf.rhea-db.org/")
 sqc = Namespace("http://example.org/sqc/")  # SPARQL query check
 
-
-# Quite simlar to the VoidDict type, but we also store the endpoints in an outer dict
-SparqlTriplesDict = dict[str, TripleDict]
 
 
 def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> SparqlTriplesDict:
@@ -135,10 +138,14 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> SparqlTripl
     return query_dict
 
 
-def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: Optional[Converter] = None) -> set[str]:
-    """Validate SPARQL query using the VoID description of endpoints. Raise exception if errors found."""
+def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: Optional[Converter] = None, endpoints_void_dict: Optional[SparqlTriplesDict] = None) -> set[str]:
+    """Validate SPARQL query using the VoID description of endpoints. Returns a set of human-readable error messages."""
     if prefix_converter is None:
         prefix_converter = get_prefix_converter(get_prefixes_for_endpoints([endpoint_url]))
+    if endpoints_void_dict is None:
+        endpoints_void_dict = {}
+
+    max_recursion = 500
 
     def validate_triple_pattern(
         subj: str,
@@ -148,8 +155,12 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: O
         issues: set[str],
         parent_type: Optional[str] = None,
         parent_pred: Optional[str] = None,
+        recursion: int = 0,
     ) -> set[str]:
         pred_dict = subj_dict.get(subj, {})
+        if recursion > max_recursion:
+            issues.add(f"Recursion limit reached for subject {subj} in endpoint {endpoint}")
+            return issues
         # Direct type provided for this entity
         if "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" in pred_dict:
             for subj_type in pred_dict["http://www.w3.org/1999/02/22-rdf-syntax-ns#type"]:
@@ -171,7 +182,7 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: O
                         # Recursively validates objects that are variables
                         if obj.startswith("?"):
                             issues = validate_triple_pattern(
-                                obj, subj_dict, void_dict, endpoint, issues, subj_type, pred
+                                obj, subj_dict, void_dict, endpoint, issues, subj_type, pred, recursion+1
                             )
                     # TODO: if object is a variable, we check this variable
                     # We can pass the parent type to the function in case no type is defined for the child
@@ -196,7 +207,7 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: O
                                 # If object is variable, we try to validate it too passing the potential type we just validated
                                 if obj.startswith("?"):
                                     issues = validate_triple_pattern(
-                                        obj, subj_dict, void_dict, endpoint, issues, potential_type, pred
+                                        obj, subj_dict, void_dict, endpoint, issues, potential_type, pred, recursion+1
                                     )
                         break
                 if missing_pred is not None:
@@ -238,12 +249,16 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: O
 
     # Go through the query BGPs and check if they match the VoID description
     for endpoint, subj_dict in query_dict.items():
-        void_dict = get_void_dict(endpoint)
+        void_dict = endpoints_void_dict[endpoint] if endpoint in endpoints_void_dict else get_void_for_endpoint(endpoint)
+
         if len(void_dict) == 0:
             continue
 
         for subj in subj_dict:
-            issues_msgs = validate_triple_pattern(subj, subj_dict, void_dict, endpoint, issues_msgs)
+            try:
+                issues_msgs = validate_triple_pattern(subj, subj_dict, void_dict, endpoint, issues_msgs)
+            except Exception as e:
+                print(f"Error validating triples for subject {subj} in endpoint {endpoint} and query {query}: {e!s}")
 
     return issues_msgs
 
@@ -257,6 +272,7 @@ def validate_sparql_with_void(query: str, endpoint_url: str, prefix_converter: O
     #         "message": f"Type {prefix_converter.compress_list(subj_type)[0]} for subject {subj} in endpoint {endpoint} does not exist. Available classes are: {', '.join(prefix_converter.compress_list(list(void_dict.keys())))}"
     #     }
     # )
+
 
 
 # @dataclass

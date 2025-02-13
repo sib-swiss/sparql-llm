@@ -4,6 +4,7 @@ from sparql_llm import (
     __version__,
     validate_sparql_with_void,
 )
+from sparql_llm.utils import get_void_for_endpoint
 
 
 def test_sparql_examples_loader_uniprot():
@@ -31,6 +32,12 @@ def test_sparql_void_shape_loader():
     # print(docs)
     assert len(docs) >= 10
 
+# uv run pytest tests/test_components.py::test_sparql_void_from_url
+def test_sparql_void_from_url():
+    # loader = SparqlVoidShapesLoader("https://sparql.uniprot.org/sparql/")
+    void_dict = get_void_for_endpoint("https://sparql.uniprot.org/", "https://sparql.uniprot.org/.well-known/void/")
+    # print(docs)
+    assert len(void_dict) >= 2
 
 def test_validate_sparql_with_void():
     sparql_query = """PREFIX skos: <http://www.w3.org/2004/02/skos/core#>

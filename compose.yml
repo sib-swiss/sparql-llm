@@ -33,6 +33,7 @@ services:
     env_file:
       - .env
 
+
   # langgraph-redis:
   #   image: redis:6
   #   restart: unless-stopped

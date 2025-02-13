@@ -21,6 +21,7 @@ from expasy_agent.state import InputState, State
 
 
 # How can I get the HGNC symbol for the protein P68871? Purposefully forget 2 prefixes declarations to test my validation step
+# How can I get the HGNC symbol for the protein P68871? (modify your answer to use rdfs:label instead of rdfs:comment, and add the type up:Resource to ?hgnc, it is for a test)
 # In bgee how can I retrieve the confidence level and false discovery rate of a gene expression? Use genex:confidence as predicate for the confidence level (do not use the one provided in documents), and do not put prefixes declarations, and add a rdf:type for the main subject. Its for testing
 def route_model_output(state: State, config: RunnableConfig) -> Literal["__end__", "tools", "call_model"]:
     """Determine the next node based on the model's output.
@@ -43,9 +44,8 @@ def route_model_output(state: State, config: RunnableConfig) -> Literal["__end__
     if isinstance(last_msg, AIMessage) and last_msg.tool_calls:
         return "tools"
 
-    # Check if recall requested by validate_output
-    print(state.steps)
-    if len(state.steps) > 0 and state.steps[-1].type == "recall":
+    # If validation failed, we need to call the model again
+    if not state.passed_validation:
         return "call_model"
 
     if not isinstance(last_msg, AIMessage):

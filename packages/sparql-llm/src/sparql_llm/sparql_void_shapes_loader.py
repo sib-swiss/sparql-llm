@@ -3,7 +3,7 @@ from typing import Optional
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
 
-from sparql_llm.utils import get_prefix_converter, get_prefixes_for_endpoints, get_void_dict, query_sparql
+from sparql_llm.utils import get_prefix_converter, get_prefixes_for_endpoints, get_void_for_endpoint, query_sparql
 
 DEFAULT_NAMESPACES_TO_IGNORE = [
     "http://www.w3.org/ns/sparql-service-description#",
@@ -21,13 +21,13 @@ def ignore_namespaces(ns_to_ignore: list[str], cls: str) -> bool:
 
 
 def get_shex_dict_from_void(
-    endpoint_url: str, prefix_map: Optional[dict[str, str]] = None, namespaces_to_ignore: Optional[list[str]] = None
+    endpoint_url: str, prefix_map: Optional[dict[str, str]] = None, namespaces_to_ignore: Optional[list[str]] = None, void_file: Optional[str] = None
 ) -> dict[str, dict[str, str]]:
     """Get a dict of shex shapes from the VoID description."""
     prefix_map = prefix_map or get_prefixes_for_endpoints([endpoint_url])
     namespaces_to_ignore = namespaces_to_ignore or DEFAULT_NAMESPACES_TO_IGNORE
     prefix_converter = get_prefix_converter(prefix_map)
-    void_dict = get_void_dict(endpoint_url)
+    void_dict = get_void_for_endpoint(endpoint_url, void_file)
     shex_dict = {}
 
     for subject_cls, predicates in void_dict.items():
@@ -97,10 +97,10 @@ SELECT DISTINCT * WHERE {{
     return shex_dict
 
 
-def get_shex_from_void(endpoint_url: str, namespaces_to_ignore: Optional[list[str]] = None) -> str:
+def get_shex_from_void(endpoint_url: str, namespaces_to_ignore: Optional[list[str]] = None, void_file: Optional[str] = None) -> str:
     """Function to build complete ShEx from VoID description with prefixes and all shapes"""
     prefix_map = get_prefixes_for_endpoints([endpoint_url])
-    shex_dict = get_shex_dict_from_void(endpoint_url, prefix_map, namespaces_to_ignore)
+    shex_dict = get_shex_dict_from_void(endpoint_url, prefix_map, namespaces_to_ignore, void_file)
     shex_str = ""
     for prefix, namespace in prefix_map.items():
         shex_str += f"PREFIX {prefix}: <{namespace}>\n"
@@ -121,6 +121,7 @@ class SparqlVoidShapesLoader(BaseLoader):
     def __init__(
         self,
         endpoint_url: str,
+        void_file: Optional[str] = None,
         namespaces_to_ignore: Optional[list[str]] = None,
         prefix_map: Optional[dict[str, str]] = None,
         verbose: bool = False,
@@ -132,6 +133,7 @@ class SparqlVoidShapesLoader(BaseLoader):
             endpoint_url (str): URL of the SPARQL endpoint to retrieve SPARQL queries examples from.
         """
         self.endpoint_url = endpoint_url
+        self.void_file = void_file
         self.prefix_map = prefix_map
         self.namespaces_to_ignore = namespaces_to_ignore
         self.verbose = verbose
@@ -139,7 +141,7 @@ class SparqlVoidShapesLoader(BaseLoader):
     def load(self) -> list[Document]:
         """Load and return documents from the SPARQL endpoint."""
         docs: list[Document] = []
-        shex_dict = get_shex_dict_from_void(self.endpoint_url, self.prefix_map, self.namespaces_to_ignore)
+        shex_dict = get_shex_dict_from_void(self.endpoint_url, self.prefix_map, self.namespaces_to_ignore, self.void_file)
 
         for cls_uri, shex_shape in shex_dict.items():
             # print(cls_uri, shex_shape)

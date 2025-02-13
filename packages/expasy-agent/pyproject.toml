@@ -34,7 +34,7 @@ dependencies = [
     "qdrant-client >=1.13.0",
     # Dependencies to deploy the API
     "sparql-llm >=0.0.3",
-    "requests >=2.26.0",
+    "httpx >=0.27.2",
     "rdflib >=7.0.0",
     "fastapi >=0.115.8",
     "uvicorn[standard] >=0.34.0",

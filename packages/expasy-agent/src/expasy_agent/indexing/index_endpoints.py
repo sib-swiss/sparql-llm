@@ -1,6 +1,6 @@
 import time
 
-import requests
+import httpx
 from bs4 import BeautifulSoup
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
@@ -10,25 +10,25 @@ from sparql_llm.sparql_examples_loader import SparqlExamplesLoader
 from sparql_llm.sparql_void_shapes_loader import SparqlVoidShapesLoader
 from sparql_llm.utils import get_prefixes_for_endpoints
 
-from expasy_agent.config import Configuration, settings
+from expasy_agent.config import settings
 from expasy_agent.nodes.retrieval import make_dense_encoder
 
 SCHEMA = Namespace("http://schema.org/")
 
-# configuration = Configuration()
 
 def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
     """Extract datasets descriptions from the schema.org metadata in homepage of the endpoint"""
     docs = []
     try:
-        resp = requests.get(
+        resp = httpx.get(
             endpoint["homepage"],
             headers={
                 # "User-Agent": "BgeeBot/1.0",
-                # Adding a user-agent to make it look like we are a google bot to trigger SSR
+                # Adding a user-agent to make it look like we are a google bot to trigger SSR on Bgee
                 "User-Agent": "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.96 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html) X-Middleton/1",
             },
             timeout=10,
+            follow_redirects=True,
         )
         if resp.status_code != 200:
             raise Exception(f"Failed to fetch the webpage: {resp.status_code}")
@@ -137,6 +137,7 @@ def init_vectordb() -> None:
     endpoints_urls = [endpoint["endpoint_url"] for endpoint in settings.endpoints]
     prefix_map = get_prefixes_for_endpoints(endpoints_urls)
 
+    # Gets documents from the SPARQL endpoints
     for endpoint in settings.endpoints:
         print(f"\n  🔎 Getting metadata for {endpoint['label']} at {endpoint['endpoint_url']}")
         queries_loader = SparqlExamplesLoader(endpoint["endpoint_url"], verbose=True)
@@ -145,6 +146,7 @@ def init_vectordb() -> None:
         void_loader = SparqlVoidShapesLoader(
             endpoint["endpoint_url"],
             prefix_map=prefix_map,
+            void_file=endpoint.get("void_file"),
             verbose=True,
         )
         docs += void_loader.load()
@@ -153,6 +155,7 @@ def init_vectordb() -> None:
         # NOTE: we dont use the ontology for now, schema from shex is better
         # docs += load_ontology(endpoint)
 
+    # Add some documents for general information about the resources
     resources_summary_question = "Which resources are available through this system?"
     docs.append(
         Document(
@@ -193,17 +196,16 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
     print(f"Generating embeddings for {len(docs)} documents")
     start_time = time.time()
 
-    # Using LangChain
+    # Generate embeddings and loads documents into the vectordb
     QdrantVectorStore.from_documents(
         docs,
-        # url="http://localhost:6333/",
         url=settings.vectordb_url,
         collection_name=settings.docs_collection_name,
+        prefer_grpc=True,
+        force_recreate=True,
         embedding=make_dense_encoder(settings.embedding_model),
         # sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
         # retrieval_mode=RetrievalMode.HYBRID,
-        prefer_grpc=True,
-        force_recreate=True,
     )
 
     # Using fastembed and Qdrant client directly

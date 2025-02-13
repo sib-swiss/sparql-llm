@@ -37,10 +37,10 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
         containing a list of retrieved Document objects.
     """
     configuration = Configuration.from_runnable_config(config)
+    user_question = get_message_text(state.messages[-1])
     docs: list[Document] = []
 
     if state.structured_question.intent == "general_information":
-        user_question = get_message_text(state.messages[-1])
         with make_qdrant_retriever(configuration) as retriever:
             docs += await retriever.ainvoke(user_question, config)
     else:
@@ -54,7 +54,7 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
             ]
         )
         with make_qdrant_retriever(configuration) as retriever:
-            for step in state.structured_question.question_steps:
+            for step in [user_question, *state.structured_question.question_steps]:
                 # Make sure we don't add duplicate docs
                 docs.extend(doc for doc in await retriever.ainvoke(step, config) if doc.metadata.get("answer") not in {existing_doc.metadata.get("answer") for existing_doc in docs})
 
@@ -72,6 +72,9 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
             for extracted_class in state.structured_question.extracted_classes:
                 # docs_classes += await retriever.ainvoke(extracted_class, config)
                 docs.extend(doc for doc in await retriever.ainvoke(extracted_class, config) if doc.metadata.get("answer") not in {existing_doc.metadata.get("answer") for existing_doc in docs})
+
+    # Sort docs by score (highest score first)
+    docs.sort(key=lambda x: x.metadata.get("score", 0), reverse=True)
 
     # Create substeps for each doc type
     substeps: list[StepOutput] = []

@@ -24,7 +24,7 @@ class Settings(BaseSettings):
             # Optional, homepage from which we can extract more information using the JSON-LD context
             # "homepage": "https://www.uniprot.org/",
             "ontology": "https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl",
-            # "void_url": "https://sparql.uniprot.org/.well-known/void/",
+            "void_file": "https://sparql.uniprot.org/.well-known/void/",
         },
         {
             "label": "Bgee",
@@ -101,9 +101,11 @@ class Settings(BaseSettings):
     logs_api_key: str = ""
 
     # Settings for the vector store
+    # ⚠️ changing the embedding models require to reindex the data
     # https://qdrant.github.io/fastembed/examples/Supported_Models/
     embedding_model: str = "BAAI/bge-large-en-v1.5"
     embedding_dimensions: int = 1024
+    # Sparse embeddings are only used for the entities resolution
     sparse_embedding_model: str = "Qdrant/bm25"
     # sparse_embedding_model: str = "prithivida/Splade_PP_en_v1"
     vectordb_url: str = "http://vectordb:6334/"
@@ -112,9 +114,8 @@ class Settings(BaseSettings):
 
     # Default settings for the agent that can be changed at runtime
     default_llm_model: str = "openai/gpt-4o"
-    # default_llm_model: str = "azure/DeepSeek-R1"
+    # TODO: default_llm_model_cheap: str = "openai/gpt-4o-mini"
 
-    # default_number_of_retrieved_docs: int = 15
     default_number_of_retrieved_docs: int = 10
     default_max_try_fix_sparql: int = 3
     default_temperature: float = 0.0
@@ -143,17 +144,17 @@ settings = Settings()
 class Configuration:
     """The configuration for the agent that can be changed at runtime when calling the agent."""
 
-    enable_output_validation: bool = field(
-        default=True,
-        metadata={
-            "description": "Wherever to validate or not the output of the LLM (e.g. SPARQL queries generated)."
-        },
-    )
-
     enable_entities_resolution: bool = field(
         default=False,
         metadata={
             "description": "Wherever to enable trying to resolve entities to their URIs in the SPARQL endpoints."
+        },
+    )
+
+    enable_output_validation: bool = field(
+        default=True,
+        metadata={
+            "description": "Wherever to validate or not the output of the LLM (e.g. SPARQL queries generated)."
         },
     )
 
