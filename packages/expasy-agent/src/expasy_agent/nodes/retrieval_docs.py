@@ -13,7 +13,7 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.runnables import RunnableConfig
 from langchain_core.vectorstores import VectorStoreRetriever
-from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
+from langchain_qdrant import QdrantVectorStore
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from expasy_agent.config import Configuration, settings
@@ -41,6 +41,7 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
     docs: list[Document] = []
 
     if state.structured_question.intent == "general_information":
+        # Handles when user asks for general informations about the resources
         with make_qdrant_retriever(configuration) as retriever:
             docs += await retriever.ainvoke(user_question, config)
     else:
@@ -56,7 +57,14 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
         with make_qdrant_retriever(configuration) as retriever:
             for step in [user_question, *state.structured_question.question_steps]:
                 # Make sure we don't add duplicate docs
-                docs.extend(doc for doc in await retriever.ainvoke(step, config) if doc.metadata.get("answer") not in {existing_doc.metadata.get("answer") for existing_doc in docs})
+                docs.extend(
+                    doc
+                    for doc in await retriever.ainvoke(step, config)
+                    if doc.metadata.get("answer")
+                    not in {
+                        existing_doc.metadata.get("answer") for existing_doc in docs
+                    }
+                )
 
         # Search anything else that is not a query example, e.g. SPARQL endpoints classes schema
         configuration.search_kwargs["filter"] = Filter(
@@ -68,13 +76,18 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
             ]
         )
         with make_qdrant_retriever(configuration) as retriever:
-            # all_docs += await retriever.ainvoke(human_input, config)
             for extracted_class in state.structured_question.extracted_classes:
-                # docs_classes += await retriever.ainvoke(extracted_class, config)
-                docs.extend(doc for doc in await retriever.ainvoke(extracted_class, config) if doc.metadata.get("answer") not in {existing_doc.metadata.get("answer") for existing_doc in docs})
+                docs.extend(
+                    doc
+                    for doc in await retriever.ainvoke(extracted_class, config)
+                    if doc.metadata.get("answer")
+                    not in {
+                        existing_doc.metadata.get("answer") for existing_doc in docs
+                    }
+                )
 
     # Sort docs by score (highest score first)
-    docs.sort(key=lambda x: x.metadata.get("score", 0), reverse=True)
+    # docs.sort(key=lambda x: x.metadata.get("score", 0), reverse=True)
 
     # Create substeps for each doc type
     substeps: list[StepOutput] = []
@@ -85,14 +98,9 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
             docs_by_type[doc_type] = []
         docs_by_type[doc_type].append(doc)
     substeps += [
-        StepOutput(
-            label=doc_type,
-            details=format_docs(docs)
-        )
+        StepOutput(label=doc_type, details=format_docs(docs))
         for doc_type, docs in docs_by_type.items()
     ]
-
-    # print(format_docs(docs_examples + docs_classes))
 
     return {
         "retrieved_docs": docs,
@@ -107,6 +115,7 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
 
 ## Encoder constructors
 
+
 def make_dense_encoder(embedding_model: str, gpu: bool = False) -> Embeddings:
     """Connect to the configured text encoder."""
     return FastEmbedEmbeddings(
@@ -115,10 +124,11 @@ def make_dense_encoder(embedding_model: str, gpu: bool = False) -> Embeddings:
         # batch_size=1024,
     )
 
+
 # def make_vectordb(collection_name: str, gpu: bool = False):
 #     """Connect to the configured vector database."""
 #     return QdrantVectorStore(
-#         url=settings.vectordb_url,
+#         client=qdrant_client,
 #         collection_name=collection_name,
 #         embedding=make_text_encoder(settings.embedding_model, gpu),
 #         sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model, batch_size=1024),
@@ -127,19 +137,25 @@ def make_dense_encoder(embedding_model: str, gpu: bool = False) -> Embeddings:
 
 ## Retriever constructors
 
+
 # https://python.langchain.com/docs/integrations/vectorstores/qdrant/
 @contextmanager
-def make_qdrant_retriever(configuration: Configuration) -> Generator["ScoredRetriever", None, None]:
+def make_qdrant_retriever(
+    configuration: Configuration,
+) -> Generator["ScoredRetriever", None, None]:
     """Configure this agent to connect to a specific Qdrant index."""
     vectordb = QdrantVectorStore.from_existing_collection(
+        # client=qdrant_client,
         url=settings.vectordb_url,
+        prefer_grpc=True,
         collection_name=settings.docs_collection_name,
         embedding=make_dense_encoder(settings.embedding_model),
         # sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
         # retrieval_mode=RetrievalMode.HYBRID,
-        prefer_grpc=True,
     )
-    yield ScoredRetriever(vectorstore=vectordb, search_kwargs=configuration.search_kwargs)
+    yield ScoredRetriever(
+        vectorstore=vectordb, search_kwargs=configuration.search_kwargs
+    )
     # yield vectordb.as_retriever(search_kwargs=configuration.search_kwargs)
 
 
@@ -154,7 +170,6 @@ class ScoredRetriever(VectorStoreRetriever):
     async def _aget_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun
     ) -> list[Document]:
-
         # # query_embedding = await self.vectorstore._aembed_query(query)
         # query_embedding = await self.vectorstore.embeddings.aembed_query(query)
 
@@ -214,6 +229,7 @@ class ScoredRetriever(VectorStoreRetriever):
 
 ## Document formatting
 
+
 def _format_doc(doc: Document) -> str:
     """Format a single document as XML.
 
@@ -224,7 +240,11 @@ def _format_doc(doc: Document) -> str:
         str: The formatted document as an XML string.
     """
     if doc.metadata.get("answer"):
-        endpoint_info = f" ({doc.metadata.get('endpoint_url')})" if doc.metadata.get("endpoint_url") else ""
+        endpoint_info = (
+            f" ({doc.metadata.get('endpoint_url')})"
+            if doc.metadata.get("endpoint_url")
+            else ""
+        )
         doc_lang = ""
         doc_type = str(doc.metadata.get("doc_type", "")).lower()
         if "query" in doc_type:

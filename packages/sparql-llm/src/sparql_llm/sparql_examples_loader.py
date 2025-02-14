@@ -1,10 +1,11 @@
 import re
 import warnings
-from typing import Any
+from typing import Any, Optional
 
 from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
+from rdflib import Graph
 from rdflib.plugins.sparql import prepareQuery
 
 from sparql_llm.utils import GET_PREFIXES_QUERY, query_sparql
@@ -25,7 +26,7 @@ class SparqlExamplesLoader(BaseLoader):
     Compatible with the LangChain framework.
     """
 
-    def __init__(self, endpoint_url: str, verbose: bool = False):
+    def __init__(self, endpoint_url: str, examples_file: Optional[str] = None, verbose: bool = False):
         """
         Initialize the SparqlExamplesLoader.
 
@@ -33,6 +34,7 @@ class SparqlExamplesLoader(BaseLoader):
             endpoint_url (str): URL of the SPARQL endpoint to retrieve SPARQL queries examples from.
         """
         self.endpoint_url = endpoint_url
+        self.examples_file = examples_file
         self.verbose = verbose
 
     def load(self) -> list[Document]:
@@ -42,8 +44,12 @@ class SparqlExamplesLoader(BaseLoader):
         # Get prefixes
         prefix_map: dict[str, str] = {}
         try:
-            res = query_sparql(GET_PREFIXES_QUERY, self.endpoint_url)
-            for row in res["results"]["bindings"]:
+            if self.examples_file:
+                g = Graph()
+                g.parse(self.examples_file, format="turtle")
+            else:
+                bindings = query_sparql(GET_PREFIXES_QUERY, self.endpoint_url)["results"]["bindings"]
+            for row in bindings:
                 # TODO: we might be able to remove this soon, when prefixes will be included in all endpoints
                 prefix_map[row["prefix"]["value"]] = row["namespace"]["value"]
 

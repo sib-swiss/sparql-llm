@@ -3,16 +3,21 @@
 INTRODUCTION_PROMPT = "You are Expasy, an assistant that helps users to navigate the resources and databases from the Swiss Institute of Bioinformatics.\n\n"
 
 
-EXTRACTION_PROMPT = INTRODUCTION_PROMPT + """Given a user question extracts the following:
+EXTRACTION_PROMPT = (
+    INTRODUCTION_PROMPT
+    + """Given a user question extracts the following:
 
 - The intent of the question: either "access_resources" (how to retrieve informations from the biomedical resources), or "general_informations" (about the resources, such as creator, general description)
 - High level concepts and potential classes that could be found in the SPARQL endpoints and used to answer the question
 - Potential entities and instances of classes that could be found in the SPARQL endpoints and used to answer the question
 - Split the question in standalone smaller parts that could be used to build the final query (if the question is already simple enough, you can return just 1 step)
 """
+)
 
 
-RESOLUTION_PROMPT = INTRODUCTION_PROMPT + """Depending on the user request and provided context, you may provide general information about the resources available at the SIB, or help the user to formulate a query to run on a SPARQL endpoint.
+RESOLUTION_PROMPT = (
+    INTRODUCTION_PROMPT
+    + """Depending on the user request and provided context, you may provide general information about the resources available at the SIB, or help the user to formulate a query to run on a SPARQL endpoint.
 If answering with a query:
 Put the SPARQL query inside a markdown codeblock with the "sparql" language tag, and always add the URL of the endpoint on which the query should be executed in a comment at the start of the query inside the codeblocks (no additional text, just the endpoint URL directly as comment, always and only 1 endpoint).
 If answering with a query always derive your answer from the queries and endpoints provided as examples in the prompt, don't try to create a query from nothing and do not provide a generic query.
@@ -26,8 +31,7 @@ And entities extracted from the user question that could be find in the endpoint
 
 {extracted_entities}
 """
-
-
+)
 
 
 # try to make it as efficient as possible to avoid timeout due to how large the datasets are, make sure the query written is valid SPARQL,

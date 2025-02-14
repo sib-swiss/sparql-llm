@@ -21,7 +21,10 @@ def ignore_namespaces(ns_to_ignore: list[str], cls: str) -> bool:
 
 
 def get_shex_dict_from_void(
-    endpoint_url: str, prefix_map: Optional[dict[str, str]] = None, namespaces_to_ignore: Optional[list[str]] = None, void_file: Optional[str] = None
+    endpoint_url: str,
+    prefix_map: Optional[dict[str, str]] = None,
+    namespaces_to_ignore: Optional[list[str]] = None,
+    void_file: Optional[str] = None,
 ) -> dict[str, dict[str, str]]:
     """Get a dict of shex shapes from the VoID description."""
     prefix_map = prefix_map or get_prefixes_for_endpoints([endpoint_url])
@@ -97,7 +100,9 @@ SELECT DISTINCT * WHERE {{
     return shex_dict
 
 
-def get_shex_from_void(endpoint_url: str, namespaces_to_ignore: Optional[list[str]] = None, void_file: Optional[str] = None) -> str:
+def get_shex_from_void(
+    endpoint_url: str, namespaces_to_ignore: Optional[list[str]] = None, void_file: Optional[str] = None
+) -> str:
     """Function to build complete ShEx from VoID description with prefixes and all shapes"""
     prefix_map = get_prefixes_for_endpoints([endpoint_url])
     shex_dict = get_shex_dict_from_void(endpoint_url, prefix_map, namespaces_to_ignore, void_file)
@@ -111,6 +116,7 @@ def get_shex_from_void(endpoint_url: str, namespaces_to_ignore: Optional[list[st
             shex_str += f"# {shex_shape['comment']}\n"
         shex_str += shex_shape["shex"] + "\n\n"
     return shex_str
+
 
 class SparqlVoidShapesLoader(BaseLoader):
     """
@@ -141,7 +147,9 @@ class SparqlVoidShapesLoader(BaseLoader):
     def load(self) -> list[Document]:
         """Load and return documents from the SPARQL endpoint."""
         docs: list[Document] = []
-        shex_dict = get_shex_dict_from_void(self.endpoint_url, self.prefix_map, self.namespaces_to_ignore, self.void_file)
+        shex_dict = get_shex_dict_from_void(
+            self.endpoint_url, self.prefix_map, self.namespaces_to_ignore, self.void_file
+        )
 
         for cls_uri, shex_shape in shex_dict.items():
             # print(cls_uri, shex_shape)

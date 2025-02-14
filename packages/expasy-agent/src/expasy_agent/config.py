@@ -7,6 +7,7 @@ from typing import Annotated, Any, Optional, Type, TypeVar
 
 from langchain_core.runnables import RunnableConfig, ensure_config
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from qdrant_client import QdrantClient
 
 from expasy_agent import prompts
 
@@ -21,8 +22,10 @@ class Settings(BaseSettings):
             "label": "UniProt",
             # The URL of the SPARQL endpoint from which most informations will be extracted
             "endpoint_url": "https://sparql.uniprot.org/sparql/",
-            "void_file": "https://sparql.uniprot.org/.well-known/void/",
+            # If VoID description or SPARQL query examples are not available in the endpoint, you can provide a VoID file (local or remote)
+            "void_file": "../sparql-llm/tests/void_uniprot.ttl",
             # "void_file": "https://sparql.uniprot.org/.well-known/void/",
+            # "examples_file": "../sparql-llm/tests/examples_uniprot.ttl",
             # Optional, homepage from which we can extract more information using the JSON-LD context
             # "homepage": "https://www.uniprot.org/",
             # "ontology": "https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl",
@@ -84,6 +87,27 @@ class Settings(BaseSettings):
         # },
     ]
 
+    # Settings for the vector store and embeddings
+    # ⚠️ changing the embedding models require to reindex the data
+    vectordb_url: str = "http://vectordb:6334/"
+    # https://qdrant.github.io/fastembed/examples/Supported_Models/
+    embedding_model: str = "BAAI/bge-large-en-v1.5"
+    embedding_dimensions: int = 1024
+    # Sparse embeddings are only used for the entities resolution
+    sparse_embedding_model: str = "Qdrant/bm25"
+    # sparse_embedding_model: str = "prithivida/Splade_PP_en_v1"
+    docs_collection_name: str = "expasy"
+    entities_collection_name: str = "entities"
+
+    # Default settings for the agent that can be changed at runtime
+    default_llm_model: str = "openai/gpt-4o"
+    # TODO: default_llm_model_cheap: str = "openai/gpt-4o-mini"
+
+    default_number_of_retrieved_docs: int = 10
+    default_max_try_fix_sparql: int = 3
+    default_temperature: float = 0.0
+    default_max_tokens: int = 120000
+
     # List of example questions to display in the chat UI
     example_questions: list[str] = [
         "Which resources are available at the SIB?",
@@ -101,26 +125,9 @@ class Settings(BaseSettings):
     # Secret API key used by admins to access log file easily from the API
     logs_api_key: str = ""
 
-    # Settings for the vector store
-    # ⚠️ changing the embedding models require to reindex the data
-    # https://qdrant.github.io/fastembed/examples/Supported_Models/
-    embedding_model: str = "BAAI/bge-large-en-v1.5"
-    embedding_dimensions: int = 1024
-    # Sparse embeddings are only used for the entities resolution
-    sparse_embedding_model: str = "Qdrant/bm25"
-    # sparse_embedding_model: str = "prithivida/Splade_PP_en_v1"
-    vectordb_url: str = "http://vectordb:6334/"
-    docs_collection_name: str = "expasy"
-    entities_collection_name: str = "entities"
-
-    # Default settings for the agent that can be changed at runtime
-    default_llm_model: str = "openai/gpt-4o"
-    # TODO: default_llm_model_cheap: str = "openai/gpt-4o-mini"
-
-    default_number_of_retrieved_docs: int = 10
-    default_max_try_fix_sparql: int = 3
-    default_temperature: float = 0.0
-    default_max_tokens: int = 120000
+    # External services API keys
+    azure_inference_credential: str = ""
+    azure_inference_endpoint: str = ""
 
     logs_filepath: str = "/logs/user_questions.log"
 
@@ -130,13 +137,15 @@ class Settings(BaseSettings):
         extra="allow",
     )
 
-    # External services API keys
-    azure_inference_credential: str = ""
-    azure_inference_endpoint: str = ""
 
 settings = Settings()
 
-
+# TODO: Getting `TypeError: cannot pickle '_thread.RLock' object` when doing `QdrantVectorStore.from_existing_collection(client=qdrant_client)`
+qdrant_client = (
+    QdrantClient(url=settings.vectordb_url, prefer_grpc=True, timeout=600)
+    if settings.vectordb_url.startswith(("http", "https"))
+    else QdrantClient(path=settings.vectordb_url)
+)
 
 
 @dataclass(kw_only=True)
@@ -203,7 +212,6 @@ class Configuration:
             "description": "The maximum number of tries when calling the model to fix a SPARQL query."
         },
     )
-
 
     @classmethod
     def from_runnable_config(

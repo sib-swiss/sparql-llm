@@ -36,9 +36,11 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
     if not configuration.enable_output_validation:
         return {}
     # Remove the thought process <think> tags from the last message
-    last_msg = re.sub(r"<think>.*?</think>", "", state.messages[-1].content, flags=re.DOTALL)
+    last_msg = re.sub(
+        r"<think>.*?</think>", "", state.messages[-1].content, flags=re.DOTALL
+    )
     validation_steps: list[StepOutput] = []
-    new_messages = []
+    recall_messages = []
     generated_sparqls = extract_sparql_queries(last_msg)
     for gen_query in generated_sparqls:
         errors = []
@@ -53,40 +55,57 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
                 fixed_msg = last_msg.replace(gen_query["query"], fixed_query)
                 gen_query["query"] = fixed_query
                 # Pass the fixed msg to the client
-                validation_steps.append(StepOutput(
-                    type="fix-message",
-                    label="✅ Fixed the prefixes of the generated SPARQL query automatically",
-                    details=f"Prefixes corrected from the query generated in the original response.\n### Original response\n{last_msg}",
-                    fixed_message=fixed_msg,
-                ))
+                validation_steps.append(
+                    StepOutput(
+                        type="fix-message",
+                        label="✅ Fixed the prefixes of the generated SPARQL query automatically",
+                        details=f"Prefixes corrected from the query generated in the original response.\n### Original response\n{last_msg}",
+                        fixed_message=fixed_msg,
+                    )
+                )
                 # Check if other errors are present
-                errors = [line for line in str(e).splitlines() if "Unknown namespace prefix" not in line]
+                errors = [
+                    line
+                    for line in str(e).splitlines()
+                    if "Unknown namespace prefix" not in line
+                ]
 
         # 2. Validate the SPARQL query based on schema from VoID description
         if gen_query["endpoint_url"] and not errors:
-            errors = list(validate_sparql_with_void(gen_query["query"], gen_query["endpoint_url"], prefix_converter, endpoints_void_dict))
+            errors = list(
+                validate_sparql_with_void(
+                    gen_query["query"],
+                    gen_query["endpoint_url"],
+                    prefix_converter,
+                    endpoints_void_dict,
+                )
+            )
 
         # 3. Recall the LLM to try to fix errors
         if errors:
             error_str = "- " + "\n- ".join(errors)
             validation_msg = f"The query generated in the original response is not valid according to the endpoints schema.\n### Validation results\n{error_str}\n### Erroneous SPARQL query\n```sparql\n{gen_query['query']}\n```\n### Original response\n{last_msg}\n"
-            validation_steps.append(StepOutput(
-                type="recall",
-                label="🐞 Generated query invalid, fixing it",
-                details=validation_msg,
-            ))
+            validation_steps.append(
+                StepOutput(
+                    type="recall",
+                    label="🐞 Generated query invalid, fixing it",
+                    details=validation_msg,
+                )
+            )
             # Add a new message to ask the model to fix the error
-            new_messages.append(HumanMessage(
-                content=f"Fix the SPARQL query helping yourself with the error message and context from previous messages in a way that it is a fully valid query.\n\nSPARQL query: {gen_query['query']}\n\nError messages:\n{error_str}",
-                # name="recall",
-                # additional_kwargs={"validation_results": error_str},
-            ))
+            recall_messages.append(
+                HumanMessage(
+                    content=f"Fix the SPARQL query helping yourself with the error message and context from previous messages in a way that it is a fully valid query.\n\nSPARQL query: {gen_query['query']}\n\nError messages:\n{error_str}",
+                    # name="recall",
+                    # additional_kwargs={"validation_results": error_str},
+                )
+            )
 
     response = {
         "steps": validation_steps,
-        "messages": new_messages,
-        "try_count": state.try_count+1,
-        "passed_validation": not validation_steps,
+        "messages": recall_messages,
+        "try_count": state.try_count + 1,
+        "passed_validation": not recall_messages,
     }
     extracted = {}
     # Add structured output if a valid query was generated
@@ -100,10 +119,14 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
 
 
 # Retrieve the prefixes map and initialize converter from the endpoints defined in settings
-prefixes_map = get_prefixes_for_endpoints([endpoint["endpoint_url"] for endpoint in settings.endpoints])
+prefixes_map = get_prefixes_for_endpoints(
+    [endpoint["endpoint_url"] for endpoint in settings.endpoints]
+)
 prefix_converter = get_prefix_converter(prefixes_map)
 
 # Initialize VoID dictionary for the endpoints
 endpoints_void_dict: SparqlTriplesDict = {}
 for endpoint in settings.endpoints:
-    endpoints_void_dict[endpoint["endpoint_url"]] = get_void_for_endpoint(endpoint["endpoint_url"], endpoint.get("void_file"))
+    endpoints_void_dict[endpoint["endpoint_url"]] = get_void_for_endpoint(
+        endpoint["endpoint_url"], endpoint.get("void_file")
+    )

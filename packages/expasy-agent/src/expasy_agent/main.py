@@ -41,9 +41,14 @@ try:
     if not os.path.exists(settings.logs_filepath):
         pathlib.Path(settings.logs_filepath).parent.mkdir(parents=True, exist_ok=True)
         pathlib.Path(settings.logs_filepath).touch()
-    logging.basicConfig(filename=settings.logs_filepath, level=logging.INFO, format="%(asctime)s - %(message)s")
+    logging.basicConfig(
+        filename=settings.logs_filepath,
+        level=logging.INFO,
+        format="%(asctime)s - %(message)s",
+    )
 except Exception:
     logging.warning(f"⚠️ Logs filepath {settings.logs_filepath} not writable.")
+
 
 class Message(BaseModel):
     role: str
@@ -64,7 +69,7 @@ def convert_chunk_to_dict(obj: Any) -> Any:
     """Recursively convert a langgraph chunk object to a dict.
 
     Required because LangGraph objects are not serializable by default.
-    And they use a mix of tuples, dataclasses (BaseMessage) and pydantic BaseModel (BaseMessage).
+    And they use a mix of tuples, dataclasses (State, Configuration) and pydantic BaseModel (BaseMessage).
     """
     # {'retrieve': {'retrieved_docs': [Document(metadata={'endpoint_url':
     # When sending a msg LangGraph sends a tuple with the message and the metadata
@@ -87,11 +92,15 @@ def convert_chunk_to_dict(obj: Any) -> Any:
 
 async def stream_response(inputs: dict[str, list], config: RunnableConfig):
     """Stream the response from the assistant."""
-    async for event, chunk in graph.astream(inputs, stream_mode=["messages", "updates"], config=config):
-        chunk_dict = convert_chunk_to_dict({
-            "event": event,
-            "data": chunk,
-        })
+    async for event, chunk in graph.astream(
+        inputs, stream_mode=["messages", "updates"], config=config
+    ):
+        chunk_dict = convert_chunk_to_dict(
+            {
+                "event": event,
+                "data": chunk,
+            }
+        )
         yield f"data: {json.dumps(chunk_dict)}\n\n"
         await asyncio.sleep(0)
     yield "data: [DONE]"
@@ -102,7 +111,9 @@ async def stream_response(inputs: dict[str, list], config: RunnableConfig):
 async def chat(request: Request):
     """Chat with the assistant main endpoint."""
     auth_header = request.headers.get("Authorization")
-    if settings.chat_api_key and (not auth_header or not auth_header.startswith("Bearer ")):
+    if settings.chat_api_key and (
+        not auth_header or not auth_header.startswith("Bearer ")
+    ):
         raise ValueError("Missing or invalid Authorization header")
     if settings.chat_api_key and auth_header.split(" ")[1] != settings.chat_api_key:
         raise ValueError("Invalid API key")
@@ -151,7 +162,10 @@ def post_like(request: FeedbackRequest):
     """Save the user feedback in the logs files."""
     timestamp = datetime.now().isoformat()
     file_name = "/logs/likes.jsonl" if request.like else "/logs/dislikes.jsonl"
-    feedback_data = {"timestamp": timestamp, "messages": [message.model_dump() for message in request.messages]}
+    feedback_data = {
+        "timestamp": timestamp,
+        "messages": [message.model_dump() for message in request.messages],
+    }
     with open(file_name, "a") as f:
         f.write(json.dumps(feedback_data) + "\n")
     return request.messages
@@ -167,7 +181,9 @@ def get_user_logs(request: LogsRequest):
     if settings.logs_api_key and request.api_key != settings.logs_api_key:
         raise ValueError("Invalid API key")
     questions = set()
-    pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - User question: (.+)")
+    pattern = re.compile(
+        r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - User question: (.+)"
+    )
     with open(settings.logs_filepath) as file:
         for line in file:
             match = pattern.search(line)
@@ -179,6 +195,7 @@ def get_user_logs(request: LogsRequest):
 
     return list(questions)
 
+
 # Serve website built using vitejs
 templates = Jinja2Templates(directory="src/expasy_agent/webapp")
 app.mount(
@@ -186,6 +203,7 @@ app.mount(
     StaticFiles(directory="src/expasy_agent/webapp/assets"),
     name="static",
 )
+
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 def chat_ui(request: Request) -> Any:
@@ -198,14 +216,13 @@ def chat_ui(request: Request) -> Any:
             "chat_endpoint": "/chat",
             "feedback_endpoint": "/feedback",
             "examples": ",".join(settings.example_questions),
-#             "title": "Ask Expasy",
-#             "llm_model": llm_model,
-#             "description": """Assistant to navigate resources from the Swiss Institute of Bioinformatics. Particularly knowledgeable about UniProt, OMA, Bgee, RheaDB, and SwissLipids. But still learning.
-
-# Contact kru@sib.swiss if you have any feedback or suggestions. Questions asked here are stored for research purposes, see the [SIB privacy policy](https://www.sib.swiss/privacy-policy) for more information.
-# """,
-#             "short_description": "Ask about SIB resources.",
-#             "repository_url": "https://github.com/sib-swiss/sparql-llm",
-#             "favicon": "https://www.expasy.org/favicon.ico",
+            #             "title": "Ask Expasy",
+            #             "llm_model": llm_model,
+            #             "description": """Assistant to navigate resources from the Swiss Institute of Bioinformatics. Particularly knowledgeable about UniProt, OMA, Bgee, RheaDB, and SwissLipids. But still learning.
+            # Contact kru@sib.swiss if you have any feedback or suggestions. Questions asked here are stored for research purposes, see the [SIB privacy policy](https://www.sib.swiss/privacy-policy) for more information.
+            # """,
+            #             "short_description": "Ask about SIB resources.",
+            #             "repository_url": "https://github.com/sib-swiss/sparql-llm",
+            #             "favicon": "https://www.expasy.org/favicon.ico",
         },
     )

@@ -16,6 +16,7 @@ def multiply(a: int, b: int) -> int:
     """Multiply two numbers."""
     return a * b
 
+
 TOOLS: List[Callable[..., Any]] = [multiply]
 
 

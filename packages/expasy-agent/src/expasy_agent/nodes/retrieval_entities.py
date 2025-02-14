@@ -1,4 +1,5 @@
 """Extract potential entities from the user question (experimental)."""
+
 from typing import Any
 
 from langchain_community.embeddings import FastEmbedEmbeddings
@@ -21,7 +22,9 @@ def format_extracted_entities(entities_list: list[Any]) -> str:
     return prompt
 
 
-async def resolve_entities(state: State, config: RunnableConfig) -> dict[str, list[Any]]:
+async def resolve_entities(
+    state: State, config: RunnableConfig
+) -> dict[str, list[Any]]:
     """Resolve potential entities from the latest message in the state.
 
     This function takes the current state and configuration, uses the latest query
@@ -52,17 +55,18 @@ async def resolve_entities(state: State, config: RunnableConfig) -> dict[str, li
     # print(potential_entities)
 
     vectordb = QdrantVectorStore.from_existing_collection(
+        # client=qdrant_client,
         url=settings.vectordb_url,
+        prefer_grpc=True,
         collection_name=settings.entities_collection_name,
         embedding=FastEmbedEmbeddings(model_name=settings.embedding_model),
         sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
         retrieval_mode=RetrievalMode.HYBRID,
-        prefer_grpc=True,
     )
 
     # Search for matches in the indexed entities
     for potential_entity in state.structured_question.extracted_entities:
-    # for potential_entity in potential_entities:
+        # for potential_entity in potential_entities:
         query_hits = vectordb.similarity_search_with_score(
             query=potential_entity,
             k=results_count,
@@ -73,8 +77,8 @@ async def resolve_entities(state: State, config: RunnableConfig) -> dict[str, li
             # print(f"* [SIM={score:.3f}] {doc.page_content} [{doc.metadata}]")
             # Check if this URI + endpoint combination already exists in matches
             is_duplicate = any(
-                m.metadata["uri"] == doc.metadata["uri"] and
-                m.metadata["endpoint_url"] == doc.metadata["endpoint_url"]
+                m.metadata["uri"] == doc.metadata["uri"]
+                and m.metadata["endpoint_url"] == doc.metadata["endpoint_url"]
                 for m in matchs
             )
             if not is_duplicate:
@@ -90,8 +94,10 @@ async def resolve_entities(state: State, config: RunnableConfig) -> dict[str, li
         )
     return {
         "extracted_entities": entities_list,
-        "steps": [StepOutput(
-            label=f"🖇️ Linked {len(entities_list)} potential entities",
-            details=format_extracted_entities(entities_list),
-        )],
+        "steps": [
+            StepOutput(
+                label=f"🖇️ Linked {len(entities_list)} potential entities",
+                details=format_extracted_entities(entities_list),
+            )
+        ],
     }

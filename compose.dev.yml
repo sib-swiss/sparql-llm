@@ -24,8 +24,9 @@ services:
       # - DEFAULT_LLM_MODEL=deepseek/deepseek-chat
       # - DEFAULT_LLM_MODEL=azure/Mistral-Large-2411
       # - DEFAULT_LLM_MODEL=azure/DeepSeek-R1
+      # - DEFAULT_LLM_MODEL=together/meta-llama/Llama-3-70b-chat-hf
       # - DEFAULT_LLM_MODEL=openai/o3-mini
-      # - DEFAULT_LLM_MODEL=openai/gpt-4o-mini
+      - DEFAULT_LLM_MODEL=openai/gpt-4o-mini
     entrypoint: ["uv", "run", "uvicorn", "src.expasy_agent.main:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
 
 

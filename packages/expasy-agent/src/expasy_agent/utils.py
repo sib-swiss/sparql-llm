@@ -15,7 +15,9 @@ def load_chat_model(configuration: Configuration) -> BaseChatModel:
     """
     provider, model_name = configuration.model.split("/", maxsplit=1)
     if provider == "groq":
+        # https://python.langchain.com/docs/integrations/chat/groq/
         from langchain_groq import ChatGroq
+
         return ChatGroq(
             model_name=model_name,
             temperature=configuration.temperature,
@@ -24,8 +26,8 @@ def load_chat_model(configuration: Configuration) -> BaseChatModel:
     if provider == "together":
         # https://python.langchain.com/docs/integrations/chat/together/
         from langchain_together import ChatTogether
+
         return ChatTogether(
-            # model="meta-llama/Llama-3-70b-chat-hf",
             model=model_name,
             temperature=configuration.temperature,
             max_tokens=configuration.max_tokens,
@@ -36,18 +38,22 @@ def load_chat_model(configuration: Configuration) -> BaseChatModel:
     if provider == "hf":
         # https://python.langchain.com/docs/integrations/chat/huggingface/
         from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
-        return ChatHuggingFace(llm=HuggingFaceEndpoint(
-            # repo_id="HuggingFaceH4/zephyr-7b-beta",
-            repo_id=model_name,
-            task="text-generation",
-            max_new_tokens=configuration.max_tokens,
-            do_sample=False,
-            repetition_penalty=1.03,
-        ))
+
+        return ChatHuggingFace(
+            llm=HuggingFaceEndpoint(
+                # repo_id="HuggingFaceH4/zephyr-7b-beta",
+                repo_id=model_name,
+                task="text-generation",
+                max_new_tokens=configuration.max_tokens,
+                do_sample=False,
+                repetition_penalty=1.03,
+            )
+        )
 
     if provider == "azure":
         # https://learn.microsoft.com/en-us/azure/ai-studio/how-to/develop/langchain
         from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel
+
         return AzureAIChatCompletionsModel(
             endpoint=settings.azure_inference_endpoint,
             credential=settings.azure_inference_credential,
@@ -57,6 +63,7 @@ def load_chat_model(configuration: Configuration) -> BaseChatModel:
     if provider == "deepseek":
         # https://python.langchain.com/docs/integrations/chat/deepseek/
         from langchain_deepseek import ChatDeepSeek
+
         return ChatDeepSeek(
             model=model_name,
             temperature=configuration.temperature,

@@ -4,14 +4,14 @@ import httpx
 from bs4 import BeautifulSoup
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
+from langchain_qdrant import QdrantVectorStore
 from rdflib import RDF, Dataset, Namespace
 from sparql_llm.sparql_examples_loader import SparqlExamplesLoader
 from sparql_llm.sparql_void_shapes_loader import SparqlVoidShapesLoader
 from sparql_llm.utils import get_prefixes_for_endpoints
 
 from expasy_agent.config import settings
-from expasy_agent.nodes.retrieval import make_dense_encoder
+from expasy_agent.nodes.retrieval_docs import make_dense_encoder
 
 SCHEMA = Namespace("http://schema.org/")
 
@@ -139,8 +139,14 @@ def init_vectordb() -> None:
 
     # Gets documents from the SPARQL endpoints
     for endpoint in settings.endpoints:
-        print(f"\n  🔎 Getting metadata for {endpoint['label']} at {endpoint['endpoint_url']}")
-        queries_loader = SparqlExamplesLoader(endpoint["endpoint_url"], verbose=True)
+        print(
+            f"\n  🔎 Getting metadata for {endpoint['label']} at {endpoint['endpoint_url']}"
+        )
+        queries_loader = SparqlExamplesLoader(
+            endpoint["endpoint_url"],
+            examples_file=endpoint.get("examples_file"),
+            verbose=True,
+        )
         docs += queries_loader.load()
 
         void_loader = SparqlVoidShapesLoader(
@@ -163,7 +169,12 @@ def init_vectordb() -> None:
             metadata={
                 "question": resources_summary_question,
                 "answer": "This system helps to access the following resources from the Swiss Institute of Bioinformatics:"
-                    + "\n- ".join([f"{endpoint.get('label', '')}: {endpoint['endpoint_url']}" for endpoint in settings.endpoints]),
+                + "\n- ".join(
+                    [
+                        f"{endpoint.get('label', '')}: {endpoint['endpoint_url']}"
+                        for endpoint in settings.endpoints
+                    ]
+                ),
                 # "endpoint_url": "https://sparql.uniprot.org/sparql/",
                 "iri": "http://www.uniprot.org/help/about",
                 "doc_type": "General information",
@@ -199,37 +210,15 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
     # Generate embeddings and loads documents into the vectordb
     QdrantVectorStore.from_documents(
         docs,
+        # client=qdrant_client,
         url=settings.vectordb_url,
-        collection_name=settings.docs_collection_name,
         prefer_grpc=True,
+        collection_name=settings.docs_collection_name,
         force_recreate=True,
         embedding=make_dense_encoder(settings.embedding_model),
         # sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
         # retrieval_mode=RetrievalMode.HYBRID,
     )
-
-    # Using fastembed and Qdrant client directly
-    # from qdrant_client import models
-    # from qdrant_client.http.models import Distance, VectorParams
-    # vectordb = get_vectordb(settings.vectordb_url)
-    # if vectordb.collection_exists(settings.docs_collection_name):
-    #     vectordb.delete_collection(settings.docs_collection_name)
-    # vectordb.create_collection(
-    #     collection_name=settings.docs_collection_name,
-    #     vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
-    # )
-    # embedding_model = get_embedding_model()
-    # embeddings = embedding_model.embed([q.page_content for q in docs])
-
-    # vectordb.upsert(
-    #     collection_name=settings.docs_collection_name,
-    #     points=models.Batch(
-    #         ids=list(range(1, len(docs) + 1)),
-    #         vectors=embeddings,
-    #         payloads=[doc.metadata for doc in docs],
-    #     ),
-    #     # wait=False, # Waiting for indexing to finish or not
-    # )
 
     print(
         f"Done generating and indexing {len(docs)} documents into the vectordb in {time.time() - start_time} seconds"

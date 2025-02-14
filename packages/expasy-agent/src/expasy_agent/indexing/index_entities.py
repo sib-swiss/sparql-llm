@@ -3,11 +3,11 @@ import time
 
 from langchain_core.documents import Document
 from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
-from qdrant_client import QdrantClient, models
+from qdrant_client import models
 from sparql_llm.utils import query_sparql
 
-from expasy_agent.config import settings
-from expasy_agent.nodes.retrieval import make_dense_encoder
+from expasy_agent.config import qdrant_client, settings
+from expasy_agent.nodes.retrieval_docs import make_dense_encoder
 
 # NOTE: Run the script to extract entities from endpoints and generate embeddings for them (long):
 # ssh adsicore
@@ -17,13 +17,21 @@ from expasy_agent.nodes.retrieval import make_dense_encoder
 # nohup VECTORDB_URL=http://localhost:6334 uv run --extra gpu src/expasy_agent/indexing/index_entities.py --gpu &
 
 
-def retrieve_index_data(entity: dict, docs: list[Document], pagination: (int, int) = None):
-    query = f"{entity['query']} LIMIT {pagination[0]} OFFSET {pagination[1]}" if pagination else entity["query"]
+def retrieve_index_data(
+    entity: dict, docs: list[Document], pagination: (int, int) = None
+):
+    query = (
+        f"{entity['query']} LIMIT {pagination[0]} OFFSET {pagination[1]}"
+        if pagination
+        else entity["query"]
+    )
     try:
         entities_res = query_sparql(query, entity["endpoint"])["results"]["bindings"]
     except Exception as _e:
         return None
-    print(f"Found {len(entities_res)} entities for {entity['label']} in {entity['endpoint']}")
+    print(
+        f"Found {len(entities_res)} entities for {entity['label']} in {entity['endpoint']}"
+    )
     for entity_res in entities_res:
         docs.append(
             Document(
@@ -199,46 +207,45 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
             skos:prefLabel ?label .
     }""",
         },
-
-    # TODO: way too many UniProt genes, should we just ignore indexing genes?
-    #     "uniprot_gene": {
-    #         "uri": "http://purl.uniprot.org/core/Gene",
-    #         "label": "Gene",
-    #         "description": "A region (or regions) that includes all of the sequence elements necessary to encode a functional transcript. A gene may include regulatory regions, transcribed regions and/or other functional sequence regions.",
-    #         "endpoint": "https://sparql.uniprot.org/sparql/",
-    #         "pagination": True,
-    #         "query": """PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
-    # PREFIX up: <http://purl.uniprot.org/core/>
-    # PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    # SELECT  ?uri ?label {
-    # ?uri a up:Gene .
-    # ?uri skos:prefLabel ?label .}""",
-    #     },
-    #     "uniprot_protein": {
-    #         "uri": "http://purl.uniprot.org/core/Protein",
-    #         "label": "Protein",
-    #         "description": "A sequence of amino acids linked by peptide bonds which may lack appreciable tertiary structure and may not be liable to irreversible denaturation.",
-    #         "endpoint": "https://sparql.uniprot.org/sparql/",
-    #         "pagination": True,
-    #         "query": """PREFIX up: <http://purl.uniprot.org/core/>
-    # PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-    # SELECT  ?uri ?label {
-    # ?uri a up:Protein .
-    # ?uri rdfs:label ?label .}""",
-    #     },
-    #     "uniprot_mnemonics": {
-    #         "uri": "http://purl.uniprot.org/core/Protein",
-    #         "label": "mnemonic",
-    #         "description": "uniprot mnemonic",
-    #         "endpoint": "https://sparql.uniprot.org/sparql/",
-    #         "pagination": True,
-    #         "query": """PREFIX up: <http://purl.uniprot.org/core/>
-    # SELECT ?uri ?label
-    # WHERE {
-    #     ?uri a up:Protein ;
-    #         up:mnemonic  ?label .
-    #     }""",
-    #     },
+        # TODO: way too many UniProt genes, should we just ignore indexing genes?
+        #     "uniprot_gene": {
+        #         "uri": "http://purl.uniprot.org/core/Gene",
+        #         "label": "Gene",
+        #         "description": "A region (or regions) that includes all of the sequence elements necessary to encode a functional transcript. A gene may include regulatory regions, transcribed regions and/or other functional sequence regions.",
+        #         "endpoint": "https://sparql.uniprot.org/sparql/",
+        #         "pagination": True,
+        #         "query": """PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+        # PREFIX up: <http://purl.uniprot.org/core/>
+        # PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        # SELECT  ?uri ?label {
+        # ?uri a up:Gene .
+        # ?uri skos:prefLabel ?label .}""",
+        #     },
+        #     "uniprot_protein": {
+        #         "uri": "http://purl.uniprot.org/core/Protein",
+        #         "label": "Protein",
+        #         "description": "A sequence of amino acids linked by peptide bonds which may lack appreciable tertiary structure and may not be liable to irreversible denaturation.",
+        #         "endpoint": "https://sparql.uniprot.org/sparql/",
+        #         "pagination": True,
+        #         "query": """PREFIX up: <http://purl.uniprot.org/core/>
+        # PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        # SELECT  ?uri ?label {
+        # ?uri a up:Protein .
+        # ?uri rdfs:label ?label .}""",
+        #     },
+        #     "uniprot_mnemonics": {
+        #         "uri": "http://purl.uniprot.org/core/Protein",
+        #         "label": "mnemonic",
+        #         "description": "uniprot mnemonic",
+        #         "endpoint": "https://sparql.uniprot.org/sparql/",
+        #         "pagination": True,
+        #         "query": """PREFIX up: <http://purl.uniprot.org/core/>
+        # SELECT ?uri ?label
+        # WHERE {
+        #     ?uri a up:Protein ;
+        #         up:mnemonic  ?label .
+        #     }""",
+        #     },
     }
 
     docs: list[Document] = []
@@ -251,9 +258,10 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
         else:
             retrieve_index_data(entity, docs)
 
-    print(f"Done querying SPARQL endpoints in {(time.time() - start_time) / 60:.2f} minutes, generating embeddings for {len(docs)} entities...")
+    print(
+        f"Done querying SPARQL endpoints in {(time.time() - start_time) / 60:.2f} minutes, generating embeddings for {len(docs)} entities..."
+    )
 
-    qdrant_client = QdrantClient(url=settings.vectordb_url, prefer_grpc=True, timeout=600)
     if qdrant_client.collection_exists(settings.entities_collection_name):
         qdrant_client.delete_collection(settings.entities_collection_name)
 
@@ -261,13 +269,21 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
     # With indexes loaded on disk to avoid OOM errors when indexing large collections
     qdrant_client.create_collection(
         collection_name=settings.entities_collection_name,
-        vectors_config=models.VectorParams(size=settings.embedding_dimensions, distance=models.Distance.COSINE, on_disk=True),
+        vectors_config=models.VectorParams(
+            size=settings.embedding_dimensions,
+            distance=models.Distance.COSINE,
+            on_disk=True,
+        ),
         hnsw_config=models.HnswConfigDiff(on_disk=True),
-        sparse_vectors_config={QdrantVectorStore.SPARSE_VECTOR_NAME: models.SparseVectorParams()},
+        sparse_vectors_config={
+            QdrantVectorStore.SPARSE_VECTOR_NAME: models.SparseVectorParams()
+        },
     )
 
     vectordb = QdrantVectorStore(
-        client=qdrant_client,
+        # client=qdrant_client,
+        url=settings.vectordb_url,
+        prefer_grpc=True,
         collection_name=settings.entities_collection_name,
         embedding=make_dense_encoder(settings.embedding_model, gpu),
         sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
@@ -293,11 +309,15 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
     #     ),
     # )
 
-    print(f"Done generating and indexing embeddings in collection {settings.entities_collection_name} for {len(docs)} entities in {(time.time() - start_time) / 60:.2f} minutes")
+    print(
+        f"Done generating and indexing embeddings in collection {settings.entities_collection_name} for {len(docs)} entities in {(time.time() - start_time) / 60:.2f} minutes"
+    )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--gpu", action="store_true", help="Use GPU when generating the embeddings")
+    parser.add_argument(
+        "--gpu", action="store_true", help="Use GPU when generating the embeddings"
+    )
     args = parser.parse_args()
     generate_embeddings_for_entities(args.gpu)

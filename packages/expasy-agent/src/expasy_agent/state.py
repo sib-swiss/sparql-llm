@@ -19,20 +19,48 @@ class StructuredQuestion(BaseModel):
 
     intent: Literal["general_information", "access_resources"] = Field(
         default="access_resources",
-        description="Intent extracted from the user question"
+        description="Intent extracted from the user question",
     )
     extracted_classes: list[str] = Field(
         default_factory=list,
-        description="List of classes extracted from the user question"
+        description="List of classes extracted from the user question",
     )
     extracted_entities: list[str] = Field(
         default_factory=list,
-        description="List of entities extracted from the user question"
+        description="List of entities extracted from the user question",
     )
     question_steps: list[str] = Field(
         default_factory=list,
-        description="List of steps extracted from the user question"
+        description="List of steps extracted from the user question",
     )
+
+
+class StepOutput(BaseModel):
+    """Represents a step the agent went through to generate the answer."""
+
+    label: str
+    """The human-readable title for this step to be displayed to the user."""
+
+    details: str = Field(default="")
+    """Details of the steps results in markdown to be displayed to the user. It can be either a markdown string or a list of StepOutput."""
+
+    substeps: Optional[list[StepOutput]] = Field(default_factory=list)
+    """Optional substeps for a step."""
+
+    type: Literal["context", "fix-message", "recall"] = Field(default="context")
+    """The type of the step."""
+
+    fixed_message: Optional[str] = None
+    """The fixed message to replace the last message sent to the user."""
+
+
+@dataclass
+class StructuredOutput:
+    """Structure for structured infos extracted from the LLM output."""
+
+    sparql_query: str
+    sparql_endpoint_url: str
+
 
 @dataclass
 class InputState:
@@ -61,39 +89,6 @@ class InputState:
     """
 
 
-class StepOutput(BaseModel):
-    """Represents a step the agent went through to generate the answer."""
-
-    label: str
-    """The human-readable title for this step to be displayed to the user."""
-
-    details: str = Field(default="")
-    """Details of the steps results in markdown to be displayed to the user. It can be either a markdown string or a list of StepOutput."""
-
-    substeps: Optional[list[StepOutput]] = Field(default_factory=list)
-    """Optional substeps for a step."""
-
-    type: Literal["context", "fix-message", "recall"] = Field(default="context")
-    """The type of the step."""
-
-    fixed_message: Optional[str] = None
-    """The fixed message to replace the last message sent to the user."""
-
-
-@dataclass
-class StructuredOutput:
-    """Structure for structured infos extracted from the LLM output."""
-    sparql_query: str
-    sparql_endpoint_url: str
-
-
-def add_to_list(original_list: list, new_items: list) -> list:
-    """We need to do this crazy copy workaround to avoid mutable side effects that comes with LangGraph state..."""
-    new = original_list.copy()
-    new.extend(new_items)
-    return new
-
-
 @dataclass
 class State(InputState):
     """Represents the complete state of the agent, extending InputState with additional attributes.
@@ -110,15 +105,17 @@ class State(InputState):
 
     structured_question: StructuredQuestion = field(default_factory=StructuredQuestion)
 
-    # Additional attributes can be added here as needed.
     retrieved_docs: list[Document] = field(default_factory=list)
     extracted_entities: dict[str, Any] = field(default_factory=dict)
     passed_validation: bool = field(default=True)
     try_count: int = field(default=0)
 
     steps: Annotated[list[StepOutput], add_to_list] = field(default_factory=list)
-
     structured_output: list[StructuredOutput] = field(default_factory=list)
 
-    # TODO: cumulated token usage
-    # token_usage: dict[str, str] = field(default_factory=dict)
+
+def add_to_list(original_list: list, new_items: list) -> list:
+    """We need to do this copy workaround to avoid mutable side effects that comes with LangGraph state"""
+    new = original_list.copy()
+    new.extend(new_items)
+    return new

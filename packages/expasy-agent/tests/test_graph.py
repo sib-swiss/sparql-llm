@@ -5,6 +5,7 @@ def test_configuration_empty() -> None:
     conf = Configuration.from_runnable_config({})
     assert len(conf.model) > 0
 
+
 # import pytest
 # from expasy_agent.graph import graph
 # @pytest.mark.asyncio

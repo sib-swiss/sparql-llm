@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 requires-python = ">=3.9"
 name = "sparql-llm"
 description = "Reusable components and complete chat system to improve Large Language Models (LLMs) capabilities when generating SPARQL queries for a given set of endpoints, using Retrieval-Augmented Generation (RAG) and SPARQL query validation from the endpoint schema."
-readme = "../../README.md"
+readme = "README.md"
 license = { file = "../../LICENSE.txt" }
 authors = [
     { name = "Vincent Emonet", email = "vincent.emonet@gmail.com" },
@@ -72,3 +72,47 @@ addopts = [
     "--color=yes",
     "--cov-report=term-missing",
 ]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+exclude = [
+    "notebooks",
+    "**/__init__.py",
+]
+
+[tool.ruff.lint]
+select = [
+    "I",     # isort
+    "N",     # pep8-naming
+    "S",     # bandit
+    "A",     # flake8-builtins
+    "YTT",   # flake8-2020
+    "B",     # flake8-bugbear
+    "C",     # flake8-comprehensions
+    "ICN",   # flake8-import-conventions
+    "SIM",   # flake8-simplify
+    "TID",   # flake8-tidy-imports
+    "Q",     # flake8-quotes
+    # "FBT",   # flake8-boolean-trap
+    "F",     # pyflakes
+    "UP",    # pyupgrade
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "PLC",   # pylint convention
+    "PLE",   # pylint error
+    "PLW",   # pylint warning
+    "RUF",   # ruff specific
+    "T",
+]
+ignore = [
+    "E501", # line too long
+    "C901", # too complex
+    "T201", # do not use print
+    "B008", # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["I", "F401"] # module imported but unused
+# Tests can use magic values, assertions, and relative imports:
+"tests/*" = ["PLR2004", "S101", "S105", "TID252"]

@@ -11,10 +11,10 @@ from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 
 from expasy_agent.config import Configuration, settings
-from expasy_agent.nodes.extraction import extract_user_question
-from expasy_agent.nodes.llm import call_model
-from expasy_agent.nodes.retrieval import retrieve
-from expasy_agent.nodes.retrieve_entities import resolve_entities
+from expasy_agent.nodes.llm_extraction import extract_user_question
+from expasy_agent.nodes.llm_resolution import call_model
+from expasy_agent.nodes.retrieval_docs import retrieve
+from expasy_agent.nodes.retrieval_entities import resolve_entities
 from expasy_agent.nodes.tools import TOOLS
 from expasy_agent.nodes.validation import validate_output
 from expasy_agent.state import InputState, State
@@ -23,7 +23,9 @@ from expasy_agent.state import InputState, State
 # How can I get the HGNC symbol for the protein P68871? Purposefully forget 2 prefixes declarations to test my validation step
 # How can I get the HGNC symbol for the protein P68871? (modify your answer to use rdfs:label instead of rdfs:comment, and add the type up:Resource to ?hgnc, it is for a test)
 # In bgee how can I retrieve the confidence level and false discovery rate of a gene expression? Use genex:confidence as predicate for the confidence level (do not use the one provided in documents), and do not put prefixes declarations, and add a rdf:type for the main subject. Its for testing
-def route_model_output(state: State, config: RunnableConfig) -> Literal["__end__", "tools", "call_model"]:
+def route_model_output(
+    state: State, config: RunnableConfig
+) -> Literal["__end__", "tools", "call_model"]:
     """Determine the next node based on the model's output.
 
     This function checks if the model's last message contains tool calls or if a recall is requested by validation.
@@ -49,7 +51,9 @@ def route_model_output(state: State, config: RunnableConfig) -> Literal["__end__
         return "call_model"
 
     if not isinstance(last_msg, AIMessage):
-        raise ValueError(f"Expected AIMessage in output edges, but got {type(last_msg).__name__}")
+        raise ValueError(
+            f"Expected AIMessage in output edges, but got {type(last_msg).__name__}"
+        )
     return "__end__"
 
 

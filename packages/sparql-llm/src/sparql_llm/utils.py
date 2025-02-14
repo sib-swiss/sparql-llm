@@ -96,10 +96,7 @@ def get_void_for_endpoint(endpoint_url: str, void_file: Optional[str] = None) ->
                 # Handle local file case
                 g.parse(void_file, format="turtle")
             results = g.query(GET_VOID_DESC)
-            bindings = [
-                {str(k): {"value": str(v)} for k, v in row.asdict().items()}
-                for row in results
-            ]
+            bindings = [{str(k): {"value": str(v)} for k, v in row.asdict().items()} for row in results]
         else:
             bindings = query_sparql(GET_VOID_DESC, endpoint_url)["results"]["bindings"]
 
@@ -123,14 +120,18 @@ def get_void_for_endpoint(endpoint_url: str, void_file: Optional[str] = None) ->
     return void_dict
 
 
-def query_sparql(query: str, endpoint_url: str, post: bool = False, timeout: Optional[int] = None, client: Optional[httpx.Client] = None) -> Any:
+def query_sparql(
+    query: str,
+    endpoint_url: str,
+    post: bool = False,
+    timeout: Optional[int] = None,
+    client: Optional[httpx.Client] = None,
+) -> Any:
     """Execute a SPARQL query on a SPARQL endpoint using httpx"""
     should_close = False
     if client is None:
         client = httpx.Client(
-            follow_redirects=True,
-            headers={"Accept": "application/sparql-results+json"},
-            timeout=timeout
+            follow_redirects=True, headers={"Accept": "application/sparql-results+json"}, timeout=timeout
         )
         should_close = True
 

@@ -23,12 +23,14 @@ def test_sparql_void_shape_loader():
     # print(docs)
     assert len(docs) >= 10
 
+
 # uv run pytest tests/test_components.py::test_sparql_void_from_url
 def test_sparql_void_from_file():
     void_filepath = os.path.join(os.path.dirname(__file__), "void_uniprot.ttl")
     void_dict = get_void_for_endpoint("https://sparql.uniprot.org/", void_filepath)
     # From URL: void_dict = get_void_for_endpoint("https://sparql.uniprot.org/", "https://sparql.uniprot.org/.well-known/void/")
     assert len(void_dict) >= 2
+
 
 def test_validate_sparql_with_void():
     sparql_query = """PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -45,7 +47,7 @@ WHERE {
         lscr:xrefUniprot <http://purl.uniprot.org/uniprot/Q9Y2T1> .
     ?orthologRatProtein a orth:Protein ;
         sio:SIO_010078 ?orthologRatGene ;
-        orth:organism/obo:RO_0002162/up:name 'Rattus norvegicus' .
+        orth:organism/obo:RO_0002162/up:commonName 'Rattus norvegicus' .
     ?cluster a orth:OrthologsCluster .
     ?cluster orth:hasHomologousMember ?node1 .
     ?cluster orth:hasHomologousMember ?node2 .
@@ -61,7 +63,7 @@ WHERE {
     }
 }"""
     issues = validate_sparql_with_void(sparql_query, "https://sparql.omabrowser.org/sparql/")
-    # print("\n".join(issues))
+    print("\n".join(issues))
     assert len(issues) == 3
 
 
