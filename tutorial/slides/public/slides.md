@@ -359,4 +359,4 @@ uv run chainlit run app.py
 
 ## Creating more complex "agents"
 
-e.g. reactive agent that can loop over themselves and use tools using LangGraph
+e.g. reactive agent that can loop over themselves and use tools using [LangGraph](https://langchain-ai.github.io/langgraph/#)
