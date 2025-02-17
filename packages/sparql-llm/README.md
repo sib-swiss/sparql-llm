@@ -42,6 +42,12 @@ print(len(docs))
 print(docs[0].metadata)
 ```
 
+You can provide the examples as a file if it is not integrated in the endpoint, e.g.:
+
+```python
+loader = SparqlExamplesLoader("https://sparql.uniprot.org/sparql/", examples_file="uniprot_examples.ttl")
+```
+
 > Refer to the [LangChain documentation](https://python.langchain.com/v0.2/docs/) to figure out how to best integrate documents loaders to your stack.
 
 ### SPARQL endpoint schema loader
@@ -59,6 +65,12 @@ loader = SparqlVoidShapesLoader("https://sparql.uniprot.org/sparql/")
 docs = loader.load()
 print(len(docs))
 print(docs[0].metadata)
+```
+
+You can provide the VoID description as a file if it is not integrated in the endpoint, e.g.:
+
+```python
+loader = SparqlVoidShapesLoader("https://sparql.uniprot.org/sparql/", void_file="uniprot_void.ttl")
 ```
 
 > The generated shapes are well-suited for use with a LLM or a human, as they provide clear information about which predicates are available for a class, and the corresponding classes or datatypes those predicates point to. Each object property references a list of classes rather than another shape, making each shape self-contained and interpretable on its own, e.g. for a *Disease Annotation* in UniProt:
@@ -198,5 +210,13 @@ Get a PyPI API token at [pypi.org/manage/account](https://pypi.org/manage/accoun
 
    ```bash
    uv build
+   cd ../..
    uv publish
    ```
+
+> If `uv publish` is still broken:
+>
+> ```sh
+> uvx hatch build
+> uvx hatch publish
+> ```
