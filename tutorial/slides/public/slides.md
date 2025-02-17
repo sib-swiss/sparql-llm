@@ -1,6 +1,12 @@
-## Setup
+## Introduction
 
-This tutorial will guide you through creating an LLM-based app step by step, you will be given pieces of code to build up the system, while we advance through the tutorial you will need to comment out or delete some previous pieces of code to avoid useless repetitions.
+In this tutorial, you'll learn how to build an LLM-powered app that assists in writing SPARQL queries, step by step.
+
+As we progress, you'll be provided with code snippets to gradually construct the system. Note that some earlier code may need to be modified or removed to prevent redundancy, ensuring a clean and efficient implementation.
+
+---
+
+## Setup
 
 [Install `uv`](https://docs.astral.sh/uv/getting-started/installation/) to easily handle dependencies and run scripts
 
@@ -12,6 +18,8 @@ Create a `.env` file with the API key for the LLM provider you will use:
 GROQ_API_KEY=gsk_YYY
 OPENAI_API_KEY=sk-proj-YYY
 ```
+
+> You can get a [free API key on groq.com](https://console.groq.com/keys) after logging in with GitHub or Google. This gives you access to [various open-source models](https://groq.com/pricing/) with a limit of 6k tokens per minute.
 
 ---
 
@@ -26,7 +34,6 @@ version = "0.0.1"
 requires-python = "==3.12.*"
 dependencies = [
     "sparql-llm >=0.0.4",
-    "langgraph >=0.2.73",
     "langchain >=0.3.14",
     "langchain-community >=0.3.17",
     "langchain-openai >=0.3.6",
@@ -36,6 +43,7 @@ dependencies = [
     "qdrant-client >=1.13.0",
     "fastembed >=0.5.1",
     "chainlit >=2.2.1",
+    "langgraph >=0.2.73",
 ]
 ```
 
@@ -205,6 +213,8 @@ vectordb = QdrantVectorStore.from_documents(
 )
 ```
 
+> To use GPU you will need to replace the `fastembed` dependency with `fastembed-gpu`
+
 ---
 
 ## Provide context to the LLM
@@ -257,8 +267,6 @@ prompt_with_context = prompt_template.invoke({
     "messages": [("human", question)],
     "retrieved_docs": formatted_docs,
 })
-
-
 ```
 
 ---
@@ -272,11 +280,11 @@ from langchain_core.documents import Document
 
 def _format_doc(doc: Document) -> str:
     """Format our question/answer document to be provided as context to the model."""
-    doc_lang = ""
-    if "query" in doc.metadata.get("doc_type", ""):
-        doc_lang = "sparql"
-    elif "schema" in doc.metadata.get("doc_type", ""):
-        doc_lang = "shex"
+    doc_lang = (
+        "sparql" if "query" in doc.metadata.get("doc_type", "")
+        else "shex" if "schema" in doc.metadata.get("doc_type", "")
+        else ""
+    )
     return f"<document>\n{doc.page_content} ({doc.metadata.get('endpoint_url', '')}):\n\n```{doc_lang}\n{doc.metadata.get('answer')}\n```\n</document>"
 
 formatted_docs = f"<documents>\n{'\n'.join(_format_doc(doc) for doc in retrieved_docs)}\n</documents>"
@@ -335,17 +343,14 @@ async def on_message(msg: cl.Message):
     retrieved_docs = retrieve_docs(msg.content)
     formatted_docs = f"<documents>\n{'\n'.join(_format_doc(doc) for doc in retrieved_docs)}\n</documents>"
     async with cl.Step(name=f"{len(retrieved_docs)} relevant documents") as step:
-        step.input = msg.content
         step.output = formatted_docs
-
     prompt_with_context = prompt_template.invoke({
         "messages": [("human", msg.content)],
         "retrieved_docs": formatted_docs,
     })
     final_answer = cl.Message(content="")
     for resp in llm.stream(prompt_with_context):
-        if resp.content:
-            await final_answer.stream_token(resp.content)
+        await final_answer.stream_token(resp.content)
     await final_answer.send()
 ```
 
@@ -359,4 +364,8 @@ uv run chainlit run app.py
 
 ## Creating more complex "agents"
 
-e.g. reactive agent that can loop over themselves and use tools using [LangGraph](https://langchain-ai.github.io/langgraph/#)
+e.g. reactive agent that can loop over themselves using [LangGraph](https://langchain-ai.github.io/langgraph/#):
+
+- To validate a generated query
+- To use tools
+

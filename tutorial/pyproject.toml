@@ -1,0 +1,19 @@
+[project]
+name = "tutorial-sparql-agent"
+version = "0.0.1"
+requires-python = "==3.12.*"
+
+dependencies = [
+    "sparql-llm >=0.0.4",
+    "langchain >=0.3.14",
+    "langchain-community >=0.3.17",
+    "langchain-openai >=0.3.6",
+    "langchain-groq >=0.2.4",
+    "langchain-ollama >=0.2.3",
+    "langchain-qdrant >=0.2.0",
+    "qdrant-client >=1.13.0",
+    "fastembed >=0.5.1",
+    # "fastembed-gpu >=0.5.1", # Optional GPU support
+    "chainlit",
+    "langgraph >=0.2.73",
+]
