@@ -1,4 +1,4 @@
-name: Deploy demo to GitHub Pages
+name: Deploy to GitHub Pages
 on:
   push:
     branches: ["main"]
@@ -26,9 +26,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
-
-      - name: Install dependencies
-        run: npm ci
 
       - name: Build demo website
         run: |
