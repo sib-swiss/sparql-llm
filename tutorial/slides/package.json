@@ -1,0 +1,22 @@
+{
+  "name": "tuto-sparql-agent",
+  "version": "1.0.0",
+  "description": "Slides for SPARQL agent tutorial",
+  "private": true,
+  "license": "MIT",
+  "author": {
+    "name": "Vincent Emonet",
+    "email": "vincent.emonet@gmail.com"
+  },
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^6.1.0",
+    "reveal.js": "^5.1.0"
+  }
+}

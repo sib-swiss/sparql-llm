@@ -8,6 +8,8 @@ __pycache__/
 .*_cache
 .coverage
 .langgraph_api/
+.chainlit
+.files
 uv.lock
 
 # Data
@@ -15,5 +17,7 @@ data/
 notebooks/*.csv
 notebooks/*.txt
 nohup.out
+
+node_modules/
 
 packages/expasy-agent/src/expasy_agent/webapp
