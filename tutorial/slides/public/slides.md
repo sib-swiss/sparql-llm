@@ -23,20 +23,6 @@ OPENAI_API_KEY=sk-proj-YYY
 
 ---
 
-## Setup vector store
-
-Deploy a **[Qdrant](https://qdrant.tech/documentation/)** vector store using docker:
-
-```sh
-docker run -d -p 6333:6333 -p 6334:6334 -v $(pwd)/data/qdrant:/qdrant/storage qdrant/qdrant
-```
-
-If you don't have docker you can try [download and deploy the binary](https://github.com/qdrant/qdrant/releases/tag/v1.13.4) for your platform (might require installing additional dependencies though)
-
-> Using in-memory vector store is also an option, but limited to 1 thread, with high risk of conflicts and no dashboard.
-
----
-
 ## Setup dependencies
 
 Create a `pyproject.toml` file with this content:
@@ -47,7 +33,7 @@ name = "tutorial-sparql-agent"
 version = "0.0.1"
 requires-python = "==3.12.*"
 dependencies = [
-    "sparql-llm >=0.0.5",
+    "sparql-llm >=0.0.6",
     "langchain >=0.3.19",
     "langchain-community >=0.3.17",
     "langchain-openai >=0.3.6",
@@ -144,6 +130,20 @@ llm = load_chat_model("ollama/mistral")
 
 ---
 
+## Setup vector store
+
+Deploy a **[Qdrant](https://qdrant.tech/documentation/)** vector store using docker to store indexed documents:
+
+```sh
+docker run -d -p 6333:6333 -p 6334:6334 -v $(pwd)/data/qdrant:/qdrant/storage qdrant/qdrant
+```
+
+If you don't have docker you can try to [download and deploy the binary](https://github.com/qdrant/qdrant/releases/tag/v1.13.4) for your platform (this might require to install additional dependencies though)
+
+> Using in-memory vector store is also an option, but limited to 1 thread, with high risk of conflicts and no dashboard.
+
+---
+
 ## Index context
 
 Create a new script that will be run to index data from SPARQL endpoints: `index.py`
@@ -188,6 +188,7 @@ def index_endpoints():
         void_loader = SparqlVoidShapesLoader(
             endpoint["endpoint_url"],
             void_file=endpoint.get("void_file"),
+            examples_file=endpoint.get("examples_file"),
             verbose=True,
         )
         docs += void_loader.load()
@@ -321,26 +322,18 @@ def retrieve_docs(question: str) -> str:
     retrieved_docs = retriever.invoke(
         question,
         k=retrieved_docs_count,
-        filter=Filter(
-            must=[
-                FieldCondition(
-                    key="metadata.doc_type",
-                    match=MatchValue(value="SPARQL endpoints query examples"),
-                )
-            ]
-        )
+        filter=Filter(must=[FieldCondition(
+            key="metadata.doc_type",
+            match=MatchValue(value="SPARQL endpoints query examples"),
+        )])
     )
     retrieved_docs += retriever.invoke(
         question,
         k=retrieved_docs_count,
-        filter=Filter(
-            must_not=[
-                FieldCondition(
-                    key="metadata.doc_type",
-                    match=MatchValue(value="SPARQL endpoints query examples"),
-                )
-            ]
-        )
+        filter=Filter(must_not=[FieldCondition(
+            key="metadata.doc_type",
+            match=MatchValue(value="SPARQL endpoints query examples"),
+        )])
     )
     return f"<documents>\n{'\n'.join(_format_doc(doc) for doc in retrieved_docs)}\n</documents>"
 
@@ -371,7 +364,7 @@ async def on_message(msg: cl.Message):
     await final_answer.send()
 ```
 
-Deploy the UI with:
+Deploy the UI on http://localhost:8000 with:
 
 ```sh
 uv run chainlit run app.py
@@ -579,3 +572,4 @@ builder.add_edge("call_model", "validate_output")
 builder.add_conditional_edges("validate_output", route_model_output)
 ```
 
+> Try again your agent now

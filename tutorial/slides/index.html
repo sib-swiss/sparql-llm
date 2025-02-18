@@ -20,6 +20,7 @@
       import Reveal from 'reveal.js';
       import Markdown from 'reveal.js/plugin/markdown/markdown.esm.js';
       import Highlight from 'reveal.js/plugin/highlight/highlight.js';
+      import ClipCode from '@edc4it/reveal.js-clipcode';
       import 'reveal.js/plugin/highlight/zenburn.css';
       import 'reveal.js/dist/reveal.css'
       import 'reveal.js/dist/theme/beige.css'
@@ -27,11 +28,19 @@
       // beige, black, blood, league, moon, night, serif, simple...
 
       let deck = new Reveal({
-        plugins: [Markdown, Highlight],
+        plugins: [Markdown, Highlight, ClipCode],
         hash: true,
         history: true,
         hashOneBasedIndex: true,
         // slideNumber: true,
+        clipcode: {
+          // https://www.npmjs.com/package/@edc4it/reveal.js-clipcode
+          style: {
+            copybg: 'silver',
+            scale: 0.8,
+            radius: 1,
+          },
+      },
       });
       deck.initialize();
     </script>
