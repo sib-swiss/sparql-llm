@@ -1,6 +1,6 @@
 import re
 from collections import defaultdict
-from typing import Any, Optional, Union
+from typing import Any, Optional, TypedDict, Union
 
 from curies_rs import Converter
 from rdflib import Namespace, Variable
@@ -8,11 +8,11 @@ from rdflib.paths import AlternativePath, MulPath, Path, SequencePath
 from rdflib.plugins.sparql import prepareQuery
 
 from sparql_llm.utils import (
-    SparqlTriplesDict,
-    TripleDict,
+    EndpointsSchemaDict,
+    SchemaDict,
     get_prefix_converter,
     get_prefixes_for_endpoints,
-    get_void_for_endpoint,
+    get_schema_for_endpoint,
 )
 
 queries_pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
@@ -63,9 +63,9 @@ rh = Namespace("http://rdf.rhea-db.org/")
 sqc = Namespace("http://example.org/sqc/")  # SPARQL query check
 
 
-def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> SparqlTriplesDict:
+def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> EndpointsSchemaDict:
     """Convert a SPARQL query string to a dictionary of triples looking like dict[endpoint][subject][predicate] = list[object]"""
-    query_dict: SparqlTriplesDict = defaultdict(TripleDict)
+    query_dict: EndpointsSchemaDict = defaultdict(SchemaDict)
     path_var_count = 1
 
     def handle_path(endpoint: str, subj: str, pred: Union[str, Path], obj: str):
@@ -141,7 +141,7 @@ def validate_sparql_with_void(
     query: str,
     endpoint_url: str,
     prefix_converter: Optional[Converter] = None,
-    endpoints_void_dict: Optional[SparqlTriplesDict] = None,
+    endpoints_void_dict: Optional[EndpointsSchemaDict] = None,
 ) -> set[str]:
     """Validate SPARQL query using the VoID description of endpoints. Returns a set of human-readable error messages."""
     if prefix_converter is None:
@@ -153,8 +153,8 @@ def validate_sparql_with_void(
 
     def validate_triple_pattern(
         subj: str,
-        subj_dict: TripleDict,
-        void_dict: TripleDict,
+        subj_dict: SchemaDict,
+        void_dict: SchemaDict,
         endpoint: str,
         issues: set[str],
         parent_type: Optional[str] = None,
@@ -254,7 +254,7 @@ def validate_sparql_with_void(
     # Go through the query BGPs and check if they match the VoID description
     for endpoint, subj_dict in query_dict.items():
         void_dict = (
-            endpoints_void_dict[endpoint] if endpoint in endpoints_void_dict else get_void_for_endpoint(endpoint)
+            endpoints_void_dict[endpoint] if endpoint in endpoints_void_dict else get_schema_for_endpoint(endpoint)
         )
 
         if len(void_dict) == 0:
@@ -290,3 +290,63 @@ def validate_sparql_with_void(
 #     wrong_predicate: str
 #     available_options: list[str]
 #     message: str
+
+
+class QueryValidationOutput(TypedDict):
+    original_query: str
+    endpoint_url: str
+    fixed_query: Optional[str]
+    errors: list[str]
+
+
+def validate_sparql_in_msg(
+    msg: str,
+    prefixes_map: Optional[dict[str, str]] = None,
+    endpoints_void_dict: Optional[EndpointsSchemaDict] = None,
+) -> list[QueryValidationOutput]:
+    """Validate SPARQL queries in a markdown response using VoID descriptions of endpoints."""
+    validation_outputs = []
+    generated_sparqls = extract_sparql_queries(msg)
+
+    # Get prefixes if not provided
+    if endpoints_void_dict is None:
+        endpoints_void_dict = {}
+    if prefixes_map is None:
+        prefixes_map = get_prefixes_for_endpoints(
+            list({gen_sparql["endpoint_url"] for gen_sparql in generated_sparqls if gen_sparql.get("endpoint_url")})
+        )
+    prefix_converter = get_prefix_converter(prefixes_map)
+
+    for gen_sparql in generated_sparqls:
+        validation_output: QueryValidationOutput = {
+            "original_query": gen_sparql["query"],
+            "endpoint_url": gen_sparql["endpoint_url"],
+            "fixed_query": None,
+            "errors": [],
+        }
+        # 1. Check if the query is syntactically valid, auto fix prefixes when possible
+        try:
+            # Try to parse, to fix prefixes and structural issues
+            prepareQuery(gen_sparql["query"])
+        except Exception as e:
+            if "Unknown namespace prefix" in str(e):
+                # Automatically fix missing prefixes
+                validation_output["fixed_query"] = add_missing_prefixes(gen_sparql["query"], prefixes_map)
+                gen_sparql["query"] = validation_output["fixed_query"]
+                # Check if other syntax errors are present
+                validation_output["errors"] = [
+                    line for line in str(e).splitlines() if "Unknown namespace prefix" not in line
+                ]
+
+        # 2. Validate the SPARQL query based on schema from VoID description if no syntactic errors
+        if gen_sparql["endpoint_url"] and not validation_output["errors"]:
+            validation_output["errors"] = list(
+                validate_sparql_with_void(
+                    gen_sparql["query"],
+                    gen_sparql["endpoint_url"],
+                    prefix_converter,
+                    endpoints_void_dict,
+                )
+            )
+        validation_outputs.append(validation_output)
+    return validation_outputs

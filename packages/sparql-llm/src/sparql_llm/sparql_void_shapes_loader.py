@@ -3,7 +3,7 @@ from typing import Optional
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
 
-from sparql_llm.utils import get_prefix_converter, get_prefixes_for_endpoints, get_void_for_endpoint, query_sparql
+from sparql_llm.utils import get_prefix_converter, get_prefixes_for_endpoints, get_schema_for_endpoint, query_sparql
 
 DEFAULT_NAMESPACES_TO_IGNORE = [
     "http://www.w3.org/ns/sparql-service-description#",
@@ -30,7 +30,7 @@ def get_shex_dict_from_void(
     prefix_map = prefix_map or get_prefixes_for_endpoints([endpoint_url])
     namespaces_to_ignore = namespaces_to_ignore or DEFAULT_NAMESPACES_TO_IGNORE
     prefix_converter = get_prefix_converter(prefix_map)
-    void_dict = get_void_for_endpoint(endpoint_url, void_file)
+    void_dict = get_schema_for_endpoint(endpoint_url, void_file)
     shex_dict = {}
 
     for subject_cls, predicates in void_dict.items():

@@ -5,7 +5,7 @@ from sparql_llm import (
     SparqlVoidShapesLoader,
     validate_sparql_with_void,
 )
-from sparql_llm.utils import get_void_for_endpoint
+from sparql_llm.utils import get_schema_for_endpoint
 
 
 def test_sparql_examples_loader_uniprot():
@@ -27,7 +27,7 @@ def test_sparql_void_shape_loader():
 # uv run pytest tests/test_components.py::test_sparql_void_from_url
 def test_sparql_void_from_file():
     void_filepath = os.path.join(os.path.dirname(__file__), "void_uniprot.ttl")
-    void_dict = get_void_for_endpoint("https://sparql.uniprot.org/", void_filepath)
+    void_dict = get_schema_for_endpoint("https://sparql.uniprot.org/", void_filepath)
     # From URL: void_dict = get_void_for_endpoint("https://sparql.uniprot.org/", "https://sparql.uniprot.org/.well-known/void/")
     assert len(void_dict) >= 2
 

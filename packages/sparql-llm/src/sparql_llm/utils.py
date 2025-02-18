@@ -17,6 +17,13 @@ WHERE {
 } ORDER BY ?prefix"""
 
 
+# def get_endpoints_schema_and_prefixes(endpoints: list[str]) -> tuple["EndpointsSchemaDict", dict[str, str]]:
+#     """Return a tuple of VoID descriptions and prefixes for the given endpoints."""
+#     return (
+
+#     )
+
+
 def get_prefixes_for_endpoints(endpoints: list[str]) -> dict[str, str]:
     """Return a dictionary of prefixes for the given endpoints."""
     prefixes: dict[str, str] = {}
@@ -62,16 +69,16 @@ WHERE {
 
 # A dictionary to store triples like structure: dict[subject][predicate] = list[object]
 # Also used to store VoID description of an endpoint: dict[subject_cls][predicate] = list[object_cls/datatype]
-TripleDict = dict[str, dict[str, list[str]]]
+SchemaDict = dict[str, dict[str, list[str]]]
 # The VoidDict type, but we also store the endpoints URLs in an outer dict
-SparqlTriplesDict = dict[str, TripleDict]
+EndpointsSchemaDict = dict[str, SchemaDict]
 
 
-def get_void_for_endpoint(endpoint_url: str, void_file: Optional[str] = None) -> TripleDict:
+def get_schema_for_endpoint(endpoint_url: str, void_file: Optional[str] = None) -> SchemaDict:
     """Get a dict of VoID description of a SPARQL endpoint directly from the endpoint or from a VoID description URL.
 
     Formatted as: dict[subject_cls][predicate] = list[object_cls/datatype]"""
-    void_dict: TripleDict = {}
+    void_dict: SchemaDict = {}
     try:
         if void_file:
             g = rdflib.Graph()
