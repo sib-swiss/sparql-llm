@@ -8,6 +8,7 @@ from typing import Annotated, Any, Optional, Type, TypeVar
 from langchain_core.runnables import RunnableConfig, ensure_config
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from qdrant_client import QdrantClient
+from sparql_llm.utils import SparqlEndpointInfo
 
 from expasy_agent import prompts
 
@@ -16,7 +17,7 @@ class Settings(BaseSettings):
     """Define the service settings for the agent that can be set using environment variables."""
 
     # The list of endpoints that will be indexed and supported by the service
-    endpoints: list[dict[str, str]] = [
+    endpoints: list[SparqlEndpointInfo] = [
         {
             # The label of the endpoint for clearer display
             "label": "UniProt",
@@ -26,64 +27,64 @@ class Settings(BaseSettings):
             "void_file": "../sparql-llm/tests/void_uniprot.ttl",
             # "void_file": "https://sparql.uniprot.org/.well-known/void/",
             # "examples_file": "../sparql-llm/tests/examples_uniprot.ttl",
-            # Optional, homepage from which we can extract more information using the JSON-LD context
-            # "homepage": "https://www.uniprot.org/",
+            # Optional, a homepage from which we can extract more information using the JSON-LD context
+            # "homepage_url": "https://www.uniprot.org/",
             # "ontology": "https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl",
         },
         {
             "label": "Bgee",
             "endpoint_url": "https://www.bgee.org/sparql/",
-            "homepage": "https://www.bgee.org/",
+            "homepage_url": "https://www.bgee.org/",
             "ontology": "http://purl.org/genex",
         },
         {
             "label": "Orthology MAtrix (OMA)",
             "endpoint_url": "https://sparql.omabrowser.org/sparql/",
-            "homepage": "https://omabrowser.org/",
+            "homepage_url": "https://omabrowser.org/",
             "ontology": "http://purl.org/net/orth",
         },
         {
             "label": "HAMAP",
             "endpoint_url": "https://hamap.expasy.org/sparql/",
-            "homepage": "https://hamap.expasy.org/",
+            "homepage_url": "https://hamap.expasy.org/",
         },
         {
             "label": "dbgi",
             "endpoint_url": "https://biosoda.unil.ch/graphdb/repositories/emi-dbgi",
-            # "homepage": "https://dbgi.eu/",
+            # "homepage_url": "https://dbgi.eu/",
         },
         {
             "label": "SwissLipids",
             "endpoint_url": "https://beta.sparql.swisslipids.org/",
-            "homepage": "https://www.swisslipids.org",
+            "homepage_url": "https://www.swisslipids.org",
         },
         {
             "label": "Rhea",
             "endpoint_url": "https://sparql.rhea-db.org/sparql/",
-            "homepage": "https://www.rhea-db.org/",
+            "homepage_url": "https://www.rhea-db.org/",
         },
         # No metadata in these endpoints
         # {
         #     "label": "OrthoDB",
         #     "endpoint_url": "https://sparql.orthodb.org/sparql/",
-        #     "homepage": "https://www.orthodb.org/",
+        #     "homepage_url": "https://www.orthodb.org/",
         # },
         # {
         #     "label": "MetaNetx",
         #     "endpoint_url": "https://rdf.metanetx.org/sparql/",
-        #     "homepage": "https://www.metanetx.org/",
+        #     "homepage_url": "https://www.metanetx.org/",
         # },
         # Error querying NExtProt
         # {
         #     "label": "NextProt",
         #     # "endpoint_url": "https://api.nextprot.org/sparql",
         #     "endpoint_url": "https://sparql.nextprot.org",
-        #     "homepage": "https://www.nextprot.org/",
+        #     "homepage_url": "https://www.nextprot.org/",
         # },
         # {
         #     "label": "GlyConnect",
         #     "endpoint_url": "https://glyconnect.expasy.org/sparql",
-        #     "homepage": "https://glyconnect.expasy.org/",
+        #     "homepage_url": "https://glyconnect.expasy.org/",
         # },
     ]
 

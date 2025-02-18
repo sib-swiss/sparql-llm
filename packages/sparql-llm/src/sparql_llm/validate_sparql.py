@@ -11,7 +11,7 @@ from sparql_llm.utils import (
     EndpointsSchemaDict,
     SchemaDict,
     get_prefix_converter,
-    get_prefixes_for_endpoints,
+    get_prefixes_for_endpoint,
     get_schema_for_endpoint,
 )
 
@@ -145,7 +145,7 @@ def validate_sparql_with_void(
 ) -> set[str]:
     """Validate SPARQL query using the VoID description of endpoints. Returns a set of human-readable error messages."""
     if prefix_converter is None:
-        prefix_converter = get_prefix_converter(get_prefixes_for_endpoints([endpoint_url]))
+        prefix_converter = get_prefix_converter(get_prefixes_for_endpoint(endpoint_url))
     if endpoints_void_dict is None:
         endpoints_void_dict = {}
 
@@ -312,9 +312,11 @@ def validate_sparql_in_msg(
     if endpoints_void_dict is None:
         endpoints_void_dict = {}
     if prefixes_map is None:
-        prefixes_map = get_prefixes_for_endpoints(
-            list({gen_sparql["endpoint_url"] for gen_sparql in generated_sparqls if gen_sparql.get("endpoint_url")})
-        )
+        prefixes_map: dict[str, str] = {}
+        for endpoint_url in list(
+            {gen_sparql["endpoint_url"] for gen_sparql in generated_sparqls if gen_sparql.get("endpoint_url")}
+        ):
+            prefixes_map = get_prefixes_for_endpoint(endpoint_url, prefixes_map)
     prefix_converter = get_prefix_converter(prefixes_map)
 
     for gen_sparql in generated_sparqls:

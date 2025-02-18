@@ -5,11 +5,7 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
-from sparql_llm.utils import (
-    EndpointsSchemaDict,
-    get_prefixes_for_endpoints,
-    get_schema_for_endpoint,
-)
+from sparql_llm.utils import get_prefixes_and_schema_for_endpoints
 from sparql_llm.validate_sparql import validate_sparql_in_msg
 
 from expasy_agent.config import Configuration, settings
@@ -92,14 +88,4 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
     return response
 
 
-# Retrieve the prefixes map and initialize converter from the endpoints defined in settings
-prefixes_map = get_prefixes_for_endpoints(
-    [endpoint["endpoint_url"] for endpoint in settings.endpoints]
-)
-
-# Initialize VoID dictionary for the endpoints
-endpoints_void_dict: EndpointsSchemaDict = {}
-for endpoint in settings.endpoints:
-    endpoints_void_dict[endpoint["endpoint_url"]] = get_schema_for_endpoint(
-        endpoint["endpoint_url"], endpoint.get("void_file")
-    )
+prefixes_map, endpoints_void_dict = get_prefixes_and_schema_for_endpoints(settings.endpoints)

@@ -8,7 +8,7 @@ from langchain_qdrant import QdrantVectorStore
 from rdflib import RDF, Dataset, Namespace
 from sparql_llm.sparql_examples_loader import SparqlExamplesLoader
 from sparql_llm.sparql_void_shapes_loader import SparqlVoidShapesLoader
-from sparql_llm.utils import get_prefixes_for_endpoints
+from sparql_llm.utils import get_prefixes_and_schema_for_endpoints
 
 from expasy_agent.config import settings
 from expasy_agent.nodes.retrieval_docs import make_dense_encoder
@@ -21,7 +21,7 @@ def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
     docs = []
     try:
         resp = httpx.get(
-            endpoint["homepage"],
+            endpoint["homepage_url"],
             headers={
                 # "User-Agent": "BgeeBot/1.0",
                 # Adding a user-agent to make it look like we are a google bot to trigger SSR on Bgee
@@ -56,7 +56,7 @@ def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
                             "question": question,
                             "answer": json_ld_content,
                             # "answer": f"```json\n{json_ld_content}\n```",
-                            "iri": endpoint["homepage"],
+                            "iri": endpoint["homepage_url"],
                             "endpoint_url": endpoint["endpoint_url"],
                             "doc_type": "General information",
                         },
@@ -81,7 +81,7 @@ def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
                     "question": question,
                     "answer": "\n".join(descs),
                     "endpoint_url": endpoint["endpoint_url"],
-                    "iri": endpoint["homepage"],
+                    "iri": endpoint["homepage_url"],
                     "doc_type": "General information",
                 },
             )
@@ -134,8 +134,8 @@ def init_vectordb() -> None:
     """Initialize the vectordb with example queries and ontology descriptions from the SPARQL endpoints"""
     docs: list[Document] = []
 
-    endpoints_urls = [endpoint["endpoint_url"] for endpoint in settings.endpoints]
-    prefix_map = get_prefixes_for_endpoints(endpoints_urls)
+    # endpoints_urls = [endpoint["endpoint_url"] for endpoint in settings.endpoints]
+    prefix_map, _void_schema = get_prefixes_and_schema_for_endpoints(settings.endpoints)
 
     # Gets documents from the SPARQL endpoints
     for endpoint in settings.endpoints:
@@ -153,6 +153,7 @@ def init_vectordb() -> None:
             endpoint["endpoint_url"],
             prefix_map=prefix_map,
             void_file=endpoint.get("void_file"),
+            examples_file=endpoint.get("examples_file"),
             verbose=True,
         )
         docs += void_loader.load()

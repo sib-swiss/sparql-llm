@@ -1,15 +1,24 @@
 import json
-import logging
-import time
-from typing import Any, Optional
+from typing import Any, NotRequired, Optional, TypedDict
 
 import httpx
 import rdflib
 from curies_rs import Converter
 
-logging.getLogger("httpx").setLevel(logging.WARNING)
+# import logging
+# logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # Prefixes utilities
+
+
+class SparqlEndpointInfo(TypedDict):
+    """A dictionary to store information and links about a SPARQL endpoint."""
+
+    endpoint_url: str
+    void_file: NotRequired[str] = None
+    examples_file: NotRequired[str] = None
+    homepage_url: NotRequired[str] = None
+
 
 GET_PREFIXES_QUERY = """PREFIX sh: <http://www.w3.org/ns/shacl#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -20,18 +29,33 @@ WHERE {
 } ORDER BY ?prefix"""
 
 
+def get_prefixes_and_schema_for_endpoints(
+    endpoints: list[SparqlEndpointInfo],
+) -> tuple[dict[str, str], "EndpointsSchemaDict"]:
+    """Return a dictionary of prefixes and a dictionary of VoID classes schema for the given endpoints."""
+    prefixes_map: dict[str, str] = {}
+    endpoints_void_dict: EndpointsSchemaDict = {}
+    for endpoint in endpoints:
+        endpoints_void_dict[endpoint["endpoint_url"]] = get_schema_for_endpoint(
+            endpoint["endpoint_url"], endpoint.get("void_file")
+        )
+        prefixes_map = get_prefixes_for_endpoint(endpoint["endpoint_url"], endpoint.get("examples_file"), prefixes_map)
+    return prefixes_map, endpoints_void_dict
 
-def get_prefixes_for_endpoints(endpoints: list[str]) -> dict[str, str]:
-    """Return a dictionary of prefixes for the given endpoints."""
-    prefixes: dict[str, str] = {}
-    for endpoint_url in endpoints:
-        try:
-            for row in query_sparql(GET_PREFIXES_QUERY, endpoint_url)["results"]["bindings"]:
-                if row["namespace"]["value"] not in prefixes.values():
-                    prefixes[row["prefix"]["value"]] = row["namespace"]["value"]
-        except Exception as e:
-            print(f"Error retrieving prefixes from {endpoint_url}: {e}")
-    return prefixes
+
+def get_prefixes_for_endpoint(
+    endpoint_url: str, examples_file: Optional[str] = None, prefixes_map: Optional[dict[str, str]] = None
+) -> dict[str, str]:
+    """Return a dictionary of prefixes for the given endpoint."""
+    if prefixes_map is None:
+        prefixes_map = {}
+    try:
+        for row in query_sparql(GET_PREFIXES_QUERY, endpoint_url, use_file=examples_file)["results"]["bindings"]:
+            if row["namespace"]["value"] not in prefixes_map.values():
+                prefixes_map[row["prefix"]["value"]] = row["namespace"]["value"]
+    except Exception as e:
+        print(f"Error retrieving prefixes for {endpoint_url}: {e}")
+    return prefixes_map
 
 
 def get_prefix_converter(prefix_dict: dict[str, str]) -> Converter:
@@ -76,34 +100,34 @@ def get_schema_for_endpoint(endpoint_url: str, void_file: Optional[str] = None) 
     Formatted as: dict[subject_cls][predicate] = list[object_cls/datatype]"""
     void_dict: SchemaDict = {}
     try:
-        if void_file:
-            g = rdflib.Graph()
-            if void_file.startswith(("http://", "https://")):
-                # Handle URL case
-                with httpx.Client() as client:
-                    for attempt in range(10):
-                        # Retry a few times in case of HTTP errors, e.g. https://sparql.uniprot.org/.well-known/void/
-                        try:
-                            resp = client.get(void_file, headers={"Accept": "text/turtle"}, follow_redirects=True)
-                            resp.raise_for_status()
-                            if resp.text.strip() == "":
-                                raise ValueError(f"Empty response for VoID description from {void_file}")
-                            g.parse(data=resp.text, format="turtle")
-                            break
-                        except Exception as e:
-                            if attempt == 3:
-                                raise e
-                            time.sleep(1)
-                            continue
-            else:
-                # Handle local file case
-                g.parse(void_file, format="turtle")
-            results = g.query(GET_VOID_DESC)
-            bindings = [{str(k): {"value": str(v)} for k, v in row.asdict().items()} for row in results]
-        else:
-            bindings = query_sparql(GET_VOID_DESC, endpoint_url)["results"]["bindings"]
+        # if void_file:
+        #     g = rdflib.Graph()
+        #     if void_file.startswith(("http://", "https://")):
+        #         # Handle URL case
+        #         with httpx.Client() as client:
+        #             for attempt in range(10):
+        #                 # Retry a few times in case of HTTP errors, e.g. https://sparql.uniprot.org/.well-known/void/
+        #                 try:
+        #                     resp = client.get(void_file, headers={"Accept": "text/turtle"}, follow_redirects=True)
+        #                     resp.raise_for_status()
+        #                     if resp.text.strip() == "":
+        #                         raise ValueError(f"Empty response for VoID description from {void_file}")
+        #                     g.parse(data=resp.text, format="turtle")
+        #                     break
+        #                 except Exception as e:
+        #                     if attempt == 3:
+        #                         raise e
+        #                     time.sleep(1)
+        #                     continue
+        #     else:
+        #         # Handle local file case
+        #         g.parse(void_file, format="turtle")
+        #     results = g.query(GET_VOID_DESC)
+        #     bindings = [{str(k): {"value": str(v)} for k, v in row.asdict().items()} for row in results]
+        # else:
+        #     bindings = query_sparql(GET_VOID_DESC, endpoint_url)["results"]["bindings"]
 
-        for void_triple in bindings:
+        for void_triple in query_sparql(GET_VOID_DESC, endpoint_url, use_file=void_file)["results"]["bindings"]:
             if void_triple["subjectClass"]["value"] not in void_dict:
                 void_dict[void_triple["subjectClass"]["value"]] = {}
             if void_triple["prop"]["value"] not in void_dict[void_triple["subjectClass"]["value"]]:
@@ -129,30 +153,39 @@ def query_sparql(
     post: bool = False,
     timeout: Optional[int] = None,
     client: Optional[httpx.Client] = None,
+    use_file: Optional[str] = None,
 ) -> Any:
-    """Execute a SPARQL query on a SPARQL endpoint using httpx"""
-    should_close = False
-    if client is None:
-        client = httpx.Client(
-            follow_redirects=True, headers={"Accept": "application/sparql-results+json"}, timeout=timeout
-        )
-        should_close = True
+    """Execute a SPARQL query on a SPARQL endpoint using httpx or a RDF turtle file using rdflib."""
+    if use_file:
+        g = rdflib.Graph()
+        g.parse(use_file, format="turtle")
+        results = g.query(query)
+        return {
+            "results": {"bindings": [{str(k): {"value": str(v)} for k, v in row.asdict().items()} for row in results]}
+        }
+    else:
+        should_close = False
+        if client is None:
+            client = httpx.Client(
+                follow_redirects=True, headers={"Accept": "application/sparql-results+json"}, timeout=timeout
+            )
+            should_close = True
 
-    try:
-        if post:
-            resp = client.post(
-                endpoint_url,
-                data={"query": query},
-            )
-        else:
-            # NOTE: We prefer GET because in the past it seemed like some endpoints at the SIB were having issues with POST
-            # But not sure if this is still the case
-            resp = client.get(
-                endpoint_url,
-                params={"query": query},
-            )
-        resp.raise_for_status()
-        return resp.json()
-    finally:
-        if should_close:
-            client.close()
+        try:
+            if post:
+                resp = client.post(
+                    endpoint_url,
+                    data={"query": query},
+                )
+            else:
+                # NOTE: We prefer GET because in the past it seemed like some endpoints at the SIB were having issues with POST
+                # But not sure if this is still the case
+                resp = client.get(
+                    endpoint_url,
+                    params={"query": query},
+                )
+            resp.raise_for_status()
+            return resp.json()
+        finally:
+            if should_close:
+                client.close()

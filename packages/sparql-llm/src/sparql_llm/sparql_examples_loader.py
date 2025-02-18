@@ -5,10 +5,9 @@ from typing import Any, Optional
 from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
-from rdflib import Graph
 from rdflib.plugins.sparql import prepareQuery
 
-from sparql_llm.utils import GET_PREFIXES_QUERY, query_sparql
+from sparql_llm.utils import get_prefixes_for_endpoint, query_sparql
 
 GET_SPARQL_EXAMPLES_QUERY = """PREFIX sh: <http://www.w3.org/ns/shacl#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -40,20 +39,12 @@ class SparqlExamplesLoader(BaseLoader):
     def load(self) -> list[Document]:
         """Load and return documents from the SPARQL endpoint."""
         docs: list[Document] = []
-
-        # Get prefixes
         prefix_map: dict[str, str] = {}
         try:
-            if self.examples_file:
-                g = Graph()
-                g.parse(self.examples_file, format="turtle")
-            else:
-                bindings = query_sparql(GET_PREFIXES_QUERY, self.endpoint_url)["results"]["bindings"]
-            for row in bindings:
-                # TODO: we might be able to remove this soon, when prefixes will be included in all endpoints
-                prefix_map[row["prefix"]["value"]] = row["namespace"]["value"]
-
-            for row in query_sparql(GET_SPARQL_EXAMPLES_QUERY, self.endpoint_url)["results"]["bindings"]:
+            prefix_map = get_prefixes_for_endpoint(self.endpoint_url, self.examples_file)
+            for row in query_sparql(GET_SPARQL_EXAMPLES_QUERY, self.endpoint_url, use_file=self.examples_file)[
+                "results"
+            ]["bindings"]:
                 docs.append(self._create_document(row, prefix_map))
         except Exception as e:
             print(f"Could not retrieve SPARQL query examples from endpoint {self.endpoint_url}: {e}")
