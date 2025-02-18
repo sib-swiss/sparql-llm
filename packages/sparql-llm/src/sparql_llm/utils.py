@@ -1,5 +1,5 @@
 import json
-from typing import Any, NotRequired, Optional, TypedDict
+from typing import Any, Optional, TypedDict
 
 import httpx
 import rdflib
@@ -11,13 +11,13 @@ from curies_rs import Converter
 # Prefixes utilities
 
 
-class SparqlEndpointInfo(TypedDict):
-    """A dictionary to store information and links about a SPARQL endpoint."""
+class SparqlEndpointInfo(TypedDict, total=False):
+    """A dictionary to store links and filepaths about a SPARQL endpoint."""
 
     endpoint_url: str
-    void_file: NotRequired[str] = None
-    examples_file: NotRequired[str] = None
-    homepage_url: NotRequired[str] = None
+    void_file: Optional[str]
+    examples_file: Optional[str]
+    homepage_url: Optional[str]
 
 
 GET_PREFIXES_QUERY = """PREFIX sh: <http://www.w3.org/ns/shacl#>

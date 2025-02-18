@@ -24,33 +24,40 @@ endpoints: list[dict[str, str]] = [
 ]
 
 
-# Get documents from the SPARQL endpoints
-docs: list[Document] = []
-for endpoint in endpoints:
-    print(f"\n  🔎 Getting metadata for {endpoint['endpoint_url']}")
-    queries_loader = SparqlExamplesLoader(
-        endpoint["endpoint_url"],
-        examples_file=endpoint.get("examples_file"),
-        verbose=True,
+def index_endpoints():
+    # Get documents from the SPARQL endpoints
+    docs: list[Document] = []
+    for endpoint in endpoints:
+        print(f"\n  🔎 Getting metadata for {endpoint['endpoint_url']}")
+        queries_loader = SparqlExamplesLoader(
+            endpoint["endpoint_url"],
+            examples_file=endpoint.get("examples_file"),
+            verbose=True,
+        )
+        docs += queries_loader.load()
+
+        void_loader = SparqlVoidShapesLoader(
+            endpoint["endpoint_url"],
+            void_file=endpoint.get("void_file"),
+            examples_file=endpoint.get("examples_file"),
+            verbose=True,
+        )
+        docs += void_loader.load()
+
+    os.makedirs('data', exist_ok=True)
+
+    QdrantVectorStore.from_documents(
+        docs,
+        # path="data/qdrant",
+        host="localhost",
+        prefer_grpc=True,
+        collection_name="sparql-docs",
+        force_recreate=True,
+        embedding=FastEmbedEmbeddings(
+            model_name="BAAI/bge-small-en-v1.5",
+            # providers=["CUDAExecutionProvider"], # Uncomment this line to use your GPUs
+        ),
     )
-    docs += queries_loader.load()
 
-    void_loader = SparqlVoidShapesLoader(
-        endpoint["endpoint_url"],
-        void_file=endpoint.get("void_file"),
-        verbose=True,
-    )
-    docs += void_loader.load()
-
-os.makedirs('data', exist_ok=True)
-
-vectordb = QdrantVectorStore.from_documents(
-    docs,
-    path="data/qdrant",
-    collection_name="sparql-docs",
-    force_recreate=True,
-    embedding=FastEmbedEmbeddings(
-        model_name="BAAI/bge-small-en-v1.5",
-        # providers=["CUDAExecutionProvider"], # Uncomment this line to use your GPUs
-    ),
-)
+if __name__ == "__main__":
+    index_endpoints()

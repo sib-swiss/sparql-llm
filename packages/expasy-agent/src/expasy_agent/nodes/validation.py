@@ -88,4 +88,6 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
     return response
 
 
-prefixes_map, endpoints_void_dict = get_prefixes_and_schema_for_endpoints(settings.endpoints)
+prefixes_map, endpoints_void_dict = get_prefixes_and_schema_for_endpoints(
+    settings.endpoints
+)

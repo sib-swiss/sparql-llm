@@ -173,14 +173,14 @@ def validate_sparql_with_void(
                         continue
                     if subj_type not in void_dict and not subj_type.startswith("?"):
                         issues.add(
-                            f"Type {prefix_converter.compress_list([subj_type])[0]} for subject {subj} in endpoint {endpoint} does not exist. Available classes are: {', '.join(prefix_converter.compress_list(list(void_dict.keys())))}"
+                            f"Type {prefix_converter.compress_list([subj_type])[0]} for subject {subj} in endpoint {endpoint} does not exist. Available classes are: `{'`, `'.join(prefix_converter.compress_list(list(void_dict.keys())))}`"
                         )
                     elif pred not in void_dict.get(subj_type, {}) and not pred.startswith("?"):
                         # TODO: also check if object type matches? (if defined, because it's not always available)
                         # NOTE: we use compress_list for single values also because it has passthrough enabled by default for when there is no match in the converter
                         # print(subj_type, pred, list(void_dict.get(subj_type, {}).keys()), void_dict.get(subj_type, {}))
                         issues.add(
-                            f"Subject {subj} with type {prefix_converter.compress_list([subj_type])[0]} in endpoint {endpoint} does not support the predicate {prefix_converter.compress_list([pred])[0]}. It can have the following predicates: {', '.join(prefix_converter.compress_list(list(void_dict.get(subj_type, {}).keys())))}"
+                            f"Subject {subj} with type `{prefix_converter.compress_list([subj_type])[0]}` in endpoint {endpoint} does not support the predicate `{prefix_converter.compress_list([pred])[0]}`. It can have the following predicates: `{'`, `'.join(prefix_converter.compress_list(list(void_dict.get(subj_type, {}).keys())))}`"
                         )
                     for obj in pred_dict[pred]:
                         # Recursively validates objects that are variables
@@ -217,7 +217,7 @@ def validate_sparql_with_void(
                 if missing_pred is not None:
                     # print(f"!!!! Subject {subj} {parent_type} {parent_pred} is not a valid {potential_types} !")
                     issues.add(
-                        f"Subject {subj} in endpoint {endpoint} does not support the predicate {prefix_converter.compress_list([missing_pred])[0]}. Correct predicate might be one of the following: {', '.join(prefix_converter.compress_list(list(potential_preds)))} (we inferred this variable might be of the type {prefix_converter.compress_list([potential_type])[0]})"
+                        f"Subject {subj} in endpoint {endpoint} does not support the predicate `{prefix_converter.compress_list([missing_pred])[0]}`. Correct predicate might be one of the following: `{'`, `'.join(prefix_converter.compress_list(list(potential_preds)))}` (we inferred this variable might be of the type `{prefix_converter.compress_list([potential_type])[0]}`)"
                     )
 
         # TODO: when no type and no parent but more than 1 predicate is used, we could try to infer the type from the predicates

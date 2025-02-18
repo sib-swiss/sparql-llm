@@ -26,23 +26,25 @@ from langchain_qdrant import QdrantVectorStore
 from langchain_community.embeddings import FastEmbedEmbeddings
 
 vectordb = QdrantVectorStore.from_existing_collection(
-    path="data/qdrant",
+    host="localhost",
+    prefer_grpc=True,
+    # path="data/qdrant",
     collection_name="sparql-docs",
     embedding=FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5"),
 )
 
 retriever = vectordb.as_retriever()
-number_of_docs_retrieved = 5
+docs_retrieved_count = 5
 
-# retrieved_docs = retriever.invoke(question, k=number_of_docs_retrieved)
+# retrieved_docs = retriever.invoke(question, k=docs_retrieved_count)
 
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 from langchain_core.documents import Document
 
-def retrieve_docs(question: str) -> list[Document]:
+def retrieve_docs(question: str) -> str:
     retrieved_docs = retriever.invoke(
         question,
-        k=number_of_docs_retrieved,
+        k=docs_retrieved_count,
         filter=Filter(
             must=[
                 FieldCondition(
@@ -54,7 +56,7 @@ def retrieve_docs(question: str) -> list[Document]:
     )
     retrieved_docs += retriever.invoke(
         question,
-        k=number_of_docs_retrieved,
+        k=docs_retrieved_count,
         filter=Filter(
             must_not=[
                 FieldCondition(
@@ -64,9 +66,10 @@ def retrieve_docs(question: str) -> list[Document]:
             ]
         ),
     )
-    return retrieved_docs
+    return f"<documents>\n{'\n'.join(_format_doc(doc) for doc in retrieved_docs)}\n</documents>"
 
-# retrieved_docs = retrieve_docs(question)
+# relevant_docs = "\n".join(doc.page_content + "\n" + doc.metadata.get("answer") for doc in retrieved_docs)
+# relevant_docs = retrieve_docs(question)
 
 # print(f"📚️ Retrieved {len(retrieved_docs)} documents")
 # # print(retrieved_docs)
@@ -92,18 +95,16 @@ Use the queries examples and classes shapes provided in the prompt to derive you
 Try to always answer with one query, if the answer lies in different endpoints, provide a federated query.
 And briefly explain the query.
 Here is a list of documents (reference questions and query answers, classes schema) relevant to the user question that will help you answer the user question accurately:
-{retrieved_docs}
+{relevant_docs}
 """
 prompt_template = ChatPromptTemplate.from_messages([
         ("system", SYSTEM_PROMPT),
         ("placeholder", "{messages}"),
 ])
 
-# formatted_docs = "\n".join(doc.page_content + "\n" + doc.metadata.get("answer") for doc in retrieved_docs)
-# formatted_docs = f"<documents>\n{'\n'.join(_format_doc(doc) for doc in retrieved_docs)}\n</documents>"
 # prompt_with_context = prompt_template.invoke({
 #     "messages": [("human", question)],
-#     "retrieved_docs": formatted_docs,
+#     "relevant_docs": relevant_docs,
 # })
 
 # print(str("\n".join(prompt_with_context.messages)))
@@ -119,17 +120,28 @@ import chainlit as cl
 
 @cl.on_message
 async def on_message(msg: cl.Message):
-    retrieved_docs = retrieve_docs(msg.content)
-    formatted_docs = f"<documents>\n{'\n'.join(_format_doc(doc) for doc in retrieved_docs)}\n</documents>"
-    async with cl.Step(name=f"{len(retrieved_docs)} relevant documents") as step:
+    relevant_docs = retrieve_docs(msg.content)
+    async with cl.Step(name="relevant documents") as step:
         # step.input = msg.content
-        step.output = formatted_docs
+        step.output = relevant_docs
 
     prompt_with_context = prompt_template.invoke({
         "messages": [("human", msg.content)],
-        "retrieved_docs": formatted_docs,
+        "relevant_docs": relevant_docs,
     })
     final_answer = cl.Message(content="")
     for resp in llm.stream(prompt_with_context):
         await final_answer.stream_token(resp.content)
     await final_answer.send()
+
+@cl.set_starters
+async def set_starters():
+    return [
+        cl.Starter(
+            label="What are the rat orthologs of human TP53?",
+            message="What are the rat orthologs of human TP53?",
+            # icon="/public/idea.svg",
+        ),
+    ]
+
+# uv run chainlit run app.py

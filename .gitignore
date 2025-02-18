@@ -21,3 +21,5 @@ nohup.out
 node_modules/
 
 packages/expasy-agent/src/expasy_agent/webapp
+tutorial/chainlit.md
+tutorial/public

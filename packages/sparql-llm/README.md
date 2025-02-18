@@ -48,7 +48,11 @@ You can provide the examples as a file if it is not integrated in the endpoint, 
 loader = SparqlExamplesLoader("https://sparql.uniprot.org/sparql/", examples_file="uniprot_examples.ttl")
 ```
 
-> Refer to the [LangChain documentation](https://python.langchain.com/v0.2/docs/) to figure out how to best integrate documents loaders to your stack.
+> Refer to the [LangChain documentation](https://python.langchain.com/v0.2/docs/) to figure out how to best integrate documents loaders to your system.
+
+> [!NOTE]
+>
+> You can check the completeness of your examples against the endpoint schema using [this notebook](https://github.com/sib-swiss/sparql-llm/blob/main/notebooks/compare_queries_examples_to_void.ipynb).
 
 ### SPARQL endpoint schema loader
 
