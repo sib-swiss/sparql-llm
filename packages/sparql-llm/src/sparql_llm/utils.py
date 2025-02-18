@@ -1,10 +1,13 @@
 import json
+import logging
 import time
 from typing import Any, Optional
 
 import httpx
 import rdflib
 from curies_rs import Converter
+
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # Prefixes utilities
 
@@ -16,12 +19,6 @@ WHERE {
         sh:prefix ?prefix .
 } ORDER BY ?prefix"""
 
-
-# def get_endpoints_schema_and_prefixes(endpoints: list[str]) -> tuple["EndpointsSchemaDict", dict[str, str]]:
-#     """Return a tuple of VoID descriptions and prefixes for the given endpoints."""
-#     return (
-
-#     )
 
 
 def get_prefixes_for_endpoints(endpoints: list[str]) -> dict[str, str]:
@@ -67,11 +64,10 @@ WHERE {
     }
 }"""
 
-# A dictionary to store triples like structure: dict[subject][predicate] = list[object]
-# Also used to store VoID description of an endpoint: dict[subject_cls][predicate] = list[object_cls/datatype]
 SchemaDict = dict[str, dict[str, list[str]]]
-# The VoidDict type, but we also store the endpoints URLs in an outer dict
+"""A dictionary to store the classes schema of an endpoint: dict[subject_cls][predicate] = list[object_cls/datatype]"""
 EndpointsSchemaDict = dict[str, SchemaDict]
+"""A dictionary to store the classes schema of multiple endpoints: dict[endpoint_url][subject_cls][predicate] = list[object_cls/datatype]"""
 
 
 def get_schema_for_endpoint(endpoint_url: str, void_file: Optional[str] = None) -> SchemaDict:
