@@ -6,6 +6,17 @@ As we progress, you'll be provided with code snippets to gradually construct the
 
 ---
 
+## Outline
+
+1. Programmatically query LLMs
+2. Index documents
+3. Use indexed documents as context
+4. Add a web UI
+5. Define a more complex agent workflow
+6. Add SPARQL query validation
+
+---
+
 ## Setup
 
 [Install `uv`](https://docs.astral.sh/uv/getting-started/installation/) to easily handle dependencies and run scripts
@@ -19,7 +30,7 @@ GROQ_API_KEY=gsk_YYY
 OPENAI_API_KEY=sk-proj-YYY
 ```
 
-> You can get a [free API key on groq.com](https://console.groq.com/keys) after logging in with GitHub or Google. This gives you access to [various open-source models](https://groq.com/pricing/) with a limit of 6k tokens per minute.
+> You can get a [free API key on groq.com](https://console.groq.com/keys) after login in with GitHub or Google. This gives you access to [various open-source models](https://groq.com/pricing/) with a limit of 6k tokens per minute.
 
 ---
 
@@ -33,7 +44,7 @@ name = "tutorial-sparql-agent"
 version = "0.0.1"
 requires-python = "==3.12.*"
 dependencies = [
-    "sparql-llm >=0.0.6",
+    "sparql-llm >=0.0.8",
     "langchain >=0.3.19",
     "langchain-community >=0.3.17",
     "langchain-openai >=0.3.6",
@@ -59,7 +70,7 @@ from langchain_groq import ChatGroq
 question = "What are the rat orthologs of human TP53?"
 
 llm = ChatGroq(
-    model_name="llama-3.3-70b-versatile", 
+    model_name="llama-3.3-70b-versatile",
     temperature=0,
 )
 
@@ -111,7 +122,7 @@ llm = load_chat_model("groq/llama-3.3-70b-versatile")
 
 Install ollama: [ollama.com/download](https://www.ollama.com/download)
 
-Pull the [model](https://www.ollama.com/search) you want to use (⚠️ 4GB): 
+Pull the [model](https://www.ollama.com/search) you want to use (⚠️ 4GB):
 
 ```sh
 ollama pull mistral
@@ -132,10 +143,25 @@ llm = load_chat_model("ollama/mistral")
 
 ## Setup vector store
 
-Deploy a **[Qdrant](https://qdrant.tech/documentation/)** vector store using docker to store indexed documents:
+Deploy a **[Qdrant](https://qdrant.tech/documentation/)** vector store using [docker](https://hub.docker.com/r/qdrant/qdrant/tags) to store indexed documents:
 
 ```sh
 docker run -d -p 6333:6333 -p 6334:6334 -v $(pwd)/data/qdrant:/qdrant/storage qdrant/qdrant
+```
+
+Or create a `compose.yml` file and start with `docker compose up`
+
+```yml
+services:
+  vectordb:
+    image: docker.io/qdrant/qdrant:v1.13.4
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+    environment:
+      - QDRANT__TELEMETRY_DISABLED=true
 ```
 
 If you don't have docker you can try to [download and deploy the binary](https://github.com/qdrant/qdrant/releases/tag/v1.13.4) for your platform (this might require to install additional dependencies though)
@@ -149,14 +175,16 @@ If you don't have docker you can try to [download and deploy the binary](https:/
 Create a new script that will be run to index data from SPARQL endpoints: `index.py`
 
 ```python
-endpoints: list[dict[str, str]] = [
+from sparql_llm import SparqlEndpointLinks
+
+endpoints: list[SparqlEndpointLinks] = [
     {
         # The URL of the SPARQL endpoint from which most info will be extracted
         "endpoint_url": "https://sparql.uniprot.org/sparql/",
         # If VoID or query examples are not in the endpoint,
         # you can provide a VoID file (local or remote URL)
-        "void_file": "uniprot_void.ttl",
-        "examples_file": "uniprot_examples.ttl",
+        "void_file": "data/uniprot_void.ttl",
+        "examples_file": "data/uniprot_examples.ttl",
     },
     { "endpoint_url": "https://www.bgee.org/sparql/" },
     { "endpoint_url": "https://sparql.omabrowser.org/sparql/" },
@@ -169,29 +197,27 @@ endpoints: list[dict[str, str]] = [
 
 ## Index context
 
-Use the loaders from **[sparql-llm](https://pypi.org/project/sparql-llm/)** to easily extract and load documents for queries examples and ShEx shapes in the endpoint:
+Use the loaders from **[sparql-llm](https://pypi.org/project/sparql-llm/)** to easily extract and load documents for queries examples and classes schemas in the endpoint:
 
 ```python
 from langchain_core.documents import Document
-from sparql_llm import SparqlExamplesLoader, SparqlVoidShapesLoader
+from sparql_llm import SparqlExamplesLoader, SparqlVoidShapesLoader, SparqlInfoLoader
 
 def index_endpoints():
     docs: list[Document] = []
     for endpoint in endpoints:
         print(f"\n  🔎 Getting metadata for {endpoint['endpoint_url']}")
-        queries_loader = SparqlExamplesLoader(
+        docs += SparqlExamplesLoader(
             endpoint["endpoint_url"],
             examples_file=endpoint.get("examples_file"),
-            verbose=True,
-        )
-        docs += queries_loader.load()
-        void_loader = SparqlVoidShapesLoader(
+        ).load()
+
+        docs += SparqlVoidShapesLoader(
             endpoint["endpoint_url"],
             void_file=endpoint.get("void_file"),
             examples_file=endpoint.get("examples_file"),
-            verbose=True,
-        )
-        docs += void_loader.load()
+        ).load()
+    docs += SparqlInfoLoader(endpoints, source_iri="https://www.expasy.org/").load()
     print(f"✅ {len(docs)} documents indexed")
     print(docs[0])
 
@@ -209,7 +235,7 @@ uv run index.py
 
 ## Index context
 
-Finally we can load these documents in the **[Qdrant](https://qdrant.tech/documentation/)** vector store. 
+Finally we can load these documents in the **[Qdrant](https://qdrant.tech/documentation/)** vector store.
 
 We use **[FastEmbed](https://qdrant.github.io/fastembed/)** to generate embeddings locally with [open source embedding models](https://qdrant.github.io/fastembed/examples/Supported_Models/#supported-text-embedding-models).
 
@@ -355,13 +381,13 @@ async def on_message(msg: cl.Message):
     async with cl.Step(name="relevant documents 📚️") as step:
         step.output = relevant_docs
     prompt_with_context = prompt_template.invoke({
-        "messages": [("human", msg.content)],
+        "messages": cl.chat_context.to_openai(),
         "relevant_docs": relevant_docs,
     })
-    final_answer = cl.Message(content="")
+    answer = cl.Message(content="")
     for resp in llm.stream(prompt_with_context):
-        await final_answer.stream_token(resp.content)
-    await final_answer.send()
+        await answer.stream_token(resp.content)
+    await answer.send()
 ```
 
 Deploy the UI on http://localhost:8000 with:
@@ -390,23 +416,25 @@ async def set_starters():
 [Customize the UI](https://docs.chainlit.io/customisation/overview):
 
 - Change general settings in `.chainlit/config.toml`
+  - e.g. set `custom_css= "/public/style.css"` containing: `pre { padding: .5em; } a.watermark { display: none !important; }`
+
 - Add your logo in the `public` folder:
-  - `logo_dark.png`
-  - `logo_light.png`
-  - `favicon`
+  - `logo_dark.png`, `logo_light.png`, `favicon`
 
 ---
 
-## Creating more complex "agents"
+## Define an agent workflow
 
-e.g. reactive agent that can loop over themselves using [LangGraph](https://langchain-ai.github.io/langgraph/#):
+Create more complex agent workflow agent that can loop over themselves using [LangGraph](https://langchain-ai.github.io/langgraph/#):
 
 - To validate a generated query
 - To use tools
 
 ---
 
-## Define the state and update the retrieve function
+## Define an agent workflow
+
+Define the state and update the retrieve function
 
 ```python
 from langgraph.graph.message import MessagesState
@@ -414,11 +442,11 @@ from langgraph.graph.message import MessagesState
 class AgentState(MessagesState):
     """State of the agent available inside each node."""
     relevant_docs: str
-    
-    
+
+
 async def retrieve_docs(state: AgentState) -> dict[str, str]:
 	question = state["messages"][-1].content
-    # [...] 
+    # [...]
     async with cl.Step(name=f"{len(retrieved_docs)} relevant documents 📚️") as step:
         step.output = relevant_docs
     # This will update relevant_docs in the state:
@@ -427,7 +455,9 @@ async def retrieve_docs(state: AgentState) -> dict[str, str]:
 
 ---
 
-## Define the node to call the LLM
+## Define an agent workflow
+
+Define the node to call the LLM
 
 ```python
 def call_model(state: AgentState):
@@ -442,7 +472,9 @@ def call_model(state: AgentState):
 
 ---
 
-## Define the workflow
+## Define an agent workflow
+
+Define the workflow "graph"
 
 ```python
 from langgraph.graph import StateGraph
@@ -461,14 +493,16 @@ graph = builder.compile()
 
 ---
 
-## Update the UI
+## Define an agent workflow
+
+Update the UI
 
 ```python
 @cl.on_message
 async def on_message(msg: cl.Message):
     answer = cl.Message(content="")
     async for msg, metadata in graph.astream(
-        {"messages": [("human", msg.content)]},
+        {"messages": cl.chat_context.to_openai()},
         stream_mode="messages",
     ):
         if not msg.response_metadata:
@@ -478,7 +512,7 @@ async def on_message(msg: cl.Message):
             answer = cl.Message(content="")
 ```
 
-> Try again your agent now
+> Try running your agent again now
 
 ---
 
@@ -505,7 +539,7 @@ from sparql_llm.utils import get_prefixes_and_schema_for_endpoints
 from index import endpoints
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
-
+logging.info("Initializing endpoints metadata...")
 prefixes_map, endpoints_void_dict = get_prefixes_and_schema_for_endpoints(endpoints)
 ```
 
@@ -546,11 +580,13 @@ async def validate_output(state: AgentState) -> dict[str, bool | list[tuple[str,
 
 ## Add SPARQL query validation
 
-Create a conditional edge to route the workflow based on validation results 
+Create a conditional edge to route the workflow based on validation results
 
 ```python
+from typing import Literal
+
 max_try_fix_sparql = 3
-def route_model_output(state: AgentState) -> Literal["__end__", "call_model"]:
+def route_model_output(state: AgentState) -> Literal["call_model", "__end__"]:
     """Determine the next node based on the model's output."""
     if state["try_count"] > max_try_fix_sparql:
         return "__end__"
@@ -572,4 +608,4 @@ builder.add_edge("call_model", "validate_output")
 builder.add_conditional_edges("validate_output", route_model_output)
 ```
 
-> Try again your agent now
+> Try running your agent again now

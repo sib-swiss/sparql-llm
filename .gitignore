@@ -8,9 +8,8 @@ __pycache__/
 .*_cache
 .coverage
 .langgraph_api/
-.chainlit
 .files
-uv.lock
+# uv.lock
 
 # Data
 data/
@@ -21,5 +20,6 @@ nohup.out
 node_modules/
 
 packages/expasy-agent/src/expasy_agent/webapp
-tutorial/chainlit.md
-tutorial/public
+tutorial/public/logo_*.png
+tutorial/.chainlit/translations/*
+!tutorial/.chainlit/translations/en-US.json

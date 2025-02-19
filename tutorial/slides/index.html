@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Tutorial SPARQL agent</title>
     <meta name="description" content="Slides for SPARQL agent tutorial" />
-    <link rel="icon" type="image/png" href="../../chat-with-context/demo/sib-logo.png" />
+    <link rel="icon" type="image/png" href="/sib-logo.png" />
   </head>
 
   <body>
@@ -64,6 +64,21 @@
       }
       .reveal section a code {
         background: #8b743d;
+      }
+      .reveal section button:hover {
+        filter: brightness(80%);
+      }
+      /* Add logo to bottom right */
+      .reveal::after {
+        position: fixed;
+        top: .5em;
+        right: .5em;
+        /* bottom: .4em;
+        right: 3.5em; */
+        width: 50px;
+        height: 50px;
+        background-image: url('/sib-logo.png');
+        background-size: contain;
       }
     </style>
   </body>

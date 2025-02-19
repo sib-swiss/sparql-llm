@@ -6,8 +6,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_qdrant import QdrantVectorStore
 from rdflib import RDF, Dataset, Namespace
-from sparql_llm.sparql_examples_loader import SparqlExamplesLoader
-from sparql_llm.sparql_void_shapes_loader import SparqlVoidShapesLoader
+from sparql_llm import SparqlExamplesLoader, SparqlInfoLoader, SparqlVoidShapesLoader
 from sparql_llm.utils import get_prefixes_and_schema_for_endpoints
 
 from expasy_agent.config import settings
@@ -142,46 +141,28 @@ def init_vectordb() -> None:
         print(
             f"\n  🔎 Getting metadata for {endpoint['label']} at {endpoint['endpoint_url']}"
         )
-        queries_loader = SparqlExamplesLoader(
+        docs += SparqlExamplesLoader(
             endpoint["endpoint_url"],
             examples_file=endpoint.get("examples_file"),
-            verbose=True,
-        )
-        docs += queries_loader.load()
+        ).load()
 
-        void_loader = SparqlVoidShapesLoader(
+        docs += SparqlVoidShapesLoader(
             endpoint["endpoint_url"],
             prefix_map=prefix_map,
             void_file=endpoint.get("void_file"),
             examples_file=endpoint.get("examples_file"),
-            verbose=True,
-        )
-        docs += void_loader.load()
+        ).load()
 
         docs += load_schemaorg_description(endpoint)
         # NOTE: we dont use the ontology for now, schema from shex is better
         # docs += load_ontology(endpoint)
 
     # Add some documents for general information about the resources
-    resources_summary_question = "Which resources are available through this system?"
-    docs.append(
-        Document(
-            page_content=resources_summary_question,
-            metadata={
-                "question": resources_summary_question,
-                "answer": "This system helps to access the following resources from the Swiss Institute of Bioinformatics:"
-                + "\n- ".join(
-                    [
-                        f"{endpoint.get('label', '')}: {endpoint['endpoint_url']}"
-                        for endpoint in settings.endpoints
-                    ]
-                ),
-                # "endpoint_url": "https://sparql.uniprot.org/sparql/",
-                "iri": "http://www.uniprot.org/help/about",
-                "doc_type": "General information",
-            },
-        )
-    )
+    docs += SparqlInfoLoader(
+        settings.endpoints,
+        source_iri="https://www.expasy.org/",
+        org_label="from the Swiss Institute of Bioinformatics (SIB)",
+    ).load()
 
     # NOTE: Manually add infos for UniProt since we cant retrieve it for now. Taken from https://www.uniprot.org/help/about
     uniprot_description_question = "What is the SIB resource UniProt about?"

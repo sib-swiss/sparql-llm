@@ -1,0 +1,48 @@
+from typing import Optional
+
+from langchain_core.document_loaders.base import BaseLoader
+from langchain_core.documents import Document
+
+from sparql_llm.utils import SparqlEndpointLinks, logger
+
+DOC_TYPE = "General information"
+
+
+class SparqlInfoLoader(BaseLoader):
+    """Load informations for a list of SPARQL endpoints."""
+
+    def __init__(self, endpoints: list[SparqlEndpointLinks], source_iri: Optional[str] = None, org_label: str = ""):
+        """Initialize the SparqlInfoLoader."""
+        self.endpoints = endpoints
+        self.source_iri = source_iri
+        self.org_label = org_label
+
+    def load(self) -> list[Document]:
+        """Load and return documents from the SPARQL endpoint."""
+        docs: list[Document] = []
+
+        resources_summary_question = "Which resources are available through this system?"
+        metadata = {
+            "question": resources_summary_question,
+            "answer": f"This system helps to access the following SPARQL endpoints {self.org_label}:\n- "
+            + "\n- ".join(
+                [
+                    f"{endpoint.get('label')}: {endpoint['endpoint_url']}"
+                    if endpoint.get("label")
+                    else f"{endpoint['endpoint_url']}"
+                    for endpoint in self.endpoints
+                ]
+            ),
+            "doc_type": DOC_TYPE,
+        }
+        if self.source_iri:
+            metadata["iri"] = self.source_iri
+        docs.append(
+            Document(
+                page_content=resources_summary_question,
+                metadata=metadata,
+            )
+        )
+
+        logger.info(f"Added {len(docs)} documents with general informations")
+        return docs

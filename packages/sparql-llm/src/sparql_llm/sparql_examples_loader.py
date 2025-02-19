@@ -7,7 +7,7 @@ from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
 from rdflib.plugins.sparql import prepareQuery
 
-from sparql_llm.utils import get_prefixes_for_endpoint, query_sparql
+from sparql_llm.utils import get_prefixes_for_endpoint, logger, query_sparql
 
 GET_SPARQL_EXAMPLES_QUERY = """PREFIX sh: <http://www.w3.org/ns/shacl#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -25,7 +25,7 @@ class SparqlExamplesLoader(BaseLoader):
     Compatible with the LangChain framework.
     """
 
-    def __init__(self, endpoint_url: str, examples_file: Optional[str] = None, verbose: bool = False):
+    def __init__(self, endpoint_url: str, examples_file: Optional[str] = None):
         """
         Initialize the SparqlExamplesLoader.
 
@@ -34,7 +34,6 @@ class SparqlExamplesLoader(BaseLoader):
         """
         self.endpoint_url = endpoint_url
         self.examples_file = examples_file
-        self.verbose = verbose
 
     def load(self) -> list[Document]:
         """Load and return documents from the SPARQL endpoint."""
@@ -47,10 +46,9 @@ class SparqlExamplesLoader(BaseLoader):
             ]["bindings"]:
                 docs.append(self._create_document(row, prefix_map))
         except Exception as e:
-            print(f"Could not retrieve SPARQL query examples from endpoint {self.endpoint_url}: {e}")
+            logger.warning(f"Could not retrieve SPARQL query examples from endpoint {self.endpoint_url}: {e}")
 
-        if self.verbose:
-            print(f"Found {len(docs)} examples queries for {self.endpoint_url}")
+        logger.info(f"Found {len(docs)} examples queries for {self.endpoint_url}")
         return docs
 
     def _create_document(self, row: Any, prefix_map: dict[str, str]) -> Document:

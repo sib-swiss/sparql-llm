@@ -3,7 +3,13 @@ from typing import Optional
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
 
-from sparql_llm.utils import get_prefix_converter, get_prefixes_for_endpoint, get_schema_for_endpoint, query_sparql
+from sparql_llm.utils import (
+    get_prefix_converter,
+    get_prefixes_for_endpoint,
+    get_schema_for_endpoint,
+    logger,
+    query_sparql,
+)
 
 DEFAULT_NAMESPACES_TO_IGNORE = [
     "http://www.w3.org/ns/sparql-service-description#",
@@ -96,7 +102,7 @@ SELECT DISTINCT * WHERE {{
                 # shex_dict[cls]["label"] += f": {label_triple['comment']['value']}"
                 shex_dict[cls]["comment"] = label_triple["comment"]["value"]
     except Exception as e:
-        print(f"Could not retrieve labels for classes in endpoint {endpoint_url}: {e}")
+        logger.warning(f"Could not retrieve labels for classes in endpoint {endpoint_url}: {e}")
 
     return shex_dict
 
@@ -135,7 +141,6 @@ class SparqlVoidShapesLoader(BaseLoader):
         examples_file: Optional[str] = None,
         namespaces_to_ignore: Optional[list[str]] = None,
         prefix_map: Optional[dict[str, str]] = None,
-        verbose: bool = False,
     ):
         """
         Initialize the SparqlVoidShapesLoader.
@@ -148,7 +153,6 @@ class SparqlVoidShapesLoader(BaseLoader):
         self.examples_file = examples_file
         self.prefix_map = prefix_map
         self.namespaces_to_ignore = namespaces_to_ignore
-        self.verbose = verbose
 
     def load(self) -> list[Document]:
         """Load and return documents from the SPARQL endpoint."""
@@ -188,6 +192,5 @@ class SparqlVoidShapesLoader(BaseLoader):
                     )
                 )
 
-        if self.verbose:
-            print(f"Extracted {len(docs)} ShEx shapes for {self.endpoint_url}")
+        logger.info(f"Extracted {len(docs)} ShEx shapes for {self.endpoint_url}")
         return docs

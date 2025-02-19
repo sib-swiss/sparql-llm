@@ -1,24 +1,33 @@
 import json
+import logging
 from typing import Any, Optional, TypedDict
 
 import httpx
 import rdflib
 from curies_rs import Converter
 
-# import logging
-# logging.getLogger("httpx").setLevel(logging.WARNING)
+# Disable logger in your code with logging.getLogger("sparql_llm").setLevel(logging.WARNING)
+logger = logging.getLogger("sparql_llm")
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+formatter = logging.Formatter("%(levelname)s: %(message)s")
+# formatter = logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s")
+# handler.setFormatter(formatter)
+logger.addHandler(handler)
 
-# Prefixes utilities
 
-
-class SparqlEndpointInfo(TypedDict, total=False):
+class SparqlEndpointLinks(TypedDict, total=False):
     """A dictionary to store links and filepaths about a SPARQL endpoint."""
 
     endpoint_url: str
     void_file: Optional[str]
     examples_file: Optional[str]
     homepage_url: Optional[str]
+    label: Optional[str]
+    # ontology_url: Optional[str]
 
+
+# Prefixes utilities
 
 GET_PREFIXES_QUERY = """PREFIX sh: <http://www.w3.org/ns/shacl#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -30,7 +39,7 @@ WHERE {
 
 
 def get_prefixes_and_schema_for_endpoints(
-    endpoints: list[SparqlEndpointInfo],
+    endpoints: list[SparqlEndpointLinks],
 ) -> tuple[dict[str, str], "EndpointsSchemaDict"]:
     """Return a dictionary of prefixes and a dictionary of VoID classes schema for the given endpoints."""
     prefixes_map: dict[str, str] = {}
@@ -54,7 +63,7 @@ def get_prefixes_for_endpoint(
             if row["namespace"]["value"] not in prefixes_map.values():
                 prefixes_map[row["prefix"]["value"]] = row["namespace"]["value"]
     except Exception as e:
-        print(f"Error retrieving prefixes for {endpoint_url}: {e}")
+        logger.warning(f"Error retrieving prefixes for {endpoint_url}: {e}")
     return prefixes_map
 
 
@@ -143,7 +152,7 @@ def get_schema_for_endpoint(endpoint_url: str, void_file: Optional[str] = None) 
         if len(void_dict) == 0:
             raise Exception("No VoID description found")
     except Exception as e:
-        print(f"Could not retrieve VoID description from {void_file if void_file else endpoint_url}: {e}")
+        logger.warning(f"Could not retrieve VoID description from {void_file if void_file else endpoint_url}: {e}")
     return void_dict
 
 

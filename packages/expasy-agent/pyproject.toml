@@ -31,7 +31,7 @@ dependencies = [
     # "langchain-anthropic >=0.1.23",
     # "langchain-fireworks >=0.1.7",
     # Dependencies to deploy the API
-    "sparql-llm >=0.0.3",
+    "sparql-llm >=0.0.8",
     "rdflib >=7.0.0",
     "httpx >=0.27.2",
     "fastapi >=0.115.8",

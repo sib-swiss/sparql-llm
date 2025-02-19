@@ -13,6 +13,7 @@ from sparql_llm.utils import (
     get_prefix_converter,
     get_prefixes_for_endpoint,
     get_schema_for_endpoint,
+    logger,
 )
 
 queries_pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
@@ -193,7 +194,7 @@ def validate_sparql_with_void(
 
         # No type provided directly for this entity, we check if provided predicates match one of the potential type inferred for parent type
         elif parent_type and parent_pred:
-            # print(f"CHECKING subject {subj} parent type {parent_type} parent pred {parent_pred}")
+            # print(f"Checking subject {subj} parent type {parent_type} parent pred {parent_pred}")
             missing_pred = None
             potential_types = void_dict.get(parent_type, {}).get(parent_pred, [])
             if potential_types:
@@ -205,7 +206,7 @@ def validate_sparql_with_void(
                     # Find any predicate in pred_dict.keys() that is not in potential_preds
                     missing_pred = next((pred for pred in pred_dict if pred not in potential_preds), None)
                     if missing_pred is None:
-                        # print(f"OK Subject {subj} is a valid inferred {potential_type}!")
+                        # print(f"Subject {subj} is a valid inferred {potential_type}!")
                         for pred in pred_dict:
                             for obj in pred_dict[pred]:
                                 # If object is variable, we try to validate it too passing the potential type we just validated
@@ -215,7 +216,7 @@ def validate_sparql_with_void(
                                     )
                         break
                 if missing_pred is not None:
-                    # print(f"!!!! Subject {subj} {parent_type} {parent_pred} is not a valid {potential_types} !")
+                    # print(f"Subject {subj} {parent_type} {parent_pred} is not a valid {potential_types} !")
                     issues.add(
                         f"Subject {subj} in endpoint {endpoint} does not support the predicate `{prefix_converter.compress_list([missing_pred])[0]}`. Correct predicate might be one of the following: `{'`, `'.join(prefix_converter.compress_list(list(potential_preds)))}` (we inferred this variable might be of the type `{prefix_converter.compress_list([potential_type])[0]}`)"
                     )
@@ -264,7 +265,9 @@ def validate_sparql_with_void(
             try:
                 issues_msgs = validate_triple_pattern(subj, subj_dict, void_dict, endpoint, issues_msgs)
             except Exception as e:
-                print(f"Error validating triples for subject {subj} in endpoint {endpoint} and query {query}: {e!s}")
+                logger.warning(
+                    f"Error validating triples for subject {subj} in endpoint {endpoint} and query {query}: {e!s}"
+                )
 
     return issues_msgs
 

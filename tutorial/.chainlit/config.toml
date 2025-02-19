@@ -1,0 +1,64 @@
+# https://docs.chainlit.io/backend/config/ui
+
+[project]
+# Whether to enable telemetry (default: true). No personal data is collected.
+enable_telemetry = false
+allow_origins = ["*"]
+
+# List of environment variables to be provided by each user to use the app.
+user_env = []
+# Duration (in seconds) during which the session is saved when the connection is lost
+session_timeout = 3600
+# Duration (in seconds) of the user session expiry
+user_session_timeout = 1296000  # 15 days
+# Enable third parties caching (e.g LangChain cache)
+cache = false
+
+
+[UI]
+name = "SPARQL assistant"
+# Description of the assistant, used for HTML tags.
+description = "Assistant that helps users to write SPARQL queries."
+custom_css = "/public/style.css"
+# Chain of Thought (CoT) display mode. Can be "hidden", "tool_call" or "full".
+cot = "full"
+
+# default_theme = "dark"
+# layout = "wide"
+# Specify a Javascript file that can be used to customize the user interface.
+# custom_js = "/public/test.js"
+# Specify a custom meta image url.
+# custom_meta_image_url = "https://chainlit-cloud.s3.eu-west-3.amazonaws.com/logo/chainlit_banner.png"
+# Specify a custom build directory for the frontend.
+# custom_build = "./public/build"
+
+# Specify optional one or more custom links in the header.
+# [[UI.header_links]]
+#     name = "Issues"
+#     icon_url = "https://avatars.githubusercontent.com/u/128686189?s=200&v=4"
+#     url = "https://github.com/Chainlit/chainlit/issues"
+
+
+[features]
+# Process and display HTML in messages. This can be a security risk (see https://stackoverflow.com/questions/19603097/why-is-it-dangerous-to-render-user-generated-html-or-javascript)
+unsafe_allow_html = false
+
+# Authorize users to spontaneously upload files with messages
+[features.spontaneous_file_upload]
+    enabled = false
+    # Define accepted file types using MIME types
+    # accept = ["image/jpeg", "image/png", "application/pdf"]
+    # accept = ["image/*", "audio/*", "video/*"]
+    # accept = { "application/octet-stream" = [".xyz", ".pdb"] }
+    # Note: Using "*/*" is not recommended as it may cause browser warnings
+    accept = ["*/*"]
+    max_files = 20
+    max_size_mb = 500
+
+[features.audio]
+    # Sample rate of the audio
+    sample_rate = 24000
+
+
+[meta]
+generated_by = "2.2.0"

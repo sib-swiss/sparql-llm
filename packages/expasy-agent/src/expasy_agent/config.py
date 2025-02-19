@@ -8,7 +8,7 @@ from typing import Annotated, Any, Optional, Type, TypeVar
 from langchain_core.runnables import RunnableConfig, ensure_config
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from qdrant_client import QdrantClient
-from sparql_llm.utils import SparqlEndpointInfo
+from sparql_llm.utils import SparqlEndpointLinks
 
 from expasy_agent import prompts
 
@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     """Define the service settings for the agent that can be set using environment variables."""
 
     # The list of endpoints that will be indexed and supported by the service
-    endpoints: list[SparqlEndpointInfo] = [
+    endpoints: list[SparqlEndpointLinks] = [
         {
             # The label of the endpoint for clearer display
             "label": "UniProt",
