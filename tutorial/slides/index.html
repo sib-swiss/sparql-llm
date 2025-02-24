@@ -12,7 +12,7 @@
     <!-- https://revealjs.com/markdown/ -->
     <div class="reveal">
       <div class="slides">
-        <section data-markdown="slides.md"></section>
+        <section data-markdown="slides.md" data-separator-vertical="^----"></section>
       </div>
     </div>
 
@@ -32,13 +32,13 @@
         hash: true,
         history: true,
         hashOneBasedIndex: true,
-        // slideNumber: true,
+        slideNumber: true,
         clipcode: {
           // https://www.npmjs.com/package/@edc4it/reveal.js-clipcode
           style: {
             copybg: 'silver',
             scale: 0.8,
-            radius: 1,
+            radius: 0.5,
           },
       },
       });
@@ -51,7 +51,9 @@
         font-size: 0.6em;
       }
       .reveal section h2 {
-        font-size: 1em;
+        font-family: Lato, sans-serif;
+        font-size: .9em;
+        text-transform: none;
       }
       .reveal section pre code {
         border-radius: 8px;

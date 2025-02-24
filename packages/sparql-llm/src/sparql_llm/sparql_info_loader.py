@@ -21,7 +21,7 @@ class SparqlInfoLoader(BaseLoader):
         """Load and return documents from the SPARQL endpoint."""
         docs: list[Document] = []
 
-        resources_summary_question = "Which resources are available through this system?"
+        resources_summary_question = "Which resources do you support?"
         metadata = {
             "question": resources_summary_question,
             "answer": f"This system helps to access the following SPARQL endpoints {self.org_label}:\n- "

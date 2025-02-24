@@ -1,2 +1,6 @@
-pre { padding: .5em; }
-a.watermark { display: none !important; }
+pre {
+    padding: .5em;
+}
+a.watermark {
+    display: none !important;
+}

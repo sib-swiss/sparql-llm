@@ -1590,7 +1590,8 @@ wheels = [
 
 [[package]]
 name = "sparql-llm"
-source = { directory = "../packages/sparql-llm" }
+version = "0.0.8"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "curies-rs" },
@@ -1598,22 +1599,9 @@ dependencies = [
     { name = "langchain-core" },
     { name = "rdflib" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "beautifulsoup4", specifier = ">=4.13.0" },
-    { name = "curies-rs", specifier = ">=0.1.3" },
-    { name = "httpx", specifier = ">=0.27.2" },
-    { name = "langchain-core", specifier = ">=0.3.34" },
-    { name = "rdflib", specifier = ">=7.0.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "mypy", specifier = ">=1.15.0" },
-    { name = "pytest", specifier = ">=8.3.4" },
-    { name = "pytest-cov", specifier = ">=6.0.0" },
-    { name = "ruff", specifier = ">=0.9.5" },
+sdist = { url = "https://files.pythonhosted.org/packages/96/d6/a7e418dbc29d1571cbbbc8bb40f000fc35b4735e845f1ce91b8c6d22945b/sparql_llm-0.0.8.tar.gz", hash = "sha256:8b567f021d9074f072cbda852f7570ffd6bd26e03868019f8eef0acdb3cea670", size = 193778 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/71/ce/a68cb0274aa211e97a4c4efb014abce4eb8e4c4938ba3de12b797f5449a4/sparql_llm-0.0.8-py3-none-any.whl", hash = "sha256:465bf8ffa9fc88497541a17d35b44b153312d1b786e580c084596864eb1de009", size = 85356 },
 ]
 
 [[package]]
@@ -1780,7 +1768,7 @@ requires-dist = [
     { name = "langchain-qdrant", specifier = ">=0.2.0" },
     { name = "langgraph", specifier = ">=0.2.73" },
     { name = "qdrant-client", specifier = ">=1.13.0" },
-    { name = "sparql-llm", directory = "../packages/sparql-llm" },
+    { name = "sparql-llm", specifier = ">=0.0.8" },
 ]
 
 [[package]]
