@@ -301,7 +301,7 @@ def index_endpoints():
     )
 ```
 
-> You will need to add the following dependencies to your `pyproject.toml`: `langchain-qdrant` and `langchain-community`
+> You will need to add the `langchain-qdrant` dependency to your `pyproject.toml`
 
 ---
 
@@ -328,7 +328,7 @@ print(f"📚️ Retrieved {len(retrieved_docs)} documents", retrieved_docs[0])
 
 ----
 
-If you are using LangChain retriever 
+If you are using LangChain retriever
 
 ```python
 from langchain_qdrant import QdrantVectorStore
