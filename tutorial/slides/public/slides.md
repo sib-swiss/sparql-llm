@@ -235,6 +235,26 @@ Run with:
 uv run index.py
 ```
 
+----
+
+You could also provide the list of Document directly from your script
+
+```python
+ex_question = "How to retrieve proteins?"
+docs.append(Document(
+    page_content=ex_question,
+    metadata={
+        "question": ex_question,
+        "answer": """SELECT ?protein WHERE {
+	?protein a up:Protein .        
+}""",
+        "endpoint_url": "https://sparql.uniprot.org/",
+        "query_type": "SelectQuery",
+        "doc_type": "SPARQL endpoints query examples",
+    },
+))
+```
+
 ---
 
 ## Index context
