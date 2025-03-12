@@ -31,6 +31,7 @@ embedding_model = TextEmbedding(
     # providers=["CUDAExecutionProvider"], # Replace the fastembed dependency with fastembed-gpu to use your GPUs
 )
 embedding_dimensions = 384
+
 vectordb = QdrantClient(host="localhost", prefer_grpc=True)
 collection_name = "sparql-docs"
 

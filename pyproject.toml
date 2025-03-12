@@ -28,7 +28,7 @@ dev = [
     "sparql-llm",
     "expasy-agent[cpu]",
 
-    "chainlit",
+    # "chainlit",
     # "pyright",
     # "oxrdflib",
 ]

@@ -12,7 +12,6 @@ def load_chat_model(model: str) -> BaseChatModel:
         return ChatGroq(
             model_name=model_name,
             temperature=0,
-
         )
     if provider == "openai":
         # https://python.langchain.com/docs/integrations/chat/openai/
@@ -30,9 +29,11 @@ def load_chat_model(model: str) -> BaseChatModel:
         )
     raise ValueError(f"Unknown provider: {provider}")
 
-# llm = load_chat_model("groq/llama-3.3-70b-versatile")
+
+# Change the model and provider used for the chat here
+llm = load_chat_model("groq/llama-3.3-70b-versatile")
 # llm = load_chat_model("openai/gpt-4o-mini")
-llm = load_chat_model("ollama/mistral")
+# llm = load_chat_model("ollama/mistral")
 
 
 from index import vectordb, embedding_model, collection_name

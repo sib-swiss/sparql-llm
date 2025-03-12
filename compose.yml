@@ -23,8 +23,9 @@ services:
     ports:
       - 443:80
     environment:
+      - VECTORDB_URL=http://vectordb:6334/
       # NOTE: disguting hack to fix a bug with podman internal network on prod server
-      - VECTORDB_URL=http://10.89.1.2:6334/
+      # - VECTORDB_URL=http://10.89.1.2:6334/
     volumes:
       - ./data/fastembed_cache:/tmp/fastembed_cache
       - ./data/logs:/logs
