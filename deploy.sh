@@ -11,12 +11,12 @@ ssh_cmd() {
 
 if [ "$1" = "build" ]; then
     echo "📦️ Re-building"
-    cd chat-with-context
-    npm run build:demo
-    cd ..
-    ssh_cmd "git pull ; rm -rf packages/expasy-agent/src/expasy_agent/webapp"
-    scp -r ./packages/expasy-agent/src/expasy_agent/webapp expasychatpodman:/var/containers/podman/sparql-llm/packages/expasy-agent/src/expasy_agent/
-    ssh_cmd "podman-compose up --force-recreate --build -d"
+    # cd chat-with-context
+    # npm run build:demo
+    # cd ..
+    # ssh_cmd "git pull ; rm -rf packages/expasy-agent/src/expasy_agent/webapp"
+    # scp -r ./packages/expasy-agent/src/expasy_agent/webapp expasychatpodman:/var/containers/podman/sparql-llm/packages/expasy-agent/src/expasy_agent/
+    ssh_cmd "git pull ; podman-compose up --force-recreate --build -d"
 
 elif [ "$1" = "clean" ]; then
     echo "🧹 Cleaning up the vector database"

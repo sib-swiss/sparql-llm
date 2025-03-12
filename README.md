@@ -108,7 +108,7 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 There is a benchmarking scripts for the system that will run a list of questions and compare their results to a reference SPARQL queries, with and without query validation, against a list of LLM providers. You will need to change the list of queries if you want to use it for different endpoints. You will need to start the stack in development mode to run it:
 
 ```sh
-uv run packages/expasy-agent/tests/benchmark.py
+uv run --env-file .env packages/expasy-agent/tests/benchmark.py
 ```
 
 > It takes time to run and will log the output and results in `data/benchmarks`

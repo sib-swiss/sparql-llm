@@ -16,7 +16,7 @@ A web component to easily deploy an interface for a chat with context. It is the
 
    ```html
    <script type="module" src="https://unpkg.com/@sib-swiss/chat-with-context"></script>
-   <link href="https://unpkg.com/@sib-swiss/chat-with-context/dist/style.css" rel="stylesheet" />
+   <link href="https://unpkg.com/@sib-swiss/chat-with-context/dist/chat-with-context.css" rel="stylesheet" />
    ```
 
    Or install with a package manager in your project:
@@ -25,6 +25,13 @@ A web component to easily deploy an interface for a chat with context. It is the
    npm install --save @sib-swiss/chat-with-context
    # or
    pnpm add @sib-swiss/chat-with-context
+   ```
+
+   And import in your JS/TS file with:
+
+   ```ts
+   import '@sib-swiss/chat-with-context';
+   import '@sib-swiss/chat-with-context/dist/chat-with-context.css';
    ```
 
 2. Use the custom element in your HTML/JSX/TSX code:

@@ -31,6 +31,8 @@ logging.basicConfig(
 )
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
+# TODO: which genes expressed in mice correspond to human proteins linked to diabetes?
+
 example_queries = [
     {
         "question": "What is the accession number in uniprot of the human gene LCT? Return only unique protein URIs",

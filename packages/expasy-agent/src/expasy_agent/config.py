@@ -125,6 +125,8 @@ class Settings(BaseSettings):
     chat_api_key: str = ""
     # Secret API key used by admins to access log file easily from the API
     logs_api_key: str = ""
+    # Optional Sentry error report API key
+    sentry_url: str = ""
 
     # External services API keys
     azure_inference_credential: str = ""

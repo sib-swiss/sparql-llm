@@ -4,6 +4,7 @@ import chainlit as cl
 
 
 def load_chat_model(model: str) -> BaseChatModel:
+    """Load a chat model based on the provider and model name."""
     provider, model_name = model.split("/", maxsplit=1)
     if provider == "groq":
         # https://python.langchain.com/docs/integrations/chat/groq/
@@ -104,6 +105,7 @@ from index import endpoints
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.info("Initializing endpoints metadata...")
 # Retrieve the prefixes map and initialize VoID schema dictionary from the indexed endpoints
+# Used for SPARQL query validation
 prefixes_map, endpoints_void_dict = get_prefixes_and_schema_for_endpoints(endpoints)
 
 

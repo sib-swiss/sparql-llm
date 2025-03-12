@@ -19,7 +19,7 @@ nohup.out
 
 node_modules/
 
-packages/expasy-agent/src/expasy_agent/webapp
+# packages/expasy-agent/src/expasy_agent/webapp
 tutorial/public/logo_*.png
 tutorial/.chainlit/translations/*
 !tutorial/.chainlit/translations/en-US.json

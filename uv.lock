@@ -910,6 +910,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "qdrant-client" },
     { name = "rdflib" },
+    { name = "sentry-sdk", extra = ["fastapi"] },
     { name = "sparql-llm" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -952,6 +953,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.7.0" },
     { name = "qdrant-client", specifier = ">=1.13.0" },
     { name = "rdflib", specifier = ">=7.0.0" },
+    { name = "sentry-sdk", extras = ["fastapi"] },
     { name = "sparql-llm", editable = "packages/sparql-llm" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
 ]
@@ -3420,6 +3422,16 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/bd/67/16d48e7f02b285b39028aa47f847b3a279c903bc5cd49c8012ea90255317/py_rust_stemmers-0.1.3-cp312-cp312-musllinux_1_2_armv7l.whl", hash = "sha256:fbb9f7933239a57d1d9c0fcdfbe0c5283a081e9e64ddc48ed878783be3d52b2b", size = 567278 },
     { url = "https://files.pythonhosted.org/packages/ad/1c/cb8cc9680f8aa04f96cb5c814887b3bb8d23a2e9abf460ef861ae16bfe50/py_rust_stemmers-0.1.3-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:921803a6f8259f10bf348ac0e32a767c28ab587c9ad5c3b1ee593a4bbbe98d39", size = 488907 },
     { url = "https://files.pythonhosted.org/packages/cd/29/88217de06239e3e526fa6286a11e3662d94acb0be4216c1310301a252dab/py_rust_stemmers-0.1.3-cp312-none-win_amd64.whl", hash = "sha256:576206b540575e81bb84a0f620b7a8529f5e89b0b2ec7d4487f3183789dd5cfd", size = 208980 },
+    { url = "https://files.pythonhosted.org/packages/74/62/ab1492a3d6b7c724443f1f964ff986c5d64a5d97a880dcc4de9475815c00/py_rust_stemmers-0.1.3-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:ab7b6cc01df4013bd2e766ea4c367922bff4612dd36ec4a8aa8125cb384c5dac", size = 286055 },
+    { url = "https://files.pythonhosted.org/packages/f5/dd/35ec95708df96831382df12184ef51b2a3f4db7c5fbed4d0d88e9a83ea49/py_rust_stemmers-0.1.3-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:d39a18641cfa6ff6678ea538d64926c1612eb6ddce9a90a61694f383743c0257", size = 271966 },
+    { url = "https://files.pythonhosted.org/packages/1d/3e/676726ab5fdd9d47ea6c8f0bbceebffec7a5d3837c71fc869ecce68faa2b/py_rust_stemmers-0.1.3-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:9ca50cef25d31e6ea200791f28976ee9500ef61fc91101343877b3d38fe3207a", size = 310515 },
+    { url = "https://files.pythonhosted.org/packages/d2/d6/1722299d74959267d6d77fdfde7fc13aeacd0845265694fa65f358ed4a68/py_rust_stemmers-0.1.3-cp313-cp313-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:a5d1a885830c5d94d36f74c0a2017225401f10e64f011e37e7b171ea84c17eb8", size = 315183 },
+    { url = "https://files.pythonhosted.org/packages/bf/5c/279d420618d6dea0b00d40805e08418146c8af3c53db74345abf77f32551/py_rust_stemmers-0.1.3-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5bb25a58552c058530d69d119fc310dfa27e585dd7a4be6b8f739bd209c29164", size = 324424 },
+    { url = "https://files.pythonhosted.org/packages/7f/85/4e6e62c94c3cad7f2ef861300fb277c8b9cc89b1bcc2aeeb0c67db20a83a/py_rust_stemmers-0.1.3-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:8016d3e7c43b1a93ac06e9c4d68f77c4f8d6beec6984b4e86438406a0b589d48", size = 324779 },
+    { url = "https://files.pythonhosted.org/packages/c9/b9/1079fd911d82f0ca1a34d613c5849ea33dcf373d3a0f18355a0f784420f4/py_rust_stemmers-0.1.3-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:846a16e43d8e12d3178d608f82dcbddc0fd03c4478cde9adc377de58a769b825", size = 487976 },
+    { url = "https://files.pythonhosted.org/packages/80/17/5c52ad2b7cc3dbeb50aa1485372442989cb4e753e6c40476b174f38cb117/py_rust_stemmers-0.1.3-cp313-cp313-musllinux_1_2_armv7l.whl", hash = "sha256:9931ef64c9f2ace96f533092f5161a97bbf867ec5f1a9cb139838a6cf52da4c4", size = 575572 },
+    { url = "https://files.pythonhosted.org/packages/9d/13/b019d8c0e8006702d0845b6bc7f9f0d100051a7936bc35d7f982117852f7/py_rust_stemmers-0.1.3-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:aa1ee56ae903f126598f237b45f316b2704ec29a85ad1d27467bf6a5b27c71b9", size = 493259 },
+    { url = "https://files.pythonhosted.org/packages/79/9f/36a004b3925dc4a61c44968c6be009ba03dd62827f8d1490cd91f9c3c506/py_rust_stemmers-0.1.3-cp313-none-win_amd64.whl", hash = "sha256:2837fc5a60eb0fa2cefc6e41f5fcfb9ff350cd3cdbed25d34a1bc36057d29397", size = 209418 },
     { url = "https://files.pythonhosted.org/packages/80/b7/71e898725722f0372afef87ceca1a892179ae8058950122664e19e9581a0/py_rust_stemmers-0.1.3-cp39-cp39-macosx_10_12_x86_64.whl", hash = "sha256:d182dd36e825583de0bc8d8148ea8258ba9bd9d7274d219071bb9d58a10fd23f", size = 287580 },
     { url = "https://files.pythonhosted.org/packages/60/07/b96dcc8d2828fc115daa36e1c1cdc10ae5abcbc7213bac03c86bbb79200a/py_rust_stemmers-0.1.3-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:78b6fe32037621ccfb11c11612a7463639b2ddcfdfa2109a10576f2a0359ea22", size = 273907 },
     { url = "https://files.pythonhosted.org/packages/1e/b6/2d1ade1590c148565a8a125aacddcb78647d8ba3f2491103c828d5aab6e8/py_rust_stemmers-0.1.3-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6aef7800e28457557a16ecb19ef3dfdeb459bddd6d9cea4e929ca328dda517d7", size = 309862 },
@@ -4114,6 +4126,24 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a5/7d/7b461ab0e2404293c0627125bb70ac642c2e8d55bf590f6fce85f508f1b2/ruff-0.9.6-py3-none-win32.whl", hash = "sha256:194d8402bceef1b31164909540a597e0d913c0e4952015a5b40e28c146121b5d", size = 9949214 },
     { url = "https://files.pythonhosted.org/packages/ee/30/c3cee10f915ed75a5c29c1e57311282d1a15855551a64795c1b2bbe5cf37/ruff-0.9.6-py3-none-win_amd64.whl", hash = "sha256:03482d5c09d90d4ee3f40d97578423698ad895c87314c4de39ed2af945633caa", size = 10999914 },
     { url = "https://files.pythonhosted.org/packages/e8/a8/d71f44b93e3aa86ae232af1f2126ca7b95c0f515ec135462b3e1f351441c/ruff-0.9.6-py3-none-win_arm64.whl", hash = "sha256:0e2bb706a2be7ddfea4a4af918562fdc1bcb16df255e5fa595bbd800ce322a5a", size = 10177499 },
+]
+
+[[package]]
+name = "sentry-sdk"
+version = "2.22.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "certifi" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/81/b6/662988ecd2345bf6c3a5c306a9a3590852742eff91d0a78a143398b816f3/sentry_sdk-2.22.0.tar.gz", hash = "sha256:b4bf43bb38f547c84b2eadcefbe389b36ef75f3f38253d7a74d6b928c07ae944", size = 303539 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/12/7f/0e4459173e9671ba5f75a48dda2442bcc48a12c79e54e5789381c8c6a9bc/sentry_sdk-2.22.0-py2.py3-none-any.whl", hash = "sha256:3d791d631a6c97aad4da7074081a57073126c69487560c6f8bffcf586461de66", size = 325815 },
+]
+
+[package.optional-dependencies]
+fastapi = [
+    { name = "fastapi" },
 ]
 
 [[package]]

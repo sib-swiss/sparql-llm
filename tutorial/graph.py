@@ -10,6 +10,7 @@ import chainlit as cl
 
 
 def load_chat_model(model: str) -> BaseChatModel:
+    """Load a chat model based on the provider and model name."""
     provider, model_name = model.split("/", maxsplit=1)
     if provider == "groq":
         # https://python.langchain.com/docs/integrations/chat/groq/
@@ -206,7 +207,7 @@ builder.add_conditional_edges("validate_output", route_model_output)
 
 graph = builder.compile()
 
-
+# Draw a diagram of the graph:
 # from langchain_core.runnables.graph import MermaidDrawMethod
 # with open('data/sparql_workflow.png', 'wb') as f:
 #     f.write(graph.get_graph().draw_mermaid_png(draw_method=MermaidDrawMethod.API))
