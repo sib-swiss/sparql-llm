@@ -30,8 +30,8 @@ A web component to easily deploy an interface for a chat with context. It is the
    And import in your JS/TS file with:
 
    ```ts
-   import '@sib-swiss/chat-with-context';
-   import '@sib-swiss/chat-with-context/dist/chat-with-context.css';
+   import "@sib-swiss/chat-with-context";
+   import "@sib-swiss/chat-with-context/dist/chat-with-context.css";
    ```
 
 2. Use the custom element in your HTML/JSX/TSX code:

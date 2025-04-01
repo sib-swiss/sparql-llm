@@ -27,7 +27,7 @@ type Step = {
   node_id: string;
   label: string;
   details: string; // Details about the step as markdown string
-  substeps?: {label: string, details: string}[];
+  substeps?: {label: string; details: string}[];
   // retrieved_docs?: RefenceDocument[];
 };
 
@@ -88,7 +88,7 @@ export class ChatState {
     node_id: string,
     label: string,
     details: string = "",
-    substeps: {label: string, details: string}[] = [],
+    substeps: {label: string; details: string}[] = [],
   ) => {
     this.lastMsg().setSteps(steps => [...steps, {node_id, label, details, substeps}]);
     this.scrollToInput();

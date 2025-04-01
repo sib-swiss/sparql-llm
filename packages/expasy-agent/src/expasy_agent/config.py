@@ -63,6 +63,11 @@ class Settings(BaseSettings):
             "endpoint_url": "https://sparql.rhea-db.org/sparql/",
             "homepage_url": "https://www.rhea-db.org/",
         },
+        {
+            "label": "Cellosaurus",
+            "endpoint_url": "https://sparql.cellosaurus.org/sparql",
+            "homepage_url": "https://cellosaurus.org/",
+        },
         # No metadata in these endpoints
         # {
         #     "label": "OrthoDB",

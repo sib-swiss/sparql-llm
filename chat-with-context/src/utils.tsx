@@ -17,7 +17,6 @@ export const style = `chat-with-context {
   filter: invert(44%) sepia(22%) saturate(496%) hue-rotate(176deg) brightness(93%) contrast(79%);
 }`;
 
-
 // // A function to extract a SPARQL query from markdown text
 // export function extractSparqlQuery(markdownContent: string) {
 //   // Regular expression to match SPARQL queries within code blocks
