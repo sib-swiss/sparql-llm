@@ -20,20 +20,21 @@ os.makedirs(bench_folder, exist_ok=True)
 
 # Setup logging to both console and file
 logger = logging.getLogger("benchmark")
+# Disable the default console handler
+logger.propagate = False
 logger.setLevel(logging.INFO)
 
 file_handler = logging.FileHandler(
     os.path.join(bench_folder, f"{file_time_prefix}_tests_output.md"), mode="w"
 )
-file_handler.setFormatter(logging.Formatter("%(message)s\n"))
+file_handler.setFormatter(logging.Formatter("%(message)s"))
 logger.addHandler(file_handler)
-
-# console_handler = logging.StreamHandler(sys.stdout)
-# console_handler.setFormatter(logging.Formatter("%(message)s\n"))
-# logger.addHandler(console_handler)
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setFormatter(logging.Formatter("%(message)s"))
+logger.addHandler(console_handler)
 
 # Suppress overly verbose logs from httpx
-logging.getLogger("httpx").setLevel(logging.WARNING)
+# logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 # TODO: which genes expressed in mice correspond to human proteins linked to diabetes?
@@ -522,17 +523,38 @@ SELECT DISTINCT ?function WHERE {
 
 
 def result_sets_are_same(gen_set, ref_set) -> bool:
-    gen_set, ref_set = list(gen_set), list(ref_set)
-    for item in gen_set:
-        if item not in ref_set:
-            # logger.info(f"> Missing from reference: {item}")
-            return False
-    return all(item in gen_set for item in ref_set)
-    # for item in ref_set:
-    #     if item not in gen_set:
-    #         # logger.info(f"> Missing from generated: {item}")
+    """Check if all items from ref_set have equivalent items in gen_set, ignoring variable names"""
+    # return all(ref_item in list(gen_set) for ref_item in list(ref_set))
+    if not ref_set or not gen_set:
+        # If either set is empty, they're the same only if both are empty
+        return len(ref_set) == len(gen_set) == 0
+    # Extract just the values from each binding, ignoring the variable names
+    ref_values_set = []
+    for ref_binding in ref_set:
+        # Create a sorted tuple of values from each binding
+        binding_values = tuple(sorted([v["value"] for v in ref_binding.values()]))
+        ref_values_set.append(binding_values)
+    gen_values_set = []
+    for gen_binding in gen_set:
+        binding_values = tuple(sorted([v["value"] for v in gen_binding.values()]))
+        gen_values_set.append(binding_values)
+    # Check if all reference values are present in generated values
+    return all(ref_values in gen_values_set for ref_values in ref_values_set)
+
+    # print(gen_set, ref_set)
+    # for ref_item in ref_set:
+    #     if ref_item not in gen_set:
+    #         # logger.info(f"> Missing from generated: {ref_item}")
     #         return False
     # return True
+
+    # gen_set, ref_set = list(gen_set), list(ref_set)
+    # for item in gen_set:
+    #     if item not in ref_set:
+    #         # logger.info(f"> Missing from reference: {item}")
+    #         return False
+    # return all(item in gen_set for item in ref_set)
+
 
 
 # QLEVER_UNIPROT = "https://qlever.cs.uni-freiburg.de/api/uniprot"
@@ -645,8 +667,8 @@ results_data = {
 
 number_of_tries = 3
 
-logger.info(f"🧪 Testing {len(example_queries)} queries")
-logger.info("## Executing references queries")
+logger.info(f"🧪 Testing {len(example_queries)} queries\n")
+logger.info("## Executing references queries\n")
 
 # Get results for the reference queries first
 ref_results = []
@@ -711,7 +733,7 @@ for model_label, model in models.items():
                     generated_sparql = generated_sparqls[-1]
                     if generated_sparql["query"].strip() == test_query["query"].strip():
                         logger.info(
-                            f"✅ {t + 1}/{number_of_tries} {test_query['question']}. EXACT MATCH"
+                            f"✅ {t + 1}/{number_of_tries} {test_query['question']}. EXACT MATCH\n"
                         )
                         res[approach]["success"] += 1
                         continue
@@ -736,7 +758,7 @@ for model_label, model in models.items():
                         )
                     else:
                         logger.info(
-                            f"✅ {t + 1}/{number_of_tries} {test_query['question']} = {len(res_from_generated)}"
+                            f"✅ {t + 1}/{number_of_tries} {test_query['question']} = {len(res_from_generated)}\n"
                         )
                         res[approach]["success"] += 1
 
@@ -744,15 +766,15 @@ for model_label, model in models.items():
                     res[approach]["fail"] += 1
                     if approach == "RAG with validation":
                         logger.info(
-                            f"❌ {t + 1}/{number_of_tries} {test_query['question']}\n{e}"
+                            f"❌ {t + 1}/{number_of_tries} {test_query['question']}\n{e}\n"
                         )
-                        logger.info(f"```sparql\n{generated_sparql['query']}\n```")
-                        logger.info("Correct query:")
-                        logger.info(f"```sparql\n{test_query['query']}\n````")
+                        logger.info(f"```sparql\n{generated_sparql['query']}\n```\n")
+                        logger.info("Correct query:\n")
+                        logger.info(f"```sparql\n{test_query['query']}\n```\n")
 
         for approach in list_of_approaches:
             logger.info(
-                f"🎯 {approach} - Success: {res[approach]['success']}, Different results: {res[approach]['different_results']}, No results: {res[approach]['no_results']}, Error: {res[approach]['fail'] - res[approach]['no_results'] - res[approach]['different_results']}"
+                f"🎯 {approach} - Success: {res[approach]['success']}, Different results: {res[approach]['different_results']}, No results: {res[approach]['no_results']}, Error: {res[approach]['fail'] - res[approach]['no_results'] - res[approach]['different_results']}\n"
             )
 
     for approach, result_row in res.items():
@@ -784,7 +806,7 @@ for model_label, model in models.items():
                 round(2 * (precision * recall) / (precision + recall), 2)
             )
 
-logger.info("## Results")
+logger.info("## Results\n")
 
 df = pd.DataFrame(results_data)
 logger.info(df)

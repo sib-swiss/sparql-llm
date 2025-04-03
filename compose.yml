@@ -4,7 +4,7 @@ services:
     # https://hub.docker.com/r/qdrant/qdrant/tags
     image: docker.io/qdrant/qdrant:v1.13.4
     # image: qdrant/qdrant:v1.9.2-unprivileged # Unprivileged don't work when mounting a volume
-    container_name: vectordb
+    # container_name: vectordb
     restart: unless-stopped
     volumes:
       - ./data/qdrant:/qdrant/storage
@@ -16,7 +16,7 @@ services:
 
   api:
     build: .
-    container_name: api
+    # container_name: api
     restart: unless-stopped
     depends_on:
       - vectordb
