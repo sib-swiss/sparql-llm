@@ -240,18 +240,13 @@ def _format_doc(doc: Document) -> str:
         str: The formatted document as an XML string.
     """
     if doc.metadata.get("answer"):
-        endpoint_info = (
-            f" ({doc.metadata.get('endpoint_url')})"
-            if doc.metadata.get("endpoint_url")
-            else ""
-        )
         doc_lang = ""
         doc_type = str(doc.metadata.get("doc_type", "")).lower()
         if "query" in doc_type:
-            doc_lang = "sparql"
+            doc_lang = f"sparql\n#+ endpoint: {doc.metadata.get('endpoint_url', 'undefined')}"
         elif "schema" in doc_type:
             doc_lang = "shex"
-        return f"<document>\n{doc.page_content}{endpoint_info}:\n\n```{doc_lang}\n{doc.metadata.get('answer')}\n```\n</document>"
+        return f"<document>\n{doc.page_content}:\n\n```{doc_lang}\n{doc.metadata.get('answer')}\n```\n</document>"
 
     meta = "".join(f" {k}={v!r}" for k, v in doc.metadata.items())
     if meta:

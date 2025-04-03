@@ -109,7 +109,7 @@ class Settings(BaseSettings):
     default_llm_model: str = "openai/gpt-4o"
     # TODO: default_llm_model_cheap: str = "openai/gpt-4o-mini"
 
-    default_number_of_retrieved_docs: int = 10
+    default_number_of_retrieved_docs: int = 5
     default_max_try_fix_sparql: int = 3
     default_temperature: float = 0.0
     default_max_tokens: int = 120000

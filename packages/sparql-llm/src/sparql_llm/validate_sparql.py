@@ -17,8 +17,7 @@ from sparql_llm.utils import (
 )
 
 queries_pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
-endpoint_pattern = re.compile(r"^#.*(https?://[^\s]+)", re.MULTILINE)
-
+endpoint_pattern = re.compile(r"#\+ endpoint:\s*(https?://\S+)", re.MULTILINE)
 
 def extract_sparql_queries(md_resp: str) -> list[dict[str, Optional[str]]]:
     """Extract SPARQL queries and endpoint URL from a markdown response."""
@@ -30,7 +29,7 @@ def extract_sparql_queries(md_resp: str) -> list[dict[str, Optional[str]]]:
             extracted_queries.append(
                 {
                     "query": str(query).strip(),
-                    "endpoint_url": str(extracted_endpoint.group(1)) if extracted_endpoint else None,
+                    "endpoint_url": str(extracted_endpoint.group(1)).strip() if extracted_endpoint else None,
                 }
             )
     return extracted_queries

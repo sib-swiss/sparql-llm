@@ -38,6 +38,8 @@ logger.addHandler(console_handler)
 
 
 # TODO: which genes expressed in mice correspond to human proteins linked to diabetes?
+# how can i analyse protein-protein interactions
+# Which resources can I use to model protein folding?
 
 example_queries = [
     {
@@ -639,6 +641,7 @@ def answer_rag_with_validation(question: str, model: str):
             "model": model,
             "messages": [{"role": "user", "content": question}],
             "stream": False,
+            "validate_output": True,
         },
         timeout=120,
         follow_redirects=True,
@@ -666,6 +669,7 @@ results_data = {
 }
 
 number_of_tries = 3
+start_time = time.time()
 
 logger.info(f"🧪 Testing {len(example_queries)} queries\n")
 logger.info("## Executing references queries\n")
@@ -833,3 +837,6 @@ with open(
     os.path.join(bench_folder, f"{file_time_prefix}_tests_results_latex.txt"), "w"
 ) as f:
     f.write(latex_str)
+
+
+logger.info(f"⏱️ Total runtime: {(time.time() - start_time)/60:.2f} minutes")
