@@ -175,26 +175,37 @@ def query_sparql(
     else:
         should_close = False
         if client is None:
-            client = httpx.Client(
-                follow_redirects=True, headers={"Accept": "application/sparql-results+json"}, timeout=timeout
-            )
+            client = httpx.Client(follow_redirects=True, timeout=timeout)
             should_close = True
-
         try:
             if post:
                 resp = client.post(
                     endpoint_url,
+                    headers={"Accept": "application/sparql-results+json"},
                     data={"query": query},
                 )
             else:
-                # NOTE: We prefer GET because in the past it seemed like some endpoints at the SIB were having issues with POST
-                # But not sure if this is still the case
                 resp = client.get(
                     endpoint_url,
+                    headers={"Accept": "application/sparql-results+json"},
                     params={"query": query},
                 )
             resp.raise_for_status()
-            return resp.json()
+            resp_json = resp.json()
+            if not resp_json.get("results", {}).get("bindings", []):
+                # If no results found directly in the endpoint we check in its service description
+                resp = client.get(
+                    endpoint_url,
+                    headers={"Accept": "text/turtle"},
+                )
+                resp.raise_for_status()
+                g = rdflib.Graph()
+                g.parse(data=resp.text, format="turtle")
+                results = g.query(query)
+                return {
+                    "results": {"bindings": [{str(k): {"value": str(v)} for k, v in row.asdict().items()} for row in results]}
+                }
+            return resp_json
         finally:
             if should_close:
                 client.close()

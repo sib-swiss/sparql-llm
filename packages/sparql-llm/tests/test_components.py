@@ -16,11 +16,16 @@ def test_sparql_examples_loader_uniprot():
     assert len(docs) >= 10
 
 
-def test_sparql_void_shape_loader():
-    # loader = SparqlVoidShapesLoader("https://sparql.uniprot.org/sparql/")
-    loader = SparqlVoidShapesLoader("https://bgee.org/sparql/")
+def test_sparql_void_shape_loader_uniprot():
+    loader = SparqlVoidShapesLoader("https://sparql.uniprot.org/sparql/")
     docs = loader.load()
     # print(docs)
+    assert len(docs) >= 10
+
+
+def test_sparql_void_shape_loader_bgee():
+    loader = SparqlVoidShapesLoader("https://bgee.org/sparql/")
+    docs = loader.load()
     assert len(docs) >= 10
 
 
