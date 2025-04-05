@@ -671,7 +671,7 @@ results_data = {
 number_of_tries = 3
 start_time = time.time()
 
-logger.info(f"🧪 Testing {len(example_queries)} queries\n")
+logger.info(f"🧪 Testing {len(example_queries)} queries using {settings.default_number_of_retrieved_docs} retrieved docs\n")
 logger.info("## Executing references queries\n")
 
 # Get results for the reference queries first

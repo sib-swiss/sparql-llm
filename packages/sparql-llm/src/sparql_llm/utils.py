@@ -24,6 +24,7 @@ class SparqlEndpointLinks(TypedDict, total=False):
     examples_file: Optional[str]
     homepage_url: Optional[str]
     label: Optional[str]
+    description: Optional[str]
     # ontology_url: Optional[str]
 
 

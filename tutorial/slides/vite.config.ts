@@ -15,4 +15,15 @@ export default defineConfig({
       },
     },
   },
+  // Required to automatically reload the page when a markdown file changes:
+  plugins: [
+    {
+      name: 'reload',
+      configureServer(server) {
+        server.watcher.on('change', file => {
+          if (file.endsWith('.md')) server.ws.send({type: 'full-reload'})
+        })
+      }
+    }
+  ],
 });

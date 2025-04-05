@@ -42,6 +42,14 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
 
     if state.structured_question.intent == "general_information":
         # Handles when user asks for general informations about the resources
+        configuration.search_kwargs["filter"] = Filter(
+            must=[
+                FieldCondition(
+                    key="metadata.doc_type",
+                    match=MatchValue(value="General information"),
+                )
+            ]
+        )
         with make_qdrant_retriever(configuration) as retriever:
             docs += await retriever.ainvoke(user_question, config)
     else:

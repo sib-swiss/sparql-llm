@@ -23,6 +23,7 @@ class Settings(BaseSettings):
             "label": "UniProt",
             # The URL of the SPARQL endpoint from which most informations will be extracted
             "endpoint_url": "https://sparql.uniprot.org/sparql/",
+            "description": "UniProt is a comprehensive resource for protein sequence and annotation data.",
             # If VoID description or SPARQL query examples are not available in the endpoint, you can provide a VoID file (local or remote)
             # "void_file": "../sparql-llm/tests/void_uniprot.ttl",
             # "void_file": "https://sparql.uniprot.org/.well-known/void/",
@@ -33,6 +34,7 @@ class Settings(BaseSettings):
         },
         {
             "label": "Bgee",
+            "description": "Bgee is a database for retrieval and comparison of gene expression patterns across multiple animal species.",
             "endpoint_url": "https://www.bgee.org/sparql/",
             "homepage_url": "https://www.bgee.org/",
             "ontology": "http://purl.org/genex",
@@ -42,31 +44,37 @@ class Settings(BaseSettings):
             "endpoint_url": "https://sparql.omabrowser.org/sparql/",
             "homepage_url": "https://omabrowser.org/",
             "ontology": "http://purl.org/net/orth",
+            "description": "OMA is a method and database for the inference of orthologs among complete genomes.",
         },
         {
             "label": "HAMAP",
             "endpoint_url": "https://hamap.expasy.org/sparql/",
             "homepage_url": "https://hamap.expasy.org/",
+            "description": "HAMAP is a system for the classification and annotation of protein sequences. It consists of a collection of manually curated family profiles for protein classification, and associated, manually created annotation rules that specify annotations that apply to family members.",
         },
         {
             "label": "dbgi",
             "endpoint_url": "https://biosoda.unil.ch/graphdb/repositories/emi-dbgi",
+            "description": "The Digital Botanical Gardens Initiative (DBGI) is a project that aims to create a digital representation of chemo- and biodiversity, from botanical collections to the global scale in wild ecosystems.",
             # "homepage_url": "https://dbgi.eu/",
         },
         {
             "label": "SwissLipids",
             "endpoint_url": "https://beta.sparql.swisslipids.org/",
             "homepage_url": "https://www.swisslipids.org",
+            "description": "SwissLipids is an expert curated resource that provides a framework for the integration of lipid and lipidomic data with biological knowledge and models."
         },
         {
             "label": "Rhea",
             "endpoint_url": "https://sparql.rhea-db.org/sparql/",
             "homepage_url": "https://www.rhea-db.org/",
+            "description": "Rhea is an expert-curated knowledgebase of chemical and transport reactions of biological interest - and the standard for enzyme and transporter annotation in UniProtKB.",
         },
         {
             "label": "Cellosaurus",
             "endpoint_url": "https://sparql.cellosaurus.org/sparql",
             "homepage_url": "https://cellosaurus.org/",
+            "description": "Cellosaurus is a knowledge resource on cell lines.",
         },
         # No metadata in these endpoints
         # {
@@ -116,7 +124,7 @@ class Settings(BaseSettings):
 
     # List of example questions to display in the chat UI
     example_questions: list[str] = [
-        "Which resources are available at the SIB?",
+        "Which resources are supported?",
         "How can I get the HGNC symbol for the protein P68871?",
         "What are the rat orthologs of the human TP53?",
         "Where is expressed the gene ACE2 in human?",

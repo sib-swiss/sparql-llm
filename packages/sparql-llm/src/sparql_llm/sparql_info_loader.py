@@ -27,8 +27,12 @@ class SparqlInfoLoader(BaseLoader):
             "answer": f"This system helps to access the following SPARQL endpoints {self.org_label}:\n- "
             + "\n- ".join(
                 [
-                    f"{endpoint.get('label')}: {endpoint['endpoint_url']}"
+                    f"{endpoint.get('label')} ({endpoint['endpoint_url']}): {endpoint.get('description')}"
+                    if endpoint.get("label") and endpoint.get("description")
+                    else f"{endpoint.get('label')} ({endpoint['endpoint_url']})"
                     if endpoint.get("label")
+                    else f"{endpoint['endpoint_url']}: {endpoint.get('description')}"
+                    if endpoint.get("description")
                     else f"{endpoint['endpoint_url']}"
                     for endpoint in self.endpoints
                 ]
