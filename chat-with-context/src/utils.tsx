@@ -1,5 +1,5 @@
 export const queryLinkLabels = {
-  label: "Run and edit the query",
+  label: "Run or edit the query",
   title: "Open the SPARQL query in an editor in a new tab",
 };
 

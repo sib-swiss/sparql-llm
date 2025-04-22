@@ -85,7 +85,7 @@ def convert_chunk_to_dict(obj: Any) -> Any:
     """
     # {'retrieve': {'retrieved_docs': [Document(metadata={'endpoint_url':
     # When sending a msg LangGraph sends a tuple with the message and the metadata
-    if isinstance(obj, tuple):
+    if isinstance(obj, tuple) and len(obj) == 2:
         # Message and metadata
         return [convert_chunk_to_dict(obj[0]), convert_chunk_to_dict(obj[1])]
     elif isinstance(obj, list):

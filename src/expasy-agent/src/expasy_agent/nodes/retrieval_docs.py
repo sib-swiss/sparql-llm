@@ -114,7 +114,7 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
         "retrieved_docs": docs,
         "steps": [
             StepOutput(
-                label=f"📚️ Using {len(docs)} documents",
+                label=f"📚️ See the {len(docs)} documents used",
                 substeps=substeps,
             ),
         ],

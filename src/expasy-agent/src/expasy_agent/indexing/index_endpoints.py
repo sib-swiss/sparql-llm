@@ -161,6 +161,7 @@ def init_vectordb() -> None:
     docs += SparqlInfoLoader(
         settings.endpoints,
         source_iri="https://www.expasy.org/",
+        service_label="ExpasyGPT",
         org_label="from the Swiss Institute of Bioinformatics (SIB)",
     ).load()
 

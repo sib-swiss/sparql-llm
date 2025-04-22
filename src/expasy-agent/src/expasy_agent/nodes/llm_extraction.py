@@ -78,7 +78,7 @@ async def extract_user_question(
         "structured_question": structured_question,
         "steps": [
             StepOutput(
-                label=f"⚗️ Extracted {len(structured_question.question_steps)} steps and {len(structured_question.extracted_classes)} classes",
+                label=f"⚗️ See the {len(structured_question.question_steps)} steps and {len(structured_question.extracted_classes)} classes extracted",
                 details=f"""Intent: {structured_question.intent.replace("_", " ")}
 
 Steps to answer the user question:

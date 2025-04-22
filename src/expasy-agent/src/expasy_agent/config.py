@@ -37,13 +37,13 @@ class Settings(BaseSettings):
             "description": "Bgee is a database for retrieval and comparison of gene expression patterns across multiple animal species.",
             "endpoint_url": "https://www.bgee.org/sparql/",
             "homepage_url": "https://www.bgee.org/",
-            "ontology": "http://purl.org/genex",
+            # "ontology": "http://purl.org/genex",
         },
         {
             "label": "Orthology MAtrix (OMA)",
             "endpoint_url": "https://sparql.omabrowser.org/sparql/",
             "homepage_url": "https://omabrowser.org/",
-            "ontology": "http://purl.org/net/orth",
+            # "ontology": "http://purl.org/net/orth",
             "description": "OMA is a method and database for the inference of orthologs among complete genomes.",
         },
         {
@@ -129,12 +129,18 @@ class Settings(BaseSettings):
 
     # List of example questions to display in the chat UI
     example_questions: list[str] = [
-        "Which resources are supported?",
-        "How can I get the HGNC symbol for the protein P68871?",
-        "What are the rat orthologs of the human TP53?",
-        "Where is expressed the gene ACE2 in human?",
-        "Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations",
-        "List the genes in primates orthologous to genes expressed in the fruit fly eye",
+        "Which SIB resources are supported by ExpasyGPT? ",
+        "Where is the ACE2 gene expressed in humans?",
+        "List primate genes expressed in the fruit fly eye",
+        "What are the rat orthologs of the human TP53 gene?",
+        "What is the HGNC symbol for the P68871 protein?",
+        "Anatomical entities where the INS zebrafish gene is expressed and their gene GO annotations",
+        # "Which resources are supported?",
+        # "How can I get the HGNC symbol for the protein P68871?",
+        # "What are the rat orthologs of the human TP53?",
+        # "Where is expressed the gene ACE2 in human?",
+        # "Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations",
+        # "List the genes in primates orthologous to genes expressed in the fruit fly eye",
     ]
 
     # The name of the application used for display

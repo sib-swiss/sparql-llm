@@ -11,17 +11,18 @@ DOC_TYPE = "General information"
 class SparqlInfoLoader(BaseLoader):
     """Load informations for a list of SPARQL endpoints."""
 
-    def __init__(self, endpoints: list[SparqlEndpointLinks], source_iri: Optional[str] = None, org_label: str = ""):
+    def __init__(self, endpoints: list[SparqlEndpointLinks], source_iri: Optional[str] = None, org_label: str = "", service_label: str = ""):
         """Initialize the SparqlInfoLoader."""
         self.endpoints = endpoints
         self.source_iri = source_iri
         self.org_label = org_label
+        self.service_label = service_label
 
     def load(self) -> list[Document]:
         """Load and return documents from the SPARQL endpoint."""
         docs: list[Document] = []
 
-        resources_summary_question = "Which resources do you support?"
+        resources_summary_question = f"Which resources are supported by {self.service_label}?" if self.service_label else "Which resources are supported by this system?"
         metadata = {
             "question": resources_summary_question,
             "answer": f"This system helps to access the following SPARQL endpoints {self.org_label}:\n- "

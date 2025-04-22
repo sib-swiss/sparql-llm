@@ -255,7 +255,7 @@ customElement(
                     // innerHTML={marked.parse(msg.content()) as string}
                   />
 
-                  {/* Add links, e.g. to Run and edit the query */}
+                  {/* Add links, e.g. to Run or edit the query */}
                   <For each={msg.links()}>
                     {link => (
                       <a href={link.url} title={link.title} target="_blank" class="hover:text-inherit">
@@ -303,22 +303,6 @@ customElement(
           </div>
         )}
 
-        {/* List of examples */}
-        {state.messages().length < 1 && (
-          <div class="py-2 px-4 justify-center items-center text-sm flex flex-col space-y-2">
-            <For each={examples()}>
-              {example => (
-                <button
-                  onClick={() => submitInput(example)}
-                  class="px-5 py-2.5 bg-slate-200 text-slate-600 rounded-3xl"
-                >
-                  {example}
-                </button>
-              )}
-            </For>
-          </div>
-        )}
-
         {/* Input text box */}
         <form
           class="p-2 flex"
@@ -336,7 +320,7 @@ customElement(
               ref={inputTextEl}
               autofocus
               class="flex-grow px-4 py-2 h-auto border border-slate-400 bg-slate-200 dark:bg-slate-700 dark:border-slate-500 rounded-3xl focus:outline-none focus:ring focus:ring-blue-200 dark:focus:ring-blue-400 overflow-y-hidden resize-none"
-              placeholder="Ask a question"
+              placeholder="Ask your question"
               rows="1"
               onKeyDown={event => {
                 if (event.key === "Enter" && !event.shiftKey) {
@@ -367,6 +351,22 @@ customElement(
             </button>
           </div>
         </form>
+
+        {/* List of examples */}
+        {state.messages().length < 1 && (
+          <div class="py-2 px-4 justify-center items-center text-sm flex flex-col space-y-2">
+            <For each={examples()}>
+              {example => (
+                <button
+                  onClick={() => submitInput(example)}
+                  class="px-5 py-2.5 bg-slate-200 text-slate-600 rounded-3xl"
+                >
+                  {example}
+                </button>
+              )}
+            </For>
+          </div>
+        )}
       </div>
     );
   },

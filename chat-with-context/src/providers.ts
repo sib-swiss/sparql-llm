@@ -118,7 +118,7 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
   // console.log(chunk);
   // Handle updates to the state (nodes that are retrieving stuff without querying the LLM usually)
   if (chunk.event === "updates") {
-    console.log("UPDATES", chunk);
+    // console.log("UPDATES", chunk);
     for (const nodeId of Object.keys(chunk.data)) {
       const nodeData = chunk.data[nodeId];
       if (!nodeData) continue;
@@ -173,9 +173,9 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
       state.appendContentToLastMsg(msg.content);
       state.appendStepToLastMsg(metadata.langgraph_node, "💭 Thought process", state.lastMsg().content());
       state.lastMsg().setContent("");
-    } else if (msg.content && msg.type === "AIMessageChunk") {
+    } else if (msg.content && msg.type === "AIMessageChunk" && metadata.langgraph_node === "call_model") {
+      // This will only stream response from the langgraph node "call_model"
       // console.log("AIMessageChunk", msg, metadata);
-      // Response from the model
       state.appendContentToLastMsg(msg.content);
     }
   }
@@ -225,8 +225,8 @@ async function streamCustomLangGraph(state: ChatState) {
   }
 }
 
+// NOTE: experimental, would need to be updated to properly uses steps output
 async function streamLangGraphApi(state: ChatState) {
-  // Experimental, would need to be updated to properly uses steps output
   const client = new Client({apiUrl: state.apiUrl});
   const graphName = "agent";
 
