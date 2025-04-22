@@ -14,8 +14,8 @@ if [ "$1" = "build" ]; then
     # cd chat-with-context
     # npm run build:demo
     # cd ..
-    # ssh_cmd "git pull ; rm -rf packages/expasy-agent/src/expasy_agent/webapp"
-    # scp -r ./packages/expasy-agent/src/expasy_agent/webapp expasychatpodman:/var/containers/podman/sparql-llm/packages/expasy-agent/src/expasy_agent/
+    # ssh_cmd "git pull ; rm -rf src/expasy-agent/src/expasy_agent/webapp"
+    # scp -r ./src/expasy-agent/src/expasy_agent/webapp expasychatpodman:/var/containers/podman/sparql-llm/src/expasy-agent/src/expasy_agent/
     ssh_cmd "git pull ; podman-compose up --force-recreate --build -d"
 
 elif [ "$1" = "clean" ]; then

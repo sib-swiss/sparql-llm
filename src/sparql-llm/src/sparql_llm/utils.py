@@ -156,7 +156,12 @@ def get_schema_for_endpoint(endpoint_url: str, void_file: Optional[str] = None) 
         logger.warning(f"Could not retrieve VoID description from {void_file if void_file else endpoint_url}: {e}")
     return void_dict
 
-
+# TODO: use SPARQLWrapper
+# sparqlw = SPARQLWrapper(endpoint)
+# sparqlw.setReturnFormat(JSON)
+# sparqlw.setOnlyConneg(True)
+# sparqlw.setQuery(query)
+# res = sparqlw.query().convert()
 def query_sparql(
     query: str,
     endpoint_url: str,
@@ -164,8 +169,9 @@ def query_sparql(
     timeout: Optional[int] = None,
     client: Optional[httpx.Client] = None,
     use_file: Optional[str] = None,
+    check_service_desc: bool = True,
 ) -> Any:
-    """Execute a SPARQL query on a SPARQL endpoint using httpx or a RDF turtle file using rdflib."""
+    """Execute a SPARQL query on a SPARQL endpoint or its service description using httpx or a RDF turtle file using rdflib."""
     if use_file:
         g = rdflib.Graph()
         g.parse(use_file, format="turtle")
@@ -193,7 +199,7 @@ def query_sparql(
                 )
             resp.raise_for_status()
             resp_json = resp.json()
-            if not resp_json.get("results", {}).get("bindings", []):
+            if check_service_desc and not resp_json.get("results", {}).get("bindings", []):
                 # If no results found directly in the endpoint we check in its service description
                 resp = client.get(
                     endpoint_url,
@@ -203,8 +209,17 @@ def query_sparql(
                 g = rdflib.Graph()
                 g.parse(data=resp.text, format="turtle")
                 results = g.query(query)
+                bindings = []
+                for row in results:
+                    if hasattr(row, "asdict"):
+                        bindings.append({str(k): {"value": str(v)} for k, v in row.asdict().items()})
+                    else:
+                        # Handle tuple results
+                        bindings.append({str(var): {"value": str(val)} for var, val in zip(results.vars, row)})
                 return {
-                    "results": {"bindings": [{str(k): {"value": str(v)} for k, v in row.asdict().items()} for row in results]}
+                    "results": {
+                        "bindings": bindings
+                    }
                 }
             return resp_json
         finally:

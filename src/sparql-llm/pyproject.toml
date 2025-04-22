@@ -34,6 +34,7 @@ dynamic = ["version"]
 dependencies = [
     "httpx >=0.27.2",
     "rdflib >=7.0.0",
+    "SPARQLWrapper >=2.0.0",
     "beautifulsoup4 >=4.13.0",
     "curies-rs >=0.1.3",
     "langchain-core >=0.3.34",

@@ -24,16 +24,30 @@ services:
       - 443:80
     environment:
       - VECTORDB_URL=http://vectordb:6334/
-      # NOTE: disguting hack to fix a bug with podman internal network on prod server
+      # NOTE: dirty hack to fix a bug with podman internal network on prod server
       # - VECTORDB_URL=http://10.89.1.2:6334/
     volumes:
       - ./data/fastembed_cache:/tmp/fastembed_cache
       - ./data/logs:/logs
       - ./data/embeddings:/app/data/embeddings
-      - ./packages:/app/packages
+      - ./src:/app/src
     env_file:
       - .env
 
+  # mcp-server:
+  #   build: ./src/expasy-mcp
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - vectordb
+  #   ports:
+  #     - 8888:8888
+  #   environment:
+  #     - VECTORDB_HOST=vectordb
+  #     # NOTE: dirty hack to fix a bug with podman internal network on prod server
+  #     # - VECTORDB_HOST=10.89.1.2
+  #   volumes:
+  #     - ./src/expasy-mcp/src:/app/src
+  #     - ./data/fastembed_cache:/tmp/fastembed_cache
 
   # langgraph-redis:
   #   image: redis:6

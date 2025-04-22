@@ -5,8 +5,8 @@ requires-python = "==3.12.*"
 
 dependencies = [
     "sparql-llm >=0.0.8",
-    # "sparql-llm @ git+https://github.com/sib-swiss/sparql-llm.git#subdirectory=packages/sparql-llm",
-    # "sparql-llm @ file:///home/vemonet/dev/expasy/sparql-llm/packages/sparql-llm",
+    # "sparql-llm @ git+https://github.com/sib-swiss/sparql-llm.git#subdirectory=src/sparql-llm",
+    # "sparql-llm @ file:///home/vemonet/dev/expasy/sparql-llm/src/sparql-llm",
     "langchain >=0.3.19",
     "langchain-openai >=0.3.6",
     "langchain-groq >=0.2.4",

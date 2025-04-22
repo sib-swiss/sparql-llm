@@ -10,8 +10,8 @@
 
 This project provides tools to enhance the capabilities of Large Language Models (LLMs) in generating [SPARQL](https://www.w3.org/TR/sparql11-overview/) queries for specific endpoints:
 
-- reusable components in `packages/sparql-llm` and published as the [`sparql-llm`](https://pypi.org/project/sparql-llm/) pip package
-- a complete chat web service in `packages/expasy-agent`
+- reusable components in `src/sparql-llm` and published as the [`sparql-llm`](https://pypi.org/project/sparql-llm/) pip package
+- a complete chat web service in `src/expasy-agent`
 
 The system integrates Retrieval-Augmented Generation (RAG) and SPARQL query validation through endpoint schemas, to ensure more accurate and relevant query generation on large scale knowledge graphs.
 
@@ -30,26 +30,26 @@ The components are designed to work either independently or as part of a full ch
 
 ## 📦️ Reusable components
 
-Checkout the [`packages/sparql-llm/README.md`](https://github.com/sib-swiss/sparql-llm/tree/main/packages/sparql-llm) for more details on how to use the reusable components.
+Checkout the [`src/sparql-llm/README.md`](https://github.com/sib-swiss/sparql-llm/tree/main/src/sparql-llm) for more details on how to use the reusable components.
 
 ## 🚀 Complete chat system
 
 > [!WARNING]
 >
-> To deploy the complete chat system right now you will need to fork/clone this repository, change the configuration in `packages/expasy-agent/src/expasy_agent/config.py` and `compose.yml`, then deploy with docker/podman compose.
+> To deploy the complete chat system right now you will need to fork/clone this repository, change the configuration in `src/expasy-agent/src/expasy_agent/config.py` and `compose.yml`, then deploy with docker/podman compose.
 >
 > It can easily be adapted to use any LLM served through an OpenAI-compatible API. We plan to make configuration and deployment of complete SPARQL LLM chat system easier in the future, let us know if you are interested in the GitHub issues!
 
 Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](https://docs.astral.sh/uv/getting-started/installation/) if you want to run scripts outside of docker.
 
-1. Explore and change the system configuration in `packages/expasy-agent/src/expasy_agent/config.py`
+1. Explore and change the system configuration in `src/expasy-agent/src/expasy_agent/config.py`
 
 2. Create a `.env` file at the root of the repository to provide secrets and API keys:
 
    ```sh
    CHAT_API_KEY=NOT_SO_SECRET_API_KEY_USED_BY_FRONTEND_TO_AVOID_SPAM_FROM_CRAWLERS
    LOGS_API_KEY=SECRET_PASSWORD_TO_EASILY_ACCESS_LOGS_THROUGH_THE_API
-   
+
    OPENAI_API_KEY=sk-proj-YYY
    GROQ_API_KEY=gsk_YYY
    HUGGINGFACEHUB_API_TOKEN=
@@ -69,7 +69,7 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 
    > You can change the UI around the chat in `chat-with-context/demo/index.html`
 
-4. **Start** the vector database and web server locally for development, with code from the `packages` folder mounted in the container and automatic API reload on changes to the code:
+4. **Start** the vector database and web server locally for development, with code from the `src` folder mounted in the container and automatic API reload on changes to the code:
 
    ```bash
    docker compose -f compose.dev.yml up
@@ -99,7 +99,7 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 >
 > ```sh
 > docker compose -f compose.dev.yml up vectordb -d
-> cd packages/expasy-agent
+> cd src/expasy-agent
 > VECTORDB_URL=http://localhost:6334 nohup uv run --extra gpu src/expasy_agent/indexing/index_entities.py --gpu &
 > ```
 >
@@ -108,7 +108,7 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 There is a benchmarking scripts for the system that will run a list of questions and compare their results to a reference SPARQL queries, with and without query validation, against a list of LLM providers. You will need to change the list of queries if you want to use it for different endpoints. You will need to start the stack in development mode to run it:
 
 ```sh
-uv run --env-file .env packages/expasy-agent/tests/benchmark.py
+uv run --env-file .env src/expasy-agent/tests/benchmark.py
 ```
 
 > It takes time to run and will log the output and results in `data/benchmarks`

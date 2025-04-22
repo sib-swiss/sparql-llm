@@ -12,6 +12,6 @@ export default defineConfig({
     port: 3000,
   },
   build: {
-    outDir: "../../packages/expasy-agent/src/expasy_agent/webapp",
+    outDir: "../../src/expasy-agent/src/expasy_agent/webapp",
   },
 });

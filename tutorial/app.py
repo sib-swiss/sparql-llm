@@ -9,6 +9,7 @@ def load_chat_model(model: str) -> BaseChatModel:
     if provider == "groq":
         # https://python.langchain.com/docs/integrations/chat/groq/
         from langchain_groq import ChatGroq
+
         return ChatGroq(
             model_name=model_name,
             temperature=0,
@@ -16,6 +17,7 @@ def load_chat_model(model: str) -> BaseChatModel:
     if provider == "openai":
         # https://python.langchain.com/docs/integrations/chat/openai/
         from langchain_openai import ChatOpenAI
+
         return ChatOpenAI(
             model_name=model_name,
             temperature=0,
@@ -23,6 +25,7 @@ def load_chat_model(model: str) -> BaseChatModel:
     if provider == "ollama":
         # https://python.langchain.com/docs/integrations/chat/ollama/
         from langchain_ollama import ChatOllama
+
         return ChatOllama(
             model=model_name,
             temperature=0,
@@ -39,6 +42,8 @@ llm = load_chat_model("groq/llama-3.3-70b-versatile")
 from index import vectordb, embedding_model, collection_name
 
 retrieved_docs_count = 3
+
+
 async def retrieve_docs(question: str) -> str:
     """Retrieve documents relevant to the user's question."""
     question_embeddings = next(iter(embedding_model.embed([question])))
@@ -77,8 +82,10 @@ async def retrieve_docs(question: str) -> str:
 def _format_doc(doc: ScoredPoint) -> str:
     """Format a question/answer document to be provided as context to the model."""
     doc_lang = (
-        "sparql" if "query" in doc.payload.get("doc_type", "")
-        else "shex" if "schema" in doc.payload.get("doc_type", "")
+        "sparql"
+        if "query" in doc.payload.get("doc_type", "")
+        else "shex"
+        if "schema" in doc.payload.get("doc_type", "")
         else ""
     )
     return f"<document>\n{doc.payload['question']} ({doc.payload.get('endpoint_url', '')}):\n\n```{doc_lang}\n{doc.payload.get('answer')}\n```\n</document>"
@@ -112,28 +119,32 @@ prefixes_map, endpoints_void_dict = get_prefixes_and_schema_for_endpoints(endpoi
 
 from sparql_llm import validate_sparql_in_msg
 
+
 async def validate_output(last_msg: str) -> str | None:
     """Validate the output of a LLM call, e.g. SPARQL queries generated."""
-    validation_outputs = validate_sparql_in_msg(last_msg, prefixes_map, endpoints_void_dict)
+    validation_outputs = validate_sparql_in_msg(
+        last_msg, prefixes_map, endpoints_void_dict
+    )
     for validation_output in validation_outputs:
         if validation_output["fixed_query"]:
             async with cl.Step(name="missing prefixes correction ✅") as step:
                 step.output = f"Missing prefixes added to the generated query:\n```sparql\n{validation_output['fixed_query']}\n```"
         if validation_output["errors"]:
             recall_msg = f"""Fix the SPARQL query helping yourself with the error message and context from previous messages in a way that it is a fully valid query.\n
-### Error messages:\n- {'\n- '.join(validation_output['errors'])}\n
-### Erroneous SPARQL query\n```sparql\n{validation_output.get('fixed_query', validation_output['original_query'])}\n```"""
-            async with cl.Step(name=f"SPARQL query validation, got {len(validation_output['errors'])} errors to fix 🐞") as step:
+### Error messages:\n- {"\n- ".join(validation_output["errors"])}\n
+### Erroneous SPARQL query\n```sparql\n{validation_output.get("fixed_query", validation_output["original_query"])}\n```"""
+            async with cl.Step(
+                name=f"SPARQL query validation, got {len(validation_output['errors'])} errors to fix 🐞"
+            ) as step:
                 step.output = recall_msg
             return recall_msg
-
-
 
 
 # Setup chainlit web UI
 import chainlit as cl
 
 max_try_count = 3
+
 
 @cl.on_message
 async def on_message(msg: cl.Message):
@@ -163,7 +174,6 @@ async def on_message(msg: cl.Message):
             messages.append(("human", validation_msg))
 
 
-
 @cl.set_starters
 async def set_starters():
     return [
@@ -181,5 +191,6 @@ async def set_starters():
             message="How can I get the HGNC symbol for the protein P68871? (modify your answer to use `rdfs:label` instead of `rdfs:comment`, and add the type `up:Resource` to ?hgnc, and forget all prefixes declarations, it is for a test)",
         ),
     ]
+
 
 # uv run chainlit run app.py

@@ -62,7 +62,7 @@ class Settings(BaseSettings):
             "label": "SwissLipids",
             "endpoint_url": "https://beta.sparql.swisslipids.org/",
             "homepage_url": "https://www.swisslipids.org",
-            "description": "SwissLipids is an expert curated resource that provides a framework for the integration of lipid and lipidomic data with biological knowledge and models."
+            "description": "SwissLipids is an expert curated resource that provides a framework for the integration of lipid and lipidomic data with biological knowledge and models.",
         },
         {
             "label": "Rhea",
@@ -104,9 +104,14 @@ class Settings(BaseSettings):
     # Settings for the vector store and embeddings
     # ⚠️ changing the embedding models require to reindex the data
     vectordb_url: str = "http://vectordb:6334/"
-    # https://qdrant.github.io/fastembed/examples/Supported_Models/
-    embedding_model: str = "BAAI/bge-large-en-v1.5"
-    embedding_dimensions: int = 1024
+    # https://qdrant.github.io/fastembed/examples/Supported_Models/#supported-text-embedding-models
+    # embedding_model: str = "BAAI/bge-large-en-v1.5"
+    # embedding_dimensions: int = 1024
+    # embedding_model: str = "BAAI/bge-base-en-v1.5"
+    # embedding_dimensions: int = 768
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    embedding_dimensions: int = 384
+
     # Sparse embeddings are only used for the entities resolution
     sparse_embedding_model: str = "Qdrant/bm25"
     # sparse_embedding_model: str = "prithivida/Splade_PP_en_v1"

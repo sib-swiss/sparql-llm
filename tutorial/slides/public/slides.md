@@ -246,7 +246,7 @@ docs.append(Document(
     metadata={
         "question": ex_question,
         "answer": """SELECT ?protein WHERE {
-	?protein a up:Protein .        
+	?protein a up:Protein .
 }""",
         "endpoint_url": "https://sparql.uniprot.org/",
         "query_type": "SelectQuery",
@@ -424,25 +424,25 @@ from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 def retrieve_docs(question: str) -> str:
     question_embeddings = next(iter(embedding_model.embed([question])))
-    retrieved_docs = vectordb.search(
+    example_queries = vectordb.query_points(
         collection_name=collection_name,
-        query_vector=question_embeddings,
+        query=question_embeddings,
         limit=retrieved_docs_count,
         query_filter=Filter(must=[FieldCondition(
             key="doc_type",
             match=MatchValue(value="SPARQL endpoints query examples"),
-		)]),
+        )]),
     )
-    retrieved_docs += vectordb.search(
+    other_docs += vectordb.query_points(
         collection_name=collection_name,
-        query_vector=question_embeddings,
+        query=question_embeddings,
         limit=retrieved_docs_count,
         query_filter=Filter(must_not=[FieldCondition(
             key="doc_type",
             match=MatchValue(value="SPARQL endpoints query examples"),
         )]),
     )
-    return f"<documents>\n{'\n'.join(_format_doc(doc) for doc in retrieved_docs)}\n</documents>"
+    return f"<documents>\n{'\n'.join(_format_doc(doc) for doc in example_queries.points + other_docs.points)}\n</documents>"
 
 relevant_docs = retrieve_docs(question)
 ```

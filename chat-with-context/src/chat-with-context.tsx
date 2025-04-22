@@ -17,7 +17,7 @@ import "./style.css";
 import {streamResponse, ChatState} from "./providers";
 
 // Get icons svg from https://feathericons.com/
-// SolidJS custom element: https://github.com/solidjs/solid/blob/main/packages/solid-element/README.md
+// SolidJS custom element: https://github.com/solidjs/solid/blob/main/src/solid-element/README.md
 // https://github.com/solidjs/templates/tree/main/ts-tailwindcss
 
 /**

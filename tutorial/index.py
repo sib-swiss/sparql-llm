@@ -9,7 +9,7 @@ endpoints: list[dict[str, str]] = [
         # The URL of the SPARQL endpoint from which most informations will be extracted
         "endpoint_url": "https://sparql.uniprot.org/sparql/",
         # If VoID description or SPARQL query examples are not available in the endpoint, you can provide a VoID file (local or remote URL)
-        # "void_file": "../packages/sparql-llm/tests/void_uniprot.ttl",
+        # "void_file": "../src/sparql-llm/tests/void_uniprot.ttl",
         "void_file": "data/uniprot_void.ttl",
         "examples_file": "data/uniprot_examples.ttl",
     },
@@ -18,7 +18,7 @@ endpoints: list[dict[str, str]] = [
     },
     {
         "endpoint_url": "https://sparql.omabrowser.org/sparql/",
-    }
+    },
 ]
 
 
@@ -34,6 +34,7 @@ embedding_dimensions = 384
 
 vectordb = QdrantClient(host="localhost", prefer_grpc=True)
 collection_name = "sparql-docs"
+
 
 def index_endpoints():
     # Get documents from the SPARQL endpoints
@@ -52,13 +53,13 @@ def index_endpoints():
         ).load()
     docs += SparqlInfoLoader(endpoints, source_iri="https://www.expasy.org/").load()
 
-
-
     if vectordb.collection_exists(collection_name):
         vectordb.delete_collection(collection_name)
     vectordb.create_collection(
         collection_name=collection_name,
-        vectors_config=VectorParams(size=embedding_dimensions, distance=Distance.COSINE),
+        vectors_config=VectorParams(
+            size=embedding_dimensions, distance=Distance.COSINE
+        ),
     )
 
     embeddings = embedding_model.embed([q.page_content for q in docs])
@@ -84,6 +85,7 @@ def index_endpoints():
     #         # providers=["CUDAExecutionProvider"], # Uncomment this line to use your GPUs
     #     ),
     # )
+
 
 if __name__ == "__main__":
     index_endpoints()

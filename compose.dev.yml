@@ -15,7 +15,7 @@ services:
     ports:
       - 8000:80
     volumes:
-      - ./packages:/app/packages
+      - ./src:/app/src
     environment:
       - VECTORDB_URL=http://vectordb:6334/
       # - DEFAULT_LLM_MODEL=groq/deepseek-r1-distill-llama-70b
@@ -29,6 +29,12 @@ services:
       - DEFAULT_LLM_MODEL=openai/gpt-4o-mini
     entrypoint: ["uv", "run", "uvicorn", "src.expasy_agent.main:app", "--host", "0.0.0.0", "--port", "80"]
 
+  # mcp-server:
+  #   extends:
+  #     file: compose.yml
+  #     service: mcp-server
+  #   ports:
+  #     - 8888:8888
 
   # In case we need a GPU-enabled workspace, e.g. for generating embeddings
   # workspace:

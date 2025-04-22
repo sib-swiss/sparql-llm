@@ -169,7 +169,7 @@ cd sparql-llm
 Make sure the existing tests still work by running the test suite and linting checks. Note that any pull requests to the fairworkflows repository on github will automatically trigger running of the test suite;
 
 ```bash
-cd packages/sparql-llm
+cd src/sparql-llm
 uv run pytest
 ```
 

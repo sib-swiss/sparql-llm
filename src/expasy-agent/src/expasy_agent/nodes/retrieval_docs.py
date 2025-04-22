@@ -251,7 +251,9 @@ def _format_doc(doc: Document) -> str:
         doc_lang = ""
         doc_type = str(doc.metadata.get("doc_type", "")).lower()
         if "query" in doc_type:
-            doc_lang = f"sparql\n#+ endpoint: {doc.metadata.get('endpoint_url', 'undefined')}"
+            doc_lang = (
+                f"sparql\n#+ endpoint: {doc.metadata.get('endpoint_url', 'undefined')}"
+            )
         elif "schema" in doc_type:
             doc_lang = "shex"
         return f"<document>\n{doc.page_content}:\n\n```{doc_lang}\n{doc.metadata.get('answer')}\n```\n</document>"

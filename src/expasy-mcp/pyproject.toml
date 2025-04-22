@@ -1,0 +1,109 @@
+[project]
+name = "expasy-mcp"
+version = "0.0.1"
+description = "A Model Context Protocol (MCP) server to access biodata resources at the SIB, such as SPARQL endpoints and APIs."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Vincent Emonet", email = "vincent.emonet@gmail.com" }]
+maintainers = [{ name = "Vincent Emonet", email = "vincent.emonet@gmail.com" }]
+keywords = [
+    "MCP",
+    "Biodata",
+    "Bioinformatics",
+    "SPARQL",
+    "LLM",
+    "Expasy",
+    "Chatbot",
+]
+requires-python = ">=3.12"
+dependencies = [
+    "mcp[cli]>=1.6.0",
+    "qdrant-client >=1.13.0",
+    "fastembed >=0.5.1",
+    "sparql-llm >=0.0.8",
+    "sparqlwrapper >=2.0.0",
+]
+
+
+[dependency-groups]
+dev = [
+    "pytest >=8.3.4",
+    "pytest-cov >=6.0.0",
+    "pytest-asyncio >=0.25.3",
+    "ruff >=0.9.5",
+    "mypy >=1.15.0",
+]
+
+[project.scripts]
+expasy-mcp = "expasy_mcp.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+# dynamic = ["version"]
+
+
+[tool.mypy]
+files = ["src/"]
+strict = true
+pretty = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+exclude = [
+    "**/__init__.py",
+]
+
+[tool.ruff.lint]
+select = [
+    "I",     # isort
+    "N",     # pep8-naming
+    "S",     # bandit
+    "A",     # flake8-builtins
+    "YTT",   # flake8-2020
+    "B",     # flake8-bugbear
+    "C",     # flake8-comprehensions
+    "ICN",   # flake8-import-conventions
+    "SIM",   # flake8-simplify
+    "TID",   # flake8-tidy-imports
+    "Q",     # flake8-quotes
+    "FBT",   # flake8-boolean-trap
+    "F",     # pyflakes
+    "UP",    # pyupgrade
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "PLC",   # pylint convention
+    "PLE",   # pylint error
+    "PLW",   # pylint warning
+    "RUF",   # ruff specific
+    "T",
+]
+# ignore = [
+#     "E501", # line too long
+#     "T201", # do not use print
+# ]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["I", "F401"] # module imported but unused
+# Tests can use magic values, assertions, and relative imports:
+"tests/*" = ["PLR2004", "S101", "S105", "TID252"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+
+# [tool.hatch.build.targets.wheel]
+# packages = ["src/expasy_mcp"]
+# [tool.hatch.version]
+# path = "src/expasy_mcp/__init__.py"
+# [tool.hatch.metadata]
+# allow-direct-references = true
+
+# [project.optional-dependencies]
+# cpu = [
+#     "fastembed >=0.5.1",
+# ]
+# gpu = [
+#     "fastembed-gpu >=0.5.1",
+# ]

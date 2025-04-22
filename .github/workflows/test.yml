@@ -28,5 +28,5 @@ jobs:
 
     - name: Test with coverage
       run: |
-        cd packages/sparql-llm
+        cd src/sparql-llm
         uv run pytest

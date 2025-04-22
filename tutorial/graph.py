@@ -15,6 +15,7 @@ def load_chat_model(model: str) -> BaseChatModel:
     if provider == "groq":
         # https://python.langchain.com/docs/integrations/chat/groq/
         from langchain_groq import ChatGroq
+
         return ChatGroq(
             model_name=model_name,
             temperature=0,
@@ -22,6 +23,7 @@ def load_chat_model(model: str) -> BaseChatModel:
     if provider == "openai":
         # https://python.langchain.com/docs/integrations/chat/openai/
         from langchain_openai import ChatOpenAI
+
         return ChatOpenAI(
             model_name=model_name,
             temperature=0,
@@ -29,11 +31,13 @@ def load_chat_model(model: str) -> BaseChatModel:
     if provider == "ollama":
         # https://python.langchain.com/docs/integrations/chat/ollama/
         from langchain_ollama import ChatOllama
+
         return ChatOllama(
             model=model_name,
             temperature=0,
         )
     raise ValueError(f"Unknown provider: {provider}")
+
 
 llm = load_chat_model("groq/llama-3.3-70b-versatile")
 # llm = load_chat_model("openai/gpt-4o-mini")
@@ -52,11 +56,15 @@ retriever = vectordb.as_retriever()
 
 class AgentState(MessagesState):
     """State of the agent available inside each node."""
+
     relevant_docs: str
     passed_validation: bool
     try_count: int
 
+
 retrieved_docs_count = 3
+
+
 async def retrieve_docs(state: AgentState) -> dict[str, str]:
     """Retrieve documents relevant to the user's question."""
     last_msg = state["messages"][-1]
@@ -71,7 +79,7 @@ async def retrieve_docs(state: AgentState) -> dict[str, str]:
                     match=MatchValue(value="SPARQL endpoints query examples"),
                 )
             ]
-        )
+        ),
     )
     retrieved_docs += retriever.invoke(
         last_msg.content,
@@ -94,8 +102,10 @@ async def retrieve_docs(state: AgentState) -> dict[str, str]:
 def _format_doc(doc: Document) -> str:
     """Format a question/answer document to be provided as context to the model."""
     doc_lang = (
-        "sparql" if "query" in doc.metadata.get("doc_type", "")
-        else "shex" if "schema" in doc.metadata.get("doc_type", "")
+        "sparql"
+        if "query" in doc.metadata.get("doc_type", "")
+        else "shex"
+        if "schema" in doc.metadata.get("doc_type", "")
         else ""
     )
     return f"<document>\n{doc.page_content} ({doc.metadata.get('endpoint_url', '')}):\n\n```{doc_lang}\n{doc.metadata.get('answer')}\n```\n</document>"
@@ -115,12 +125,15 @@ Here is a list of documents (reference questions and query answers, classes sche
 {relevant_docs}
 """
 
+
 def call_model(state: AgentState):
     """Call the model with the retrieved documents as context."""
-    response = llm.invoke([
-        ("system", SYSTEM_PROMPT.format(relevant_docs=state["relevant_docs"])),
-        *state["messages"],
-    ])
+    response = llm.invoke(
+        [
+            ("system", SYSTEM_PROMPT.format(relevant_docs=state["relevant_docs"])),
+            *state["messages"],
+        ]
+    )
     # NOTE: to fix issue with ollama ignoring system messages
     # state["messages"][-1].content = SYSTEM_PROMPT.replace("{relevant_docs}", state['relevant_docs']) + "\n\nHere is the user question:\n" + state["messages"][-1].content
     # response = llm.invoke(state["messages"])
@@ -143,14 +156,23 @@ prefixes_map, endpoints_void_dict = get_prefixes_and_schema_for_endpoints(endpoi
 from sparql_llm import validate_sparql_in_msg
 from langchain_core.messages import AIMessage
 
-async def validate_output(state: AgentState) -> dict[str, bool | list[tuple[str, str]] | int]:
+
+async def validate_output(
+    state: AgentState,
+) -> dict[str, bool | list[tuple[str, str]] | int]:
     """Node to validate the output of a LLM call, e.g. SPARQL queries generated."""
     recall_messages = []
     print(state["messages"])
-    last_msg = next(msg.content for msg in reversed(state["messages"]) if isinstance(msg, AIMessage) and msg.content)
+    last_msg = next(
+        msg.content
+        for msg in reversed(state["messages"])
+        if isinstance(msg, AIMessage) and msg.content
+    )
     print(last_msg)
     # last_msg = state["messages"][-1].content
-    validation_outputs = validate_sparql_in_msg(last_msg, prefixes_map, endpoints_void_dict)
+    validation_outputs = validate_sparql_in_msg(
+        last_msg, prefixes_map, endpoints_void_dict
+    )
     for validation_output in validation_outputs:
         if validation_output["fixed_query"]:
             async with cl.Step(name="missing prefixes correction ✅") as step:
@@ -158,10 +180,12 @@ async def validate_output(state: AgentState) -> dict[str, bool | list[tuple[str,
         if validation_output["errors"]:
             # errors_str = "- " + "\n- ".join(validation_output["errors"])
             recall_msg = f"""Fix the SPARQL query helping yourself with the error message and context from previous messages in a way that it is a fully valid query.\n
-### Error messages:\n- {'\n- '.join(validation_output['errors'])}\n
-### Erroneous SPARQL query\n```sparql\n{validation_output.get('fixed_query', validation_output['original_query'])}\n```"""
+### Error messages:\n- {"\n- ".join(validation_output["errors"])}\n
+### Erroneous SPARQL query\n```sparql\n{validation_output.get("fixed_query", validation_output["original_query"])}\n```"""
             # print(error_str, flush=True)
-            async with cl.Step(name=f"SPARQL query validation, got {len(validation_output['errors'])} errors to fix 🐞") as step:
+            async with cl.Step(
+                name=f"SPARQL query validation, got {len(validation_output['errors'])} errors to fix 🐞"
+            ) as step:
                 step.output = recall_msg
             # Add a new message to ask the model to fix the error
             recall_messages.append(("human", recall_msg))
@@ -172,9 +196,9 @@ async def validate_output(state: AgentState) -> dict[str, bool | list[tuple[str,
     }
 
 
-
-
 max_try_count = 3
+
+
 def route_model_output(state: AgentState) -> Literal["__end__", "call_model"]:
     """Determine the next node based on the model's output."""
     if state["try_count"] > max_try_count:
@@ -188,8 +212,6 @@ def route_model_output(state: AgentState) -> Literal["__end__", "call_model"]:
     if not state["passed_validation"]:
         return "call_model"
     return "__end__"
-
-
 
 
 # Define the LangGraph graph
@@ -215,6 +237,7 @@ graph = builder.compile()
 
 # Setup chainlit web UI
 # https://docs.chainlit.io/integrations/langchain
+
 
 @cl.on_message
 async def on_message(msg: cl.Message):
@@ -252,5 +275,6 @@ async def set_starters():
             message="How can I get the HGNC symbol for the protein P68871? (modify your answer to use `rdfs:label` instead of `rdfs:comment`, and add the type `up:Resource` to ?hgnc, and forget all prefixes declarations, it is for a test)",
         ),
     ]
+
 
 # uv run chainlit run graph.py

@@ -558,7 +558,6 @@ def result_sets_are_same(gen_set, ref_set) -> bool:
     # return all(item in gen_set for item in ref_set)
 
 
-
 # QLEVER_UNIPROT = "https://qlever.cs.uni-freiburg.de/api/uniprot"
 
 # Price per million tokens, open source models based on fireworks.io pricing
@@ -671,7 +670,9 @@ results_data = {
 number_of_tries = 3
 start_time = time.time()
 
-logger.info(f"🧪 Testing {len(example_queries)} queries using {settings.default_number_of_retrieved_docs} retrieved docs\n")
+logger.info(
+    f"🧪 Testing {len(example_queries)} queries using {settings.default_number_of_retrieved_docs} retrieved docs\n"
+)
 logger.info("## Executing references queries\n")
 
 # Get results for the reference queries first
@@ -839,4 +840,4 @@ with open(
     f.write(latex_str)
 
 
-logger.info(f"⏱️ Total runtime: {(time.time() - start_time)/60:.2f} minutes")
+logger.info(f"⏱️ Total runtime: {(time.time() - start_time) / 60:.2f} minutes")

@@ -13,7 +13,7 @@ from expasy_agent.nodes.retrieval_docs import make_dense_encoder
 # ssh adsicore
 # cd /mnt/scratch/sparql-llm
 # docker compose -f compose.dev.yml up vectordb
-# cd packages/expasy-agent
+# cd src/expasy-agent
 # nohup VECTORDB_URL=http://localhost:6334 uv run --extra gpu src/expasy_agent/indexing/index_entities.py --gpu &
 
 

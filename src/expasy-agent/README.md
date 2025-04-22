@@ -15,14 +15,14 @@
 2. Run custom LangGraph API on http://localhost:8000/docs/
 
    ```sh
-   cd packages/expasy-agent
+   cd src/expasy-agent
    uv run --extra cpu uvicorn src.expasy_agent.main:app --reload
    ```
 
    Alternatively you can use the closed source LanGraph Platform On http://127.0.0.1:2024:
 
    ```sh
-   cd packages/expasy-agent
+   cd src/expasy-agent
    uv run --extra cpu langgraph dev
    ```
 
