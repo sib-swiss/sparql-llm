@@ -249,6 +249,7 @@ def _format_doc(doc: Document) -> str:
     """
     if doc.metadata.get("answer"):
         doc_lang = ""
+        endpoint_url = ""
         doc_type = str(doc.metadata.get("doc_type", "")).lower()
         if "query" in doc_type:
             doc_lang = (
@@ -256,7 +257,8 @@ def _format_doc(doc: Document) -> str:
             )
         elif "schema" in doc_type:
             doc_lang = "shex"
-        return f"<document>\n{doc.page_content}:\n\n```{doc_lang}\n{doc.metadata.get('answer')}\n```\n</document>"
+            endpoint_url = f" ({doc.metadata.get('endpoint_url', 'undefined')})"
+        return f"<document>\n{doc.page_content}{endpoint_url}:\n\n```{doc_lang}\n{doc.metadata.get('answer')}\n```\n</document>"
 
     meta = "".join(f" {k}={v!r}" for k, v in doc.metadata.items())
     if meta:
