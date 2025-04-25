@@ -53,12 +53,6 @@ class Settings(BaseSettings):
             "description": "HAMAP is a system for the classification and annotation of protein sequences. It consists of a collection of manually curated family profiles for protein classification, and associated, manually created annotation rules that specify annotations that apply to family members.",
         },
         {
-            "label": "dbgi",
-            "endpoint_url": "https://biosoda.unil.ch/graphdb/repositories/emi-dbgi",
-            "description": "The Digital Botanical Gardens Initiative (DBGI) is a project that aims to create a digital representation of chemo- and biodiversity, from botanical collections to the global scale in wild ecosystems.",
-            # "homepage_url": "https://dbgi.eu/",
-        },
-        {
             "label": "SwissLipids",
             "endpoint_url": "https://beta.sparql.swisslipids.org/",
             "homepage_url": "https://www.swisslipids.org",
@@ -75,6 +69,12 @@ class Settings(BaseSettings):
             "endpoint_url": "https://sparql.cellosaurus.org/sparql",
             "homepage_url": "https://cellosaurus.org/",
             "description": "Cellosaurus is a knowledge resource on cell lines.",
+        },
+        {
+            "label": "dbgi",
+            "endpoint_url": "https://biosoda.unil.ch/graphdb/repositories/emi-dbgi",
+            "description": "The Digital Botanical Gardens Initiative (DBGI) is a project that aims to create a digital representation of chemo- and biodiversity, from botanical collections to the global scale in wild ecosystems.",
+            # "homepage_url": "https://dbgi.eu/",
         },
         # No metadata in these endpoints
         # {
@@ -122,7 +122,7 @@ class Settings(BaseSettings):
     default_llm_model: str = "openai/gpt-4o"
     # TODO: default_llm_model_cheap: str = "openai/gpt-4o-mini"
 
-    default_number_of_retrieved_docs: int = 5
+    default_number_of_retrieved_docs: int = 10
     default_max_try_fix_sparql: int = 3
     default_temperature: float = 0.0
     default_max_tokens: int = 120000

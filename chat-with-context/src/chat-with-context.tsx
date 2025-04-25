@@ -118,7 +118,16 @@ customElement(
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
           like: positive,
-          messages: state.messages(),
+          messages: state.messages().map(msg => ({
+            role: msg.role,
+            content: msg.content(),
+            steps: msg.steps().map(step => ({
+              label: step.label,
+              details: step.details,
+              node_id: step.node_id,
+              substeps: step.substeps,
+            })),
+          }))
         }),
       });
       setFeedbackSent(true);

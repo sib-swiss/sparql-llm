@@ -113,6 +113,8 @@ async def stream_response(inputs: dict[str, list], config: RunnableConfig):
                 "data": chunk,
             }
         )
+        # print(chunk_dict)
+        # TODO: log_msg(logs_folder + "/all.jsonl", full_messages) when complete
         yield f"data: {json.dumps(chunk_dict)}\n\n"
         await asyncio.sleep(0)
     yield "data: [DONE]"
@@ -164,23 +166,35 @@ async def chat(request: Request):
     return response
 
 
+class LogMessage(Message):
+    """Message model for logging purposes."""
+    steps: Optional[list[Any]] = None
+
+
 class FeedbackRequest(BaseModel):
     like: bool
-    messages: list[Message]
+    messages: list[LogMessage]
+
+logs_folder = "/logs"
 
 
-@app.post("/feedback", response_model=list[str])
-def post_like(request: FeedbackRequest):
-    """Save the user feedback in the logs files."""
+def log_msg(filename: str, messages: list[LogMessage]) -> None:
+    """Log a messages thread to a log file."""
     timestamp = datetime.now().isoformat()
-    file_name = "/logs/likes.jsonl" if request.like else "/logs/dislikes.jsonl"
     feedback_data = {
         "timestamp": timestamp,
-        "messages": [message.model_dump() for message in request.messages],
+        "messages": [message.model_dump() for message in messages],
     }
-    with open(file_name, "a") as f:
+    with open(filename, "a") as f:
         f.write(json.dumps(feedback_data) + "\n")
-    return request.messages
+
+
+@app.post("/feedback")
+def post_like(request: FeedbackRequest):
+    """Save the user feedback in the logs files."""
+    filename = f"{logs_folder}/likes.jsonl" if request.like else f"{logs_folder}/dislikes.jsonl"
+    log_msg(filename, request.messages)
+    return {"status": "success"}
 
 
 class LogsRequest(BaseModel):

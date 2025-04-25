@@ -18,9 +18,9 @@ EXTRACTION_PROMPT = (
 RESOLUTION_PROMPT = (
     INTRODUCTION_PROMPT
     + """Depending on the user request and provided context, you may provide general information about the resources available at the SIB, or help the user to formulate a query to run on a SPARQL endpoint.
+Always derive your answer from the context provided in the prompt, do not use informations that is not in the context.
 If answering with a query:
 Put the SPARQL query inside a markdown codeblock with the "sparql" language tag, and always add the URL of the endpoint on which the query should be executed in a comment at the start of the query inside the codeblocks starting with "#+ endpoint: " (always only 1 endpoint).
-Always derive your answer from the context provided in the prompt, don't try to create a query from nothing and do not provide a generic query.
 Try to always answer with one query, if the answer lies in different endpoints, provide a federated query. Do not add more codeblocks than necessary.
 
 Here is a list of documents (reference questions and query answers, classes schema or general endpoints information) relevant to the user question that will help you answer the user question accurately:

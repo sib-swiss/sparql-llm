@@ -37,19 +37,19 @@ async def access_sib_biodata_sparql(question: str) -> str:
     return prompt_tool_sparql + format_docs(all_docs)
 
 
-# @mcp.tool()
-# def execute_sparql_query(query: str, endpoint: str) -> str:
-#     """Execute a SPARQL query against a SPARQL endpoint.
+@mcp.tool()
+def execute_sparql_query(query: str, endpoint: str) -> str:
+    """Execute a SPARQL query against a SPARQL endpoint.
 
-#     Args:
-#         query: A valid SPARQL query string
-#         endpoint: The SPARQL endpoint URL to execute the query against
+    Args:
+        query: A valid SPARQL query string
+        endpoint: The SPARQL endpoint URL to execute the query against
 
-#     Returns:
-#         The query results in JSON format
-#     """
-#     res = query_sparql(query, endpoint)
-#     return json.dumps(res, indent=2)
+    Returns:
+        The query results in JSON format
+    """
+    res = query_sparql(query, endpoint)
+    return json.dumps(res, indent=2)
 
 
 # @mcp.tool()

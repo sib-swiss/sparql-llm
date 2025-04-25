@@ -16,10 +16,11 @@ data/
 notebooks/*.csv
 notebooks/*.txt
 nohup.out
+.DS_Store
 
 node_modules/
 
-# packages/expasy-agent/src/expasy_agent/webapp
+# src/expasy-agent/src/expasy_agent/webapp
 tutorial/public/logo_*.png
 tutorial/.chainlit/translations/*
 !tutorial/.chainlit/translations/en-US.json
