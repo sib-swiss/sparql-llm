@@ -279,14 +279,6 @@ def format_docs(docs: Optional[list[Document]]) -> str:
 
     Returns:
         str: A string containing the formatted documents in XML format.
-
-    Examples:
-        >>> docs = [Document(page_content="Hello"), Document(page_content="World")]
-        >>> print(format_docs(docs))
-        <documents>
-        <document>Hello</document>
-        <document>World</document>
-        </documents>
     """
     if not docs:
         return "<documents></documents>"

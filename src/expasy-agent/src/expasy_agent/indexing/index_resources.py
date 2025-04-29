@@ -100,7 +100,7 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
     docs: list[Document] = []
     for _, row in df.iterrows():
         doc = Document(
-            page_content=f"[{row['title']}]({row['url']}): {row['description']}",
+            page_content=f"[{row['title']}]({row['url']}) ({row['category']}): {row['description']}.\n\n{row['ontology_terms']}",
             metadata={
                 "iri": row["url"],
                 "doc_type": "General information",
@@ -111,13 +111,24 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
         # Info about the resource maintainers
         if row.get("group_info"):
             detail_doc = Document(
-                page_content=f"[{row['title']}]({row['url']}): {markdownify(row['group_info'])}",
+                page_content=f"[{row['title']}]({row['url']}): {markdownify(row['group_info'])}. License: {row.get('license', 'not specified')}",
                 metadata={
                     "iri": row["url"],
                     "doc_type": "General information",
                 }
             )
             docs.append(detail_doc)
+
+
+    docs.append(Document(
+        page_content="How many resources are there in the Expasy catalog?",
+        # page_content=f"There are {len(df)} resources in the Expasy catalog",
+        metadata={
+            # "iri": row["url"],
+            "answer": str(len(df)),
+            "doc_type": "General information",
+        }
+    ))
 
     print(f"Extracted {len(docs)} documents from {file}")
     return docs
