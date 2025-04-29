@@ -7,7 +7,7 @@ EXTRACTION_PROMPT = (
     INTRODUCTION_PROMPT
     + """Given a user question extracts the following:
 
-- The intent of the question: either "access_resources" (how to retrieve informations from the biomedical resources), or "general_informations" (about the resources, such as creator, general description)
+- The intent of the question: either "access_resources" (query available resources to answer biomedical questions), or "general_informations" (tools available, infos about the resources)
 - High level concepts and potential classes that could be found in the SPARQL endpoints and used to answer the question
 - Potential entities and instances of classes that could be found in the SPARQL endpoints and used to answer the question
 - Split the question in standalone smaller parts that could be used to build the final query (if the question is already simple enough, you can return just 1 step)

@@ -90,7 +90,7 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 5. When the stack is up you can run the script to **index** the SPARQL endpoints from within the container (need to do it once):
 
    ```sh
-   docker compose exec api uv run src/expasy_agent/indexing/index_endpoints.py
+   docker compose exec api uv run src/expasy_agent/indexing/index_resources.py
    ```
 
 > [!WARNING]

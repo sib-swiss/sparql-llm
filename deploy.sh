@@ -27,7 +27,7 @@ elif [ "$1" = "logs" ]; then
 
 elif [ "$1" = "index" ]; then
     echo "🔎 Indexing endpoints in the vector database"
-    ssh_cmd "podman-compose exec api uv run src/expasy_agent/indexing/index_endpoints.py"
+    ssh_cmd "podman-compose exec api uv run src/expasy_agent/indexing/index_resources.py"
 
 elif [ "$1" = "import-entities-index" ]; then
     echo "Import entities embeddings from adsicore which has GPU to generate them"
