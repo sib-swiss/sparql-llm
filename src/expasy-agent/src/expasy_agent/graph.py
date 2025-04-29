@@ -14,7 +14,6 @@ from expasy_agent.config import Configuration, settings
 from expasy_agent.nodes.llm_extraction import extract_user_question
 from expasy_agent.nodes.llm_resolution import call_model
 from expasy_agent.nodes.retrieval_docs import retrieve
-from expasy_agent.nodes.retrieval_entities import resolve_entities
 from expasy_agent.nodes.tools import TOOLS
 from expasy_agent.nodes.validation import validate_output
 from expasy_agent.state import InputState, State

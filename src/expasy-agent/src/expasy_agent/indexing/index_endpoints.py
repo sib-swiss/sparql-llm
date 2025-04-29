@@ -1,10 +1,12 @@
 import time
 
 import httpx
+import pandas as pd
 from bs4 import BeautifulSoup
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_qdrant import QdrantVectorStore
+from markdownify import markdownify
 from rdflib import RDF, Dataset, Namespace
 from sparql_llm import SparqlExamplesLoader, SparqlInfoLoader, SparqlVoidShapesLoader
 from sparql_llm.utils import get_prefixes_and_schema_for_endpoints
@@ -91,42 +93,35 @@ def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
     return docs
 
 
-def load_ontology(endpoint: dict[str, str]) -> list[Document]:
-    """Get documents from the OWL ontology URL given for each SPARQL endpoint."""
-    if "ontology" not in endpoint:
-        return []
-    # g = Dataset(store="Oxigraph")
-    g = Dataset()
-    try:
-        # Hackity hack to handle UniProt ontology in XML format but with .owl extension
-        g.parse(endpoint["ontology"], format="ttl")
-    except Exception:
-        g.parse(endpoint["ontology"], format="xml")
 
-    ontology_chunk_size = 3000
-    ontology_chunk_overlap = 200
-
-    # Chunking the ontology is done here
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=ontology_chunk_size, chunk_overlap=ontology_chunk_overlap
-    )
-    splits = text_splitter.create_documents([g.serialize(format="ttl")])
-
-    docs = [
-        Document(
-            page_content=split.page_content,
+def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document]:
+    """Get documents for all SIB expasy resources defined in expasy_resources_metadata.csv"""
+    df = pd.read_csv(file)
+    docs: list[Document] = []
+    for _, row in df.iterrows():
+        doc = Document(
+            page_content=f"[{row['title']}]({row['url']}): {row['description']}",
             metadata={
-                "question": split.page_content,
-                "answer": "",
-                "endpoint_url": endpoint["endpoint_url"],
-                "iri": endpoint["ontology"],
-                "doc_type": "ontology",
-            },
+                "iri": row["url"],
+                "doc_type": "General information",
+            }
         )
-        for split in splits
-    ]
-    print(f"Extracted {len(docs)} chunks for {endpoint['label']} ontology")
+        docs.append(doc)
+
+        # Info about the resource maintainers
+        if row.get("group_info"):
+            detail_doc = Document(
+                page_content=f"[{row['title']}]({row['url']}): {markdownify(row['group_info'])}",
+                metadata={
+                    "iri": row["url"],
+                    "doc_type": "General information",
+                }
+            )
+            docs.append(detail_doc)
+
+    print(f"Extracted {len(docs)} documents from {file}")
     return docs
+
 
 
 def init_vectordb() -> None:
@@ -164,6 +159,8 @@ def init_vectordb() -> None:
         service_label="ExpasyGPT",
         org_label="from the Swiss Institute of Bioinformatics (SIB)",
     ).load()
+
+    docs += load_resources()
 
     # NOTE: Manually add infos for UniProt since we cant retrieve it for now. Taken from https://www.uniprot.org/help/about
     uniprot_description_question = "What is the SIB resource UniProt about?"
@@ -210,3 +207,43 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
 
 if __name__ == "__main__":
     init_vectordb()
+
+
+
+# # Not used anymore
+# def load_ontology(endpoint: dict[str, str]) -> list[Document]:
+#     """Get documents from the OWL ontology URL given for each SPARQL endpoint."""
+#     if "ontology" not in endpoint:
+#         return []
+#     # g = Dataset(store="Oxigraph")
+#     g = Dataset()
+#     try:
+#         # Hackity hack to handle UniProt ontology in XML format but with .owl extension
+#         g.parse(endpoint["ontology"], format="ttl")
+#     except Exception:
+#         g.parse(endpoint["ontology"], format="xml")
+
+#     ontology_chunk_size = 3000
+#     ontology_chunk_overlap = 200
+
+#     # Chunking the ontology is done here
+#     text_splitter = RecursiveCharacterTextSplitter(
+#         chunk_size=ontology_chunk_size, chunk_overlap=ontology_chunk_overlap
+#     )
+#     splits = text_splitter.create_documents([g.serialize(format="ttl")])
+
+#     docs = [
+#         Document(
+#             page_content=split.page_content,
+#             metadata={
+#                 "question": split.page_content,
+#                 "answer": "",
+#                 "endpoint_url": endpoint["endpoint_url"],
+#                 "iri": endpoint["ontology"],
+#                 "doc_type": "ontology",
+#             },
+#         )
+#         for split in splits
+#     ]
+#     print(f"Extracted {len(docs)} chunks for {endpoint['label']} ontology")
+#     return docs

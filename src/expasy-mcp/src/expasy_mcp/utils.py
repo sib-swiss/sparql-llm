@@ -86,9 +86,9 @@ def _format_doc(doc: ScoredPoint) -> str:
             doc_lang = f"sparql\n#+ endpoint: {doc_meta.get('endpoint_url', 'undefined')}"
         elif "schema" in doc_type:
             doc_lang = "shex"
-        return f"<document>\n{doc_meta.get('question')}:\n\n```{doc_lang}\n{doc_meta.get('answer')}\n```\n</document>"
+        return f"<document>\n{doc.payload['page_content']}:\n\n```{doc_lang}\n{doc_meta.get('answer')}\n```\n</document>"
     # Generic formatting:
     meta = "".join(f" {k}={v!r}" for k, v in doc_meta.items())
     if meta:
         meta = f" {meta}"
-    return f"<document{meta}>\n{doc_meta.get('question')}\n</document>"
+    return f"<document{meta}>\n{doc.payload['page_content']}\n</document>"

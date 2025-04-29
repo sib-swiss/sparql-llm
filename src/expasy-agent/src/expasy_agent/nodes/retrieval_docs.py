@@ -63,6 +63,7 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
             ]
         )
         with make_qdrant_retriever(configuration) as retriever:
+            # We use the steps extracted instead of directly the user question
             for step in [user_question, *state.structured_question.question_steps]:
                 # Make sure we don't add duplicate docs
                 docs.extend(
@@ -257,13 +258,15 @@ def _format_doc(doc: Document) -> str:
             )
         elif "schema" in doc_type:
             doc_lang = "shex"
-            endpoint_url = f" ({doc.metadata.get('endpoint_url', 'undefined')})"
-        return f"<document>\n{doc.page_content}{endpoint_url}:\n\n```{doc_lang}\n{doc.metadata.get('answer')}\n```\n</document>"
+            # endpoint_url = f" ({doc.metadata.get('endpoint_url', 'undefined')})"
+            endpoint_url = f" ({doc.metadata.get('endpoint_url', 'undefined endpoint')})"
+        return f"<document>\n\n{doc.page_content}{endpoint_url}:\n\n```{doc_lang}\n{doc.metadata.get('answer')}\n```\n\n</document>"
 
-    meta = "".join(f" {k}={v!r}" for k, v in doc.metadata.items())
-    if meta:
-        meta = f" {meta}"
-    return f"<document{meta}>\n{doc.page_content}\n</document>"
+    # meta = "".join(f" {k}={v!r}" for k, v in doc.metadata.items())
+    # if meta:
+    #     meta = f" {meta}"
+    # return f"<document{meta}>\n\n{doc.page_content}\n\n</document>"
+    return f"<document>\n\n{doc.page_content}\n\n</document>"
 
 
 def format_docs(docs: Optional[list[Document]]) -> str:
@@ -281,20 +284,14 @@ def format_docs(docs: Optional[list[Document]]) -> str:
         >>> docs = [Document(page_content="Hello"), Document(page_content="World")]
         >>> print(format_docs(docs))
         <documents>
-        <document>
-        Hello
-        </document>
-        <document>
-        World
-        </document>
+        <document>Hello</document>
+        <document>World</document>
         </documents>
-
-        >>> print(format_docs(None))
-        <documents></documents>
     """
     if not docs:
         return "<documents></documents>"
-    formatted = "\n".join(_format_doc(doc) for doc in docs)
+    formatted = "\n\n---\n\n".join(_format_doc(doc) for doc in docs)
+    # print(formatted)
     return f"""<documents>
 {formatted}
 </documents>"""

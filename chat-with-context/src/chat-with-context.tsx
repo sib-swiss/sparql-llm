@@ -45,6 +45,10 @@ customElement(
     let chatContainerEl!: HTMLDivElement;
     let inputTextEl!: HTMLTextAreaElement;
 
+    marked.use({
+      gfm: true,  // Includes autolinker
+    });
+
     createEffect(() => {
       if (props.chatEndpoint === "") setWarningMsg("Please provide an API URL for the chat component to work.");
       state.apiUrl = props.chatEndpoint;
@@ -155,7 +159,7 @@ customElement(
                       {(step, iStep) =>
                         step.substeps && step.substeps.length > 0 ? (
                           <>
-                            {/* Dialog to show more details about retrieved documents */}
+                            {/* Dialog to show more details about a step with substeps (e.g. retrieved documents) */}
                             <button
                               class="text-gray-400 ml-8 mb-4"
                               title={`Click to see the documents used to generate the response\n\nNode: ${step.node_id}`}

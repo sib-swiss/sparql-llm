@@ -117,7 +117,7 @@ uv run --env-file .env src/expasy-agent/tests/benchmark.py
 
 If you reuse any part of this work, please cite [the arXiv paper](https://arxiv.org/abs/2410.06062):
 
-```
+```bibtex
 @misc{emonet2024llmbasedsparqlquerygeneration,
     title={LLM-based SPARQL Query Generation from Natural Language over Federated Knowledge Graphs},
     author={Vincent Emonet and Jerven Bolleman and Severine Duvaud and Tarcisio Mendes de Farias and Ana Claudia Sima},

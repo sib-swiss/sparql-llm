@@ -40,11 +40,13 @@ dependencies = [
     "pydantic >=2.10.0",
     "pydantic-settings >=2.7.0",
     "jinja2 >=3.1.5",
-    # Error reporting at the SIB
-    "sentry-sdk[fastapi]",
+    "sentry-sdk[fastapi] >=2.27.0", # Error reporting at the SIB
     # Extract potential entities from text without LLM
     # "scispacy >=0.5.5",
     # "en_core_sci_md @ https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_md-0.5.4.tar.gz",
+    "pandas >=2.2.3",
+    "beautifulsoup4 >=4.13.0",
+    "markdownify>=1.1.0",
 ]
 
 [project.optional-dependencies]
