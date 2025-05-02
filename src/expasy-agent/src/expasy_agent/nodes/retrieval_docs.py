@@ -50,6 +50,8 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
                 )
             ]
         )
+        # For general information, we can use a larger k to get more results
+        configuration.search_kwargs["k"] = configuration.search_kwargs["k"] * 2
         with make_qdrant_retriever(configuration) as retriever:
             docs += await retriever.ainvoke(user_question, config)
     else:

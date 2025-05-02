@@ -99,8 +99,19 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
     df = pd.read_csv(file)
     docs: list[Document] = []
     for _, row in df.iterrows():
+        # Long description of the resource
         doc = Document(
-            page_content=f"[{row['title']}]({row['url']}) ({row['category']}): {row['description']}.\n\n{row['ontology_terms']}",
+            page_content=f"[{row['title']}]({row['url']}) ({row['category']}): {row['description']}",
+            metadata={
+                "iri": row["url"],
+                "doc_type": "General information",
+            }
+        )
+        docs.append(doc)
+
+        # Short description and ontology terms
+        doc = Document(
+            page_content=f"[{row['title']}]({row['url']}) ({row['category']}): {row['short_description']}.\n\n{row['ontology_terms']}",
             metadata={
                 "iri": row["url"],
                 "doc_type": "General information",
@@ -111,7 +122,7 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
         # Info about the resource maintainers
         if row.get("group_info"):
             detail_doc = Document(
-                page_content=f"[{row['title']}]({row['url']}): {markdownify(row['group_info'])}. License: {row.get('license', 'not specified')}",
+                page_content=f"[{row['title']}]({row['url']}): {markdownify(row['group_info'])} License: {row.get('license', 'not specified')}",
                 metadata={
                     "iri": row["url"],
                     "doc_type": "General information",
