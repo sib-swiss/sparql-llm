@@ -1,5 +1,5 @@
 import {Accessor, createSignal, Setter} from "solid-js";
-import {Client} from "@langchain/langgraph-sdk";
+// import {Client} from "@langchain/langgraph-sdk";
 // import { RemoteGraph } from "@langchain/langgraph/remote";
 // import { isAIMessageChunk } from "@langchain/core/messages";
 
@@ -99,16 +99,18 @@ export class ChatState {
 // Stream a response from various LLM agent providers (OpenAI-like, LangGraph, LangServe)
 export async function streamResponse(state: ChatState, question: string) {
   state.appendMessage(question, "user");
-  if (state.apiUrl.endsWith(":2024/") || state.apiUrl.endsWith(":8123/")) {
-    // Query LangGraph API
-    await streamLangGraphApi(state);
-  } else if (state.apiUrl.endsWith("/completions/")) {
-    // Query the OpenAI-compatible chat API
-    await streamOpenAILikeApi(state);
-  } else {
-    // Query LangGraph through our custom API
-    await streamCustomLangGraph(state);
-  }
+  // Query LangGraph through our custom API
+  await streamCustomLangGraph(state);
+  // if (state.apiUrl.endsWith(":2024/") || state.apiUrl.endsWith(":8123/")) {
+  //   // Query LangGraph API
+  //   await streamLangGraphApi(state);
+  // } else if (state.apiUrl.endsWith("/completions/")) {
+  //   // Query the OpenAI-compatible chat API
+  //   await streamOpenAILikeApi(state);
+  // } else {
+  //   // Query LangGraph through our custom API
+  //   await streamCustomLangGraph(state);
+  // }
 }
 
 async function processLangGraphChunk(state: ChatState, chunk: any) {
@@ -125,16 +127,17 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
       if (nodeData.steps) {
         // Handle most generic steps output sent by the agent
         for (const step of nodeData.steps) {
-          state.appendStepToLastMsg(nodeId, step.label, step.details, step.substeps);
           // console.log("STEP", step);
           // Handle step specific to post-generation validation
           if (step.type === "recall") {
-            // When `recall` is called, the model will re-generate the response, so we need to update the message
-            state.lastMsg().setContent("");
+            // When `recall` is called, the model will re-generate the response, so we create a new message
+            // state.lastMsg().setContent("");
+            state.appendMessage("", "assistant");
           } else if (step.fixed_message) {
             // If the update contains a message with a fix
             state.lastMsg().setContent(step.fixed_message);
           }
+          state.appendStepToLastMsg(nodeId, step.label, step.details, step.substeps);
         }
       }
       if (nodeData.structured_output) {
@@ -225,90 +228,92 @@ async function streamCustomLangGraph(state: ChatState) {
   }
 }
 
-// NOTE: experimental, would need to be updated to properly uses steps output
-async function streamLangGraphApi(state: ChatState) {
-  const client = new Client({apiUrl: state.apiUrl});
-  const graphName = "agent";
 
-  // https://langchain-ai.github.io/langgraphjs/how-tos/stream-tokens
-  // https://langchain-ai.github.io/langgraph/cloud/how-tos/stream_messages
-  // https://langchain-ai.github.io/langgraph/concepts/streaming/
-  const thread = await client.threads.create();
-  const streamResponse = client.runs.stream(thread["thread_id"], graphName, {
-    // input: {messages: [{role: "human", content: "what is 3 times 6?"}]},
-    // input: {messages: [{role: "human", content: question}]},
-    input: {messages: state.messages().map(({content, role}) => ({content: content(), role}))},
-    config: {configurable: {}},
-    streamMode: ["messages-tuple", "updates"],
-    signal: state.abortController.signal,
-  });
-  state.appendMessage("", "assistant");
-  for await (const chunk of streamResponse) {
-    processLangGraphChunk(state, chunk);
-  }
-}
 
-async function streamOpenAILikeApi(state: ChatState) {
-  // Experimental, would need to be updated to properly uses steps output
-  const response = await fetch(`${state.apiUrl}chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${state.apiKey}`,
-    },
-    signal: state.abortController.signal,
-    body: JSON.stringify({
-      messages: state.messages().map(({content, role}) => ({content: content(), role})),
-      model: state.model,
-      // model: "azure_ai/mistral-large",
-      max_tokens: 500,
-      stream: true,
-      // api_key: state.apiKey,
-    }),
-  });
+// // NOTE: experimental, kept for reference, would need to be updated to properly uses steps output
+// async function streamLangGraphApi(state: ChatState) {
+//   const client = new Client({apiUrl: state.apiUrl});
+//   const graphName = "agent";
 
-  state.appendMessage("", "assistant");
-  const reader = response.body?.getReader()!;
-  const decoder = new TextDecoder("utf-8");
-  let partialLine = ""; // Buffer for incomplete lines
+//   // https://langchain-ai.github.io/langgraphjs/how-tos/stream-tokens
+//   // https://langchain-ai.github.io/langgraph/cloud/how-tos/stream_messages
+//   // https://langchain-ai.github.io/langgraph/concepts/streaming/
+//   const thread = await client.threads.create();
+//   const streamResponse = client.runs.stream(thread["thread_id"], graphName, {
+//     // input: {messages: [{role: "human", content: "what is 3 times 6?"}]},
+//     // input: {messages: [{role: "human", content: question}]},
+//     input: {messages: state.messages().map(({content, role}) => ({content: content(), role}))},
+//     config: {configurable: {}},
+//     streamMode: ["messages-tuple", "updates"],
+//     signal: state.abortController.signal,
+//   });
+//   state.appendMessage("", "assistant");
+//   for await (const chunk of streamResponse) {
+//     processLangGraphChunk(state, chunk);
+//   }
+// }
 
-  // Iterate stream response
-  while (true) {
-    if (reader) {
-      const {value, done} = await reader.read();
-      if (done) break;
-      const chunkStr = decoder.decode(value, {stream: true});
-      // Combine with any leftover data from the previous iteration
-      const combined = partialLine + chunkStr;
-      if (partialLine) partialLine = "";
-      for (const line of combined.split("\n").filter(line => line.trim() !== "")) {
-        if (line === "data: [DONE]") return;
-        if (line.startsWith("data: ")) {
-          // console.log(line)
-          try {
-            const json = JSON.parse(line.substring(6));
-            if (json.retrieved_docs) {
-              state.appendStepToLastMsg(
-                `📚️ Using ${json.retrieved_docs.length} documents`,
-                "retrieve",
-                json.retrieved_docs,
-              );
-            } else {
-              const newContent = json.choices[0].delta?.content;
-              if (newContent) {
-                // console.log(newContent);
-                state.appendContentToLastMsg(newContent);
-              }
-            }
-          } catch {
-            partialLine = line;
-          }
-        }
-      }
-    }
-  }
+// async function streamOpenAILikeApi(state: ChatState) {
+//   // Experimental, would need to be updated to properly uses steps output
+//   const response = await fetch(`${state.apiUrl}chat/completions`, {
+//     method: "POST",
+//     headers: {
+//       "Content-Type": "application/json",
+//       Authorization: `Bearer ${state.apiKey}`,
+//     },
+//     signal: state.abortController.signal,
+//     body: JSON.stringify({
+//       messages: state.messages().map(({content, role}) => ({content: content(), role})),
+//       model: state.model,
+//       // model: "azure_ai/mistral-large",
+//       max_tokens: 500,
+//       stream: true,
+//       // api_key: state.apiKey,
+//     }),
+//   });
 
-  // Extract query once message complete
-  // const query = extractSparqlQuery(state.lastMsg().content());
-  // if (query) state.lastMsg().setLinks([{url: query, ...queryLinkLabels}]);
-}
+//   state.appendMessage("", "assistant");
+//   const reader = response.body?.getReader()!;
+//   const decoder = new TextDecoder("utf-8");
+//   let partialLine = ""; // Buffer for incomplete lines
+
+//   // Iterate stream response
+//   while (true) {
+//     if (reader) {
+//       const {value, done} = await reader.read();
+//       if (done) break;
+//       const chunkStr = decoder.decode(value, {stream: true});
+//       // Combine with any leftover data from the previous iteration
+//       const combined = partialLine + chunkStr;
+//       if (partialLine) partialLine = "";
+//       for (const line of combined.split("\n").filter(line => line.trim() !== "")) {
+//         if (line === "data: [DONE]") return;
+//         if (line.startsWith("data: ")) {
+//           // console.log(line)
+//           try {
+//             const json = JSON.parse(line.substring(6));
+//             if (json.retrieved_docs) {
+//               state.appendStepToLastMsg(
+//                 `📚️ Using ${json.retrieved_docs.length} documents`,
+//                 "retrieve",
+//                 json.retrieved_docs,
+//               );
+//             } else {
+//               const newContent = json.choices[0].delta?.content;
+//               if (newContent) {
+//                 // console.log(newContent);
+//                 state.appendContentToLastMsg(newContent);
+//               }
+//             }
+//           } catch {
+//             partialLine = line;
+//           }
+//         }
+//       }
+//     }
+//   }
+
+//   // Extract query once message complete
+//   // const query = extractSparqlQuery(state.lastMsg().content());
+//   // if (query) state.lastMsg().setLinks([{url: query, ...queryLinkLabels}]);
+// }

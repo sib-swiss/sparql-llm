@@ -77,7 +77,7 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
     }
     extracted = {}
     # Add structured output if a valid query was generated
-    if validation_outputs:
+    if validation_outputs and not recall_messages:
         if validation_outputs[-1].get("fixed_query"):
             extracted["sparql_query"] = validation_outputs[-1]["fixed_query"]
         else:

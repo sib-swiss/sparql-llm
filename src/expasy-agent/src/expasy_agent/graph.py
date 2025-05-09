@@ -31,10 +31,10 @@ def route_model_output(
     This function checks if the model's last message contains tool calls or if a recall is requested by validation.
 
     Args:
-        state (State): The current state of the conversation.
+        state: The current state of the conversation.
 
     Returns:
-        str: The name of the next node to call ("__end__" or "tools").
+        The name of the next node to call ("__end__", "call_model" or "tools").
     """
     configuration = Configuration.from_runnable_config(config)
     last_msg = state.messages[-1]
