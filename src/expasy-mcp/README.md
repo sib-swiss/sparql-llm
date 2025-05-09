@@ -30,7 +30,7 @@ Follow the instructions of your client, and use the `/sse` URL of your deployed 
 
 Open side panel chat (cmd+shift+i) > bottom right set the mode to `Agent` > Click the wrench and screwdriver button ("Select Tools...") > `Add MCP server...` > provide the URL to the MCP server, by default http://0.0.0.0:8888/sse
 
-In VSCode you need to enable the following:
+In VSCode `settings.json` you need to enable the following:
 
 ```sh
 		"chat.agent.enabled": true,

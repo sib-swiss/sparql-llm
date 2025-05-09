@@ -3,9 +3,8 @@ import time
 import httpx
 import pandas as pd
 from bs4 import BeautifulSoup
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-from langchain_qdrant import QdrantVectorStore
+from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
 from markdownify import markdownify
 from rdflib import RDF, Dataset, Namespace
 from sparql_llm import SparqlExamplesLoader, SparqlInfoLoader, SparqlVoidShapesLoader
@@ -92,7 +91,7 @@ def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
         print(f"Error while fetching schema.org metadata from {endpoint['label']}: {e}")
     return docs
 
-
+# Which tools can I use for enrichment analysis?
 
 def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document]:
     """Get documents for all SIB expasy resources defined in expasy_resources_metadata.csv"""
@@ -110,14 +109,15 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
         docs.append(doc)
 
         # Short description and ontology terms
-        doc = Document(
-            page_content=f"[{row['title']}]({row['url']}) ({row['category']}): {row['short_description']}.\n\n{row['ontology_terms']}",
-            metadata={
-                "iri": row["url"],
-                "doc_type": "General information",
-            }
-        )
-        docs.append(doc)
+        if row.get("ontology_terms"):
+            doc = Document(
+                page_content=f"[{row['title']}]({row['url']}) ({row['category']}): {row['short_description']}.\n\n{row['ontology_terms']}",
+                metadata={
+                    "iri": row["url"],
+                    "doc_type": "General information",
+                }
+            )
+            docs.append(doc)
 
         # Info about the resource maintainers
         if row.get("group_info"):
@@ -233,6 +233,7 @@ if __name__ == "__main__":
 
 
 # # Not used anymore
+# from langchain.text_splitter import RecursiveCharacterTextSplitter
 # def load_ontology(endpoint: dict[str, str]) -> list[Document]:
 #     """Get documents from the OWL ontology URL given for each SPARQL endpoint."""
 #     if "ontology" not in endpoint:

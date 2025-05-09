@@ -11,6 +11,8 @@ from typing import Any, Callable, List
 from langchain_core.tools import tool
 
 
+# Not used, but kept for future reference
+
 @tool
 def multiply(a: int, b: int) -> int:
     """Multiply two numbers."""

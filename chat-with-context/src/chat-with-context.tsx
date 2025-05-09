@@ -46,7 +46,7 @@ customElement(
     let inputTextEl!: HTMLTextAreaElement;
 
     marked.use({
-      gfm: true,  // Includes autolinker
+      gfm: true, // Includes autolinker
     });
 
     createEffect(() => {
@@ -131,7 +131,7 @@ customElement(
               node_id: step.node_id,
               substeps: step.substeps,
             })),
-          }))
+          })),
         }),
       });
       setFeedbackSent(true);

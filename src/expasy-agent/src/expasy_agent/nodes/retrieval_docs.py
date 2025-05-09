@@ -13,13 +13,15 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.runnables import RunnableConfig
 from langchain_core.vectorstores import VectorStoreRetriever
-from langchain_qdrant import QdrantVectorStore
+from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from expasy_agent.config import Configuration, settings
 from expasy_agent.state import State, StepOutput
 from expasy_agent.utils import get_message_text
 
+# TODO: use grouping? https://qdrant.tech/documentation/concepts/search/#grouping-api
+# Which tools can I use for enrichment analysis?
 
 async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Document]]:
     """Retrieve documents based on the latest message in the state.

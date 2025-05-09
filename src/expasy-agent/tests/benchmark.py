@@ -823,21 +823,21 @@ logger.info(
 )
 
 # Output Latex table
-latex_str = ""
-prev_model = next(iter(models.keys()))
-for _index, row in df.iterrows():
-    row_str = " & ".join(
-        [str(item) for item in row]
-    )  # Join all values in the row with " & "
-    row_str += " \\\\"
-    if row["Model"] != prev_model:
-        latex_str += "\\midrule\n"
-        prev_model = row["Model"]
-    latex_str += row_str + "\n"
-with open(
-    os.path.join(bench_folder, f"{file_time_prefix}_tests_results_latex.txt"), "w"
-) as f:
-    f.write(latex_str)
+# latex_str = ""
+# prev_model = next(iter(models.keys()))
+# for _index, row in df.iterrows():
+#     row_str = " & ".join(
+#         [str(item) for item in row]
+#     )  # Join all values in the row with " & "
+#     row_str += " \\\\"
+#     if row["Model"] != prev_model:
+#         latex_str += "\\midrule\n"
+#         prev_model = row["Model"]
+#     latex_str += row_str + "\n"
+# with open(
+#     os.path.join(bench_folder, f"{file_time_prefix}_tests_results_latex.txt"), "w"
+# ) as f:
+#     f.write(latex_str)
 
 
 logger.info(f"⏱️ Total runtime: {(time.time() - start_time) / 60:.2f} minutes")

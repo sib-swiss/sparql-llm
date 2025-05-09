@@ -71,17 +71,18 @@ class Settings(BaseSettings):
             "description": "Cellosaurus is a knowledge resource on cell lines.",
         },
         {
+            "label": "OrthoDB",
+            "endpoint_url": "https://sparql.orthodb.org/sparql/",
+            "homepage_url": "https://www.orthodb.org/",
+            "description": "The hierarchical catalog of orthologs mapping genomics to functional data",
+        },
+        {
             "label": "dbgi",
             "endpoint_url": "https://biosoda.unil.ch/graphdb/repositories/emi-dbgi",
             "description": "The Digital Botanical Gardens Initiative (DBGI) is a project that aims to create a digital representation of chemo- and biodiversity, from botanical collections to the global scale in wild ecosystems.",
             # "homepage_url": "https://dbgi.eu/",
         },
         # No metadata in these endpoints
-        # {
-        #     "label": "OrthoDB",
-        #     "endpoint_url": "https://sparql.orthodb.org/sparql/",
-        #     "homepage_url": "https://www.orthodb.org/",
-        # },
         # {
         #     "label": "MetaNetx",
         #     "endpoint_url": "https://rdf.metanetx.org/sparql/",
@@ -175,6 +176,7 @@ qdrant_client = (
 )
 
 
+# Configuration defined at runtime
 @dataclass(kw_only=True)
 class Configuration:
     """The configuration for the agent that can be changed at runtime when calling the agent."""

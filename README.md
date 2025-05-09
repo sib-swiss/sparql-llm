@@ -32,6 +32,10 @@ The components are designed to work either independently or as part of a full ch
 
 Checkout the [`src/sparql-llm/README.md`](https://github.com/sib-swiss/sparql-llm/tree/main/src/sparql-llm) for more details on how to use the reusable components.
 
+## 🧑‍🏫 Tutorial
+
+There is a step by step tutorial to show how a LLM-based chat system for generating SPARQL queries can be easily built here: https://sib-swiss.github.io/sparql-llm
+
 ## 🚀 Complete chat system
 
 > [!WARNING]
