@@ -53,13 +53,17 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
    ```sh
    CHAT_API_KEY=NOT_SO_SECRET_API_KEY_USED_BY_FRONTEND_TO_AVOID_SPAM_FROM_CRAWLERS
    LOGS_API_KEY=SECRET_PASSWORD_TO_EASILY_ACCESS_LOGS_THROUGH_THE_API
-
+   
    OPENAI_API_KEY=sk-proj-YYY
    GROQ_API_KEY=gsk_YYY
    HUGGINGFACEHUB_API_TOKEN=
    TOGETHER_API_KEY=
    AZURE_INFERENCE_CREDENTIAL=
    AZURE_INFERENCE_ENDPOINT=https://project-id.services.ai.azure.com/models
+   
+   LANGFUSE_HOST=https://cloud.langfuse.com
+   LANGFUSE_PUBLIC_KEY=
+   LANGFUSE_SECRET_KEY=
    ```
 
 3. Build the chat UI webpage:

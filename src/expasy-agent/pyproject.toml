@@ -25,7 +25,7 @@ dependencies = [
     "langchain-together >=0.3.0",
     "langchain-qdrant @ git+https://github.com/langchain-ai/langchain.git#subdirectory=libs/partners/qdrant",
     "qdrant-client >=1.13.0",
-    # "langfuse >=2.60.2",
+    "langfuse >=2.60.4",
     # "langchain-qdrant >=0.2.1",
     # "langchain-huggingface", # This will install torch and many heavy nvidia dependencies
     # "langchain-deepseek >=0.1.1",

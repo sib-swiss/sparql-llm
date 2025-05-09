@@ -14,6 +14,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from langchain_core.runnables import RunnableConfig
+from langfuse.callback import CallbackHandler
 from pydantic import BaseModel
 from starlette.middleware.cors import CORSMiddleware
 
@@ -33,6 +34,9 @@ if settings.sentry_url:
         # Set traces_sample_rate to 1.0 to capture 100% of transactions for tracing.
         traces_sample_rate=0.0,
     )
+
+# Initialize Langfuse logs tracing CallbackHandler for Langchain https://langfuse.com/docs/integrations/langchain/example-python-langgraph
+langfuse_handler = [CallbackHandler()] if os.getenv("LANGFUSE_SECRET_KEY") else []
 
 app = FastAPI(
     title=settings.app_name,
@@ -148,6 +152,7 @@ async def chat(request: Request):
             "validate_output": request.validate_output,
         },
         recursion_limit=25,
+        callbacks=langfuse_handler,
     )
     inputs = {
         "messages": [(msg.role, msg.content) for msg in request.messages],
