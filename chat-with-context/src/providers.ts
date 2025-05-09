@@ -228,8 +228,6 @@ async function streamCustomLangGraph(state: ChatState) {
   }
 }
 
-
-
 // // NOTE: experimental, kept for reference, would need to be updated to properly uses steps output
 // async function streamLangGraphApi(state: ChatState) {
 //   const client = new Client({apiUrl: state.apiUrl});

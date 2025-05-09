@@ -25,7 +25,7 @@ class Settings(BaseSettings):
             "endpoint_url": "https://sparql.uniprot.org/sparql/",
             "description": "UniProt is a comprehensive resource for protein sequence and annotation data.",
             # If VoID description or SPARQL query examples are not available in the endpoint, you can provide a VoID file (local or remote)
-            # "void_file": "../sparql-llm/tests/void_uniprot.ttl",
+            "void_file": "../sparql-llm/tests/void_uniprot.ttl",
             # "void_file": "https://sparql.uniprot.org/.well-known/void/",
             # "examples_file": "../sparql-llm/tests/examples_uniprot.ttl",
             # Optional, a homepage from which we can extract more information using the JSON-LD context
