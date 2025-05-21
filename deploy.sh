@@ -6,7 +6,7 @@
 # expasychatpodman is connecting to the server with the podman user (used to run the containers)
 
 ssh_cmd() {
-    ssh expasychat "sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; $1'"
+    ssh expasychat "sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 $1'"
 }
 
 if [ "$1" = "build" ]; then
@@ -47,6 +47,9 @@ else
     ssh_cmd "git pull ; podman-compose up --force-recreate -d"
 fi
 
-# Fix connectivities issues between api and vectordb... (become podman compose is completly broken)
+# Fix connectivities issues between api and vectordb (which happens sometimes with podman compose)
 # podman exec -it api bash
 # podman inspect vectordb | grep IPAddress
+
+# See service that starts the podman-compose:
+# systemctl --user cat podman-compose@sparql-llm.service

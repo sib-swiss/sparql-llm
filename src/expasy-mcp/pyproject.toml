@@ -15,11 +15,11 @@ keywords = [
     "Expasy",
     "Chatbot",
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 dependencies = [
     "mcp[cli] >=1.6.0",
-    "qdrant-client >=1.13.0",
-    "fastembed >=0.5.1",
+    "qdrant-client >=1.14.2",
+    "fastembed >=0.7.0",
     "sparql-llm >=0.0.8",
     "sparqlwrapper >=2.0.0",
 ]

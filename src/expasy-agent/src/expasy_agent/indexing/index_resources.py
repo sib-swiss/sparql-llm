@@ -109,7 +109,7 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
         docs.append(doc)
 
         # Short description and ontology terms
-        if row.get("ontology_terms"):
+        if isinstance(row.get("ontology_terms"), str):
             doc = Document(
                 page_content=f"[{row['title']}]({row['url']}) ({row['category']}): {row['short_description']}.\n\n{row['ontology_terms']}",
                 metadata={
@@ -120,7 +120,7 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
             docs.append(doc)
 
         # Info about the resource maintainers
-        if row.get("group_info"):
+        if isinstance(row.get("group_info"), str):
             detail_doc = Document(
                 page_content=f"[{row['title']}]({row['url']}): {markdownify(row['group_info'])} License: {row.get('license', 'not specified')}",
                 metadata={
