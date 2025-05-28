@@ -3,6 +3,7 @@
 Works with a chat model with tool calling support.
 """
 
+import stat
 from typing import Literal
 
 from langchain_core.messages import AIMessage
@@ -11,8 +12,8 @@ from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 
 from expasy_agent.config import Configuration, settings
+from expasy_agent.nodes.call_model import call_model
 from expasy_agent.nodes.llm_extraction import extract_user_question
-from expasy_agent.nodes.llm_resolution import call_model
 from expasy_agent.nodes.retrieval_docs import retrieve
 from expasy_agent.nodes.tools import TOOLS
 from expasy_agent.nodes.validation import validate_output
@@ -38,8 +39,10 @@ def route_model_output(
     """
     configuration = Configuration.from_runnable_config(config)
     last_msg = state.messages[-1]
+    # print(state.messages)
 
     if state.try_count > configuration.max_try_fix_sparql:
+        print("TRY COUNT EXCEEDED", state.try_count)
         return "__end__"
 
     # Check for tool calls first
@@ -50,10 +53,10 @@ def route_model_output(
     if not state.passed_validation:
         return "call_model"
 
-    if not isinstance(last_msg, AIMessage):
-        raise ValueError(
-            f"Expected AIMessage in output edges, but got {type(last_msg).__name__}"
-        )
+    # if not isinstance(last_msg, AIMessage):
+    #     raise ValueError(
+    #         f"Expected AIMessage in output edges, but got {type(last_msg).__name__}"
+    #     )
     return "__end__"
 
 
@@ -61,6 +64,7 @@ def route_model_output(
 builder = StateGraph(State, input=InputState, config_schema=Configuration)
 
 # Define the nodes we will cycle between
+# https://github.com/langchain-ai/react-agent/blob/main/src/react_agent/graph.py
 
 builder.add_node(extract_user_question)
 builder.add_node(retrieve)
@@ -69,26 +73,34 @@ builder.add_node("tools", ToolNode(TOOLS))
 builder.add_node(validate_output)
 
 # Add edges
-builder.add_edge("__start__", "extract_user_question")
-builder.add_edge("extract_user_question", "retrieve")
-builder.add_edge("retrieve", "call_model")
-builder.add_edge("call_model", "validate_output")
+if settings.use_tools:
+    builder.add_edge("__start__", "call_model")
+    builder.add_conditional_edges(
+        "call_model",
+        # Next nodes are scheduled based on the output from route_model_output
+        route_model_output,
+    )
+    # This creates a cycle: after using tools, we always return to the model
+    builder.add_edge("tools", "call_model")
+
+else:
+    # When not using tools
+    builder.add_edge("__start__", "extract_user_question")
+    builder.add_edge("extract_user_question", "retrieve")
+    builder.add_edge("retrieve", "call_model")
+    builder.add_edge("call_model", "validate_output")
+    # Add a conditional edge to determine the next step after `validate_output`
+    builder.add_conditional_edges(
+        "validate_output",
+        # Next nodes are scheduled based on the output from route_model_output
+        route_model_output,
+    )
 
 # Entity extraction node
 # builder.add_node(resolve_entities)
 # builder.add_edge("extract_user_question", "resolve_entities")
 # builder.add_edge("resolve_entities", "call_model")
 
-# Add a conditional edge to determine the next step after `validate_output`
-builder.add_conditional_edges(
-    "validate_output",
-    # Next nodes are scheduled based on the output from route_model_output
-    route_model_output,
-)
-
-# This creates a cycle: after using tools, we always return to the model
-builder.add_edge("tools", "call_model")
-
 # Compile the builder into an executable graph
 graph = builder.compile()
-graph.name = settings.app_name  # This customizes the name in LangSmith
+graph.name = settings.app_name

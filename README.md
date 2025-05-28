@@ -12,6 +12,7 @@ This project provides tools to enhance the capabilities of Large Language Models
 
 - reusable components in `src/sparql-llm` and published as the [`sparql-llm`](https://pypi.org/project/sparql-llm/) pip package
 - a complete chat web service in `src/expasy-agent`
+- an experimental MCP server to generate and execute SPARQL queries on SIB resources in `src/expasy-mcp`
 
 The system integrates Retrieval-Augmented Generation (RAG) and SPARQL query validation through endpoint schemas, to ensure more accurate and relevant query generation on large scale knowledge graphs.
 

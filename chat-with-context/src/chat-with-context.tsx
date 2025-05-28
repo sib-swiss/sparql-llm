@@ -15,6 +15,7 @@ import thumbsDownLogo from "./assets/thumbs-down.svg";
 import thumbsUpLogo from "./assets/thumbs-up.svg";
 import "./style.css";
 import {streamResponse, ChatState} from "./providers";
+// import json from "highlight.js/lib/languages/json";
 
 // Get icons svg from https://feathericons.com/
 // SolidJS custom element: https://github.com/solidjs/solid/blob/main/src/solid-element/README.md
@@ -31,6 +32,7 @@ customElement(
     noShadowDOM();
     hljs.registerLanguage("ttl", hljsDefineTurtle);
     hljs.registerLanguage("sparql", hljsDefineSparql);
+    // hljs.registerLanguage("json", json);
 
     const [examples, setExamples] = createSignal<string[]>([]);
     const [warningMsg, setWarningMsg] = createSignal("");

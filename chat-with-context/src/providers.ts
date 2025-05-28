@@ -161,16 +161,20 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
   if (chunk.event === "messages") {
     const [msg, metadata] = chunk.data;
     if (metadata.structured_output_format) return;
-    // const {message, metadata} = chunk.data;
     // console.log("MESSAGES", msg, metadata);
-    if (msg.tool_calls?.length > 0) {
-      // Tools calls requested by the model
-      const toolNames = msg.tool_calls.map((tool_call: any) => tool_call.name).join(", ");
-      if (toolNames) state.appendStepToLastMsg(metadata.langgraph_node, `🔧 Calling tools: ${toolNames}`);
-    }
+    // if (msg.tool_calls?.length > 0) {
+    //   // Tools calls requested by the model
+    //   const toolNames = msg.tool_calls.map((tool_call: any) => tool_call.name).join(", ");
+    //   if (toolNames) state.appendStepToLastMsg(metadata.langgraph_node, `🔧 Calling tool ${toolNames}`);
+    //   console.log("TOOL call", msg, metadata);
+    // }
     if (msg.content && msg.type === "tool") {
       // If tool called by model
-      state.appendStepToLastMsg(metadata.langgraph_node, `⚗️ Tool ${msg.name} result: ${msg.content}`);
+      // console.log("TOOL res", msg, metadata);
+      const name = msg.name ? msg.name.replace(/_/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase()) : 'Tool';
+      const icon = msg.name.includes("resources") ? "📚" : msg.name.includes("execute") ? "📡" : "🔧"
+      state.appendMessage("", "assistant");
+      state.appendStepToLastMsg(metadata.langgraph_node, `${icon} ${name}`, msg.content);
     } else if (msg.content === "</think>" && msg.type === "AIMessageChunk") {
       // Putting thinking process in a separate step
       state.appendContentToLastMsg(msg.content);

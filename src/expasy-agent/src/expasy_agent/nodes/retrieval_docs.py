@@ -1,8 +1,4 @@
-"""Manage the configuration of various retrievers.
-
-This module provides functionality to create and manage retrievers for different
-vector store backends, specifically Qdrant.
-"""
+"""Document retrieval using semantic similarity search."""
 
 from contextlib import contextmanager
 from typing import Generator, Optional
@@ -11,6 +7,7 @@ from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
+from langchain_core.messages import FunctionMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.vectorstores import VectorStoreRetriever
 from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
@@ -116,7 +113,13 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
     ]
 
     return {
-        "retrieved_docs": docs,
+        # "retrieved_docs": docs,
+        "messages": [
+            FunctionMessage(
+                format_docs(docs),
+                name="retrieve_docs",
+            )
+        ],
         "steps": [
             StepOutput(
                 label=f"📚️ See the {len(docs)} documents used",
@@ -126,9 +129,6 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
     }
 
 
-## Encoder constructors
-
-
 def make_dense_encoder(embedding_model: str, gpu: bool = False) -> Embeddings:
     """Connect to the configured text encoder."""
     return FastEmbedEmbeddings(
@@ -136,19 +136,6 @@ def make_dense_encoder(embedding_model: str, gpu: bool = False) -> Embeddings:
         providers=["CUDAExecutionProvider"] if gpu else None,
         # batch_size=1024,
     )
-
-
-# def make_vectordb(collection_name: str, gpu: bool = False):
-#     """Connect to the configured vector database."""
-#     return QdrantVectorStore(
-#         client=qdrant_client,
-#         collection_name=collection_name,
-#         embedding=make_text_encoder(settings.embedding_model, gpu),
-#         sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model, batch_size=1024),
-#         retrieval_mode=RetrievalMode.HYBRID,
-#     )
-
-## Retriever constructors
 
 
 # https://python.langchain.com/docs/integrations/vectorstores/qdrant/
@@ -244,13 +231,13 @@ class ScoredRetriever(VectorStoreRetriever):
 
 
 def _format_doc(doc: Document) -> str:
-    """Format a single document as XML.
+    """Format a single document.
 
     Args:
         doc (Document): The document to format.
 
     Returns:
-        str: The formatted document as an XML string.
+        str: The formatted document.
     """
     if doc.metadata.get("answer"):
         doc_lang = ""
@@ -264,30 +251,26 @@ def _format_doc(doc: Document) -> str:
             doc_lang = "shex"
             # endpoint_url = f" ({doc.metadata.get('endpoint_url', 'undefined')})"
             endpoint_url = f" ({doc.metadata.get('endpoint_url', 'undefined endpoint')})"
-        return f"<document>\n\n{doc.page_content}{endpoint_url}:\n\n```{doc_lang}\n{doc.metadata.get('answer')}\n```\n\n</document>"
+        return f"\n{doc.page_content}{endpoint_url}:\n\n```{doc_lang}\n{doc.metadata.get('answer')}\n```\n"
 
     # meta = "".join(f" {k}={v!r}" for k, v in doc.metadata.items())
     # if meta:
     #     meta = f" {meta}"
     # return f"<document{meta}>\n\n{doc.page_content}\n\n</document>"
-    return f"<document>\n\n{doc.page_content}\n\n</document>"
+    return f"\n{doc.page_content}\n"
 
 
 def format_docs(docs: Optional[list[Document]]) -> str:
-    """Format a list of documents as XML.
+    """Format a list of documents.
 
-    This function takes a list of Document objects and formats them into a single XML string.
+    This function takes a list of Document objects and formats them into a string.
 
     Args:
         docs (Optional[list[Document]]): A list of Document objects to format, or None.
 
     Returns:
-        str: A string containing the formatted documents in XML format.
+        str: A string containing the formatted documents.
     """
     if not docs:
-        return "<documents></documents>"
-    formatted = "\n\n---\n\n".join(_format_doc(doc) for doc in docs)
-    # print(formatted)
-    return f"""<documents>
-{formatted}
-</documents>"""
+        return ""
+    return "\n\n---\n\n".join(_format_doc(doc) for doc in docs)

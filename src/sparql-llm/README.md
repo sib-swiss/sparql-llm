@@ -176,7 +176,7 @@ uv run pytest
 To display all logs when debugging:
 
 ```bash
-uv run test -s
+uv run pytest -s
 ```
 
 ### 🧹 Format code

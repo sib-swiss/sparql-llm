@@ -145,3 +145,5 @@ lint.ignore = [
 "tests/*" = ["D", "UP", "S101"]
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+[tool.ruff.lint.mccabe]
+max-complexity = 12

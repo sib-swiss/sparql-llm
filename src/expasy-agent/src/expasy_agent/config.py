@@ -15,6 +15,8 @@ from expasy_agent import prompts
 
 class Settings(BaseSettings):
     """Define the service settings for the agent that can be set using environment variables."""
+    use_tools: bool = False
+    """Whether to use tools or not. If set to False, the agent will use the functions sequentially to answer questions."""
 
     # The list of endpoints that will be indexed and supported by the service
     endpoints: list[SparqlEndpointLinks] = [
@@ -126,7 +128,7 @@ class Settings(BaseSettings):
     default_number_of_retrieved_docs: int = 10
     default_max_try_fix_sparql: int = 3
     default_temperature: float = 0.0
-    default_max_tokens: int = 120000
+    default_max_tokens: int = 16384
 
     # List of example questions to display in the chat UI
     example_questions: list[str] = [
@@ -192,6 +194,13 @@ class Configuration:
         default=True,
         metadata={
             "description": "Wherever to validate or not the output of the LLM (e.g. SPARQL queries generated)."
+        },
+    )
+
+    enable_sparql_execution: bool = field(
+        default=True,
+        metadata={
+            "description": "Wherever to enable automatically executing a SPARQL query against its endpoint after passing its validation step."
         },
     )
 

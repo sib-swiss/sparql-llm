@@ -6,8 +6,11 @@
 # expasychatpodman is connecting to the server with the podman user (used to run the containers)
 
 ssh_cmd() {
-    ssh expasychat "sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 $1'"
+    ssh -t expasychat "sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 $1'"
 }
+
+# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose up --force-recreate -d'
+# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose logs'
 
 if [ "$1" = "build" ]; then
     echo "📦️ Re-building"

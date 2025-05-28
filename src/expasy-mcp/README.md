@@ -1,36 +1,32 @@
-# 🧬 BioData MCP
+# 🧬 SIB SPARQL BioData MCP server
 
-A Model Context Protocol (MCP) server to access biodata resources at the SIB, such as SPARQL endpoints and APIs.
+A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server to access [biodata resources](https://www.expasy.org/) at the [SIB](https://www.sib.swiss/), through their [SPARQL](https://www.w3.org/TR/sparql12-query/) endpoints, such as UniProt, Bgee, OMA, SwissLipids, Cellosaurus.
 
 ## 🪄 Available tools
 
 - 📝 Help users to **write SPARQL queries** to access SIB biodata resources
-  - Required arguments:
+  - Arguments:
     - `question` (string): the user's question
-
+    - `potential_classes` (list[string]): high level concepts and potential classes that could be found in the SPARQL endpoints
+    - `steps` (list[string]): split the question in standalone smaller parts if relevant
 - 📡  **Execute a SPARQL query** against a SPARQL endpoint
-  - Required arguments:
+  - Arguments:
     - `query` (string): a valid SPARQL query string
     - `endpoint` (string): the SPARQL endpoint URL to execute the query against
 
-- ✅ **Validate a SPARQL query** destinated to a SPARQL endpoint using the VoID description of the endpoint when available
-  - Required arguments:
-    - `query` (string): a SPARQL query string
-    - `endpoint` (string): the SPARQL endpoint URL to which the query is designated
-
-> [!WARNING]
->
-> Experimental.
-
 ## 🔌 Connect client
 
-Follow the instructions of your client, and use the `/sse` URL of your deployed server (e.g. http://0.0.0.0:8888/sse)
+Follow the instructions of your client, and use the `/sse` URL of your deployed server (e.g. http://127.0.0.1:8888/sse)
 
-### 🐙 GitHub Copilot
+### 🐙 VSCode GitHub Copilot
 
-Open side panel chat (cmd+shift+i) > bottom right set the mode to `Agent` > Click the wrench and screwdriver button ("Select Tools...") > `Add MCP server...` > provide the URL to the MCP server, by default http://0.0.0.0:8888/sse
+Add a new MCP server through the VSCode UI:
 
-In VSCode `settings.json` you need to enable the following:
+- [x] Open side panel chat (`ctrl+shift+i` or `cmd+shift+i`), and make sure the mode is set to `Agent` in the bottom right
+- [x] Click the wrench and screwdriver button 🛠️ (`Select Tools...`)
+- [x] Click `Add MCP server...`: provide the URL to the MCP server, by default http://127.0.0.1:8888/sse
+
+In VSCode `settings.json` you should have the following:
 
 ```sh
 		"chat.agent.enabled": true,
@@ -39,11 +35,15 @@ In VSCode `settings.json` you need to enable the following:
         "servers": {
             "expasy-mcp": {
                 "type": "sse",
-                "url": "http://0.0.0.0:8888/sse"
+                "url": "http://127.0.0.1:8888/sse"
             }
         }
     }
 ```
+
+> [!NOTE]
+>
+> More details in [the official docs](https://code.visualstudio.com/docs/copilot/chat/mcp-servers).
 
 > [!WARNING]
 >
@@ -128,4 +128,3 @@ services:
     environment:
       - VECTORDB_HOST=vectordb
 ```
-

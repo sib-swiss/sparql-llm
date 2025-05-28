@@ -1,14 +1,16 @@
 """Validate output of a LLM, e.g. SPARQL queries generated."""
 
+import json
 import re
 from typing import Any
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import FunctionMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
-from sparql_llm.utils import get_prefixes_and_schema_for_endpoints
+from sparql_llm.utils import get_prefixes_and_schema_for_endpoints, query_sparql
 from sparql_llm.validate_sparql import validate_sparql_in_msg
 
 from expasy_agent.config import Configuration, settings
+from expasy_agent.prompts import FIX_QUERY_PROMPT
 from expasy_agent.state import State, StepOutput
 
 
@@ -69,10 +71,11 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
                 )
             )
 
+    print("Validation step try_count+1", state.try_count)
     response = {
         "steps": validation_steps,
         "messages": recall_messages,
-        "try_count": state.try_count + 1,
+        "try_count": state.try_count + 1 if recall_messages else state.try_count,
         "passed_validation": not recall_messages,
     }
     extracted = {}
@@ -85,6 +88,44 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
         if validation_outputs[-1]["endpoint_url"]:
             extracted["sparql_endpoint_url"] = validation_outputs[-1]["endpoint_url"]
         response["structured_output"] = extracted
+
+        # Automatically execute the SPARQL query
+        if configuration.enable_sparql_execution and not settings.use_tools:
+            sparql_query = extracted.get("sparql_query")
+            endpoint_url = extracted.get("sparql_endpoint_url")
+            if sparql_query and endpoint_url:
+                execute_resp = ""
+                print("Executing query on endpoint", endpoint_url)
+                try:
+                    res = query_sparql(sparql_query, endpoint_url, timeout=10, check_service_desc=False, post=False)
+                    res_bindings = res.get("results", {}).get("bindings", [])
+                    if len(res_bindings) == 0:
+                        # If no results, return a message to ask fix the query
+                        execute_resp = f"Query on {endpoint_url} returned no results. {FIX_QUERY_PROMPT}\n```sparql\n{sparql_query}\n```"
+                    elif res_bindings and len(res_bindings) > 50:
+                        # Truncate the results if too large
+                        execute_resp = f"Executed query on {endpoint_url}:\n```sparql\n{sparql_query}\n```\n\nResults (showing first 50 out of {len(res_bindings)} results):\n```\n{json.dumps(res_bindings[:200], indent=2)}\n```"
+                    else:
+                        execute_resp = f"Executed query on {endpoint_url}:\n```sparql\n{sparql_query}\n```\n\nResults:\n```\n{json.dumps(res, indent=2)}\n```"
+                except Exception as e:
+                    execute_resp = f"Query on {endpoint_url} returned error:\n\n{e}\n\n{FIX_QUERY_PROMPT}\n```sparql\n{sparql_query}\n```"
+                # print("EXECUTE RESP", execute_resp)
+                recall_messages.append(
+                    FunctionMessage(
+                        content=execute_resp,
+                        name="execute_sparql_query",
+                    )
+                )
+                response["messages"] = recall_messages
+                response["passed_validation"] = False
+                response["try_count"] = state.try_count + 1
+                response["steps"].append(
+                    StepOutput(
+                        type="recall",
+                        label="📡 See the SPARQL query results",
+                        details=execute_resp,
+                    )
+                )
     return response
 
 

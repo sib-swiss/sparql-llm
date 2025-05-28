@@ -20,7 +20,10 @@ def load_chat_model(configuration: Configuration) -> BaseChatModel:
 
         return ChatGroq(
             model_name=model_name,
+            max_tokens=configuration.max_tokens,
             temperature=configuration.temperature,
+            timeout=None,
+            max_retries=2,
         )
 
     if provider == "together":
@@ -29,8 +32,8 @@ def load_chat_model(configuration: Configuration) -> BaseChatModel:
 
         return ChatTogether(
             model=model_name,
-            temperature=configuration.temperature,
             max_tokens=configuration.max_tokens,
+            temperature=configuration.temperature,
             timeout=None,
             max_retries=2,
         )
@@ -68,7 +71,14 @@ def load_chat_model(configuration: Configuration) -> BaseChatModel:
             model=model_name,
             temperature=configuration.temperature,
         )
-    return init_chat_model(model_name, model_provider=provider)
+    return init_chat_model(
+        model_name,
+        model_provider=provider,
+        max_tokens=configuration.max_tokens,
+        temperature=configuration.temperature,
+        timeout=None,
+        max_retries=2,
+    )
 
 
 def get_message_text(msg: BaseMessage) -> str:

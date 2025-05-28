@@ -8,6 +8,7 @@ from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
 from markdownify import markdownify
 from rdflib import RDF, Dataset, Namespace
 from sparql_llm import SparqlExamplesLoader, SparqlInfoLoader, SparqlVoidShapesLoader
+from sparql_llm.sparql_info_loader import DOC_TYPE
 from sparql_llm.utils import get_prefixes_and_schema_for_endpoints
 
 from expasy_agent.config import settings
@@ -15,6 +16,7 @@ from expasy_agent.nodes.retrieval_docs import make_dense_encoder
 
 SCHEMA = Namespace("http://schema.org/")
 
+# DOC_TYPE = "General information"
 
 def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
     """Extract datasets descriptions from the schema.org metadata in homepage of the endpoint"""
@@ -58,7 +60,7 @@ def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
                             # "answer": f"```json\n{json_ld_content}\n```",
                             "iri": endpoint["homepage_url"],
                             "endpoint_url": endpoint["endpoint_url"],
-                            "doc_type": "General information",
+                            "doc_type": DOC_TYPE,
                         },
                     )
                 )
@@ -82,7 +84,7 @@ def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
                     "answer": "\n".join(descs),
                     "endpoint_url": endpoint["endpoint_url"],
                     "iri": endpoint["homepage_url"],
-                    "doc_type": "General information",
+                    "doc_type": DOC_TYPE,
                 },
             )
         )
@@ -103,7 +105,7 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
             page_content=f"[{row['title']}]({row['url']}) ({row['category']}): {row['description']}",
             metadata={
                 "iri": row["url"],
-                "doc_type": "General information",
+                "doc_type": DOC_TYPE,
             }
         )
         docs.append(doc)
@@ -114,7 +116,7 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
                 page_content=f"[{row['title']}]({row['url']}) ({row['category']}): {row['short_description']}.\n\n{row['ontology_terms']}",
                 metadata={
                     "iri": row["url"],
-                    "doc_type": "General information",
+                    "doc_type": DOC_TYPE,
                 }
             )
             docs.append(doc)
@@ -125,7 +127,7 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
                 page_content=f"[{row['title']}]({row['url']}): {markdownify(row['group_info'])} License: {row.get('license', 'not specified')}",
                 metadata={
                     "iri": row["url"],
-                    "doc_type": "General information",
+                    "doc_type": DOC_TYPE,
                 }
             )
             docs.append(detail_doc)
@@ -137,7 +139,7 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
         metadata={
             # "iri": row["url"],
             "answer": str(len(df)),
-            "doc_type": "General information",
+            "doc_type": DOC_TYPE,
         }
     ))
 
@@ -201,7 +203,7 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
 """,
                 "endpoint_url": "https://sparql.uniprot.org/sparql/",
                 "iri": "http://www.uniprot.org/help/about",
-                "doc_type": "General information",
+                "doc_type": DOC_TYPE,
             },
         )
     )

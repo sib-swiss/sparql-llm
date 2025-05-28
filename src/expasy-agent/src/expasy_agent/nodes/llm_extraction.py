@@ -15,6 +15,7 @@ from expasy_agent.prompts import EXTRACTION_PROMPT
 from expasy_agent.state import State, StepOutput
 from expasy_agent.utils import load_chat_model
 
+# TODO: remove, not used anymore, replaced by tools functions
 
 # https://python.langchain.com/docs/how_to/structured_output
 class StructuredQuestion(BaseModel):
@@ -71,14 +72,13 @@ async def extract_user_question(
     structured_question: StructuredQuestion = await model.ainvoke(
         message_value, {**config, "configurable": {"stream": False}}
     )
-
     # print(structured_question)
-
+    steps_str = f"{len(structured_question.question_steps)} steps and " if len(structured_question.extracted_classes) > 0 else ""
     return {
         "structured_question": structured_question,
         "steps": [
             StepOutput(
-                label=f"⚗️ See the {len(structured_question.question_steps)} steps and {len(structured_question.extracted_classes)} classes extracted",
+                label=f"⚗️ See the {steps_str}{len(structured_question.extracted_classes)} classes extracted",
                 details=f"""Intent: {structured_question.intent.replace("_", " ")}
 
 Steps to answer the user question:

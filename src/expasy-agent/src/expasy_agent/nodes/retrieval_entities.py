@@ -9,6 +9,7 @@ from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
 from expasy_agent.config import Configuration, settings
 from expasy_agent.state import State, StepOutput
 
+# NOTE: experimental, not used in production
 
 def format_extracted_entities(entities_list: list[Any]) -> str:
     if len(entities_list) == 0:
