@@ -33,7 +33,7 @@ def init_vectordb() -> None:
         # client=qdrant_client,
         url=settings.vectordb_url,
         prefer_grpc=True,
-        collection_name='text2sparql_benchmark',
+        collection_name=settings.docs_collection_name,
         force_recreate=True,
         embedding=make_dense_encoder(settings.embedding_model),
         # sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
