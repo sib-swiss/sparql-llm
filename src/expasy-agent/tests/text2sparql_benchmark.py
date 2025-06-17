@@ -1,12 +1,15 @@
+import json
 import logging
 import os
 import sys
 import time
 from collections import defaultdict
 
+from fastembed import TextEmbedding
 import httpx
 import pandas as pd
 from langchain_core.messages import HumanMessage, SystemMessage
+from qdrant_client import QdrantClient
 from sparql_llm.utils import query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries
 
@@ -35,26 +38,33 @@ logger.addHandler(console_handler)
 
 # Suppress overly verbose logs from httpx
 # logging.getLogger("httpx").setLevel(logging.WARNING)
+RAG_PROMPT = (
+"""
+
+Here is a list of documents (reference questions and query answers, classes schema or general endpoints information) relevant to the user question that will help you answer the user question accurately:
+
+{relevant_docs}
+
+"""
+)
 
 RESOLUTION_PROMPT = (
 """You are an assistant that helps users to formulate a query to run on a DBPedia SPARQL endpoint.
 Always derive your answer from the context provided in the prompt, do not use information that is not in the context.
 Put the SPARQL query inside a markdown codeblock with the "sparql" language tag, and always add the URL of the endpoint on which the query should be executed in a comment at the start of the query inside the codeblocks starting with "#+ endpoint: " (always only 1 endpoint).
 Try to always answer with one query, if the answer lies in different endpoints, provide a federated query. Do not add more codeblocks than necessary.
-
-Here is a list of documents (reference questions and query answers, classes schema or general endpoints information) relevant to the user question that will help you answer the user question accurately:
-
-{retrieved_docs}
-
+{rag_prompt}
 """
 )
+
+embedding_model = TextEmbedding(settings.embedding_model)
+vectordb = QdrantClient(url='http://localhost:6334', prefer_grpc=True)
 
 
 QUERIES_FILE = 'src/expasy-agent/tests/text2sparql_queries.csv'
 ENDPOINT_URL = 'http://localhost:8890/sparql/'
 example_queries = pd.read_csv(QUERIES_FILE)
 example_queries = example_queries[example_queries['dataset'] == 'Text2SPARQL'].reset_index(drop=True).to_dict(orient='records')
-example_queries = example_queries[:1]
 
 def result_sets_are_same(gen_set, ref_set) -> bool:
     """Check if all items from ref_set have equivalent items in gen_set, ignoring variable names"""
@@ -134,7 +144,7 @@ def answer_no_rag(question: str, model: str):
     client = load_chat_model(Configuration(model=model))
     response = client.invoke(
         [
-            SystemMessage(content=RESOLUTION_PROMPT),
+            SystemMessage(content=RESOLUTION_PROMPT.format(rag_prompt='')),
             HumanMessage(content=question),
         ]
     )
@@ -149,19 +159,29 @@ def answer_no_rag(question: str, model: str):
 
 
 def answer_rag_without_validation(question: str, model: str):
-    response = httpx.post(
-        "http://localhost:8000/chat",
-        headers={"Authorization": f"Bearer {settings.chat_api_key}"},
-        json={
-            "model": model,
-            "messages": [{"role": "user", "content": question}],
-            "stream": False,
-            "validate_output": False,
-        },
-        timeout=120,
-        follow_redirects=True,
+    question_embeddings = next(iter(embedding_model.embed([question])))
+    retrieved_docs = vectordb.query_points(
+        collection_name=settings.docs_collection_name,
+        query=question_embeddings,
+        limit=settings.default_number_of_retrieved_docs,
+        )
+    relevant_docs = '\n'.join(json.dumps(doc.payload['metadata'], indent=2) for doc in retrieved_docs.points)
+    logger.info(f"📚️ Retrieved {len(retrieved_docs.points)} documents")
+    client = load_chat_model(Configuration(model=model))
+    response = client.invoke(
+        [
+            SystemMessage(content=RESOLUTION_PROMPT.format(rag_prompt=RAG_PROMPT.format(relevant_docs=relevant_docs))),
+            HumanMessage(content=question),
+        ]
     )
-    return response.json()
+    response = response.model_dump()
+    response["messages"] = [
+        {
+            "content": response["content"],
+            "response_metadata": response["response_metadata"],
+        }
+    ]
+    return response
 
 def answer_rag_with_validation(question: str, model: str):
     response = httpx.post(
@@ -182,7 +202,7 @@ def answer_rag_with_validation(question: str, model: str):
 list_of_approaches = {
     "No RAG": answer_no_rag,
     "RAG without validation": answer_rag_without_validation,
-    "RAG with validation": answer_rag_with_validation,
+    # "RAG with validation": answer_rag_with_validation,
 }
 
 results_data = {
@@ -241,7 +261,7 @@ for model_label, model in models.items():
             logger.info(f"Approach {approach}")
             for t in range(number_of_tries):
                 response = approach_func(test_query["question"], model["id"])
-                logger.info(response)
+                # logger.info(response)
                 chat_resp_md = response["messages"][-1]["content"]
                 # chat_resp_md = response["choices"][0]["message"]["content"]
                 # TODO: loop over all messages to get the total token usage in case of multiple messages (fix by calling LLM)
