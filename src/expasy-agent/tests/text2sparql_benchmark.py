@@ -41,20 +41,39 @@ logger.addHandler(console_handler)
 RAG_PROMPT = (
 """
 
-Here is a list of documents (reference questions and query answers, classes schema or general endpoints information) relevant to the user question that will help you answer the user question accurately:
+Here is a list of reference user questions and corresponding SPARQL query answers that will help you answer accurately:
 
 {relevant_docs}
 
 """
+
+# """
+
+# Here is a list of documents (reference questions and query answers, classes schema or general endpoints information) relevant to the user question that will help you answer the user question accurately:
+
+# {relevant_docs}
+
+# """
 )
 
 RESOLUTION_PROMPT = (
-"""You are an assistant that helps users to formulate a query to run on a DBPedia SPARQL endpoint.
-Always derive your answer from the context provided in the prompt, do not use information that is not in the context.
-Put the SPARQL query inside a markdown codeblock with the "sparql" language tag, and always add the URL of the endpoint on which the query should be executed in a comment at the start of the query inside the codeblocks starting with "#+ endpoint: " (always only 1 endpoint).
-Try to always answer with one query, if the answer lies in different endpoints, provide a federated query. Do not add more codeblocks than necessary.
-{rag_prompt}
 """
+You are an assistant that helps users formulate SPARQL queries to be executed on a SPARQL endpoint.
+Your role is to transform the user question into a SPARQL query based on the context provided in the prompt.
+
+Your response must follow these rules:
+    - Always output one SPARQL query.
+    - Enclose the SPARQL query in a single markdown code block using the "sparql" language tag.
+    - Include a comment at the beginning of the query that specifies the target endpoint using the following format: "#+ endpoint: ".
+    - Prefer a single endpoint; use a federated SPARQL query only if access across multiple endpoints is required.
+    - Do not add more codeblocks than necessary.
+"""
+
+# """You are an assistant that helps users to formulate a query to run on a SPARQL endpoint.
+# Always derive your answer from the context provided in the prompt, do not use information that is not in the context.
+# Put the SPARQL query inside a markdown codeblock with the "sparql" language tag, and always add the URL of the endpoint on which the query should be executed in a comment at the start of the query inside the codeblocks starting with "#+ endpoint: " (always only 1 endpoint).
+# Try to always answer with one query, if the answer lies in different endpoints, provide a federated query. Do not add more codeblocks than necessary.
+# """
 )
 
 embedding_model = TextEmbedding(settings.embedding_model)
@@ -64,7 +83,7 @@ vectordb = QdrantClient(url='http://localhost:6334', prefer_grpc=True)
 QUERIES_FILE = 'src/expasy-agent/tests/text2sparql_queries.csv'
 ENDPOINT_URL = 'http://localhost:8890/sparql/'
 example_queries = pd.read_csv(QUERIES_FILE)
-example_queries = example_queries[example_queries['dataset'] == 'Text2SPARQL'].reset_index(drop=True).to_dict(orient='records')
+example_queries = example_queries[(example_queries['dataset'] == 'Text2SPARQL') & (example_queries['query type'] == 'SELECT')].reset_index(drop=True).to_dict(orient='records')
 
 def result_sets_are_same(gen_set, ref_set) -> bool:
     """Check if all items from ref_set have equivalent items in gen_set, ignoring variable names"""
@@ -144,7 +163,7 @@ def answer_no_rag(question: str, model: str):
     client = load_chat_model(Configuration(model=model))
     response = client.invoke(
         [
-            SystemMessage(content=RESOLUTION_PROMPT.format(rag_prompt='')),
+            SystemMessage(content=RESOLUTION_PROMPT),
             HumanMessage(content=question),
         ]
     )
@@ -166,11 +185,11 @@ def answer_rag_without_validation(question: str, model: str):
         limit=settings.default_number_of_retrieved_docs,
         )
     relevant_docs = '\n'.join(json.dumps(doc.payload['metadata'], indent=2) for doc in retrieved_docs.points)
-    logger.info(f"📚️ Retrieved {len(retrieved_docs.points)} documents")
+    # logger.info(f"📚️ Retrieved {len(retrieved_docs.points)} documents")
     client = load_chat_model(Configuration(model=model))
     response = client.invoke(
         [
-            SystemMessage(content=RESOLUTION_PROMPT.format(rag_prompt=RAG_PROMPT.format(relevant_docs=relevant_docs))),
+            SystemMessage(content=RESOLUTION_PROMPT + RAG_PROMPT.format(relevant_docs=relevant_docs)),
             HumanMessage(content=question),
         ]
     )
@@ -258,7 +277,7 @@ for model_label, model in models.items():
 
     for query_num, test_query in enumerate(example_queries):
         for approach, approach_func in list_of_approaches.items():
-            logger.info(f"Approach {approach}")
+            # logger.info(f"Approach {approach}")
             for t in range(number_of_tries):
                 response = approach_func(test_query["question"], model["id"])
                 # logger.info(response)
