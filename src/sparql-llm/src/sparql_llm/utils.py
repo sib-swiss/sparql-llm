@@ -213,6 +213,8 @@ def query_sparql(
                 for row in results:
                     if hasattr(row, "asdict"):
                         bindings.append({str(k): {"value": str(v)} for k, v in row.asdict().items()})
+                    elif isinstance(row, bool):
+                        bindings.append({"ask-variable": {"value": str(row).lower()}})
                     else:
                         # Handle tuple results
                         bindings.append({str(var): {"value": str(val)} for var, val in zip(results.vars, row)})
