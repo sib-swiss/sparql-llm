@@ -78,6 +78,7 @@ def load_chat_model(configuration: Configuration) -> BaseChatModel:
         temperature=configuration.temperature,
         timeout=None,
         max_retries=2,
+        seed=configuration.seed,
     )
 
 
