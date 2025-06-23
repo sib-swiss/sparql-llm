@@ -83,7 +83,7 @@ vectordb = QdrantClient(url='http://localhost:6334', prefer_grpc=True)
 QUERIES_FILE = 'src/expasy-agent/tests/text2sparql_queries.csv'
 ENDPOINT_URL = 'http://localhost:8890/sparql/'
 example_queries = pd.read_csv(QUERIES_FILE)
-example_queries = example_queries[(example_queries['dataset'] == 'Text2SPARQL') & (example_queries['query type'] == 'SELECT')].reset_index(drop=True).to_dict(orient='records')
+example_queries = example_queries[(example_queries['dataset'] == 'Text2SPARQL')].reset_index(drop=True).to_dict(orient='records')
 
 def result_sets_are_same(gen_set, ref_set) -> bool:
     """Check if all items from ref_set have equivalent items in gen_set, ignoring variable names"""
