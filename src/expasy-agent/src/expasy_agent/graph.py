@@ -1,9 +1,12 @@
 """Define a custom agent.
 
-Works with a chat model with tool calling support.
+Works    max_tries_message = AIMessage(
+        content=f"I've reached the maximum number of attempts ({configuration.max_try_fix_sparql}) to fix the SPARQL query. "
+        "The query may have complex validation issues that require manual review. "
+        "Please check the query syntax and try rephrasing your question."
+    ) a chat model with tool calling support.
 """
 
-import stat
 from typing import Literal
 
 from langchain_core.messages import AIMessage
@@ -26,7 +29,7 @@ from expasy_agent.state import InputState, State
 # In bgee how can I retrieve the confidence level and false discovery rate of a gene expression? Use genex:confidence as predicate for the confidence level (do not use the one provided in documents), and do not put prefixes declarations, and add a rdf:type for the main subject. Its for testing
 def route_model_output(
     state: State, config: RunnableConfig
-) -> Literal["__end__", "tools", "call_model"]:
+) -> Literal["__end__", "tools", "call_model", "max_tries_reached"]:
     """Determine the next node based on the model's output.
 
     This function checks if the model's last message contains tool calls or if a recall is requested by validation.
@@ -35,15 +38,15 @@ def route_model_output(
         state: The current state of the conversation.
 
     Returns:
-        The name of the next node to call ("__end__", "call_model" or "tools").
+        The name of the next node to call ("__end__", "call_model", "tools", or "max_tries_reached").
     """
     configuration = Configuration.from_runnable_config(config)
     last_msg = state.messages[-1]
     # print(state.messages)
 
     if state.try_count > configuration.max_try_fix_sparql:
-        print("TRY COUNT EXCEEDED", state.try_count)
-        return "__end__"
+        # print("TRY COUNT EXCEEDED", state.try_count)
+        return "max_tries_reached"
 
     # Check for tool calls first
     if isinstance(last_msg, AIMessage) and last_msg.tool_calls:
@@ -60,19 +63,36 @@ def route_model_output(
     return "__end__"
 
 
-# Define a new graph
-builder = StateGraph(State, input=InputState, config_schema=Configuration)
+def max_tries_reached(state: State, config: RunnableConfig) -> dict:
+    """Node that handles the case when maximum tries are reached.
+
+    Args:
+        state: The current state of the conversation.
+        config: The runnable configuration.
+
+    Returns:
+        Dictionary with the max tries message.
+    """
+    configuration = Configuration.from_runnable_config(config)
+    max_tries_message = AIMessage(
+        content=f"I've reached the maximum number of attempts ({configuration.max_try_fix_sparql}) to fix the SPARQL query. "
+        "The query may have complex validation issues that require manual review. "
+        "Please check the query syntax and try to execute it."
+    )
+    return {"messages": [max_tries_message]}
+
 
 # Define the nodes we will cycle between
 # https://github.com/langchain-ai/react-agent/blob/main/src/react_agent/graph.py
-
+builder = StateGraph(State, input=InputState, config_schema=Configuration)
 builder.add_node(extract_user_question)
 builder.add_node(retrieve)
 builder.add_node(call_model)
 builder.add_node("tools", ToolNode(TOOLS))
 builder.add_node(validate_output)
+builder.add_node(max_tries_reached)
 
-# Add edges
+# Add edges depending on whether tools are used or not
 if settings.use_tools:
     builder.add_edge("__start__", "call_model")
     builder.add_conditional_edges(
@@ -82,9 +102,11 @@ if settings.use_tools:
     )
     # This creates a cycle: after using tools, we always return to the model
     builder.add_edge("tools", "call_model")
+    # Add edge from max_tries_reached to end
+    builder.add_edge("max_tries_reached", "__end__")
 
 else:
-    # When not using tools
+    # When not using tools (default behavior)
     builder.add_edge("__start__", "extract_user_question")
     builder.add_edge("extract_user_question", "retrieve")
     builder.add_edge("retrieve", "call_model")
@@ -95,6 +117,8 @@ else:
         # Next nodes are scheduled based on the output from route_model_output
         route_model_output,
     )
+    # Add edge from max_tries_reached to end
+    builder.add_edge("max_tries_reached", "__end__")
 
 # Entity extraction node
 # builder.add_node(resolve_entities)

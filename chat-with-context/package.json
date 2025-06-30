@@ -25,7 +25,7 @@
     "test": "npm run lint && vitest run",
     "fmt": "prettier --write . && eslint \"**/*.{ts,tsx,html,json}\" --fix",
     "lint": "prettier --check . && eslint \"**/*.{ts,tsx,html,json}\"",
-    "upgrade": "npx npm-check-updates -u && npm i",
+    "upgrade": "npx npm-check-updates -u && npx update-browserslist-db@latest && npm i",
     "version": "npm run lint && npm run build && npm publish"
   },
   "dependencies": {

@@ -57,6 +57,7 @@ customElement(
       state.apiKey = props.apiKey;
       state.model = props.model;
       state.scrollToInput = () => inputTextEl.scrollIntoView({behavior: "smooth"});
+      state.onMessageUpdate = () => highlightAll();
       setExamples(props.examples.split(",").map(value => value.trim()));
       setFeedbackEndpoint(props.feedbackEndpoint);
       fixInputHeight();
@@ -163,7 +164,7 @@ customElement(
                           <>
                             {/* Dialog to show more details about a step with substeps (e.g. retrieved documents) */}
                             <button
-                              class="text-gray-400 ml-8 mb-4"
+                              class="text-gray-600 ml-8 mb-4 px-3 py-1 border border-gray-300 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
                               title={`Click to see the documents used to generate the response\n\nNode: ${step.node_id}`}
                               onClick={() => {
                                 setSelectedDocsTab(step.substeps?.[0]?.label || "");
@@ -224,7 +225,7 @@ customElement(
                           <>
                             {/* Dialog to show more details about a step in markdown */}
                             <button
-                              class="text-gray-400 ml-8 mb-4"
+                              class="text-gray-600 ml-8 mb-4 px-3 py-1 border border-gray-300 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
                               title={`Click to see the documents used to generate the response\n\nNode: ${step.node_id}`}
                               onClick={() => {
                                 openDialog(`step-dialog-${iMsg()}-${iStep()}`);

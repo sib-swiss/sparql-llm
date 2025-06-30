@@ -53,9 +53,9 @@ async def access_sib_biodata_sparql(question: str, potential_classes: list[str],
                 ),
             ).points
             # Make sure we don't add duplicate docs
-            if doc.payload.get("metadata", {}).get("answer")
+            if doc.payload and doc.payload.get("metadata", {}).get("answer")
             not in {
-                existing_doc.payload.get("metadata", {}).get("answer") for existing_doc in relevant_docs
+                existing_doc.payload.get("metadata", {}).get("answer") if existing_doc.payload else None for existing_doc in relevant_docs
             }
         )
         # Get other relevant documentation (classes schemas, general information)
@@ -74,9 +74,9 @@ async def access_sib_biodata_sparql(question: str, potential_classes: list[str],
                     ]
                 ),
             ).points
-            if doc.payload.get("metadata", {}).get("answer")
+            if doc.payload and doc.payload.get("metadata", {}).get("answer")
             not in {
-                existing_doc.payload.get("metadata", {}).get("answer") for existing_doc in relevant_docs
+                existing_doc.payload.get("metadata", {}).get("answer") if existing_doc.payload else None for existing_doc in relevant_docs
             }
         )
     # await ctx.info(f"Using {len(relevant_docs)} documents to answer the question")
@@ -100,7 +100,7 @@ relevant to the user question that will help you answer the user question accura
 
 ## TOOL: get resources infos
 
-@mcp.tool
+@mcp.tool()
 def get_resources_info(question: str) -> str:
     """Get information about the service and resources available at the SIB Swiss Institute of Bioinformatics.
 

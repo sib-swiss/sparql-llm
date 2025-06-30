@@ -48,6 +48,7 @@ export class ChatState {
   messages: Accessor<Message[]>;
   setMessages: Setter<Message[]>;
   abortController: AbortController;
+  onMessageUpdate: () => void;
 
   constructor({apiUrl = "", apiKey = "", model = ""}: {apiUrl?: string; apiKey?: string; model?: string}) {
     // this.apiUrl = apiUrl.endsWith("/") ? apiUrl : apiUrl + "/";
@@ -59,6 +60,7 @@ export class ChatState {
     this.messages = messages;
     this.setMessages = setMessages;
     this.abortController = new AbortController();
+    this.onMessageUpdate = () => {};
   }
 
   abortRequest = () => {
@@ -82,6 +84,7 @@ export class ChatState {
 
   appendContentToLastMsg = (newContent: string, newline: boolean = false) => {
     this.lastMsg().setContent(content => content + (newline ? "\n\n" : "") + newContent);
+    this.onMessageUpdate();
   };
 
   appendStepToLastMsg = (
@@ -92,6 +95,7 @@ export class ChatState {
   ) => {
     this.lastMsg().setSteps(steps => [...steps, {node_id, label, details, substeps}]);
     this.scrollToInput();
+    this.onMessageUpdate();
     // this.inputTextEl.scrollIntoView({behavior: "smooth"});
   };
 }

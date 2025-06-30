@@ -73,17 +73,19 @@ async def extract_user_question(
         message_value, {**config, "configurable": {"stream": False}}
     )
     # print(structured_question)
-    steps_str = f"{len(structured_question.question_steps)} steps and " if len(structured_question.extracted_classes) > 0 else ""
+    steps_label = f"{len(structured_question.question_steps)} steps and " if len(structured_question.question_steps) > 0 else ""
+    steps_details = f"""
+Steps to answer the user question:
+
+{chr(10).join(f"- {step}" for step in structured_question.question_steps)}""" if len(structured_question.question_steps) > 0 else ""
+
     return {
         "structured_question": structured_question,
         "steps": [
             StepOutput(
-                label=f"⚗️ See the {steps_str}{len(structured_question.extracted_classes)} classes extracted",
+                label=f"⚗️ {steps_label}{len(structured_question.extracted_classes)} classes extracted",
                 details=f"""Intent: {structured_question.intent.replace("_", " ")}
-
-Steps to answer the user question:
-
-{chr(10).join(f"- {step}" for step in structured_question.question_steps)}
+{steps_details}
 
 Potential classes:
 

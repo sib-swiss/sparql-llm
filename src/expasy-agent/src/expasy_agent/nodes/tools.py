@@ -161,7 +161,7 @@ Here is a list of **{len(relevant_docs)}** documents (reference questions and qu
     #     ],
     #     "steps": [
     #         StepOutput(
-    #             label=f"📚️ See the {len(relevant_docs)} documents used",
+    #             label=f"📚️ {len(relevant_docs)} documents used",
     #             substeps=substeps,
     #         ),
     #     ],

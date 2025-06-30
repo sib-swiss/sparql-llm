@@ -29,10 +29,10 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
         return {}
     # Remove the thought process <think> tags from the last message
     last_msg = re.sub(
-        r"<think>.*?</think>", "", state.messages[-1].content, flags=re.DOTALL
+        r"<think>.*?</think>", "", str(state.messages[-1].content), flags=re.DOTALL
     )
     validation_steps: list[StepOutput] = []
-    recall_messages = []
+    recall_messages: list[HumanMessage | FunctionMessage] = []
 
     validation_outputs = validate_sparql_in_msg(
         last_msg, prefixes_map, endpoints_void_dict
@@ -71,7 +71,6 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
                 )
             )
 
-    print("Validation step try_count+1", state.try_count)
     response = {
         "steps": validation_steps,
         "messages": recall_messages,
@@ -95,7 +94,6 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
             endpoint_url = extracted.get("sparql_endpoint_url")
             if sparql_query and endpoint_url:
                 execute_resp = ""
-                print("Executing query on endpoint", endpoint_url)
                 try:
                     res = query_sparql(sparql_query, endpoint_url, timeout=10, check_service_desc=False, post=False)
                     res_bindings = res.get("results", {}).get("bindings", [])
@@ -119,13 +117,14 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
                 response["messages"] = recall_messages
                 response["passed_validation"] = False
                 response["try_count"] = state.try_count + 1
-                response["steps"].append(
+                validation_steps.append(
                     StepOutput(
                         type="recall",
-                        label="📡 See the SPARQL query results",
+                        label="⚡️ SPARQL query executed, see raw results",
                         details=execute_resp,
                     )
                 )
+                response["steps"] = validation_steps
     return response
 
 
