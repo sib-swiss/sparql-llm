@@ -10,3 +10,4 @@ services:
       DBA_PASSWORD: dba
     volumes:
       - ../../../../data/benchmarks/Text2SPARQL/virtuosodb:/database
+      - ../../../../data/benchmarks/Text2SPARQL/dumps:/dumps

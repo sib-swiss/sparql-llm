@@ -19,7 +19,7 @@ for dataset in $(ls -1 "$DATA_DIR/"); do
 
     retries=0
     while [ $retries -lt $MAX_RETRIES ]; do
-      docker exec text2sparql-virtuoso isql $VIRTUOSO_PORT $DBA_USER $DBA_PASSWORD exec="DB.DBA.TTLP_MT(file_to_string_output('$file_path'), '', '$GRAPH_URI'); checkpoint;"
+      docker exec text2sparql-virtuoso isql $VIRTUOSO_PORT $DBA_USER $DBA_PASSWORD exec="DB.DBA.TTLP_MT(file_to_string_output('/dumps/$dataset/$file_name'), '', '$GRAPH_URI'); checkpoint;"
       if [ $? -eq 0 ]; then
         echo "✅ Successfully loaded $file_name into Virtuoso!"
         break
