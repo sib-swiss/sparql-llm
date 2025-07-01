@@ -25,7 +25,7 @@ Store the downloaded files in the following directory structure:
 data/benchmarks/Text2SPARQL/dumps/<dataset>/
 ```
 
-Replace `<dataset>` with either `dbpedia` or `corporate`, depending on the files you are storing.
+Replace `<dataset>` with either `dbpedia` or `corporate`.
 
 ## 2. Set Up Virtuoso Using Docker
 
@@ -79,6 +79,7 @@ Download the following files and store them in `data/benchmarks/Text2SPARQL/quer
 ```bash
 uv run --env-file .env src/expasy-agent/tests/text2sparql/query_transform.py
 ```
+> **Note:** This will create a `queries.csv` file.
 
 ## 7. Analyze Queries
 
