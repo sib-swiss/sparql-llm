@@ -2,7 +2,6 @@ import {Accessor, createSignal, Setter} from "solid-js";
 
 import {getEditorUrl, queryLinkLabels} from "./utils";
 
-
 type Links = {
   url: string;
   label: string;
@@ -159,8 +158,8 @@ async function processLangGraphChunk(state: ChatState, chunk: any) {
     if (msg.content && msg.type === "tool") {
       // If tool called by model
       // console.log("TOOL res", msg, metadata);
-      const name = msg.name ? msg.name.replace(/_/g, ' ').replace(/^\w/, (c: string) => c.toUpperCase()) : 'Tool';
-      const icon = msg.name.includes("resources") ? "📚" : msg.name.includes("execute") ? "📡" : "🔧"
+      const name = msg.name ? msg.name.replace(/_/g, " ").replace(/^\w/, (c: string) => c.toUpperCase()) : "Tool";
+      const icon = msg.name.includes("resources") ? "📚" : msg.name.includes("execute") ? "📡" : "🔧";
       state.appendMessage("", "assistant");
       state.appendStepToLastMsg(metadata.langgraph_node, `${icon} ${name}`, msg.content);
     } else if (msg.content === "</think>" && msg.type === "AIMessageChunk") {
