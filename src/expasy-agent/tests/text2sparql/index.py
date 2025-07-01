@@ -1,3 +1,4 @@
+import os
 import time
 
 from langchain_core.documents import Document
@@ -7,8 +8,10 @@ import pandas as pd
 from expasy_agent.config import settings
 from expasy_agent.nodes.retrieval_docs import make_dense_encoder
 
-QUERIES_FILE = 'tests/text2sparql_queries.csv'
+QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'queries.csv')
 ENDPOINT_URL = 'http://localhost:8890/sparql/'
+VECTORDB_URL = 'http://localhost:6334'
+VECTORDB_COLLECTION_NAME = 'text2sparql'
 
 def init_vectordb() -> None:
     """Initialize the vectordb with example queries from the SPARQL endpoints"""
@@ -31,9 +34,9 @@ def init_vectordb() -> None:
     QdrantVectorStore.from_documents(
         docs,
         # client=qdrant_client,
-        url=settings.vectordb_url,
+        url=VECTORDB_URL,
         prefer_grpc=True,
-        collection_name=settings.docs_collection_name,
+        collection_name=VECTORDB_COLLECTION_NAME,
         force_recreate=True,
         embedding=make_dense_encoder(settings.embedding_model),
         # sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),

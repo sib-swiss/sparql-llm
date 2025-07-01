@@ -76,12 +76,14 @@ Your response must follow these rules:
 # """
 )
 
-embedding_model = TextEmbedding(settings.embedding_model)
-vectordb = QdrantClient(url='http://localhost:6334', prefer_grpc=True)
-
-
 QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'queries.csv')
 ENDPOINT_URL = 'http://localhost:8890/sparql/'
+VECTORDB_URL = 'http://localhost:6334'
+VECTORDB_COLLECTION_NAME = 'text2sparql'
+
+embedding_model = TextEmbedding(settings.embedding_model)
+vectordb = QdrantClient(url=VECTORDB_URL, prefer_grpc=True)
+
 example_queries = pd.read_csv(QUERIES_FILE)
 example_queries = example_queries[(example_queries['dataset'] == 'Text2SPARQL')].reset_index(drop=True).to_dict(orient='records')
 
@@ -180,7 +182,7 @@ def answer_no_rag(question: str, model: str):
 def answer_rag_without_validation(question: str, model: str):
     question_embeddings = next(iter(embedding_model.embed([question])))
     retrieved_docs = vectordb.query_points(
-        collection_name=settings.docs_collection_name,
+        collection_name=VECTORDB_COLLECTION_NAME,
         query=question_embeddings,
         limit=settings.default_number_of_retrieved_docs,
         )
