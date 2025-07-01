@@ -1,21 +1,7 @@
 import {Accessor, createSignal, Setter} from "solid-js";
-// import {Client} from "@langchain/langgraph-sdk";
-// import { RemoteGraph } from "@langchain/langgraph/remote";
-// import { isAIMessageChunk } from "@langchain/core/messages";
 
 import {getEditorUrl, queryLinkLabels} from "./utils";
 
-// // Types of objects used when interacting with LLM agents
-// type RefenceDocument = {
-//   page_content: string;
-//   metadata: {
-//     doc_type: string;
-//     endpoint_url: string;
-//     question: string;
-//     answer: string;
-//     score: number;
-//   };
-// };
 
 type Links = {
   url: string;
@@ -28,7 +14,6 @@ type Step = {
   label: string;
   details: string; // Details about the step as markdown string
   substeps?: {label: string; details: string}[];
-  // retrieved_docs?: RefenceDocument[];
 };
 
 export type Message = {
@@ -51,7 +36,6 @@ export class ChatState {
   onMessageUpdate: () => void;
 
   constructor({apiUrl = "", apiKey = "", model = ""}: {apiUrl?: string; apiKey?: string; model?: string}) {
-    // this.apiUrl = apiUrl.endsWith("/") ? apiUrl : apiUrl + "/";
     this.apiUrl = apiUrl;
     this.apiKey = apiKey;
     this.model = model;
@@ -236,7 +220,22 @@ async function streamCustomLangGraph(state: ChatState) {
   }
 }
 
+// // Types of objects used when interacting with LLM agents
+// type RefenceDocument = {
+//   page_content: string;
+//   metadata: {
+//     doc_type: string;
+//     endpoint_url: string;
+//     question: string;
+//     answer: string;
+//     score: number;
+//   };
+// };
+
 // // NOTE: experimental, kept for reference, would need to be updated to properly uses steps output
+// import {Client} from "@langchain/langgraph-sdk";
+// import { RemoteGraph } from "@langchain/langgraph/remote";
+// import { isAIMessageChunk } from "@langchain/core/messages";
 // async function streamLangGraphApi(state: ChatState) {
 //   const client = new Client({apiUrl: state.apiUrl});
 //   const graphName = "agent";

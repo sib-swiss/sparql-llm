@@ -14,7 +14,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from langchain_core.runnables import RunnableConfig
-from langfuse.callback import CallbackHandler
+from langfuse.langchain import CallbackHandler
 from pydantic import BaseModel
 from starlette.middleware.cors import CORSMiddleware
 
@@ -36,6 +36,7 @@ if settings.sentry_url:
     )
 
 # Initialize Langfuse logs tracing CallbackHandler for Langchain https://langfuse.com/docs/integrations/langchain/example-python-langgraph
+# langfuse = get_client()
 langfuse_handler = [CallbackHandler()] if os.getenv("LANGFUSE_SECRET_KEY") else []
 
 app = FastAPI(
