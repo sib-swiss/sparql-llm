@@ -80,7 +80,7 @@ embedding_model = TextEmbedding(settings.embedding_model)
 vectordb = QdrantClient(url='http://localhost:6334', prefer_grpc=True)
 
 
-QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'text2sparql_queries.csv')
+QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'queries.csv')
 ENDPOINT_URL = 'http://localhost:8890/sparql/'
 example_queries = pd.read_csv(QUERIES_FILE)
 example_queries = example_queries[(example_queries['dataset'] == 'Text2SPARQL')].reset_index(drop=True).to_dict(orient='records')
