@@ -1,0 +1,12 @@
+services:
+  virtuoso:
+    image: openlink/virtuoso-opensource-7:latest
+    container_name: text2sparql-virtuoso
+    restart: unless-stopped
+    ports:
+      - "8890:8890"   # HTTP SPARQL endpoint
+      - "1111:1111"   # ISQL interface
+    environment:
+      DBA_PASSWORD: dba
+    volumes:
+      - ../../../../data/benchmarks/Text2SPARQL/virtuosodb:/database
