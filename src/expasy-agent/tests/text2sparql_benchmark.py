@@ -80,7 +80,7 @@ embedding_model = TextEmbedding(settings.embedding_model)
 vectordb = QdrantClient(url='http://localhost:6334', prefer_grpc=True)
 
 
-QUERIES_FILE = 'src/expasy-agent/tests/text2sparql_queries.csv'
+QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'text2sparql_queries.csv')
 ENDPOINT_URL = 'http://localhost:8890/sparql/'
 example_queries = pd.read_csv(QUERIES_FILE)
 example_queries = example_queries[(example_queries['dataset'] == 'Text2SPARQL')].reset_index(drop=True).to_dict(orient='records')
@@ -219,7 +219,7 @@ def answer_rag_with_validation(question: str, model: str):
 
 
 list_of_approaches = {
-    "No RAG": answer_no_rag,
+    # "No RAG": answer_no_rag,
     "RAG without validation": answer_rag_without_validation,
     # "RAG with validation": answer_rag_with_validation,
 }
@@ -276,6 +276,8 @@ for model_label, model in models.items():
         res[approach] = defaultdict(int)
 
     for query_num, test_query in enumerate(example_queries):
+        for key in ['success', 'different_results', 'no_results', 'fail']:
+            example_queries[query_num][key] = 0
         for approach, approach_func in list_of_approaches.items():
             # logger.info(f"Approach {approach}")
             for t in range(number_of_tries):
@@ -306,11 +308,13 @@ for model_label, model in models.items():
                             f"No SPARQL query could be extracted from {chat_resp_md}"
                         )
                     generated_sparql = generated_sparqls[-1]
+                    example_queries[query_num]['generated_sparql_' + str(t)] = generated_sparql["query"].strip()
                     if generated_sparql["query"].strip() == test_query["query"].strip():
                         logger.info(
                             f"✅ {t + 1}/{number_of_tries} {test_query['question']}. EXACT MATCH\n"
                         )
                         res[approach]["success"] += 1
+                        example_queries[query_num]['success'] += 1
                         continue
 
                     # Execute the generated query
@@ -326,8 +330,10 @@ for model_label, model in models.items():
                     ):
                         if len(res_from_generated) == 0:
                             res[approach]["no_results"] += 1
+                            example_queries[query_num]['no_results'] += 1
                         else:
                             res[approach]["different_results"] += 1
+                            example_queries[query_num]['different_results'] += 1
                         raise Exception(
                             f"\nResults mismatch. Ref: {len(ref_results[query_num])} != gen: {len(res_from_generated)}\n"
                         )
@@ -336,9 +342,11 @@ for model_label, model in models.items():
                             f"✅ {t + 1}/{number_of_tries} {test_query['question']} = {len(res_from_generated)}\n"
                         )
                         res[approach]["success"] += 1
+                        example_queries[query_num]['success'] += 1
 
                 except Exception as e:
                     res[approach]["fail"] += 1
+                    example_queries[query_num]['fail'] += 1
                     if approach == "RAG with validation":
                         logger.info(
                             f"❌ {t + 1}/{number_of_tries} {test_query['question']}\n{e}\n"
@@ -391,6 +399,13 @@ logger.info(
         os.path.join(bench_folder, f"{file_time_prefix}_tests_results.csv"), index=False
     )
 )
+
+#Error analysis
+logger.info("## Error Analysis\n")
+error_analysis_df = pd.DataFrame.from_records(example_queries)
+logger.info(f"Correlation between 'fails' and 'triple patterns': {error_analysis_df['fail'].corr(error_analysis_df['triple patterns'])}")
+logger.info(f"Correlation between 'fails' and 'result length': {error_analysis_df['fail'].corr(error_analysis_df['result length'])}")
+error_analysis_df.to_csv(os.path.join(bench_folder, f"{file_time_prefix}_Text2SPARQL_Error_Analysis.csv"), index=False)
 
 # Output Latex table
 # latex_str = ""
