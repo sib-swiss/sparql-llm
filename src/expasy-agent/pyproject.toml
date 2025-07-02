@@ -47,6 +47,8 @@ dependencies = [
     "pandas >=2.2.3",
     "beautifulsoup4 >=4.13.0",
     "markdownify>=1.1.0",
+    "matplotlib>=3.10.3",
+    "seaborn>=0.13.2",
 ]
 
 [project.optional-dependencies]

@@ -129,6 +129,7 @@ class Settings(BaseSettings):
     default_max_try_fix_sparql: int = 3
     default_temperature: float = 0.0
     default_max_tokens: int = 16384
+    default_seed: int = 42
 
     # List of example questions to display in the chat UI
     example_questions: list[str] = [
@@ -234,7 +235,12 @@ class Configuration:
             "Should be between 4000 and 120000 (depends on the model context window)."
         },
     )
-
+    seed: Annotated[int, {"__template_metadata__": {"kind": "llm"}}] = field(
+        default=settings.default_seed,
+        metadata={
+            "description": "The random seed used for reproducibility."
+        },
+    )
     # Number of retrieved docs
     search_kwargs: dict[str, Any] = field(
         default_factory=lambda: {"k": settings.default_number_of_retrieved_docs},

@@ -1,0 +1,144 @@
+import json
+import re
+
+import pandas as pd
+import yaml
+from rdflib.plugins.sparql.algebra import translateQuery
+from rdflib.plugins.sparql.parser import parseQuery
+
+from sparql_llm.utils import query_sparql
+import os
+
+RAW_QUERIES_FOLDER = os.path.join('data', 'benchmarks', 'Text2SPARQL', 'queries')
+TEXT2SPARQL_QUERIES_FILE = os.path.join(RAW_QUERIES_FOLDER, 'questions_db25.yaml')
+TEXT2SPARQL_ENDPOINT = 'http://localhost:8890/sparql/'
+QUALD_9_PLUS_QUERIES_FILE = os.path.join(RAW_QUERIES_FOLDER, 'qald_9_plus_dbpedia.json')
+QUALD_9_PLUS_ENDPOINT = 'https://dbpedia.org/sparql'
+LC_QuAD_QUERIES_FILE = os.path.join(RAW_QUERIES_FOLDER, 'LC-QuAD_v1.json')
+LC_QuAD_ENDPOINT = 'https://dbpedia.org/sparql'
+OUTPUT_QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'queries.csv')
+
+def count_triple_patterns(query: str) -> int:
+    """
+    Count the number of triple patterns recursively in a SPARQL query.
+    Args:
+        query (str): The SPARQL query string.
+    Returns:
+        int: The number of triple patterns in the query.
+    """
+    def _count_triples(expr):
+        if hasattr(expr, 'name') and expr.name == 'BGP':
+            return len(expr.triples)
+        elif hasattr(expr, 'name') and expr.name in ('Join', 'Union', 'LeftJoin'):
+            return _count_triples(expr.p1) + _count_triples(expr.p2)
+        elif hasattr(expr, 'name') and expr.name == 'Filter':
+            return _count_triples(expr.p)
+        elif hasattr(expr, 'p'):
+            return _count_triples(expr.p)
+        else:
+            return 0
+    # Remove aggregate expressions from the query (not parsed by rdflib)
+    query = re.sub(r'(COUNT|SUM)\s*\(\s*(?:DISTINCT\s*)?([^\(\)]*|\([^\)]*\))\s*\)', '?x', query, flags=re.IGNORECASE)
+    try:
+        expr = translateQuery(parseQuery(query)).algebra
+        count = _count_triples(expr)
+    except Exception as e:
+        print(f'Error parsing query: {query}, Error: {e}')
+        count = None
+    return count
+
+def transform_text2sparql_queries(input_file: str, endpoint_url: str) -> pd.DataFrame:
+    """
+    Transforms text2sparql queries from a YAML file into a DataFrame.
+    
+    Args:
+        input_file (str): Path to the YAML file containing text2sparql queries.
+        
+    Returns:
+        pd.DataFrame: DataFrame containing the transformed queries.
+    """
+
+    # Load the YAML file
+    with open(input_file, 'r', encoding='utf-8') as yaml_file:
+        data = yaml.safe_load(yaml_file)
+
+    #Parse the YAML data and extract queries
+    queries = []
+    for item in data.get('questions', []):
+        query = {
+            'question': item.get('question', {}).get('en', ''),
+            'endpoint': endpoint_url,
+            'query': item.get('query', {}).get('sparql', '')
+        }
+        queries.append(query)
+    queries = pd.DataFrame(queries)
+
+    queries['triple patterns'] = queries['query'].apply(count_triple_patterns)
+    queries['result'] = queries.apply(lambda q: query_sparql(q['query'], q['endpoint']), axis=1)
+    queries['result length'] = queries['result'].apply(lambda r: len(r['results']['bindings']) if 'results' in r else 1)
+    queries['query type'] = queries['query'].apply(lambda q: 'ASK' if 'ASK WHERE' in q.upper() else 'SELECT')
+    queries['dataset'] = 'Text2SPARQL'
+    return queries
+
+def transform_qald_9_plus_queries(input_file: str, endpoint_url: str) -> pd.DataFrame:
+    """Transforms QALD-9+ queries from a JSON file into a DataFrame.
+    Args:
+        input_file (str): Path to the JSON file containing QALD-9+ queries.
+        endpoint_url (str): SPARQL endpoint URL.
+    Returns:
+        pd.DataFrame: DataFrame containing the transformed queries.
+    """
+
+    queries = []
+    with open(input_file, 'r', encoding='utf-8') as file:
+        data = json.load(file)
+        for q in data['questions']:
+            queries.append({
+                'question': next((item['string'] for item in q['question'] if item['language'] == 'en'), None),
+                'endpoint': endpoint_url,
+                'query': q['query']['sparql'],
+            })
+    queries = pd.DataFrame(queries)
+    queries['triple patterns'] = queries['query'].apply(count_triple_patterns)
+    queries['result'] = queries.apply(lambda q: query_sparql(q['query'], q['endpoint']), axis=1)
+    queries['result length'] = queries['result'].apply(lambda r: len(r['results']['bindings']) if 'results' in r else 1)
+    queries['query type'] = queries['query'].apply(lambda q: 'ASK' if 'ASK WHERE' in q.upper() else 'SELECT')
+    queries['dataset'] = 'QALD-9+'
+    return queries
+
+def transform_LC_QuAD_queries(input_file: str, endpoint_url: str) -> pd.DataFrame:
+    """Transforms LC-QuAD queries from a JSON file into a DataFrame.
+    Args:
+        input_file (str): Path to the JSON file containing QALD-9+ queries.
+        endpoint_url (str): SPARQL endpoint URL.
+    Returns:
+        pd.DataFrame: DataFrame containing the transformed queries.
+    """
+
+    queries = []
+    with open(input_file, 'r', encoding='utf-8') as file:
+        data = json.load(file)
+        for q in data:
+            queries.append({
+                'question': q['corrected_question'],
+                'endpoint': endpoint_url,
+                'query': q['sparql_query'],
+            })
+    queries = pd.DataFrame(queries)
+    queries['triple patterns'] = queries['query'].apply(count_triple_patterns)
+    queries['result'] = queries.apply(lambda q: query_sparql(q['query'], q['endpoint']), axis=1)
+    queries['result length'] = queries['result'].apply(lambda r: len(r['results']['bindings']) if 'results' in r else 1)
+    queries['query type'] = queries['query'].apply(lambda q: 'ASK' if 'ASK WHERE' in q.upper() else 'SELECT')
+    queries['dataset'] = 'LC-QuAD'
+    return queries
+
+if __name__ == "__main__":
+    queries = []    
+    if os.path.exists(OUTPUT_QUERIES_FILE):
+        queries.append(pd.read_csv(OUTPUT_QUERIES_FILE))
+    else:
+        queries.append(transform_text2sparql_queries(TEXT2SPARQL_QUERIES_FILE, TEXT2SPARQL_ENDPOINT))
+        queries.append(transform_qald_9_plus_queries(QUALD_9_PLUS_QUERIES_FILE, QUALD_9_PLUS_ENDPOINT))
+        queries.append(transform_LC_QuAD_queries(LC_QuAD_QUERIES_FILE, LC_QuAD_ENDPOINT))
+    queries = pd.concat(queries, ignore_index=True)
+    queries.to_csv(OUTPUT_QUERIES_FILE, index=False)

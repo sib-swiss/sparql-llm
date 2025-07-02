@@ -122,6 +122,8 @@ uv run --env-file .env src/expasy-agent/tests/benchmark.py
 
 > It takes time to run and will log the output and results in `data/benchmarks`
 
+Follow [these instructions](src/expasy-agent/tests/text2sparql/README.md) to run the `Text2SPARQL Benchmark`.
+
 ## 🪶 How to cite this work
 
 If you reuse any part of this work, please cite [the arXiv paper](https://arxiv.org/abs/2410.06062):
