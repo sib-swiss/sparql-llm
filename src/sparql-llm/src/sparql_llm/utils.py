@@ -199,6 +199,13 @@ def query_sparql(
                 )
             resp.raise_for_status()
             resp_json = resp.json()
+            # Handle ASK queries
+            if resp_json.get("boolean") is not None:
+                return {
+                    "results": {
+                        "bindings": [{"ask-variable": {"value": str(resp_json["boolean"]).lower()}}]
+                    }
+                }
             if check_service_desc and not resp_json.get("results", {}).get("bindings", []):
                 # If no results found directly in the endpoint we check in its service description
                 resp = client.get(
@@ -213,8 +220,6 @@ def query_sparql(
                 for row in results:
                     if hasattr(row, "asdict"):
                         bindings.append({str(k): {"value": str(v)} for k, v in row.asdict().items()})
-                    elif isinstance(row, bool):
-                        bindings.append({"ask-variable": {"value": str(row).lower()}})
                     else:
                         # Handle tuple results
                         bindings.append({str(var): {"value": str(val)} for var, val in zip(results.vars, row)})
