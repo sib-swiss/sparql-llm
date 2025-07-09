@@ -1,4 +1,5 @@
 import logging
+import re
 import pandas as pd
 from sparql_llm.utils import query_sparql
 from tqdm import tqdm
@@ -41,6 +42,7 @@ def get_class_info(endpoint_url: str, probability_threshold: float = 0) -> pd.Da
     classes = query_sparql(CLASS_QUERY, endpoint_url=endpoint_url)['results']['bindings']
     classes = pd.DataFrame(classes).map(lambda x: x['value']).assign(count=lambda df: df['count'].astype(int))
     classes = classes[~classes['class'].isin(EXCLUDED_CLASSES)]
+    classes['name'] = classes['class'].apply(lambda c: re.sub(r'(?<!^)(?=[A-Z])', ' ', c.split('/')[-1].split('#')[-1]))
     classes['probability'] = round(classes['count'] / classes['count'].sum(), 3)
     classes = classes[classes['probability'] > probability_threshold].sort_values(by='probability', ascending=False).reset_index(drop=True)
     logger.info(f'Fetching predicate information from {endpoint_url}...')
