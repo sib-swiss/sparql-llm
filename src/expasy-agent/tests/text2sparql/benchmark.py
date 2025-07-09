@@ -10,6 +10,7 @@ import httpx
 import pandas as pd
 from langchain_core.messages import HumanMessage, SystemMessage
 from qdrant_client import QdrantClient
+from qdrant_client.models import FieldCondition, Filter, MatchValue
 from sparql_llm.utils import query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries
 
@@ -43,7 +44,12 @@ RAG_PROMPT = (
 
 Here is a list of reference user questions and corresponding SPARQL query answers that will help you answer accurately:
 
-{relevant_docs}
+{relevant_queries}
+
+
+Here is a list of reference classes URIs, their probabilities, their predicates and their predicates' probabilities that will help you answer accurately:
+
+{relevant_classes}
 
 """
 
@@ -181,17 +187,41 @@ def answer_no_rag(question: str, model: str):
 
 def answer_rag_without_validation(question: str, model: str):
     question_embeddings = next(iter(embedding_model.embed([question])))
-    retrieved_docs = vectordb.query_points(
+    retrieved_queries = vectordb.query_points(
         collection_name=VECTORDB_COLLECTION_NAME,
         query=question_embeddings,
         limit=settings.default_number_of_retrieved_docs,
-        )
-    relevant_docs = '\n'.join(json.dumps(doc.payload['metadata'], indent=2) for doc in retrieved_docs.points)
+        query_filter=Filter(
+            must=[
+                FieldCondition(
+                    key="metadata.doc_type",
+                    match=MatchValue(value="SPARQL endpoints query examples"),
+                )
+            ]
+        ),
+    )
+
+    retrieved_classes = vectordb.query_points(
+        collection_name=VECTORDB_COLLECTION_NAME,
+        query=question_embeddings,
+        limit=50,
+        query_filter=Filter(
+            must=[
+                FieldCondition(
+                    key="metadata.doc_type",
+                    match=MatchValue(value="predicates"),
+                )
+            ]
+        ),
+    )
+
+    relevant_queries = '\n'.join(json.dumps(doc.payload['metadata'], indent=2) for doc in retrieved_queries.points)
+    relevant_classes = '\n'.join(json.dumps(doc.payload['metadata'], indent=2) for doc in retrieved_classes.points)
     # logger.info(f"📚️ Retrieved {len(retrieved_docs.points)} documents")
     client = load_chat_model(Configuration(model=model))
     response = client.invoke(
         [
-            SystemMessage(content=RESOLUTION_PROMPT + RAG_PROMPT.format(relevant_docs=relevant_docs)),
+            SystemMessage(content=RESOLUTION_PROMPT + RAG_PROMPT.format(relevant_queries=relevant_queries, relevant_classes=relevant_classes)),
             HumanMessage(content=question),
         ]
     )

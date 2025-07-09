@@ -4,6 +4,7 @@ import time
 from langchain_core.documents import Document
 from langchain_qdrant import QdrantVectorStore
 import pandas as pd
+from endpoint_schema import get_class_info
 
 from expasy_agent.config import settings
 from expasy_agent.nodes.retrieval_docs import make_dense_encoder
@@ -26,6 +27,13 @@ def init_vectordb() -> None:
                                                         'query_type': 'SelectQuery' if q['query type'] == 'SELECT' else 'AskQuery' if q['query type'] == 'ASK' else '',
                                                         'doc_type': 'SPARQL endpoints query examples'}), axis=1).tolist()
 
+
+    classes = get_class_info(endpoint_url=ENDPOINT_URL)
+    docs += classes.apply(lambda c: Document(page_content=c['name'], 
+                                            metadata = {'uri': c['class'],
+                                                        'class probability': c['probability'],
+                                                        'predicate uris with probabilities': c['predicates'],
+                                                        'doc_type': 'classes'}), axis=1).tolist()
 
     print(f"Generating embeddings for {len(docs)} documents")
     start_time = time.time()
