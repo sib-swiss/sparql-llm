@@ -1,0 +1,13 @@
+services:
+
+  text2sparql-api:
+    build: .
+    # container_name: api
+    restart: unless-stopped
+    ports:
+      - 8765:8765
+    volumes:
+      - ./src:/app/src
+    env_file:
+      - .env
+    entrypoint: ["uv", "run", "uvicorn", "tests.text2sparql.api:app", "--host", "0.0.0.0", "--port", "8765", "--reload"]
