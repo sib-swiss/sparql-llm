@@ -47,7 +47,7 @@ Here is a list of reference user questions and corresponding SPARQL query answer
 {relevant_queries}
 
 
-Here is a list of reference classes URIs, their probabilities, their predicates and their predicates' probabilities that will help you answer accurately:
+Here is a list of reference classes URIs and predicates URIs ordered by frequency that will help you answer accurately:
 
 {relevant_classes}
 

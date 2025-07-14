@@ -59,7 +59,7 @@ def get_class_predicates(endpoint_url: str, class_name: str, probability_thresho
     predicates['probability'] = round(predicates['count'] / predicates['count'].sum(), 3)
     predicates = predicates[predicates['probability'] > probability_threshold].sort_values(by='probability', ascending=False).reset_index(drop=True)
 
-    return dict(zip(predicates['predicate'], predicates['probability']))
+    return predicates['predicate'].tolist()
 
 
 if __name__ == "__main__":

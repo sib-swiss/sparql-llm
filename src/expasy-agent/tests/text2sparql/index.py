@@ -30,9 +30,8 @@ def init_vectordb() -> None:
 
     classes = get_class_info(endpoint_url=ENDPOINT_URL)
     docs += classes.apply(lambda c: Document(page_content=c['name'], 
-                                            metadata = {'uri': c['class'],
-                                                        'class probability': c['probability'],
-                                                        'predicate uris with probabilities': c['predicates'],
+                                            metadata = {'Class URI': c['class'],
+                                                        'Predicate URIs': c['predicates'],
                                                         'doc_type': 'classes'}), axis=1).tolist()
 
     print(f"Generating embeddings for {len(docs)} documents")
