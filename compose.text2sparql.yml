@@ -1,8 +1,21 @@
 services:
-
+  text2sparql-virtuoso:
+    image: openlink/virtuoso-opensource-7:latest
+    restart: unless-stopped
+    ports:
+      - "8890:8890"   # HTTP SPARQL endpoint
+      - "1111:1111"   # ISQL interface
+    environment:
+      DBA_PASSWORD: dba
+      #8 GB memory
+      VIRT_Parameters_NumberOfBuffers: 680000
+      VIRT_Parameters_MaxDirtyBuffers: 500000
+      VIRT_Parameters_DirsAllowed: "., /dumps"
+    volumes:
+      - ./data/benchmarks/Text2SPARQL/virtuosodb:/database
+      - ./data/benchmarks/Text2SPARQL/dumps:/dumps
   text2sparql-api:
     build: .
-    # container_name: api
     restart: unless-stopped
     ports:
       - 8765:8765
