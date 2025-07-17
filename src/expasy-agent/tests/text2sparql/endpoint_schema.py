@@ -28,6 +28,18 @@ GROUP BY ?predicate
 ORDER BY DESC(?count)
 """
 
+DATATYPE_QUERY = """
+SELECT ?range
+WHERE {{
+    [] a <{class_name}> ;
+         <{predicate_name}> ?o .
+         BIND(datatype(?o) AS ?range)
+}}
+GROUP BY ?range
+ORDER BY DESC(COUNT(?range))
+LIMIT 1
+"""
+
 EXCLUDED_CLASSES = [
     'http://www.w3.org/2002/07/owl#Thing',
     ]
@@ -46,7 +58,7 @@ def get_class_info(endpoint_url: str, probability_threshold: float = 0) -> pd.Da
     classes['probability'] = round(classes['count'] / classes['count'].sum(), 3)
     classes = classes[classes['probability'] > probability_threshold].sort_values(by='probability', ascending=False).reset_index(drop=True)
     logger.info(f'Fetching predicate information from {endpoint_url}...')
-    classes['predicates'] = classes['class'].progress_apply(lambda c: get_class_predicates(endpoint_url= endpoint_url, class_name=c, probability_threshold=probability_threshold))
+    classes['predicates'] = classes['class'].progress_apply(lambda c: get_class_predicates(endpoint_url=endpoint_url, class_name=c, probability_threshold=probability_threshold))
     return classes
 
 
@@ -59,12 +71,16 @@ def get_class_predicates(endpoint_url: str, class_name: str, probability_thresho
     predicates['probability'] = round(predicates['count'] / predicates['count'].sum(), 3)
     predicates = predicates[predicates['probability'] > probability_threshold].sort_values(by='probability', ascending=False).reset_index(drop=True)
 
-    return predicates['predicate'].tolist()
+    predicates['range'] = predicates['predicate'].apply(lambda p: query_sparql(DATATYPE_QUERY.format(class_name=class_name, predicate_name=p), endpoint_url=endpoint_url)['results']['bindings'][0])
+    predicates['range'] = predicates['range'].apply(lambda r: r['range']['value'] if 'range' in r.keys() else None)
+
+    return predicates.set_index('predicate')['range'].to_dict()
 
 
 if __name__ == "__main__":
     endpoint_url = 'http://localhost:8890/sparql/'
     start_time = time.time()
-    class_info = get_class_info(endpoint_url=endpoint_url)
+    # class_info = get_class_info(endpoint_url=endpoint_url)
+    l = get_class_predicates(endpoint_url=endpoint_url, class_name='http://xmlns.com/foaf/0.1/Person', probability_threshold=0.01)
     elapsed_time = time.time() - start_time
     logger.info(f"Total execution time: {elapsed_time / 60:.2f} minutes")
