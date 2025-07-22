@@ -199,6 +199,13 @@ def query_sparql(
                 )
             resp.raise_for_status()
             resp_json = resp.json()
+            # Handle ASK queries
+            if resp_json.get("boolean") is not None:
+                return {
+                    "results": {
+                        "bindings": [{"ask-variable": {"value": str(resp_json["boolean"]).lower()}}]
+                    }
+                }
             if check_service_desc and not resp_json.get("results", {}).get("bindings", []):
                 # If no results found directly in the endpoint we check in its service description
                 resp = client.get(
