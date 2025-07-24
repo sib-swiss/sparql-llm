@@ -47,7 +47,7 @@ Here is a list of reference user questions and corresponding SPARQL query answer
 {relevant_queries}
 
 
-Here is a list of reference classes URIs and predicates URIs ordered by frequency that will help you answer accurately:
+Here is a list of reference classes URIs accompanied by 1) the 20 most frequent predicates URIs, and 2) the data type of their predicates' objects, that will help you answer accurately:
 
 {relevant_classes}
 
