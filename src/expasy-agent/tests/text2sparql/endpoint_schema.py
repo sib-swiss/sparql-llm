@@ -2,10 +2,10 @@ import logging
 import re
 import pandas as pd
 from sparql_llm.utils import query_sparql
-from tqdm import tqdm
 import time
+from joblib import Parallel, delayed
+from tqdm import tqdm
 
-tqdm.pandas()
 logger = logging.getLogger("sparql_llm")
 logger.setLevel(logging.INFO)
 
@@ -15,7 +15,7 @@ TOP_CLASSES_PERCENTILE = .90
 CLASS_QUERY = """
 SELECT ?class (COUNT(?class) AS ?count)
 WHERE { 
-    [] a ?class . 
+    ?s a ?class .
 }
 GROUP BY ?class
 """
@@ -23,8 +23,8 @@ GROUP BY ?class
 PREDICATE_QUERY = """
 SELECT ?predicate (COUNT(?predicate) AS ?count)
 WHERE {{
-    [] a <{class_name}> ;
-        ?predicate [] .
+    ?s a <{class_name}> ;
+        ?predicate ?o .
 }}
 GROUP BY ?predicate
 ORDER BY DESC(?count)
@@ -34,7 +34,7 @@ LIMIT {limit}
 DATATYPE_QUERY = """
 SELECT ?range
 WHERE {{
-    [] a <{class_name}> ;
+    ?s a <{class_name}> ;
          <{predicate_name}> ?o .
          FILTER (isLiteral(?o)) .
          BIND(datatype(?o) AS ?range)
@@ -48,10 +48,9 @@ EXCLUDED_CLASSES = [
     'http://www.w3.org/2002/07/owl#Thing',
     ]
 EXCLUDED_PREDICATES = [
-    'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
 ]
 
-def get_class_info(endpoint_url: str) -> pd.DataFrame:
+def get_class_info(endpoint_url: str, max_workers: int = 4) -> pd.DataFrame:
     """Get class information from the SPARQL endpoint."""
 
     logger.info(f'Fetching class information from {endpoint_url}...')
@@ -66,7 +65,9 @@ def get_class_info(endpoint_url: str) -> pd.DataFrame:
     logger.info(f'Keeping {len(classes)}/{num_classes} most frequent classes.')
 
     logger.info(f'Fetching predicate information from {endpoint_url}...')
-    classes['predicates'] = classes['class'].progress_apply(lambda c: get_class_predicates(endpoint_url=endpoint_url, class_name=c))
+    # classes['predicates'] = classes['class'].apply(lambda c: get_class_predicates(endpoint_url=endpoint_url, class_name=c))
+    classes['predicates'] = Parallel(n_jobs=max_workers)(delayed(get_class_predicates)(endpoint_url=endpoint_url, class_name=c) for c in tqdm(classes['class'].tolist(), total=len(classes)))
+
     return classes
 
 
@@ -86,7 +87,8 @@ def get_class_predicates(endpoint_url: str, class_name: str) -> dict[str, str]:
 
 if __name__ == "__main__":
     endpoint_url = 'http://localhost:8890/sparql/'
+    max_workers = 4
     start_time = time.time()
-    class_info = get_class_info(endpoint_url=endpoint_url)
+    class_info = get_class_info(endpoint_url=endpoint_url, max_workers=max_workers)
     elapsed_time = time.time() - start_time
     logger.info(f"Total execution time: {elapsed_time / 60:.2f} minutes")
