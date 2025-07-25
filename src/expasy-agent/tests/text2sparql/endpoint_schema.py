@@ -32,15 +32,14 @@ LIMIT {limit}
 """
 
 DATATYPE_QUERY = """
-SELECT ?range
+SELECT (datatype(?o) AS ?range)
 WHERE {{
     ?s a <{class_name}> ;
          <{predicate_name}> ?o .
          FILTER (isLiteral(?o)) .
-         BIND(datatype(?o) AS ?range)
 }}
-GROUP BY ?range
-ORDER BY DESC(COUNT(?range))
+GROUP BY ?o
+ORDER BY DESC(COUNT(?o))
 LIMIT 1
 """
 
