@@ -27,8 +27,11 @@ Here is a list of reference user questions and corresponding SPARQL query answer
 
 {relevant_queries}
 
-
-Here is a list of reference classes URIs and predicates URIs ordered by frequency that will help you answer accurately:
+Below you may find a list of reference classes that will help you answer accurately.
+Each class is accompanied by its most frequent predicates.
+Each predicate is accompanied by either:
+    - The data type of its object, or
+    - The list of classes that are frequently connected to the reference class through this predicate.
 
 {relevant_classes}
 
@@ -75,19 +78,19 @@ async def get_answer(question: str, dataset: str):
     retrieved_classes = vectordb.query_points(
         collection_name=VECTORDB_COLLECTION_NAME,
         query=question_embeddings,
-        limit=50,
+        limit=settings.default_number_of_retrieved_docs,
         query_filter=Filter(
             must=[
                 FieldCondition(
                     key="metadata.doc_type",
-                    match=MatchValue(value="predicates"),
+                    match=MatchValue(value="classes"),
                 )
             ]
         ),
     )
 
     relevant_queries = '\n'.join(json.dumps(doc.payload['metadata'], indent=2) for doc in retrieved_queries.points)
-    relevant_classes = '\n'.join(json.dumps(doc.payload['metadata'], indent=2) for doc in retrieved_classes.points)
+    relevant_classes = '\n'.join(f"Class: {json.dumps(doc.payload['metadata']['Class'], indent=2)} \nPredicates: {json.dumps(doc.payload['metadata']['Predicates'], indent=2)}" for doc in retrieved_classes.points)
     # logger.info(f"📚️ Retrieved {len(retrieved_docs.points)} documents")
     client = load_chat_model(Configuration(model=MODEL))
     response = client.invoke(

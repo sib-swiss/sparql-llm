@@ -18,6 +18,7 @@ def init_vectordb() -> None:
     """Initialize the vectordb with example queries from the SPARQL endpoints"""
     docs: list[Document] = []
 
+    start_time = time.time()
     queries = pd.read_csv(QUERIES_FILE)
     queries = queries[queries['dataset'] != 'Text2SPARQL'].reset_index(drop=True)
     docs = queries.apply(lambda q: Document(page_content=q['question'], 
@@ -33,6 +34,9 @@ def init_vectordb() -> None:
                                             metadata = {'Class': c['class'],
                                                         'Predicates': c['predicates'],
                                                         'doc_type': 'classes'}), axis=1).tolist()
+
+    elapsed_time = time.time() - start_time
+    print(f"Schema information built time: {elapsed_time / 60:.2f} minutes")
 
     print(f"Generating embeddings for {len(docs)} documents")
     start_time = time.time()

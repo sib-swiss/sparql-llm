@@ -11,6 +11,7 @@ logger.setLevel(logging.INFO)
 
 TOP_N_PREDICATES = 20
 TOP_CLASSES_PERCENTILE = .90
+TOP_N_RANGE_CLASSES = 5
 
 CLASS_QUERY = """
 SELECT ?class (COUNT(?class) AS ?count)
@@ -32,14 +33,14 @@ LIMIT {limit}
 """
 
 RANGE_DATATYPE_QUERY = """
-SELECT (datatype(?o) AS ?range)
+SELECT ?range
 WHERE {{
     ?s a <{class_name}> ;
          <{predicate_name}> ?o .
-        #  FILTER (isLiteral(?o)) .
+         FILTER (isLiteral(?o)) .
 }}
-GROUP BY ?o
-ORDER BY DESC(COUNT(?o))
+GROUP BY (datatype(?o) AS ?range)
+ORDER BY DESC(COUNT(?range))
 LIMIT 1
 """
 
@@ -53,7 +54,7 @@ WHERE {{
 }}
 GROUP BY ?range
 ORDER BY DESC(COUNT(?range))
-LIMIT 1
+LIMIT {limit}
 """
 
 
@@ -97,8 +98,8 @@ def get_class_predicates(endpoint_url: str, class_name: str) -> dict[str, str]:
     # Fetch datatypes range
     predicates['range'] = predicates['predicate'].apply(lambda p: (query_sparql(RANGE_DATATYPE_QUERY.format(class_name=class_name, predicate_name=p), endpoint_url=endpoint_url)['results']['bindings'] or [{}])[0]).apply(lambda r: r['range']['value'] if 'range' in r.keys() else pd.NA)
     #Fetch classes range
-    predicates.loc[predicates['range'].isna(), 'range'] = predicates[predicates['range'].isna()]['predicate'].apply(lambda p: (query_sparql(RANGE_CLASS_QUERY.format(class_name=class_name, predicate_name=p), endpoint_url=endpoint_url)['results']['bindings'] or [{}])[0]).apply(lambda r: r['range']['value'] if 'range' in r.keys() else pd.NA)
-    predicates = predicates.dropna(subset=['range'])
+    predicates.loc[predicates['range'].isna(), 'range'] = predicates[predicates['range'].isna()]['predicate'].apply(lambda p: (query_sparql(RANGE_CLASS_QUERY.format(class_name=class_name, predicate_name=p, limit=TOP_N_RANGE_CLASSES), endpoint_url=endpoint_url)['results']['bindings'] or [{}])).apply(lambda l: [r['range']['value'] for r in l]  if l != [{}] else pd.NA)
+    predicates.loc[predicates['range'].isna(), 'range'] = ''
 
     return predicates.set_index('predicate')['range'].to_dict()
 
