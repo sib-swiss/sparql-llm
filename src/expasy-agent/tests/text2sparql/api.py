@@ -17,7 +17,6 @@ KNOWN_DATASETS = [
     "https://text2sparql.aksw.org/2025/corporate/"
 ]
 
-VECTORDB_COLLECTION_NAME = 'text2sparql'
 MODEL = 'openai/gpt-4o'
 
 RAG_PROMPT = (
@@ -27,11 +26,7 @@ Here is a list of reference user questions and corresponding SPARQL query answer
 
 {relevant_queries}
 
-Below you may find a list of reference classes that will help you answer accurately.
-Each class is accompanied by its most frequent predicates.
-Each predicate is accompanied by either:
-    - The data type of its object, or
-    - The list of classes that are frequently connected to the reference class through this predicate.
+Here is a list of reference class URIs accompanied by their most frequent predicate URIs and a list of their most frequent ranges (datatypes or other class URIs) that will help you answer accurately:
 
 {relevant_classes}
 
@@ -62,7 +57,7 @@ async def get_answer(question: str, dataset: str):
     
     question_embeddings = next(iter(embedding_model.embed([question])))
     retrieved_queries = vectordb.query_points(
-        collection_name=VECTORDB_COLLECTION_NAME,
+        collection_name=f"text2sparql-{dataset.split('/')[-2]}",
         query=question_embeddings,
         limit=settings.default_number_of_retrieved_docs,
         query_filter=Filter(
@@ -76,7 +71,7 @@ async def get_answer(question: str, dataset: str):
     )
 
     retrieved_classes = vectordb.query_points(
-        collection_name=VECTORDB_COLLECTION_NAME,
+        collection_name=f"text2sparql-{dataset.split('/')[-2]}",
         query=question_embeddings,
         limit=settings.default_number_of_retrieved_docs,
         query_filter=Filter(
