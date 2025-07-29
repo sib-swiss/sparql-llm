@@ -31,27 +31,19 @@ class EndpointSchema:
     LIMIT {limit}
     """
 
-    RANGE_DATATYPE_QUERY = """
+    RANGE_QUERY = """
     SELECT ?range
     FROM <{graph}>
     WHERE {{
         ?s a <{class_name}> ;
             <{predicate_name}> ?o .
-        FILTER (isLiteral(?o)) .
-    }}
-    GROUP BY (datatype(?o) AS ?range)
-    ORDER BY DESC(COUNT(?range))
-    LIMIT 1
-    """
+        OPTIONAL {{
+            FILTER(isIRI(?o))
+            ?o a ?class .
+            FILTER(?class != <http://www.w3.org/2002/07/owl#Thing>)
+        }}
 
-    RANGE_CLASS_QUERY = """
-    SELECT ?range
-    FROM <{graph}>
-    WHERE {{
-        ?s a <{class_name}> ;
-            <{predicate_name}> ?o .
-        ?o a ?range .
-        FILTER (?range NOT IN (<http://www.w3.org/2002/07/owl#Thing>)) .
+        BIND (IF(BOUND(?class), ?class, DATATYPE(?o)) AS ?range)
     }}
     GROUP BY ?range
     ORDER BY DESC(COUNT(?range))
@@ -109,30 +101,21 @@ class EndpointSchema:
         )['results']['bindings']
         predicates = pd.DataFrame(predicates).map(lambda x: x['value']).assign(count=lambda df: df['count'].astype(int))
 
-        # Fetch datatype ranges for each predicate
+        # Fetch top n ranges for the predicates
         predicates['range'] = predicates['predicate'].apply(
             lambda p: (query_sparql(
-                self.RANGE_DATATYPE_QUERY.format(
-                    graph=self._graph,
-                    class_name=class_name,
-                    predicate_name=p
-                ),
-                endpoint_url=self._endpoint_url
-            )['results']['bindings'] or [{}])[0]
-        ).apply(lambda r: r['range']['value'] if 'range' in r.keys() else pd.NA)
-
-        # Fetch top n class ranges for the remaining predicates
-        predicates.loc[predicates['range'].isna(), 'range'] = predicates[predicates['range'].isna()]['predicate'].apply(
-            lambda p: (query_sparql(
-                self.RANGE_CLASS_QUERY.format(
+                self.RANGE_QUERY.format(
                     graph=self._graph,
                     class_name=class_name,
                     predicate_name=p,
-                    limit=self._limit_queries['top_n_range_classes']
+                    limit=self._limit_queries['top_n_ranges']
                 ),
                 endpoint_url=self._endpoint_url
             )['results']['bindings'] or [{}])
-        ).apply(lambda l: [r['range']['value'] for r in l] if l != [{}] else pd.NA)
+        )
+
+        # Process the ranges to extract the range values
+        predicates['range'] = predicates['range'].apply(lambda l: [r['range']['value'] for r in l if 'range' in r] if l != [{}] else pd.NA)
         
         # Fill the remaining predicate ranges
         predicates.loc[predicates['range'].isna(), 'range'] = ''
@@ -141,15 +124,17 @@ class EndpointSchema:
 
 if __name__ == "__main__":
     start_time = time.time()
-    classes = EndpointSchema(
+    schema = EndpointSchema(
         endpoint_url='http://localhost:8890/sparql/',
-        graph='https://text2sparql.aksw.org/2025/corporate/',
+        graph='https://text2sparql.aksw.org/2025/dbpedia/',
         limit_queries={
             'top_classes_percentile': .90,
             'top_n_predicates': 20,
-            'top_n_range_classes': 5,
+            'top_n_ranges': 5,
         },
         max_workers=4
-    ).get_information()
+    )
+    # info = schema._retrieve_predicates_information(class_name='http://dbpedia.org/ontology/Person')
+    info = schema.get_information()
     elapsed_time = time.time() - start_time
     logger.info(f"Total execution time: {elapsed_time / 60:.2f} minutes")
