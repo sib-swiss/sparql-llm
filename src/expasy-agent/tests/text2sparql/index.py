@@ -18,14 +18,18 @@ def init_vectordb(endpoint_url: str, graph: str, limit_queries: dict[str, float]
 
     # Index example queries
     if graph == 'https://text2sparql.aksw.org/2025/dbpedia/':
-        queries = pd.read_csv(QUERIES_FILE)
-        queries = queries[queries['dataset'] != 'Text2SPARQL'].reset_index(drop=True)
-        docs += queries.apply(lambda q: Document(page_content=q['question'], 
-                                                metadata = {'question': q['question'],
-                                                            'anser': q['query'],
-                                                            'endpoint_url': endpoint_url,
-                                                            'query_type': 'SelectQuery' if q['query type'] == 'SELECT' else 'AskQuery' if q['query type'] == 'ASK' else '',
-                                                            'doc_type': 'SPARQL endpoints query examples'}), axis=1).tolist()
+        examples = ['QALD-9+', 'LC-QuAD']
+    elif graph == 'https://text2sparql.aksw.org/2025/corporate/':
+        examples = ['Generated-CK']    
+
+    queries = pd.read_csv(QUERIES_FILE)
+    queries = queries[queries['dataset'].isin(examples)].reset_index(drop=True)
+    docs += queries.apply(lambda q: Document(page_content=q['question'], 
+                                            metadata = {'question': q['question'],
+                                                        'anser': q['query'],
+                                                        'endpoint_url': endpoint_url,
+                                                        'query_type': 'SelectQuery' if q['query type'] == 'SELECT' else 'AskQuery' if q['query type'] == 'ASK' else '',
+                                                        'doc_type': 'SPARQL endpoints query examples'}), axis=1).tolist()
 
 
     # Index schema information
@@ -73,7 +77,7 @@ if __name__ == "__main__":
     limit_queries={
         'top_classes_percentile': 0,
         'top_n_predicates': 20,
-        'top_n_ranges': 5,
+        'top_n_ranges': 1,
     },
     max_workers=4
 )
@@ -84,7 +88,7 @@ if __name__ == "__main__":
     limit_queries={
         'top_classes_percentile': .90,
         'top_n_predicates': 20,
-        'top_n_ranges': 5,
+        'top_n_ranges': 1,
     },
     max_workers=4
 )
