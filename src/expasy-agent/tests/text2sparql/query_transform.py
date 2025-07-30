@@ -10,7 +10,9 @@ from sparql_llm.utils import query_sparql
 import os
 
 RAW_QUERIES_FOLDER = os.path.join('data', 'benchmarks', 'Text2SPARQL', 'queries')
-TEXT2SPARQL_QUERIES_FILE = os.path.join(RAW_QUERIES_FOLDER, 'questions_db25.yaml')
+TEXT2SPARQL_DB_QUERIES_FILE = os.path.join(RAW_QUERIES_FOLDER, 'questions_db25.yaml')
+TEXT2SPARQL_CK_QUERIES_FILE = os.path.join(RAW_QUERIES_FOLDER, 'questions_ck25.yaml')
+GENERATED_CK_QUERIES_FILE = os.path.join(RAW_QUERIES_FOLDER, 'generated_ck.json')
 TEXT2SPARQL_ENDPOINT = 'http://localhost:8890/sparql/'
 QUALD_9_PLUS_QUERIES_FILE = os.path.join(RAW_QUERIES_FOLDER, 'qald_9_plus_dbpedia.json')
 QUALD_9_PLUS_ENDPOINT = 'https://dbpedia.org/sparql'
@@ -74,10 +76,16 @@ def transform_text2sparql_queries(input_file: str, endpoint_url: str) -> pd.Data
     queries = pd.DataFrame(queries)
 
     queries['triple patterns'] = queries['query'].apply(count_triple_patterns)
-    queries['result'] = queries.apply(lambda q: query_sparql(q['query'], q['endpoint']), axis=1)
+    def safe_query_sparql(query, endpoint):
+        try:
+            return query_sparql(query, endpoint)
+        except Exception:
+            return {'results': {'bindings':[]}}
+
+    queries['result'] = queries.apply(lambda q: safe_query_sparql(q['query'], q['endpoint']), axis=1)
     queries['result length'] = queries['result'].apply(lambda r: len(r['results']['bindings']) if 'results' in r else 1)
     queries['query type'] = queries['query'].apply(lambda q: 'ASK' if 'ASK WHERE' in q.upper() else 'SELECT')
-    queries['dataset'] = 'Text2SPARQL'
+    queries['dataset'] = 'Text2SPARQL-' + input_file.split('25.')[-2].split('_')[-1]
     return queries
 
 def transform_qald_9_plus_queries(input_file: str, endpoint_url: str) -> pd.DataFrame:
@@ -132,13 +140,49 @@ def transform_LC_QuAD_queries(input_file: str, endpoint_url: str) -> pd.DataFram
     queries['dataset'] = 'LC-QuAD'
     return queries
 
+def transform_Generated_CK_queries(input_file: str, endpoint_url: str) -> pd.DataFrame:
+    """Transforms generated CK queries from a JSON file into a DataFrame.
+    Args:
+        input_file (str): Path to the JSON file containing generated CK queries.
+        endpoint_url (str): SPARQL endpoint URL.
+    Returns:
+        pd.DataFrame: DataFrame containing the transformed queries.
+    """
+    queries = []
+    with open(input_file, 'r', encoding='utf-8') as file:
+        data = json.load(file)
+        for q in data:
+            queries.append({
+                'question': q['natural_language'],
+                'endpoint': endpoint_url,
+                'query': q['sparql_query'],
+            })
+
+    queries = pd.DataFrame(queries)
+    queries['triple patterns'] = queries['query'].apply(count_triple_patterns)
+    def safe_query_sparql(query, endpoint):
+        try:
+            return query_sparql(query, endpoint)
+        except Exception:
+            return {'results': {'bindings':[]}}
+
+    queries['result'] = queries.apply(lambda q: safe_query_sparql(q['query'], q['endpoint']), axis=1)
+    queries['result length'] = queries['result'].apply(lambda r: len(r['results']['bindings']) if 'results' in r else 1)
+    queries['query type'] = queries['query'].apply(lambda q: 'ASK' if 'ASK WHERE' in q.upper() else 'SELECT')
+    queries = queries[queries['result length'] != 0]
+    queries['dataset'] = 'Generated-CK'
+    
+    return queries
+
 if __name__ == "__main__":
     queries = []    
     if os.path.exists(OUTPUT_QUERIES_FILE):
         queries.append(pd.read_csv(OUTPUT_QUERIES_FILE))
     else:
-        queries.append(transform_text2sparql_queries(TEXT2SPARQL_QUERIES_FILE, TEXT2SPARQL_ENDPOINT))
+        queries.append(transform_text2sparql_queries(TEXT2SPARQL_DB_QUERIES_FILE, TEXT2SPARQL_ENDPOINT))
+        queries.append(transform_text2sparql_queries(TEXT2SPARQL_CK_QUERIES_FILE, TEXT2SPARQL_ENDPOINT))
         queries.append(transform_qald_9_plus_queries(QUALD_9_PLUS_QUERIES_FILE, QUALD_9_PLUS_ENDPOINT))
         queries.append(transform_LC_QuAD_queries(LC_QuAD_QUERIES_FILE, LC_QuAD_ENDPOINT))
+        queries.append(transform_Generated_CK_queries(GENERATED_CK_QUERIES_FILE, TEXT2SPARQL_ENDPOINT))
     queries = pd.concat(queries, ignore_index=True)
     queries.to_csv(OUTPUT_QUERIES_FILE, index=False)
