@@ -17,7 +17,7 @@ KNOWN_DATASETS = [
     "https://text2sparql.aksw.org/2025/corporate/"
 ]
 
-MODEL = 'openai/gpt-4o'
+MODEL = 'openai/gpt-4o-mini'
 
 RAG_PROMPT = (
 """
@@ -26,7 +26,7 @@ Here is a list of reference user questions and corresponding SPARQL query answer
 
 {relevant_queries}
 
-Here is a list of reference class URIs accompanied by their most frequent predicate URIs and a list of their most frequent ranges (datatypes or other class URIs) that will help you answer accurately:
+Here is schema information about related classes, their most frequent predicates, and their most frequent predicate ranges (datatypes or other classes) that will help you answer accurately:
 
 {relevant_classes}
 

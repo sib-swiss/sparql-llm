@@ -85,13 +85,13 @@ Your response must follow these rules:
 QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'queries.csv')
 ENDPOINT_URL = 'http://localhost:8890/sparql/'
 VECTORDB_URL = 'http://localhost:6334'
-VECTORDB_COLLECTION_NAME = 'text2sparql'
+VECTORDB_COLLECTION_NAME = 'text2sparql-dbpedia'
 
 embedding_model = TextEmbedding(settings.embedding_model)
 vectordb = QdrantClient(url=VECTORDB_URL, prefer_grpc=True)
 
 example_queries = pd.read_csv(QUERIES_FILE)
-example_queries = example_queries[(example_queries['dataset'] == 'Text2SPARQL')].reset_index(drop=True).to_dict(orient='records')
+example_queries = example_queries[(example_queries['dataset'] == 'Text2SPARQL-db')].reset_index(drop=True).to_dict(orient='records')
 
 def result_sets_are_same(gen_set, ref_set) -> bool:
     """Check if all items from ref_set have equivalent items in gen_set, ignoring variable names"""
@@ -153,17 +153,17 @@ models = {
     # 🎯 RAG without validation - Success: 27, Different results: 11, No results: 2, Error: 8
     # 🎯 RAG with validation - Success: 31, Different results: 10, No results: 4, Error: 3
     # Price before fixing the token_usage gathering: 0.01421
-    "gpt-4o": {
-        "id": "openai/gpt-4o",
-        "price_input": 5,
-        "price_output": 15,
-    },
-    # # 🎯 RAG with validation - Success: 32, Different results: 7, No results: 3, Error: 0
-    # "gpt-4o-mini": {
-    #     "id": "openai/gpt-4o-mini",
-    #     "price_input": 0.15,
-    #     "price_output": 0.6,
+    # "gpt-4o": {
+    #     "id": "openai/gpt-4o",
+    #     "price_input": 5,
+    #     "price_output": 15,
     # },
+    # # 🎯 RAG with validation - Success: 32, Different results: 7, No results: 3, Error: 0
+    "gpt-4o-mini": {
+        "id": "openai/gpt-4o-mini",
+        "price_input": 0.15,
+        "price_output": 0.6,
+    },
 }
 
 
