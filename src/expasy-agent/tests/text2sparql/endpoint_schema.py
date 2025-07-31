@@ -1,10 +1,12 @@
 import logging
+import os
 import re
 import pandas as pd
-from sparql_llm.utils import query_sparql
+from sparql_llm.utils import EndpointsSchemaDict, SchemaDict, query_sparql
 import time
 from joblib import Parallel, delayed
 from tqdm import tqdm
+import json
 
 logger = logging.getLogger("sparql_llm")
 logger.setLevel(logging.INFO)
@@ -59,7 +61,8 @@ class EndpointSchema:
             limit_queries (dict[str, float]): A dictionary specifying query limits.
             max_workers (int): The maximum number of worker threads to use for concurrent operations.
         Funtions:
-            get_information(): Returns information about classes and predicates retrieved from the endpoint.
+            get_schema(): Returns information about classes and predicates retrieved from the endpoint.
+            save_schema_dict(path: str): Saves information about classes and predicates retrieved from the endpoint.
         """
         
         self._endpoint_url = endpoint_url
@@ -67,25 +70,34 @@ class EndpointSchema:
         self._limit_queries = limit_queries
         self._max_workers = max_workers
 
-    def get_information(self) -> pd.DataFrame:
+    def get_schema(self) -> pd.DataFrame:
+        """Fetch class and predicate information from the SPARQL endpoint."""
         # Fetch class information
         logger.info(f'Fetching class information from {self._endpoint_url}...')
-        classes = query_sparql(self.CLASS_QUERY.format(graph=self._graph), endpoint_url=self._endpoint_url)['results']['bindings']
-        classes = pd.DataFrame(classes).map(lambda x: x['value']).assign(count=lambda df: df['count'].astype(int))
-        classes['name'] = classes['class'].apply(lambda c: re.sub(r'(?<!^)(?=[A-Z])', ' ', c.split('/')[-1].split('#')[-1]))
+        schema = query_sparql(self.CLASS_QUERY.format(graph=self._graph), endpoint_url=self._endpoint_url)['results']['bindings']
+        schema = pd.DataFrame(schema).map(lambda x: x['value']).assign(count=lambda df: df['count'].astype(int))
+        schema['name'] = schema['class'].apply(lambda c: re.sub(r'(?<!^)(?=[A-Z])', ' ', c.split('/')[-1].split('#')[-1]))
 
         # Filter classes based on frequency
-        num_classes = len(classes)
-        count_threshold = classes['count'].quantile(self._limit_queries['top_classes_percentile'])
-        classes = classes[classes['count'] >= count_threshold].sort_values(by='count', ascending=False).reset_index(drop=True)
-        logger.info(f'Keeping {len(classes)}/{num_classes} most frequent classes.')
+        num_classes = len(schema)
+        count_threshold = schema['count'].quantile(self._limit_queries['top_classes_percentile'])
+        schema = schema[schema['count'] >= count_threshold].sort_values(by='count', ascending=False).reset_index(drop=True)
+        logger.info(f'Keeping {len(schema)}/{num_classes} most frequent classes.')
 
         # Fetch predicate information
         logger.info(f'Fetching predicate information from {self._endpoint_url}...')
-        classes['predicates'] = Parallel(n_jobs=self._max_workers)(
-            delayed(self._retrieve_predicates_information)(class_name=c) for c in tqdm(classes['class'].tolist(), total=len(classes))
+        schema['predicates'] = Parallel(n_jobs=self._max_workers)(
+            delayed(self._retrieve_predicates_information)(class_name=c) for c in tqdm(schema['class'].tolist(), total=len(schema))
         )
-        return classes
+        return schema
+    
+    def save_schema_dict(self, path: str) -> None:
+        """Save the schema information to a JSON file."""
+        schema = self.get_schema()
+        schema_dict = SchemaDict({i['class']:i['predicates'] for i in schema.to_dict(orient='records')})
+        endpoint_schema_dict = EndpointsSchemaDict({self._endpoint_url:schema_dict})
+        with open(path, 'w') as f:
+            json.dump(endpoint_schema_dict, f, indent=2)
 
     def _retrieve_predicates_information(self, class_name: str) -> dict[str, str]:
         """Fetch predicates and their ranges for a given class"""
@@ -126,6 +138,19 @@ if __name__ == "__main__":
     start_time = time.time()
     schema = EndpointSchema(
         endpoint_url='http://localhost:8890/sparql/',
+        graph='https://text2sparql.aksw.org/2025/corporate/',
+        limit_queries={
+            'top_classes_percentile': 0,
+            'top_n_predicates': 20,
+            'top_n_ranges': 5,
+        },
+        max_workers=4
+    )
+    path = os.path.join('data', 'benchmarks', 'Text2SPARQL', 'schemas', 'corporate_schema.json')
+    schema.save_schema_dict(path)
+    
+    schema = EndpointSchema(
+        endpoint_url='http://localhost:8890/sparql/',
         graph='https://text2sparql.aksw.org/2025/dbpedia/',
         limit_queries={
             'top_classes_percentile': .90,
@@ -134,7 +159,9 @@ if __name__ == "__main__":
         },
         max_workers=4
     )
+    path = os.path.join('data', 'benchmarks', 'Text2SPARQL', 'schemas', 'dbpedia_schema.json')
+    schema.save_schema_dict(path)
     # info = schema._retrieve_predicates_information(class_name='http://dbpedia.org/ontology/Person')
-    info = schema.get_information()
+    # info = schema.get_information()
     elapsed_time = time.time() - start_time
     logger.info(f"Total execution time: {elapsed_time / 60:.2f} minutes")

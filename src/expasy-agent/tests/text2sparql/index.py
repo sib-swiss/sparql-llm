@@ -34,14 +34,14 @@ def init_vectordb(endpoint_url: str, graph: str, limit_queries: dict[str, float]
 
     # Index schema information
     start_time = time.time()
-    classes = EndpointSchema(
+    schema = EndpointSchema(
         endpoint_url=endpoint_url,
         graph=graph,
         limit_queries=limit_queries,
         max_workers=max_workers
-    ).get_information()
+    ).get_schema()
 
-    docs += classes.apply(lambda c: Document(page_content=c['name'], 
+    docs += schema.apply(lambda c: Document(page_content=c['name'], 
                                             metadata = {'Class': c['class'],
                                                         'Predicates': c['predicates'],
                                                         'doc_type': 'classes'}), axis=1).tolist()
