@@ -6,6 +6,7 @@ from fastembed import TextEmbedding
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 from langchain_core.messages import HumanMessage, SystemMessage
+from sparql_llm.utils import query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries
 from expasy_agent.config import Configuration, settings
 from expasy_agent.utils import load_chat_model
@@ -18,6 +19,7 @@ KNOWN_DATASETS = [
 ]
 
 MODEL = 'openai/gpt-4o-mini'
+ENDPOINT_URL = 'http://text2sparql-virtuoso:8890/sparql/'
 
 RAG_PROMPT = (
 """
@@ -94,21 +96,35 @@ async def get_answer(question: str, dataset: str):
             HumanMessage(content=question),
         ]
     )
-    response = response.model_dump()
-    response["messages"] = [
-        {
-            "content": response["content"],
-            "response_metadata": response["response_metadata"],
-        }
-    ]
-    chat_resp_md = response["messages"][-1]["content"]
 
-    generated_sparqls = extract_sparql_queries(chat_resp_md)
-    if len(generated_sparqls) == 0:
-        raise Exception(
-            f"No SPARQL query could be extracted from {chat_resp_md}"
+    num_of_tries = 0
+    resp_msg = ''
+    while num_of_tries < settings.default_max_try_fix_sparql:
+
+        try:
+            chat_resp_md = response.model_dump()["content"]
+            generated_sparqls = extract_sparql_queries(chat_resp_md)
+            generated_sparql = generated_sparqls[-1]['query'].strip()
+        except Exception as e:
+            resp_msg += f"No SPARQL query could be extracted from {chat_resp_md}"
+        if generated_sparql:
+            try:
+                res = query_sparql(generated_sparql, ENDPOINT_URL)
+                if res.get("results", {}).get("bindings"):
+                    break # Successfully generated a query with results
+                else:
+                    resp_msg += f"SPARQL query returned no results. Please fix the query, and try again. \n```sparql\n{generated_sparql}\n```"
+            except Exception as e:
+                resp_msg += f"SPARQL query returned error: {e}. Please fix the query, and try again. \n```sparql\n{generated_sparql}\n```"
+
+        # If no valid SPARQL query was generated, ask the model to fix it
+        print(f"SPARQL query extraction failed: {resp_msg}")
+        num_of_tries += 1
+        response = client.invoke(
+            [
+                HumanMessage(content=resp_msg),
+            ]
         )
-    generated_sparql = generated_sparqls[-1]['query'].strip()
 
     return {
         "dataset": dataset,
