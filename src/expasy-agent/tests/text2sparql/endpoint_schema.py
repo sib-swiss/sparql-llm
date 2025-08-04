@@ -12,7 +12,7 @@ logger = logging.getLogger("sparql_llm")
 logger.setLevel(logging.INFO)
 
 class EndpointSchema:
-    CLASS_QUERY = """
+    _CLASS_QUERY = """
     SELECT ?class (COUNT(?class) AS ?count)
     FROM <{graph}>
     WHERE {{
@@ -21,7 +21,7 @@ class EndpointSchema:
     GROUP BY ?class
     """
 
-    PREDICATE_QUERY = """
+    _PREDICATE_QUERY = """
     SELECT ?predicate (COUNT(?predicate) AS ?count)
     FROM <{graph}>
     WHERE {{
@@ -33,7 +33,7 @@ class EndpointSchema:
     LIMIT {limit}
     """
 
-    RANGE_QUERY = """
+    _RANGE_QUERY = """
     SELECT ?range
     FROM <{graph}>
     WHERE {{
@@ -51,6 +51,8 @@ class EndpointSchema:
     ORDER BY DESC(COUNT(?range))
     LIMIT {limit}
     """
+
+    _DOCKER_ENDPOINT_URL = 'http://text2sparql-virtuoso:8890/sparql/'
 
     def __init__(self, endpoint_url: str, graph: str, limit_queries: dict[str, float], max_workers: int):
         """
@@ -74,7 +76,7 @@ class EndpointSchema:
         """Fetch class and predicate information from the SPARQL endpoint."""
         # Fetch class information
         logger.info(f'Fetching class information from {self._endpoint_url}...')
-        schema = query_sparql(self.CLASS_QUERY.format(graph=self._graph), endpoint_url=self._endpoint_url)['results']['bindings']
+        schema = query_sparql(self._CLASS_QUERY.format(graph=self._graph), endpoint_url=self._endpoint_url)['results']['bindings']
         schema = pd.DataFrame(schema).map(lambda x: x['value']).assign(count=lambda df: df['count'].astype(int))
         schema['name'] = schema['class'].apply(lambda c: re.sub(r'(?<!^)(?=[A-Z])', ' ', c.split('/')[-1].split('#')[-1]))
 
@@ -95,7 +97,7 @@ class EndpointSchema:
         """Save the schema information to a JSON file."""
         schema = self.get_schema()
         schema_dict = SchemaDict({i['class']:i['predicates'] for i in schema.to_dict(orient='records')})
-        endpoint_schema_dict = EndpointsSchemaDict({self._endpoint_url:schema_dict})
+        endpoint_schema_dict = EndpointsSchemaDict({self._DOCKER_ENDPOINT_URL:schema_dict})
         with open(path, 'w') as f:
             json.dump(endpoint_schema_dict, f, indent=2)
 
@@ -104,7 +106,7 @@ class EndpointSchema:
 
         # Fetch top n predicates
         predicates = query_sparql(
-            self.PREDICATE_QUERY.format(
+            self._PREDICATE_QUERY.format(
                 graph=self._graph,
                 class_name=class_name,
                 limit=self._limit_queries['top_n_predicates']
@@ -116,7 +118,7 @@ class EndpointSchema:
         # Fetch top n ranges for the predicates
         predicates['range'] = predicates['predicate'].apply(
             lambda p: (query_sparql(
-                self.RANGE_QUERY.format(
+                self._RANGE_QUERY.format(
                     graph=self._graph,
                     class_name=class_name,
                     predicate_name=p,

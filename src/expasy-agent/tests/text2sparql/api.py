@@ -1,13 +1,14 @@
 """TEXT2SPARQL API"""
 
 import json
+import os
 import fastapi
 from fastembed import TextEmbedding
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 from langchain_core.messages import HumanMessage, SystemMessage
 from sparql_llm.utils import query_sparql
-from sparql_llm.validate_sparql import extract_sparql_queries
+from sparql_llm.validate_sparql import extract_sparql_queries, validate_sparql
 from expasy_agent.config import Configuration, settings
 from expasy_agent.utils import load_chat_model
 
@@ -21,6 +22,10 @@ KNOWN_DATASETS = [
 MODEL = 'openai/gpt-4o-mini'
 ENDPOINT_URL = 'http://text2sparql-virtuoso:8890/sparql/'
 
+SCHEMAS = {}
+for dataset in KNOWN_DATASETS:
+    with open(os.path.join('/', 'data', 'benchmarks', 'Text2SPARQL', 'schemas', f'{dataset.split('/')[-2]}_schema.json'), 'r', encoding='utf-8') as f:
+        SCHEMAS[dataset] = json.load(f)
 RAG_PROMPT = (
 """
 
@@ -111,14 +116,20 @@ async def get_answer(question: str, dataset: str):
             try:
                 res = query_sparql(generated_sparql, ENDPOINT_URL)
                 if res.get("results", {}).get("bindings"):
+                    if resp_msg != '':
+                        print(f"SPARQL query fixed after errors: {resp_msg}")
                     break # Successfully generated a query with results
                 else:
-                    resp_msg += f"SPARQL query returned no results. Please fix the query, and try again. \n```sparql\n{generated_sparql}\n```"
+                    validation_output = validate_sparql(query=generated_sparql, endpoint_url=ENDPOINT_URL, endpoints_void_dict=SCHEMAS[dataset])
+                    if validation_output["errors"]:
+                        error_str = "- " + "\n- ".join(validation_output["errors"])
+                        resp_msg += f"SPARQL query not valid. Please fix the query based on the provided schema information, and try again.\n### Validation results\n{error_str}\n### Erroneous SPARQL query\n```sparql\n{validation_output['original_query']}\n```\n"
+                    else:
+                        resp_msg += f"SPARQL query returned no results. Please fix the query based on the provided schema information, and try again.\n### Erroneous SPARQL query\n```sparql\n{generated_sparql}\n```"
             except Exception as e:
-                resp_msg += f"SPARQL query returned error: {e}. Please fix the query, and try again. \n```sparql\n{generated_sparql}\n```"
+                resp_msg += f"SPARQL query returned error: {e}. Please fix the query based on the provided schema information, and try again.\n### Erroneous SPARQL query\n```sparql\n{generated_sparql}\n```"
 
         # If no valid SPARQL query was generated, ask the model to fix it
-        print(f"SPARQL query extraction failed: {resp_msg}")
         num_of_tries += 1
         response = client.invoke(
             [

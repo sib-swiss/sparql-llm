@@ -21,6 +21,7 @@ services:
       - 8765:8765
     volumes:
       - ./src:/app/src
+      - ./data:/data
     env_file:
       - .env
     entrypoint: ["uv", "run", "uvicorn", "tests.text2sparql.api:app", "--host", "0.0.0.0", "--port", "8765", "--reload"]
