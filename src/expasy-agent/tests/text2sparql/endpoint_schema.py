@@ -132,7 +132,7 @@ class EndpointSchema:
         predicates['range'] = predicates['range'].apply(lambda l: [r['range']['value'] for r in l if 'range' in r] if l != [{}] else pd.NA)
         
         # Fill the remaining predicate ranges
-        predicates.loc[predicates['range'].isna(), 'range'] = '<http://www.w3.org/2001/XMLSchema#string>'
+        predicates.loc[predicates['range'].isna(), 'range'] = pd.Series([['http://www.w3.org/2001/XMLSchema#string']] * predicates['range'].isna().sum())
 
         return predicates.set_index('predicate')['range'].to_dict()
 

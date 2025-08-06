@@ -33,9 +33,9 @@ Here is a list of reference user questions and corresponding SPARQL query answer
 
 {relevant_queries}
 
-Here is schema information about related classes, their most frequent predicates, and their most frequent predicate ranges (datatypes or other classes) that will help you answer accurately:
+Here is schema information that will help you answer accurately:
 
-{relevant_classes}
+{relevant_classes}å
 
 """
 )
@@ -91,8 +91,8 @@ async def get_answer(question: str, dataset: str):
         ),
     )
 
-    relevant_queries = '\n'.join(json.dumps(doc.payload['metadata'], indent=2) for doc in retrieved_queries.points)
-    relevant_classes = '\n'.join(f"Class: {json.dumps(doc.payload['metadata']['Class'], indent=2)} \nPredicates: {json.dumps(doc.payload['metadata']['Predicates'], indent=2)}" for doc in retrieved_classes.points)
+    relevant_queries = '\n\n'.join(json.dumps(doc.payload['metadata'], indent=2) for doc in retrieved_queries.points)
+    relevant_classes = '\n\n'.join(doc.payload['metadata']['desc'] for doc in retrieved_classes.points)
     # logger.info(f"📚️ Retrieved {len(retrieved_docs.points)} documents")
     client = load_chat_model(Configuration(model=MODEL))
     response = client.invoke(
