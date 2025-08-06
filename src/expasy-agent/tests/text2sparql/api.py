@@ -19,7 +19,7 @@ KNOWN_DATASETS = [
     "https://text2sparql.aksw.org/2025/corporate/"
 ]
 
-MODEL = 'openai/gpt-4o-mini'
+MODEL = 'openai/gpt-4.1-nano'
 ENDPOINT_URL = 'http://text2sparql-virtuoso:8890/sparql/'
 
 SCHEMAS = {}
@@ -107,12 +107,13 @@ async def get_answer(question: str, dataset: str):
     while num_of_tries < settings.default_max_try_fix_sparql:
 
         try:
+            generated_sparql = ''
             chat_resp_md = response.model_dump()["content"]
             generated_sparqls = extract_sparql_queries(chat_resp_md)
             generated_sparql = generated_sparqls[-1]['query'].strip()
         except Exception as e:
             resp_msg += f"No SPARQL query could be extracted from {chat_resp_md}"
-        if generated_sparql:
+        if generated_sparql != '':
             try:
                 res = query_sparql(generated_sparql, ENDPOINT_URL)
                 if res.get("results", {}).get("bindings"):
