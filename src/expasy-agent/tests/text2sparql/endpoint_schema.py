@@ -22,14 +22,14 @@ class EndpointSchema:
     """
 
     _PREDICATE_QUERY = """
-    SELECT ?predicate (COUNT(?predicate) AS ?count)
+    SELECT ?predicate
     FROM <{graph}>
     WHERE {{
         ?s a <{class_name}> ;
             ?predicate ?o .
     }}
     GROUP BY ?predicate
-    ORDER BY DESC(?count)
+    ORDER BY DESC(COUNT(?predicate))
     LIMIT {limit}
     """
 
@@ -51,8 +51,6 @@ class EndpointSchema:
     ORDER BY DESC(COUNT(?range))
     LIMIT {limit}
     """
-
-    _DOCKER_ENDPOINT_URL = 'http://text2sparql-virtuoso:8890/sparql/'
 
     def __init__(self, endpoint_url: str, graph: str, limit_queries: dict[str, float], max_workers: int):
         """
@@ -89,7 +87,7 @@ class EndpointSchema:
         # Fetch predicate information
         logger.info(f'Fetching predicate information from {self._endpoint_url}...')
         schema['predicates'] = Parallel(n_jobs=self._max_workers)(
-            delayed(self._retrieve_predicates_information)(class_name=c) for c in tqdm(schema['class'].tolist(), total=len(schema))
+            delayed(self._retrieve_class_information)(class_name=c) for c in tqdm(schema['class'].tolist(), total=len(schema))
         )
         return schema
     
@@ -97,11 +95,11 @@ class EndpointSchema:
         """Save the schema information to a JSON file."""
         schema = self.get_schema()
         schema_dict = SchemaDict({i['class']:i['predicates'] for i in schema.to_dict(orient='records')})
-        endpoint_schema_dict = EndpointsSchemaDict({self._DOCKER_ENDPOINT_URL:schema_dict})
+        endpoint_schema_dict = EndpointsSchemaDict({self._endpoint_url:schema_dict})
         with open(path, 'w') as f:
             json.dump(endpoint_schema_dict, f, indent=2)
 
-    def _retrieve_predicates_information(self, class_name: str) -> dict[str, str]:
+    def _retrieve_class_information(self, class_name: str) -> dict[str, list[str]]:
         """Fetch predicates and their ranges for a given class"""
 
         # Fetch top n predicates
@@ -112,29 +110,35 @@ class EndpointSchema:
                 limit=self._limit_queries['top_n_predicates']
             ),
             endpoint_url=self._endpoint_url
-        )['results']['bindings']
-        predicates = pd.DataFrame(predicates).map(lambda x: x['value']).assign(count=lambda df: df['count'].astype(int))
+        )['results']['bindings'] or []
+        predicates = pd.DataFrame(predicates)[['predicate']].map(lambda p: p['value'] if 'value' in p else pd.NA).dropna()
 
         # Fetch top n ranges for the predicates
-        predicates['range'] = predicates['predicate'].apply(
-            lambda p: (query_sparql(
-                self._RANGE_QUERY.format(
-                    graph=self._graph,
-                    class_name=class_name,
-                    predicate_name=p,
-                    limit=self._limit_queries['top_n_ranges']
-                ),
-                endpoint_url=self._endpoint_url
-            )['results']['bindings'] or [{}])
-        )
-
-        # Process the ranges to extract the range values
-        predicates['range'] = predicates['range'].apply(lambda l: [r['range']['value'] for r in l if 'range' in r] if l != [{}] else pd.NA)
-        
-        # Fill the remaining predicate ranges
-        predicates.loc[predicates['range'].isna(), 'range'] = pd.Series([['http://www.w3.org/2001/XMLSchema#string']] * predicates['range'].isna().sum())
+        predicates['range'] = predicates['predicate'].apply(lambda p: (self._retrieve_predicate_information(class_name, p)))
 
         return predicates.set_index('predicate')['range'].to_dict()
+
+    def _retrieve_predicate_information(self, class_name: str, predicate_name: str) -> list[str]:
+        """Fetch ranges for a given predicate of a class"""
+
+        range = query_sparql(
+            self._RANGE_QUERY.format(
+                graph=self._graph,
+                class_name=class_name,
+                predicate_name=predicate_name,
+                limit=self._limit_queries['top_n_ranges']
+            ),
+            endpoint_url=self._endpoint_url
+        )['results']['bindings'] or []
+
+        range = pd.Series(range).map(lambda r: r['value'] if 'value' in r else pd.NA).dropna().tolist()
+
+        # If no range is found, return a default range
+        if not range:
+            range = ['http://www.w3.org/2001/XMLSchema#string']
+
+        return range
+
 
 if __name__ == "__main__":
     start_time = time.time()
@@ -163,7 +167,11 @@ if __name__ == "__main__":
     )
     path = os.path.join('data', 'benchmarks', 'Text2SPARQL', 'schemas', 'dbpedia_schema.json')
     schema.save_schema_dict(path)
-    # info = schema._retrieve_predicates_information(class_name='http://dbpedia.org/ontology/Person')
-    # info = schema.get_information()
+    
+    # Debugging examples
+    # schema = schema._retrieve_class_information(class_name='http://ld.company.org/prod-vocab/Supplier')
+    # schema = schema._retrieve_predicate_information(class_name='http://ld.company.org/prod-vocab/Supplier', predicate_name='http://ld.company.org/prod-vocab/country')
+    # schema = schema.get_information()
+    # logger.info(f"Schema information: {schema}")
     elapsed_time = time.time() - start_time
     logger.info(f"Total execution time: {elapsed_time / 60:.2f} minutes")
