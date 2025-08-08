@@ -20,12 +20,15 @@ KNOWN_DATASETS = [
 ]
 
 MODEL = 'openai/gpt-4.1-nano'
-ENDPOINT_URL = 'http://text2sparql-virtuoso:8890/sparql/'
+DOCKER_ENDPOINT_URL = 'http://text2sparql-virtuoso:8890/sparql/'
+ENDPOINT_URL = 'http://localhost:8890/sparql/'
 
 SCHEMAS = {}
 for dataset in KNOWN_DATASETS:
     with open(os.path.join('/', 'data', 'benchmarks', 'Text2SPARQL', 'schemas', f'{dataset.split('/')[-2]}_schema.json'), 'r', encoding='utf-8') as f:
         SCHEMAS[dataset] = json.load(f)
+    SCHEMAS[dataset][DOCKER_ENDPOINT_URL] = SCHEMAS[dataset].pop(ENDPOINT_URL)
+
 RAG_PROMPT = (
 """
 
@@ -111,24 +114,27 @@ async def get_answer(question: str, dataset: str):
             chat_resp_md = response.model_dump()["content"]
             generated_sparqls = extract_sparql_queries(chat_resp_md)
             generated_sparql = generated_sparqls[-1]['query'].strip()
+            generated_sparql = generated_sparql.replace(ENDPOINT_URL, DOCKER_ENDPOINT_URL)
+            # print(f"Generated SPARQL query: {generated_sparql}")
+            # print(f"Response message: {resp_msg}")
         except Exception as e:
-            resp_msg += f"No SPARQL query could be extracted from {chat_resp_md}"
+            resp_msg = f"No SPARQL query could be extracted from {chat_resp_md} {f"\n\n Conversation History:\n\n{resp_msg}" if resp_msg != '' else ''}"
         if generated_sparql != '':
             try:
-                res = query_sparql(generated_sparql, ENDPOINT_URL)
+                res = query_sparql(generated_sparql, DOCKER_ENDPOINT_URL)
                 if res.get("results", {}).get("bindings"):
                     if resp_msg != '':
                         print(f"SPARQL query fixed after errors: {resp_msg}")
                     break # Successfully generated a query with results
                 else:
-                    validation_output = validate_sparql(query=generated_sparql, endpoint_url=ENDPOINT_URL, endpoints_void_dict=SCHEMAS[dataset])
+                    validation_output = validate_sparql(query=generated_sparql, endpoint_url=DOCKER_ENDPOINT_URL, endpoints_void_dict=SCHEMAS[dataset])
                     if validation_output["errors"]:
                         error_str = "- " + "\n- ".join(validation_output["errors"])
-                        resp_msg += f"SPARQL query not valid. Please fix the query based on the provided schema information, and try again.\n### Validation results\n{error_str}\n### Erroneous SPARQL query\n```sparql\n{validation_output['original_query']}\n```\n"
+                        resp_msg = f"SPARQL query not valid. Please fix the query based on the provided schema information, and try again.\n### Validation results\n{error_str}\n### Erroneous SPARQL query\n```sparql\n{validation_output['original_query']}\n```\n {f"\n\n Conversation History:\n\n{resp_msg}" if resp_msg != '' else ''}"
                     else:
-                        resp_msg += f"SPARQL query returned no results. Please fix the query based on the provided schema information, and try again.\n### Erroneous SPARQL query\n```sparql\n{generated_sparql}\n```"
+                        resp_msg = f"SPARQL query returned no results. Please fix the query based on the provided schema information, and try again.\n### Erroneous SPARQL query\n```sparql\n{generated_sparql}\n``` {f"\n\n Conversation History:\n\n{resp_msg}" if resp_msg != '' else ''}"
             except Exception as e:
-                resp_msg += f"SPARQL query returned error: {e}. Please fix the query based on the provided schema information, and try again.\n### Erroneous SPARQL query\n```sparql\n{generated_sparql}\n```"
+                resp_msg = f"SPARQL query returned error: {e}. Please fix the query based on the provided schema information, and try again.\n### Erroneous SPARQL query\n```sparql\n{generated_sparql}\n``` {f"\n\n Conversation History:\n\n{resp_msg}" if resp_msg != '' else ''}"
 
         # If no valid SPARQL query was generated, ask the model to fix it
         num_of_tries += 1

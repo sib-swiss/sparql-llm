@@ -26,9 +26,6 @@ if [[ "$1" == *"ck"* ]]; then
 
     # Evaluate the queries against the SPARQL endpoint and save results
     uv run text2sparql evaluate -e "$ENDPOINT_URL" -o "$RESULTS_CK" ExpasyGPT "$QUESTIONS_CK" "$QUERIES"
-
-    # Clean up temporary files
-    rm -f "$QUERIES" "$CACHE"
 fi
 
 if [[ "$1" == *"db"* ]]; then
@@ -40,10 +37,6 @@ if [[ "$1" == *"db"* ]]; then
     uv run text2sparql evaluate -l "['en']" -e "$ENDPOINT_URL" -o "$RESULTS_EN" ExpasyGPT "$QUESTIONS_DB" "$QUERIES"
     uv run text2sparql evaluate -l "['es']" -e "$ENDPOINT_URL" -o "$RESULTS_ES" ExpasyGPT "$QUESTIONS_DB" "$QUERIES"
     uv run text2sparql evaluate -l "['en','es']" -e "$ENDPOINT_URL" -o "$RESULTS_FULL" ExpasyGPT "$QUESTIONS_DB" "$QUERIES"
-
-    # Clean up temporary files
-    rm -f "$QUERIES" "$CACHE"
-
 fi
 
 # Print the results
