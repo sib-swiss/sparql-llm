@@ -38,7 +38,7 @@ Here is a list of reference user questions and corresponding SPARQL query answer
 
 Here is schema information that will help you answer accurately:
 
-{relevant_classes}å
+{relevant_classes}
 
 """
 )
