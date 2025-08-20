@@ -136,15 +136,9 @@ class Settings(BaseSettings):
         "Which SIB resources are supported by ExpasyGPT? ",
         "Where is the ACE2 gene expressed in humans?",
         "List primate genes expressed in the fruit fly eye",
-        "What are the rat orthologs of the human TP53 gene?",
+        "What are the rat orthologs of the human HBB gene?",
         "What is the HGNC symbol for the P68871 protein?",
         "Anatomical entities where the INS zebrafish gene is expressed and their gene GO annotations",
-        # "Which resources are supported?",
-        # "How can I get the HGNC symbol for the protein P68871?",
-        # "What are the rat orthologs of the human TP53?",
-        # "Where is expressed the gene ACE2 in human?",
-        # "Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations",
-        # "List the genes in primates orthologous to genes expressed in the fruit fly eye",
     ]
 
     # The name of the application used for display

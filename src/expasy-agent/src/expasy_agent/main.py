@@ -129,7 +129,7 @@ async def stream_response(inputs: dict[str, list], config: RunnableConfig):
 @app.post("/chat")
 async def chat(request: Request):
     """Chat with the assistant main endpoint."""
-    auth_header = request.headers.get("Authorization")
+    auth_header = request.headers.get("Authorization", "")
     if settings.chat_api_key and (
         not auth_header or not auth_header.startswith("Bearer ")
     ):
