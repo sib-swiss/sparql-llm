@@ -32,11 +32,11 @@ for dataset in KNOWN_DATASETS:
 RAG_PROMPT = (
 """
 
-Here is a list of reference user questions and corresponding SPARQL query answers that will help you answer accurately:
+Here is a list of reference user questions and corresponding SPARQL query answers that will help you formulate the SPARQL query:
 
 {relevant_queries}
 
-Here is schema information that will help you answer accurately:
+If the information provided in the examples above is not sufficient to answer the question, you can advise the schema information of the endpoint to help you formulate the SPARQL query:
 
 {relevant_classes}
 
