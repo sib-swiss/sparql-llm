@@ -18,6 +18,8 @@ services:
       - ./src:/app/src
     environment:
       - VECTORDB_URL=http://vectordb:6334/
+      # - DEFAULT_LLM_MODEL=openrouter/mistralai/mistral-large
+      # - DEFAULT_LLM_MODEL=openrouter/anthropic/claude-sonnet-4
       # - DEFAULT_LLM_MODEL=groq/deepseek-r1-distill-llama-70b
       # - DEFAULT_LLM_MODEL=groq/llama-3.3-70b-versatile
       # - DEFAULT_LLM_MODEL=deepseek/deepseek-reasoner

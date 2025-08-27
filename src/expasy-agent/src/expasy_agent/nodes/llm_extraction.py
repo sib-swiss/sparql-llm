@@ -52,7 +52,7 @@ async def extract_user_question(
     """
     configuration = Configuration.from_runnable_config(config)
 
-    model = load_chat_model(configuration).with_structured_output(StructuredQuestion)
+    model = load_chat_model(configuration).with_structured_output(StructuredQuestion, method="function_calling")
 
     prompt_template = ChatPromptTemplate.from_messages(
         [

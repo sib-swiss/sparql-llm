@@ -109,7 +109,8 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
                     execute_resp = f"Query on {endpoint_url} returned error:\n\n{e}\n\n{FIX_QUERY_PROMPT}\n```sparql\n{sparql_query}\n```"
                 # print("EXECUTE RESP", execute_resp)
                 recall_messages.append(
-                    FunctionMessage(
+                    # FunctionMessage(
+                    HumanMessage(
                         content=execute_resp,
                         name="execute_sparql_query",
                     )

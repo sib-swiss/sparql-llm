@@ -7,7 +7,7 @@ from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
-from langchain_core.messages import FunctionMessage
+from langchain_core.messages import FunctionMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.vectorstores import VectorStoreRetriever
 from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
@@ -20,7 +20,7 @@ from expasy_agent.utils import get_message_text
 # TODO: use grouping? https://qdrant.tech/documentation/concepts/search/#grouping-api
 # Which tools can I use for enrichment analysis?
 
-async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[StepOutput | FunctionMessage]]:
+async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[StepOutput | FunctionMessage | HumanMessage]]:
     """Retrieve documents based on the latest message in the state.
 
     This function takes the current state and configuration, uses the latest query
@@ -117,7 +117,12 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[StepO
     return {
         # "retrieved_docs": docs,
         "messages": [
-            FunctionMessage(
+            # Mistral does not support FunctionMessage
+            # FunctionMessage(
+            #     content=format_docs(docs),
+            #     name="retrieve_docs",
+            # )
+            HumanMessage(
                 content=format_docs(docs),
                 name="retrieve_docs",
             )
