@@ -20,7 +20,7 @@ from expasy_agent.utils import get_message_text
 # TODO: use grouping? https://qdrant.tech/documentation/concepts/search/#grouping-api
 # Which tools can I use for enrichment analysis?
 
-async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Document]]:
+async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[StepOutput | FunctionMessage]]:
     """Retrieve documents based on the latest message in the state.
 
     This function takes the current state and configuration, uses the latest query
@@ -112,11 +112,13 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[Docum
         for doc_type, docs in docs_by_type.items()
     ]
 
+    print(format_docs(docs))
+
     return {
         # "retrieved_docs": docs,
         "messages": [
             FunctionMessage(
-                format_docs(docs),
+                content=format_docs(docs),
                 name="retrieve_docs",
             )
         ],
