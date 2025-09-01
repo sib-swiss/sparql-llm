@@ -61,15 +61,18 @@ class SparqlExamplesLoader(BaseLoader):
             prefix_str = f"PREFIX {prefix}: <{namespace}>"
             if not re.search(prefix_str, query) and re.search(f"[(| |\u00a0|/]{prefix}:", query):
                 query = f"{prefix_str}\n{query}"
-
-        parsed_query = prepareQuery(query)
+        query_type = None
+        try:
+            query_type = prepareQuery(query).algebra.name
+        except Exception as e:
+            logger.warning(f"Could not parse query: {query}. Error: {e}")
         return Document(
             page_content=comment,
             metadata={
                 "question": comment,
                 "answer": query,
                 "endpoint_url": self.endpoint_url,
-                "query_type": parsed_query.algebra.name,
+                "query_type": query_type,
                 "doc_type": "SPARQL endpoints query examples",
             },
         )
