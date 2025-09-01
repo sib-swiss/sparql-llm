@@ -15,6 +15,7 @@ from expasy_agent import prompts
 
 class Settings(BaseSettings):
     """Define the service settings for the agent that can be set using environment variables."""
+
     use_tools: bool = False
     """Whether to use tools or not. If set to False, the agent will use the functions sequentially to answer questions."""
 
@@ -81,7 +82,8 @@ class Settings(BaseSettings):
         {
             "label": "METRIN-KG ",
             "endpoint_url": "https://kg.earthmetabolome.org/metrin/api/",
-            "description": "The MEtabolomes, TRaits, and INteractions-Knowledge Graph (METRIN-KG) is a project that aims to create a digital representation of chemo- and biodiversity, from botanical collections to the global scale in wild ecosystems.",
+            "description": """METRIN-KG is a knowledge graph developed under the Earth Metabolome Initiative that integrates data on plant metabolomes, measurable plant traits, and their biotic interactions.
+It provides a unified, searchable framework that connects chemical profiles of plants with ecological and biological attributes.""",
             # "homepage_url": "https://dbgi.eu/",
         },
         # No metadata in these endpoints
@@ -231,9 +233,7 @@ class Configuration:
     )
     seed: Annotated[int, {"__template_metadata__": {"kind": "llm"}}] = field(
         default=settings.default_seed,
-        metadata={
-            "description": "The random seed used for reproducibility."
-        },
+        metadata={"description": "The random seed used for reproducibility."},
     )
     # Number of retrieved docs
     search_kwargs: dict[str, Any] = field(
