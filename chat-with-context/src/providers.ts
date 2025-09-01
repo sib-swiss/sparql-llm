@@ -87,7 +87,8 @@ export class ChatState {
 export async function streamResponse(state: ChatState, question: string) {
   state.appendMessage(question, "user");
   // Query LangGraph through our custom API
-  await streamCustomLangGraph(state);
+  // await streamCustomLangGraph(state);
+  await streamCustomMcp(state);
   // if (state.apiUrl.endsWith(":2024/") || state.apiUrl.endsWith(":8123/")) {
   //   // Query LangGraph API
   //   await streamLangGraphApi(state);
@@ -100,82 +101,7 @@ export async function streamResponse(state: ChatState, question: string) {
   // }
 }
 
-async function processLangGraphChunk(state: ChatState, chunk: any) {
-  if (chunk.event === "error") {
-    throw new Error(`An error occurred. Please try again. ${chunk.data.error}: ${chunk.data.message}`);
-  }
-  // console.log(chunk);
-  // Handle updates to the state (nodes that are retrieving stuff without querying the LLM usually)
-  if (chunk.event === "updates") {
-    // console.log("UPDATES", chunk);
-    for (const nodeId of Object.keys(chunk.data)) {
-      const nodeData = chunk.data[nodeId];
-      if (!nodeData) continue;
-      if (nodeData.steps) {
-        // Handle most generic steps output sent by the agent
-        for (const step of nodeData.steps) {
-          // console.log("STEP", step);
-          // Handle step specific to post-generation validation
-          if (step.type === "recall") {
-            // When `recall` is called, the model will re-generate the response, so we create a new message
-            // state.lastMsg().setContent("");
-            state.appendMessage("", "assistant");
-          } else if (step.fixed_message) {
-            // If the update contains a message with a fix
-            state.lastMsg().setContent(step.fixed_message);
-          }
-          state.appendStepToLastMsg(nodeId, step.label, step.details, step.substeps);
-        }
-      }
-      if (nodeData.structured_output) {
-        // Special case to handle things extracted from output
-        // Here we add links to open the SPARQL query in an editor
-        if (nodeData.structured_output.sparql_query) {
-          state.lastMsg().setLinks([
-            {
-              url: getEditorUrl(
-                nodeData.structured_output.sparql_query,
-                nodeData.structured_output.sparql_endpoint_url,
-              ),
-              ...queryLinkLabels,
-            },
-          ]);
-        }
-      }
-    }
-  }
-  // Handle messages from the model
-  if (chunk.event === "messages") {
-    const [msg, metadata] = chunk.data;
-    if (metadata.structured_output_format) return;
-    // console.log("MESSAGES", msg, metadata);
-    // if (msg.tool_calls?.length > 0) {
-    //   // Tools calls requested by the model
-    //   const toolNames = msg.tool_calls.map((tool_call: any) => tool_call.name).join(", ");
-    //   if (toolNames) state.appendStepToLastMsg(metadata.langgraph_node, `🔧 Calling tool ${toolNames}`);
-    //   console.log("TOOL call", msg, metadata);
-    // }
-    if (msg.content && msg.type === "tool") {
-      // If tool called by model
-      // console.log("TOOL res", msg, metadata);
-      const name = msg.name ? msg.name.replace(/_/g, " ").replace(/^\w/, (c: string) => c.toUpperCase()) : "Tool";
-      const icon = msg.name.includes("resources") ? "📚" : msg.name.includes("execute") ? "📡" : "🔧";
-      state.appendMessage("", "assistant");
-      state.appendStepToLastMsg(metadata.langgraph_node, `${icon} ${name}`, msg.content);
-    } else if (msg.content === "</think>" && msg.type === "AIMessageChunk") {
-      // Putting thinking process in a separate step
-      state.appendContentToLastMsg(msg.content);
-      state.appendStepToLastMsg(metadata.langgraph_node, "💭 Thought process", state.lastMsg().content());
-      state.lastMsg().setContent("");
-    } else if (msg.content && msg.type === "AIMessageChunk" && metadata.langgraph_node === "call_model") {
-      // This will only stream response from the langgraph node "call_model"
-      // console.log("AIMessageChunk", msg, metadata);
-      state.appendContentToLastMsg(msg.content);
-    }
-  }
-}
-
-async function streamCustomLangGraph(state: ChatState) {
+async function streamCustomMcp(state: ChatState) {
   const response = await fetch(`${state.apiUrl}`, {
     method: "POST",
     headers: {
@@ -193,7 +119,8 @@ async function streamCustomLangGraph(state: ChatState) {
   state.appendMessage("", "assistant");
   const reader = response.body?.getReader()!;
   const decoder = new TextDecoder("utf-8");
-  let buffer = ""; // Buffer for incomplete chunks
+  let buffer = "";
+  let currentEvent: string | null = null;
   // Iterate stream response
   while (true) {
     if (reader) {
@@ -202,14 +129,28 @@ async function streamCustomLangGraph(state: ChatState) {
       const chunkStr = decoder.decode(value, {stream: true});
       buffer += chunkStr;
       let lines = buffer.split("\n");
-      // Keep the last line if it's incomplete
       buffer = lines.pop() || "";
       for (const line of lines.filter(line => line.trim() !== "")) {
         if (line === "data: [DONE]") return;
-        if (line.startsWith("data: ")) {
+        if (line.startsWith("event: ")) {
+          currentEvent = line.substring(7).trim();
+        } else if (line.startsWith("data: ")) {
           try {
-            const json = JSON.parse(line.substring(6));
-            processLangGraphChunk(state, json);
+            const dataStr = line.substring(6);
+            let data;
+            // Try to parse JSON, fallback to string if not JSON
+            try {
+              data = JSON.parse(dataStr);
+            } catch {
+              data = dataStr;
+            }
+            if (currentEvent) {
+              processMcpChunk(state, {event: currentEvent, data});
+              currentEvent = null;
+            } else {
+              // fallback for legacy format
+              processMcpChunk(state, data);
+            }
           } catch (e) {
             console.log("Error parsing line", e, line);
           }
@@ -218,6 +159,213 @@ async function streamCustomLangGraph(state: ChatState) {
     }
   }
 }
+
+async function processMcpChunk(state: ChatState, chunk: any) {
+  console.log("processLangGraphChunk", chunk);
+  if (chunk.event === "error") {
+    throw new Error(`An error occurred. Please try again. ${chunk.data.error}: ${chunk.data.message}`);
+  }
+  // console.log(chunk);
+  // Handle updates to the state (nodes that are retrieving stuff without querying the LLM usually)
+  if (chunk.event === "updates") {
+    for (const nodeId of Object.keys(chunk.data)) {
+      const nodeData = chunk.data[nodeId];
+      if (!nodeData) continue;
+      if (nodeData.steps) {
+        for (const step of nodeData.steps) {
+          if (step.type === "recall") {
+            state.appendMessage("", "assistant");
+          } else if (step.fixed_message) {
+            state.lastMsg().setContent(step.fixed_message);
+          }
+          state.appendStepToLastMsg(nodeId, step.label, step.details, step.substeps);
+        }
+      }
+      if (nodeData.structured_output) {
+        if (nodeData.structured_output.sparql_query) {
+          state.lastMsg().setLinks([
+            {
+              url: getEditorUrl(
+                nodeData.structured_output.sparql_query,
+                nodeData.structured_output.sparql_endpoint_url,
+              ),
+              ...queryLinkLabels,
+            },
+          ]);
+        }
+      }
+    }
+  }
+  // Handle tool_call_requested event
+  if (chunk.event === "tool_call_requested") {
+    // chunk.data is an array of tool calls
+    for (const toolCall of chunk.data) {
+      const label = `🔧 Tool call requested: ${toolCall.function?.name || toolCall.type}`;
+      const details = toolCall.function?.arguments || JSON.stringify(toolCall);
+      state.appendStepToLastMsg(toolCall.id || "tool_call", label, details);
+    }
+  }
+  // Handle tool_call_results event
+  if (chunk.event === "tool_call_results") {
+    // chunk.data contains results, query, etc.
+    const label = `📡 Tool call results (${chunk.data.total_found ?? "?"} found)`;
+    const details = chunk.data.query ? `Query: ${chunk.data.query}\nResults: ${JSON.stringify(chunk.data.results, null, 2)}` : JSON.stringify(chunk.data);
+    state.appendStepToLastMsg("tool_call_results", label, details);
+  }
+  console.log("CHUNK", chunk.event, chunk);
+  // Handle messages from the model
+  if (chunk.event === "message") {
+    const msg = chunk.data;
+    // if (metadata.structured_output_format) return;
+    // console.log("MESSAGES", msg, metadata);
+    // if (msg.tool_calls?.length > 0) {
+    //   // Tools calls requested by the model
+    //   const toolNames = msg.tool_calls.map((tool_call: any) => tool_call.name).join(", ");
+    //   if (toolNames) state.appendStepToLastMsg(metadata.langgraph_node, `🔧 Calling tool ${toolNames}`);
+    //   console.log("TOOL call", msg, metadata);
+    // }
+    if (msg.content && msg.type === "tool") {
+      // If tool called by model
+      // console.log("TOOL res", msg, metadata);
+      const name = msg.name ? msg.name.replace(/_/g, " ").replace(/^\w/, (c: string) => c.toUpperCase()) : "Tool";
+      const icon = msg.name.includes("resources") ? "📚" : msg.name.includes("execute") ? "📡" : "🔧";
+      state.appendMessage("", "assistant");
+      state.appendStepToLastMsg("", `${icon} ${name}`, msg.content);
+    } else if (msg.content === "</think>" && msg.type === "AIMessageChunk") {
+      // Putting thinking process in a separate step
+      state.appendContentToLastMsg(msg.content);
+      state.appendStepToLastMsg("", "💭 Thought process", state.lastMsg().content());
+      state.lastMsg().setContent("");
+    } else {
+      // This will only stream response from the langgraph node "call_model"
+      // console.log("AIMessageChunk", msg, metadata);
+      state.appendContentToLastMsg(msg.choices[0]?.delta?.content);
+    }
+  }
+}
+
+
+// async function processLangGraphChunk(state: ChatState, chunk: any) {
+//   console.log("processLangGraphChunk", chunk);
+//   if (chunk.event === "error") {
+//     throw new Error(`An error occurred. Please try again. ${chunk.data.error}: ${chunk.data.message}`);
+//   }
+//   // console.log(chunk);
+//   // Handle updates to the state (nodes that are retrieving stuff without querying the LLM usually)
+//   if (chunk.event === "updates") {
+//     // console.log("UPDATES", chunk);
+//     for (const nodeId of Object.keys(chunk.data)) {
+//       const nodeData = chunk.data[nodeId];
+//       if (!nodeData) continue;
+//       if (nodeData.steps) {
+//         // Handle most generic steps output sent by the agent
+//         for (const step of nodeData.steps) {
+//           // console.log("STEP", step);
+//           // Handle step specific to post-generation validation
+//           if (step.type === "recall") {
+//             // When `recall` is called, the model will re-generate the response, so we create a new message
+//             // state.lastMsg().setContent("");
+//             state.appendMessage("", "assistant");
+//           } else if (step.fixed_message) {
+//             // If the update contains a message with a fix
+//             state.lastMsg().setContent(step.fixed_message);
+//           }
+//           state.appendStepToLastMsg(nodeId, step.label, step.details, step.substeps);
+//         }
+//       }
+//       if (nodeData.structured_output) {
+//         // Special case to handle things extracted from output
+//         // Here we add links to open the SPARQL query in an editor
+//         if (nodeData.structured_output.sparql_query) {
+//           state.lastMsg().setLinks([
+//             {
+//               url: getEditorUrl(
+//                 nodeData.structured_output.sparql_query,
+//                 nodeData.structured_output.sparql_endpoint_url,
+//               ),
+//               ...queryLinkLabels,
+//             },
+//           ]);
+//         }
+//       }
+//     }
+//   }
+//   console.log("CHUNK", chunk.event, chunk);
+//   // Handle messages from the model
+//   if (chunk.event === "message") {
+//     const [msg, metadata] = chunk.data;
+//     if (metadata.structured_output_format) return;
+//     // console.log("MESSAGES", msg, metadata);
+//     // if (msg.tool_calls?.length > 0) {
+//     //   // Tools calls requested by the model
+//     //   const toolNames = msg.tool_calls.map((tool_call: any) => tool_call.name).join(", ");
+//     //   if (toolNames) state.appendStepToLastMsg(metadata.langgraph_node, `🔧 Calling tool ${toolNames}`);
+//     //   console.log("TOOL call", msg, metadata);
+//     // }
+//     if (msg.content && msg.type === "tool") {
+//       // If tool called by model
+//       // console.log("TOOL res", msg, metadata);
+//       const name = msg.name ? msg.name.replace(/_/g, " ").replace(/^\w/, (c: string) => c.toUpperCase()) : "Tool";
+//       const icon = msg.name.includes("resources") ? "📚" : msg.name.includes("execute") ? "📡" : "🔧";
+//       state.appendMessage("", "assistant");
+//       state.appendStepToLastMsg(metadata.langgraph_node, `${icon} ${name}`, msg.content);
+//     } else if (msg.content === "</think>" && msg.type === "AIMessageChunk") {
+//       // Putting thinking process in a separate step
+//       state.appendContentToLastMsg(msg.content);
+//       state.appendStepToLastMsg(metadata.langgraph_node, "💭 Thought process", state.lastMsg().content());
+//       state.lastMsg().setContent("");
+//     } else if (msg.content && msg.type === "AIMessageChunk" && metadata.langgraph_node === "call_model") {
+//       // This will only stream response from the langgraph node "call_model"
+//       // console.log("AIMessageChunk", msg, metadata);
+//       state.appendContentToLastMsg(msg.content);
+//     }
+//   }
+// }
+
+// async function streamCustomLangGraph(state: ChatState) {
+//   const response = await fetch(`${state.apiUrl}`, {
+//     method: "POST",
+//     headers: {
+//       "Content-Type": "application/json",
+//       Authorization: `Bearer ${state.apiKey}`,
+//     },
+//     signal: state.abortController.signal,
+//     body: JSON.stringify({
+//       messages: state.messages().map(({content, role}) => ({content: content(), role})),
+//       stream: true,
+//       ...(state.model ? {model: state.model} : {}),
+//     }),
+//   });
+
+//   state.appendMessage("", "assistant");
+//   const reader = response.body?.getReader()!;
+//   const decoder = new TextDecoder("utf-8");
+//   let buffer = ""; // Buffer for incomplete chunks
+//   // Iterate stream response
+//   while (true) {
+//     if (reader) {
+//       const {value, done} = await reader.read();
+//       if (done) break;
+//       const chunkStr = decoder.decode(value, {stream: true});
+//       buffer += chunkStr;
+//       let lines = buffer.split("\n");
+//       // Keep the last line if it's incomplete
+//       buffer = lines.pop() || "";
+//       for (const line of lines.filter(line => line.trim() !== "")) {
+//         if (line === "data: [DONE]") return;
+//         if (line.startsWith("data: ")) {
+//           try {
+//             const json = JSON.parse(line.substring(6));
+//             processLangGraphChunk(state, json);
+//           } catch (e) {
+//             console.log("Error parsing line", e, line);
+//           }
+//         }
+//       }
+//     }
+//   }
+// }
+
 
 // // Types of objects used when interacting with LLM agents
 // type RefenceDocument = {
