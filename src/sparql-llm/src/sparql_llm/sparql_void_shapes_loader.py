@@ -47,7 +47,8 @@ def get_shex_dict_from_void(
             subj = prefix_converter.compress(subject_cls)
         except Exception as _e:
             subj = f"<{subject_cls}>"
-        shex_dict[subject_cls] = {"shex": f"{subj} {{\n  a [ {subj} ] ;\n"}
+        shape_iri = f"shape:{subj.replace(':', '_')}"
+        shex_dict[subject_cls] = {"shex": f"{shape_iri} {{\n  a [ {subj} ] ;\n"}
 
         for predicate, object_list in predicates.items():
             try:

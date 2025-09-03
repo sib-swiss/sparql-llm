@@ -162,13 +162,13 @@ async def validate_output(
 ) -> dict[str, bool | list[tuple[str, str]] | int]:
     """Node to validate the output of a LLM call, e.g. SPARQL queries generated."""
     recall_messages = []
-    print(state["messages"])
+    # print(state["messages"])
     last_msg = next(
         msg.content
         for msg in reversed(state["messages"])
         if isinstance(msg, AIMessage) and msg.content
     )
-    print(last_msg)
+    # print(last_msg)
     # last_msg = state["messages"][-1].content
     validation_outputs = validate_sparql_in_msg(
         last_msg, prefixes_map, endpoints_void_dict
