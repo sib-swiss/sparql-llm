@@ -156,6 +156,7 @@ def get_schema_for_endpoint(endpoint_url: str, void_file: Optional[str] = None) 
         logger.warning(f"Could not retrieve VoID description from {void_file if void_file else endpoint_url}: {e}")
     return void_dict
 
+
 # TODO: use SPARQLWrapper
 # sparqlw = SPARQLWrapper(endpoint)
 # sparqlw.setReturnFormat(JSON)
@@ -201,11 +202,7 @@ def query_sparql(
             resp_json = resp.json()
             # Handle ASK queries
             if resp_json.get("boolean") is not None:
-                return {
-                    "results": {
-                        "bindings": [{"ask-variable": {"value": str(resp_json["boolean"]).lower()}}]
-                    }
-                }
+                return {"results": {"bindings": [{"ask-variable": {"value": str(resp_json["boolean"]).lower()}}]}}
             if check_service_desc and not resp_json.get("results", {}).get("bindings", []):
                 # If no results found directly in the endpoint we check in its service description
                 resp = client.get(
@@ -223,11 +220,7 @@ def query_sparql(
                     else:
                         # Handle tuple results
                         bindings.append({str(var): {"value": str(val)} for var, val in zip(results.vars, row)})
-                return {
-                    "results": {
-                        "bindings": bindings
-                    }
-                }
+                return {"results": {"bindings": bindings}}
             return resp_json
         finally:
             if should_close:

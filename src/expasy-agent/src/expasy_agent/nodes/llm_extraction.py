@@ -17,6 +17,7 @@ from expasy_agent.utils import load_chat_model
 
 # TODO: remove, not used anymore, replaced by tools functions
 
+
 # https://python.langchain.com/docs/how_to/structured_output
 class StructuredQuestion(BaseModel):
     """Extracted."""
@@ -52,7 +53,9 @@ async def extract_user_question(
     """
     configuration = Configuration.from_runnable_config(config)
 
-    model = load_chat_model(configuration).with_structured_output(StructuredQuestion, method="function_calling")
+    model = load_chat_model(configuration).with_structured_output(
+        StructuredQuestion, method="function_calling"
+    )
 
     prompt_template = ChatPromptTemplate.from_messages(
         [
@@ -73,11 +76,19 @@ async def extract_user_question(
         message_value, {**config, "configurable": {"stream": False}}
     )
     # print(structured_question)
-    steps_label = f"{len(structured_question.question_steps)} steps and " if len(structured_question.question_steps) > 0 else ""
-    steps_details = f"""
+    steps_label = (
+        f"{len(structured_question.question_steps)} steps and "
+        if len(structured_question.question_steps) > 0
+        else ""
+    )
+    steps_details = (
+        f"""
 Steps to answer the user question:
 
-{chr(10).join(f"- {step}" for step in structured_question.question_steps)}""" if len(structured_question.question_steps) > 0 else ""
+{chr(10).join(f"- {step}" for step in structured_question.question_steps)}"""
+        if len(structured_question.question_steps) > 0
+        else ""
+    )
 
     return {
         "structured_question": structured_question,

@@ -10,7 +10,7 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.messages import FunctionMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.vectorstores import VectorStoreRetriever
-from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
+from langchain_qdrant import QdrantVectorStore
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from expasy_agent.config import Configuration, settings
@@ -20,7 +20,10 @@ from expasy_agent.utils import get_message_text
 # TODO: use grouping? https://qdrant.tech/documentation/concepts/search/#grouping-api
 # Which tools can I use for enrichment analysis?
 
-async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[StepOutput | FunctionMessage | HumanMessage]]:
+
+async def retrieve(
+    state: State, config: RunnableConfig
+) -> dict[str, list[StepOutput | FunctionMessage | HumanMessage]]:
     """Retrieve documents based on the latest message in the state.
 
     This function takes the current state and configuration, uses the latest query
@@ -257,7 +260,9 @@ def _format_doc(doc: Document) -> str:
         elif "schema" in doc_type:
             doc_lang = "shex"
             # endpoint_url = f" ({doc.metadata.get('endpoint_url', 'undefined')})"
-            endpoint_url = f" ({doc.metadata.get('endpoint_url', 'undefined endpoint')})"
+            endpoint_url = (
+                f" ({doc.metadata.get('endpoint_url', 'undefined endpoint')})"
+            )
         return f"\n{doc.page_content}{endpoint_url}:\n\n```{doc_lang}\n{doc.metadata.get('answer')}\n```\n"
 
     # meta = "".join(f" {k}={v!r}" for k, v in doc.metadata.items())

@@ -351,6 +351,7 @@ def validate_sparql(
         )
     return validation_output
 
+
 def validate_sparql_in_msg(
     msg: str,
     prefixes_map: Optional[dict[str, str]] = None,
@@ -361,5 +362,7 @@ def validate_sparql_in_msg(
     generated_sparqls = extract_sparql_queries(msg)
     for gen_sparql in generated_sparqls:
         if gen_sparql["query"] and gen_sparql["endpoint_url"]:
-            validation_outputs.append(validate_sparql(gen_sparql["query"], gen_sparql["endpoint_url"], prefixes_map, endpoints_void_dict))
+            validation_outputs.append(
+                validate_sparql(gen_sparql["query"], gen_sparql["endpoint_url"], prefixes_map, endpoints_void_dict)
+            )
     return validation_outputs

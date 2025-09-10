@@ -10,6 +10,7 @@ from sparql_llm.utils import SparqlEndpointLinks
 # Silence overly verbose info logs from httpx
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
+
 @dataclass
 class ServerConfig:
     embedding_name: str = "BAAI/bge-small-en-v1.5"

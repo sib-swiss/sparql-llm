@@ -3,7 +3,6 @@ from typing import Any, Callable, List
 
 from fastembed import TextEmbedding
 from langchain_core.tools import tool
-from langgraph.types import Command
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 from sparql_llm.utils import query_sparql
@@ -16,6 +15,7 @@ from expasy_agent.prompts import FIX_QUERY_PROMPT
 # To use tools:
 # 1. Use bind_tools in nodes/call_model.py
 # 2. Change the langgraph edges in graph.py
+
 
 @tool
 def execute_sparql_query(sparql_query: str, endpoint_url: str) -> str:
@@ -30,7 +30,9 @@ def execute_sparql_query(sparql_query: str, endpoint_url: str) -> str:
     """
     # First run validation of the query using classes schema and known prefixes
     resp_msg = ""
-    validation_output = validate_sparql(sparql_query, endpoint_url, prefixes_map, endpoints_void_dict)
+    validation_output = validate_sparql(
+        sparql_query, endpoint_url, prefixes_map, endpoints_void_dict
+    )
     if validation_output["fixed_query"]:
         # Pass the fixed query to the client
         resp_msg += f"Fixed the prefixes of the generated SPARQL query automatically:\n\n```sparql\n{validation_output['fixed_query']}\n```\n"
@@ -43,7 +45,9 @@ def execute_sparql_query(sparql_query: str, endpoint_url: str) -> str:
         return resp_msg
     # Execute the SPARQL query
     try:
-        res = query_sparql(sparql_query, endpoint_url, timeout=10, check_service_desc=False, post=True)
+        res = query_sparql(
+            sparql_query, endpoint_url, timeout=10, check_service_desc=False, post=True
+        )
         # If no results, return a message to ask fix the query
         if not res.get("results", {}).get("bindings"):
             resp_msg += f"SPARQL query returned no results. {FIX_QUERY_PROMPT}\n```sparql\n{sparql_query}\n```"
@@ -66,7 +70,12 @@ vectordb = QdrantClient(url=settings.vectordb_url, prefer_grpc=True)
 
 
 @tool
-def access_biomedical_resources(question: str, potential_classes: list[str], potential_entities: list[str], steps: list[str]) -> str:
+def access_biomedical_resources(
+    question: str,
+    potential_classes: list[str],
+    potential_entities: list[str],
+    steps: list[str],
+) -> str:
     """Answer a biomedical question using SIB public resources.
 
     Retrieves context to generate a SPARQL query for the user question.
@@ -81,7 +90,9 @@ def access_biomedical_resources(question: str, potential_classes: list[str], pot
         str: A string containing document that will help the assistant to generate the SPARQL query to answer the question.
     """
     relevant_docs: list[ScoredPoint] = []
-    for search_embeddings in embedding_model.embed([question, *steps, *potential_classes]):
+    for search_embeddings in embedding_model.embed(
+        [question, *steps, *potential_classes]
+    ):
         # Get SPARQL example queries
         relevant_docs.extend(
             doc
@@ -101,7 +112,8 @@ def access_biomedical_resources(question: str, potential_classes: list[str], pot
             # Make sure we don't add duplicate docs
             if doc.payload.get("metadata", {}).get("answer")
             not in {
-                existing_doc.payload.get("metadata", {}).get("answer") for existing_doc in relevant_docs
+                existing_doc.payload.get("metadata", {}).get("answer")
+                for existing_doc in relevant_docs
             }
         )
         # Get classes schemas
@@ -122,7 +134,8 @@ def access_biomedical_resources(question: str, potential_classes: list[str], pot
             ).points
             if doc.payload.get("metadata", {}).get("answer")
             not in {
-                existing_doc.payload.get("metadata", {}).get("answer") for existing_doc in relevant_docs
+                existing_doc.payload.get("metadata", {}).get("answer")
+                for existing_doc in relevant_docs
             }
         )
     args = {
@@ -202,12 +215,16 @@ def format_points(docs: list[ScoredPoint]) -> str:
 
 def _format_point(doc: ScoredPoint) -> str:
     """Format a single document, with special formatting based on doc type (sparql, schema)."""
-    doc_meta: dict[str, str] = doc.payload.get("metadata", {}) if doc.payload is not None else {}
+    doc_meta: dict[str, str] = (
+        doc.payload.get("metadata", {}) if doc.payload is not None else {}
+    )
     if doc_meta.get("answer"):
         doc_lang = ""
         doc_type = str(doc_meta.get("doc_type", "")).lower()
         if "query" in doc_type:
-            doc_lang = f"sparql\n#+ endpoint: {doc_meta.get('endpoint_url', 'undefined')}"
+            doc_lang = (
+                f"sparql\n#+ endpoint: {doc_meta.get('endpoint_url', 'undefined')}"
+            )
         elif "schema" in doc_type:
             doc_lang = "shex"
         return f"\n{doc.payload['page_content']}:\n\n```{doc_lang}\n{doc_meta.get('answer')}\n```\n"
@@ -216,9 +233,6 @@ def _format_point(doc: ScoredPoint) -> str:
     if meta:
         meta = f" {meta}"
     return f"{meta}\n{doc.payload['page_content']}\n"
-
-
-
 
 
 TOOLS: List[Callable[..., Any]] = [

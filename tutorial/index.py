@@ -1,6 +1,10 @@
 from langchain_core.documents import Document
 from sparql_llm import SparqlExamplesLoader, SparqlVoidShapesLoader, SparqlInfoLoader
 
+from fastembed import TextEmbedding
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import Distance, VectorParams
+
 
 # List of endpoints that will be used
 # endpoints: list[SparqlEndpointLinks] = [
@@ -20,11 +24,6 @@ endpoints: list[dict[str, str]] = [
         "endpoint_url": "https://sparql.omabrowser.org/sparql/",
     },
 ]
-
-
-from fastembed import TextEmbedding
-from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, VectorParams
 
 embedding_model = TextEmbedding(
     "BAAI/bge-small-en-v1.5",

@@ -4,7 +4,7 @@ import httpx
 import pandas as pd
 from bs4 import BeautifulSoup
 from langchain_core.documents import Document
-from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
+from langchain_qdrant import QdrantVectorStore
 from markdownify import markdownify
 from rdflib import RDF, Dataset, Namespace
 from sparql_llm import SparqlExamplesLoader, SparqlInfoLoader, SparqlVoidShapesLoader
@@ -17,6 +17,7 @@ from expasy_agent.nodes.retrieval_docs import make_dense_encoder
 SCHEMA = Namespace("http://schema.org/")
 
 # DOC_TYPE = "General information"
+
 
 def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
     """Extract datasets descriptions from the schema.org metadata in homepage of the endpoint"""
@@ -93,7 +94,9 @@ def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
         print(f"Error while fetching schema.org metadata from {endpoint['label']}: {e}")
     return docs
 
+
 # Which tools can I use for enrichment analysis?
+
 
 def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document]:
     """Get documents for all SIB expasy resources defined in expasy_resources_metadata.csv"""
@@ -106,7 +109,7 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
             metadata={
                 "iri": row["url"],
                 "doc_type": DOC_TYPE,
-            }
+            },
         )
         docs.append(doc)
 
@@ -117,7 +120,7 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
                 metadata={
                     "iri": row["url"],
                     "doc_type": DOC_TYPE,
-                }
+                },
             )
             docs.append(doc)
 
@@ -128,24 +131,24 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
                 metadata={
                     "iri": row["url"],
                     "doc_type": DOC_TYPE,
-                }
+                },
             )
             docs.append(detail_doc)
 
-
-    docs.append(Document(
-        page_content="How many resources are there in the Expasy catalog?",
-        # page_content=f"There are {len(df)} resources in the Expasy catalog",
-        metadata={
-            # "iri": row["url"],
-            "answer": str(len(df)),
-            "doc_type": DOC_TYPE,
-        }
-    ))
+    docs.append(
+        Document(
+            page_content="How many resources are there in the Expasy catalog?",
+            # page_content=f"There are {len(df)} resources in the Expasy catalog",
+            metadata={
+                # "iri": row["url"],
+                "answer": str(len(df)),
+                "doc_type": DOC_TYPE,
+            },
+        )
+    )
 
     print(f"Extracted {len(docs)} documents from {file}")
     return docs
-
 
 
 def init_vectordb() -> None:
@@ -231,7 +234,6 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
 
 if __name__ == "__main__":
     init_vectordb()
-
 
 
 # # Not used anymore

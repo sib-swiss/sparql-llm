@@ -174,12 +174,14 @@ async def chat(request: Request):
 
 class LogMessage(Message):
     """Message model for logging purposes."""
+
     steps: Optional[list[Any]] = None
 
 
 class FeedbackRequest(BaseModel):
     like: bool
     messages: list[LogMessage]
+
 
 logs_folder = "/logs"
 
@@ -198,7 +200,11 @@ def log_msg(filename: str, messages: list[LogMessage]) -> None:
 @app.post("/feedback")
 def post_like(request: FeedbackRequest):
     """Save the user feedback in the logs files."""
-    filename = f"{logs_folder}/likes.jsonl" if request.like else f"{logs_folder}/dislikes.jsonl"
+    filename = (
+        f"{logs_folder}/likes.jsonl"
+        if request.like
+        else f"{logs_folder}/dislikes.jsonl"
+    )
     log_msg(filename, request.messages)
     return {"status": "success"}
 

@@ -19,6 +19,7 @@ mcp = FastMCP(
 
 ## TOOL: retrieve docs to generate SPARQL query
 
+
 # ctx: Context[Any, Any], potential_entities: list[str],
 # potential_entities: Potential entities and instances of classes
 @mcp.tool()
@@ -53,7 +54,8 @@ async def access_sib_biodata_sparql(question: str, potential_classes: list[str],
                 ),
             ).points
             # Make sure we don't add duplicate docs
-            if doc.payload and doc.payload.get("metadata", {}).get("answer")
+            if doc.payload
+            and doc.payload.get("metadata", {}).get("answer")
             not in {
                 existing_doc.payload.get("metadata", {}).get("answer") if existing_doc.payload else None for existing_doc in relevant_docs
             }
@@ -74,13 +76,15 @@ async def access_sib_biodata_sparql(question: str, potential_classes: list[str],
                     ]
                 ),
             ).points
-            if doc.payload and doc.payload.get("metadata", {}).get("answer")
+            if doc.payload
+            and doc.payload.get("metadata", {}).get("answer")
             not in {
                 existing_doc.payload.get("metadata", {}).get("answer") if existing_doc.payload else None for existing_doc in relevant_docs
             }
         )
     # await ctx.info(f"Using {len(relevant_docs)} documents to answer the question")
     return PROMPT_TOOL_SPARQL.format(docs_count=str(len(relevant_docs))) + format_docs(relevant_docs)
+
 
 # Here is a list of **{len(relevant_docs)}** documents (reference questions and query answers, classes schema) relevant to the question that will help answer it accurately:
 
@@ -99,6 +103,7 @@ relevant to the user question that will help you answer the user question accura
 """
 
 ## TOOL: get resources infos
+
 
 @mcp.tool()
 def get_resources_info(question: str) -> str:
@@ -127,8 +132,8 @@ def get_resources_info(question: str) -> str:
     return PROMPT_TOOL_SPARQL.format(docs_count=str(len(relevant_docs))) + format_docs(relevant_docs)
 
 
-
 ## TOOL: execute SPARQL query
+
 
 @mcp.tool()
 def execute_sparql_query(sparql_query: str, endpoint_url: str) -> str:
@@ -146,10 +151,7 @@ def execute_sparql_query(sparql_query: str, endpoint_url: str) -> str:
     validation_output = validate_sparql(sparql_query, endpoint_url, prefixes_map, endpoints_void_dict)
     if validation_output["fixed_query"]:
         # Pass the fixed query to the client
-        resp_msg += (
-            "Fixed the prefixes of the generated SPARQL query automatically:\n"
-            f"```sparql\n{validation_output['fixed_query']}\n```\n"
-        )
+        resp_msg += f"Fixed the prefixes of the generated SPARQL query automatically:\n```sparql\n{validation_output['fixed_query']}\n```\n"
         sparql_query = validation_output["fixed_query"]
     if validation_output["errors"]:
         # Recall the LLM to try to fix the errors
@@ -201,9 +203,7 @@ def get_examples(question: str) -> str:
 
 def main() -> None:
     """Run the MCP server with appropriate transport."""
-    parser = argparse.ArgumentParser(
-        description="A Model Context Protocol (MCP) server for BioData resources at the SIB."
-    )
+    parser = argparse.ArgumentParser(description="A Model Context Protocol (MCP) server for BioData resources at the SIB.")
     parser.add_argument("--stdio", action="store_true", help="Use STDIO transport")
     parser.add_argument("--port", type=int, default=8888, help="Port to run the server on")
     args = parser.parse_args()
