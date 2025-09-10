@@ -84,10 +84,9 @@
 
       <div class="flex-grow mx-5">
         <chat-with-context
-          chat-endpoint="{{ chat_endpoint }}"
-          feedback-endpoint="{{ feedback_endpoint }}"
-          api-key="{{ api_key }}"
-          examples="{{ examples }}"
+          chat-endpoint="http://127.0.0.1:8000/chat"
+          model="openrouter/anthropic/claude-sonnet-4"
+          examples="Which resources are available at the SIB?,How can I get the HGNC symbol for the protein P68871?,What are the rat orthologs of the human TP53?,Where is expressed the gene ACE2 in human?,Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations,List the genes in primates orthologous to genes expressed in the fruit fly eye"
         >
         </chat-with-context>
       </div>

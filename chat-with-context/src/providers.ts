@@ -214,7 +214,7 @@ async function processMcpChunk(state: ChatState, chunk: any) {
   if (chunk.event === "tool_call_results") {
     // chunk.data contains results, query, etc.
     console.log("TOOL CALL RESULTS", chunk.data);
-    let label = state.currentTool.function?.name.replaceAll("_", " ").replace(/^\w/, (c: string) => c.toUpperCase()) || "Tool call";
+    let label = state.currentTool.function?.name.replaceAll("_", " ").replace("sparql", "SPARQL").replace(/^\w/, (c: string) => c.toUpperCase()) || "Tool call";
     if (chunk.data.total_found) {
       label += ` (${chunk.data.total_found})`;
     }
