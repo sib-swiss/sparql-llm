@@ -85,10 +85,15 @@
       <div class="flex-grow mx-5">
         <!-- chat-endpoint="https://chat.expasy.org/chat" -->
         <!-- chat-endpoint="http://localhost:8000/chat" -->
+        <!-- model="mistralai/mistral-medium-latest" -->
+        <!-- model="openrouter/mistralai/mistral-medium-3.1" -->
+        <!-- model="openrouter/anthropic/claude-sonnet-4" -->
+        <!-- model="openrouter/openai/gpt-5-chat" -->
+        <!-- model="openai/gpt-4.1" -->
         <chat-with-context
-          chat-endpoint="http://127.0.0.1:8000/search"
+          chat-endpoint="http://127.0.0.1:8000/chat"
           api-key="%CHAT_API_KEY%"
-          model="mistral/mistral-small-latest"
+          model="openrouter/anthropic/claude-sonnet-4"
           examples="Which resources are available at the SIB?,How can I get the HGNC symbol for the protein P68871?,What are the rat orthologs of the human TP53?,Where is expressed the gene ACE2 in human?,Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations,List the genes in primates orthologous to genes expressed in the fruit fly eye"
         ></chat-with-context>
       </div>

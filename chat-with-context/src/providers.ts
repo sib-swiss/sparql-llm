@@ -33,6 +33,7 @@ export class ChatState {
   setMessages: Setter<Message[]>;
   abortController: AbortController;
   onMessageUpdate: () => void;
+  currentTool: any;
 
   constructor({apiUrl = "", apiKey = "", model = ""}: {apiUrl?: string; apiKey?: string; model?: string}) {
     this.apiUrl = apiUrl;
@@ -198,18 +199,28 @@ async function processMcpChunk(state: ChatState, chunk: any) {
   }
   // Handle tool_call_requested event
   if (chunk.event === "tool_call_requested") {
+    // console.log("TOOL CALL REQUESTED", chunk.data);
     // chunk.data is an array of tool calls
     for (const toolCall of chunk.data) {
-      const label = `🔧 Tool call requested: ${toolCall.function?.name || toolCall.type}`;
-      const details = toolCall.function?.arguments || JSON.stringify(toolCall);
-      state.appendStepToLastMsg(toolCall.id || "tool_call", label, details);
+      // const label = `🔧 Tool call requested: ${toolCall.function?.name || toolCall.type}`;
+      // const details = toolCall.function?.arguments || JSON.stringify(toolCall);
+      // state.appendMessage("", "assistant");
+      // state.appendStepToLastMsg(toolCall.id || "tool_call", label, `\`\`\`json\n${details}\n\`\`\``);
+      state.currentTool = toolCall;
+      // TODO: does not work with results if multiple tool calls are requested
     }
   }
   // Handle tool_call_results event
   if (chunk.event === "tool_call_results") {
     // chunk.data contains results, query, etc.
-    const label = `📡 Tool call results (${chunk.data.total_found ?? "?"} found)`;
-    const details = chunk.data.query ? `Query: ${chunk.data.query}\nResults: ${JSON.stringify(chunk.data.results, null, 2)}` : JSON.stringify(chunk.data);
+    console.log("TOOL CALL RESULTS", chunk.data);
+    let label = state.currentTool.function?.name.replaceAll("_", " ").replace(/^\w/, (c: string) => c.toUpperCase()) || "Tool call";
+    if (chunk.data.total_found) {
+      label += ` (${chunk.data.total_found})`;
+    }
+    let details = `## Tool call\n\n\`\`\`json\n${state.currentTool.function?.arguments || JSON.stringify(state.currentTool)}\n\`\`\`\n\n`;
+    details += chunk.data.results ? `## Results\n\n\`\`\`json\n${JSON.stringify(chunk.data.results, null, 2)}\n\`\`\`` : JSON.stringify(chunk.data);
+    state.appendMessage("", "assistant");
     state.appendStepToLastMsg("tool_call_results", label, details);
   }
   console.log("CHUNK", chunk.event, chunk);
