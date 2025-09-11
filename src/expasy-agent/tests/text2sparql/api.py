@@ -6,7 +6,7 @@ import fastapi
 from fastembed import TextEmbedding
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from sparql_llm.utils import query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries, validate_sparql
 from expasy_agent.config import Configuration, settings
@@ -36,7 +36,9 @@ Here is a list of reference user questions and corresponding SPARQL query answer
 
 {relevant_queries}
 
-If the information provided in the examples above is not sufficient to answer the question, you can advise the schema information of the endpoint to help you formulate the SPARQL query:
+If the information provided in the examples above is not sufficient to answer the question, you can advise the schema information below to help you formulate the SPARQL query.
+Here is a list of relevant classes, the predicates of each class in descending order of frequency, and optionally their ranges (object classes or datatypes).
+When there is no range information for a predicate, try to infer it based on the predicate name.
 
 {relevant_classes}
 
@@ -65,6 +67,7 @@ async def get_answer(question: str, dataset: str):
     if dataset not in KNOWN_DATASETS:
         raise fastapi.HTTPException(404, "Unknown dataset ...")
     
+    #Retrieve relevant queries
     question_embeddings = next(iter(embedding_model.embed([question])))
     retrieved_queries = vectordb.query_points(
         collection_name=f"text2sparql-{dataset.split('/')[-2]}",
@@ -80,6 +83,7 @@ async def get_answer(question: str, dataset: str):
         ),
     )
 
+    #Retrieve relevant classes
     retrieved_classes = vectordb.query_points(
         collection_name=f"text2sparql-{dataset.split('/')[-2]}",
         query=question_embeddings,
@@ -94,17 +98,19 @@ async def get_answer(question: str, dataset: str):
         ),
     )
 
+    #Initial interaction with the chat model
     relevant_queries = '\n\n'.join(json.dumps(doc.payload['metadata'], indent=2) for doc in retrieved_queries.points)
     relevant_classes = '\n\n'.join(doc.payload['metadata']['desc'] for doc in retrieved_classes.points)
     # logger.info(f"📚️ Retrieved {len(retrieved_docs.points)} documents")
     client = load_chat_model(Configuration(model=MODEL))
-    response = client.invoke(
-        [
-            SystemMessage(content=RESOLUTION_PROMPT + RAG_PROMPT.format(relevant_queries=relevant_queries, relevant_classes=relevant_classes)),
-            HumanMessage(content=question),
-        ]
-    )
+    messages = [
+                SystemMessage(content=RESOLUTION_PROMPT + RAG_PROMPT.format(relevant_queries=relevant_queries, relevant_classes=relevant_classes)),
+                HumanMessage(content=question)
+            ]
 
+    response = client.invoke(messages)
+
+    #Validation and fixing of the generated SPARQL query
     num_of_tries = 0
     resp_msg = ''
     while num_of_tries < settings.default_max_try_fix_sparql:
@@ -112,37 +118,40 @@ async def get_answer(question: str, dataset: str):
         try:
             generated_sparql = ''
             chat_resp_md = response.model_dump()["content"]
+            messages.append(AIMessage(content=chat_resp_md))
+
             generated_sparqls = extract_sparql_queries(chat_resp_md)
             generated_sparql = generated_sparqls[-1]['query'].strip()
             generated_sparql = generated_sparql.replace(ENDPOINT_URL, DOCKER_ENDPOINT_URL)
             # print(f"Generated SPARQL query: {generated_sparql}")
             # print(f"Response message: {resp_msg}")
         except Exception as e:
-            resp_msg = f"No SPARQL query could be extracted from {chat_resp_md} {f"\n\n Conversation History:\n\n{resp_msg}" if resp_msg != '' else ''}"
+            resp_msg = f"No SPARQL query could be extracted from the model response. Please provide a valid SPARQL query based on the provided information and try again."
         if generated_sparql != '':
             try:
                 res = query_sparql(generated_sparql, DOCKER_ENDPOINT_URL)
                 if res.get("results", {}).get("bindings"):
-                    if resp_msg != '':
-                        print(f"SPARQL query fixed after errors: {resp_msg}")
-                    break # Successfully generated a query with results
+                    # Successfully generated a query with results
+                    if num_of_tries > 0:
+                        print(f"Fixed SPARQL query. Conversation:\n {'\n\n'.join(messages)}.")
+                    break
                 else:
-                    validation_output = validate_sparql(query=generated_sparql, endpoint_url=DOCKER_ENDPOINT_URL, endpoints_void_dict=SCHEMAS[dataset])
-                    if validation_output["errors"]:
-                        error_str = "- " + "\n- ".join(validation_output["errors"])
-                        resp_msg = f"SPARQL query not valid. Please fix the query based on the provided schema information, and try again.\n### Validation results\n{error_str}\n### Erroneous SPARQL query\n```sparql\n{validation_output['original_query']}\n```\n {f"\n\n Conversation History:\n\n{resp_msg}" if resp_msg != '' else ''}"
-                    else:
-                        resp_msg = f"SPARQL query returned no results. Please fix the query based on the provided schema information, and try again.\n### Erroneous SPARQL query\n```sparql\n{generated_sparql}\n``` {f"\n\n Conversation History:\n\n{resp_msg}" if resp_msg != '' else ''}"
+                    raise Exception("No results")
+                        
             except Exception as e:
-                resp_msg = f"SPARQL query returned error: {e}. Please fix the query based on the provided schema information, and try again.\n### Erroneous SPARQL query\n```sparql\n{generated_sparql}\n``` {f"\n\n Conversation History:\n\n{resp_msg}" if resp_msg != '' else ''}"
+                validation_output = validate_sparql(query=generated_sparql, endpoint_url=DOCKER_ENDPOINT_URL, endpoints_void_dict=SCHEMAS[dataset])
+                if validation_output["errors"]:
+                    error_str = "- " + "\n- ".join(validation_output["errors"])
+                    resp_msg = f"SPARQL query not valid. Please fix the query based on the provided information and try again.\n### Inspection output:\n{error_str}\n### Erroneous SPARQL query\n```sparql\n{validation_output['original_query']}\n```\n"
+                elif str(e) == "No results":
+                    resp_msg = f"SPARQL query returned no results. Please fix the query based on the provided information and try again.\n### Erroneous SPARQL query\n```sparql\n{generated_sparql}\n```"
+                else:
+                    resp_msg = f"SPARQL query returned error: {e}. Please fix the query based on the provided information and try again.\n### Erroneous SPARQL query\n```sparql\n{generated_sparql}\n```"
 
         # If no valid SPARQL query was generated, ask the model to fix it
         num_of_tries += 1
-        response = client.invoke(
-            [
-                HumanMessage(content=resp_msg),
-            ]
-        )
+        messages.append(HumanMessage(content=resp_msg))
+        response = client.invoke(messages)
 
     return {
         "dataset": dataset,
