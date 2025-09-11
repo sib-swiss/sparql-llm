@@ -42,10 +42,8 @@ def init_vectordb(endpoint_url: str, graph: str, limit_queries: dict[str, float]
     ).get_schema()
 
     docs += schema.apply(lambda c: Document(page_content=c['name'], 
-                                            metadata = {'desc': f"- Class: {c['class']}\n" + 
-                                                        f"\t - The predicates of this class in descending order of frequency are: {list(c['predicates'].keys())}\n" +
-                                                        f"\t - The ranges (object classes or datatypes) of each of these predicates in descending order of frequency are:\n" +
-                                                        "\n".join([f"\t\t - {p} : {c['predicates'][p]}" for p in c['predicates'].keys()]),
+                                            metadata = {'desc': f"- Class URI: {c['class']}\n\t - Predicates:\n" + 
+                                                        "\n".join([f"\t\t {p}" + (f" : ({c['predicates'][p][0]})" if c['predicates'][p] else "") for p in c['predicates'].keys()]),
                                                         'doc_type': 'classes'}), axis=1).tolist()
 
     elapsed_time = time.time() - start_time

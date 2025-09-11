@@ -42,7 +42,6 @@ class EndpointSchema:
         OPTIONAL {{
             FILTER(isIRI(?o))
             ?o a ?class .
-            FILTER(?class != <http://www.w3.org/2002/07/owl#Thing>)
         }}
 
         BIND (IF(BOUND(?class), ?class, DATATYPE(?o)) AS ?range)
@@ -51,6 +50,8 @@ class EndpointSchema:
     ORDER BY DESC(COUNT(?range))
     LIMIT {limit}
     """
+
+    _EXCLUDE_CLASS_PATTERN = re.compile(r'^http://www\.w3\.org/2002/07/owl#Thing$|ontologydesignpatterns\.org')
 
     def __init__(self, endpoint_url: str, graph: str, limit_queries: dict[str, float], max_workers: int):
         """
@@ -76,13 +77,18 @@ class EndpointSchema:
         logger.info(f'Fetching class information from {self._endpoint_url}...')
         schema = query_sparql(self._CLASS_QUERY.format(graph=self._graph), endpoint_url=self._endpoint_url)['results']['bindings']
         schema = pd.DataFrame(schema).map(lambda x: x['value']).assign(count=lambda df: df['count'].astype(int))
-        schema['name'] = schema['class'].apply(lambda c: re.sub(r'(?<!^)(?=[A-Z])', ' ', c.split('/')[-1].split('#')[-1]))
+        
+        # Exclude unwanted classes
+        schema = schema[schema['class'].apply(lambda c: not bool(re.search(self._EXCLUDE_CLASS_PATTERN, c)))]
 
         # Filter classes based on frequency
         num_classes = len(schema)
         count_threshold = schema['count'].quantile(self._limit_queries['top_classes_percentile'])
         schema = schema[schema['count'] >= count_threshold].sort_values(by='count', ascending=False).reset_index(drop=True)
         logger.info(f'Keeping {len(schema)}/{num_classes} most frequent classes.')
+
+        # Add a human-readable name for each class
+        schema['name'] = schema['class'].apply(lambda c: re.sub(r'(?<!^)(?=[A-Z])', ' ', c.split('/')[-1].split('#')[-1]))
 
         # Fetch predicate information
         logger.info(f'Fetching predicate information from {self._endpoint_url}...')
@@ -131,11 +137,8 @@ class EndpointSchema:
             endpoint_url=self._endpoint_url
         )['results']['bindings'] or []
 
-        range = pd.Series(range).map(lambda r: r['value'] if 'value' in r else pd.NA).dropna().tolist()
-
-        # If no range is found, return a default range
-        if not range:
-            range = ['http://www.w3.org/2001/XMLSchema#string']
+        # Filter out unwanted ranges
+        range = [r['range']['value'] for r in range if (('range' in r) and ('value' in r['range']) and (not bool(re.search(self._EXCLUDE_CLASS_PATTERN, r['range']['value']))))]
 
         return range
 
@@ -148,7 +151,7 @@ if __name__ == "__main__":
         limit_queries={
             'top_classes_percentile': 0,
             'top_n_predicates': 20,
-            'top_n_ranges': 5,
+            'top_n_ranges': 1,
         },
         max_workers=4
     )
@@ -161,7 +164,7 @@ if __name__ == "__main__":
         limit_queries={
             'top_classes_percentile': .90,
             'top_n_predicates': 20,
-            'top_n_ranges': 5,
+            'top_n_ranges': 1,
         },
         max_workers=4
     )
@@ -171,6 +174,7 @@ if __name__ == "__main__":
     # Debugging examples
     # schema = schema._retrieve_class_information(class_name='http://ld.company.org/prod-vocab/Supplier')
     # schema = schema._retrieve_predicate_information(class_name='http://ld.company.org/prod-vocab/Supplier', predicate_name='http://ld.company.org/prod-vocab/country')
+    # schema = schema._retrieve_predicate_information(class_name='http://dbpedia.org/ontology/City', predicate_name='http://dbpedia.org/property/longd')
     # schema = schema.get_information()
     # logger.info(f"Schema information: {schema}")
     elapsed_time = time.time() - start_time
