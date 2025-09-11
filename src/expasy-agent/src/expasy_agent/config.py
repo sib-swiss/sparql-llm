@@ -15,6 +15,7 @@ from expasy_agent import prompts
 
 class Settings(BaseSettings):
     """Define the service settings for the agent that can be set using environment variables."""
+
     use_tools: bool = False
     """Whether to use tools or not. If set to False, the agent will use the functions sequentially to answer questions."""
 
@@ -79,9 +80,10 @@ class Settings(BaseSettings):
             "description": "The hierarchical catalog of orthologs mapping genomics to functional data",
         },
         {
-            "label": "dbgi",
-            "endpoint_url": "https://biosoda.unil.ch/graphdb/repositories/emi-dbgi",
-            "description": "The Digital Botanical Gardens Initiative (DBGI) is a project that aims to create a digital representation of chemo- and biodiversity, from botanical collections to the global scale in wild ecosystems.",
+            "label": "METRIN-KG ",
+            "endpoint_url": "https://kg.earthmetabolome.org/metrin/api/",
+            "description": """METRIN-KG is a knowledge graph developed under the Earth Metabolome Initiative that integrates data on plant metabolomes, measurable plant traits, and their biotic interactions.
+It provides a unified, searchable framework that connects chemical profiles of plants with ecological and biological attributes.""",
             # "homepage_url": "https://dbgi.eu/",
         },
         # No metadata in these endpoints
@@ -136,15 +138,9 @@ class Settings(BaseSettings):
         "Which SIB resources are supported by ExpasyGPT? ",
         "Where is the ACE2 gene expressed in humans?",
         "List primate genes expressed in the fruit fly eye",
-        "What are the rat orthologs of the human TP53 gene?",
+        "What are the rat orthologs of the human HBB gene?",
         "What is the HGNC symbol for the P68871 protein?",
         "Anatomical entities where the INS zebrafish gene is expressed and their gene GO annotations",
-        # "Which resources are supported?",
-        # "How can I get the HGNC symbol for the protein P68871?",
-        # "What are the rat orthologs of the human TP53?",
-        # "Where is expressed the gene ACE2 in human?",
-        # "Anatomical entities where the INS zebrafish gene is expressed and its gene GO annotations",
-        # "List the genes in primates orthologous to genes expressed in the fruit fly eye",
     ]
 
     # The name of the application used for display
@@ -237,9 +233,7 @@ class Configuration:
     )
     seed: Annotated[int, {"__template_metadata__": {"kind": "llm"}}] = field(
         default=settings.default_seed,
-        metadata={
-            "description": "The random seed used for reproducibility."
-        },
+        metadata={"description": "The random seed used for reproducibility."},
     )
     # Number of retrieved docs
     search_kwargs: dict[str, Any] = field(

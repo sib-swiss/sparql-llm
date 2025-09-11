@@ -44,7 +44,7 @@ class StepOutput(BaseModel):
     details: str = Field(default="")
     """Details of the steps results in markdown to be displayed to the user. It can be either a markdown string or a list of StepOutput."""
 
-    substeps: Optional[list[StepOutput]] = Field(default_factory=list)
+    substeps: Optional[list[StepOutput]] = Field(default_factory=lambda: [])
     """Optional substeps for a step."""
 
     type: Literal["context", "fix-message", "recall"] = Field(default="context")

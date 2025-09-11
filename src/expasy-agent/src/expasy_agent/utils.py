@@ -14,12 +14,27 @@ def load_chat_model(configuration: Configuration) -> BaseChatModel:
         fully_specified_name (str): String in the format 'provider/model'.
     """
     provider, model_name = configuration.model.split("/", maxsplit=1)
+    if provider == "openrouter":
+        # https://openrouter.ai/docs/community/lang-chain
+        from langchain_openai import ChatOpenAI
+
+        return ChatOpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            model=model_name,
+            temperature=configuration.temperature,
+            # api_key=settings.openrouter_api_key,
+            # default_headers={
+            #     "HTTP-Referer": getenv("YOUR_SITE_URL"),
+            #     "X-Title": getenv("YOUR_SITE_NAME"),
+            # },
+        )
+
     if provider == "groq":
         # https://python.langchain.com/docs/integrations/chat/groq/
         from langchain_groq import ChatGroq
 
         return ChatGroq(
-            model_name=model_name,
+            model=model_name,
             max_tokens=configuration.max_tokens,
             temperature=configuration.temperature,
             timeout=None,

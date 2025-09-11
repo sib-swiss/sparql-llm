@@ -5,7 +5,7 @@ Works with a chat model with tool calling support.
 
 from typing import Any, Dict, List
 
-from langchain_core.messages import AIMessage, ToolMessage, FunctionMessage
+from langchain_core.messages import AIMessage
 from langchain_core.messages.base import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
@@ -17,6 +17,7 @@ from expasy_agent.utils import load_chat_model
 
 # from expasy_agent.nodes.retrieval_docs import format_docs
 # from expasy_agent.nodes.retrieval_entities import format_extracted_entities
+
 
 async def call_model(
     state: State, config: RunnableConfig
@@ -35,7 +36,11 @@ async def call_model(
     configuration = Configuration.from_runnable_config(config)
     # Initialize the model with tool binding
     # model = load_chat_model(configuration).bind_tools(TOOLS)
-    model = load_chat_model(configuration).bind_tools(TOOLS) if settings.use_tools else load_chat_model(configuration)
+    model = (
+        load_chat_model(configuration).bind_tools(TOOLS)
+        if settings.use_tools
+        else load_chat_model(configuration)
+    )
 
     structured_prompt: dict[str, Any] = {
         "messages": state.messages,

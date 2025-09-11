@@ -33,6 +33,12 @@ services:
       - ./src:/app/src
     env_file:
       - .env
+    logging:
+      driver: k8s-file
+      options:
+        path: /logs/expasygpt_podman.log
+        max_size: 10mb
+        rotate: 10
 
   # mcp-server:
   #   build: ./src/expasy-mcp

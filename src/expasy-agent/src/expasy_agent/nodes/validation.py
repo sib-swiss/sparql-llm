@@ -4,7 +4,7 @@ import json
 import re
 from typing import Any
 
-from langchain_core.messages import FunctionMessage, HumanMessage, ToolMessage
+from langchain_core.messages import FunctionMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from sparql_llm.utils import get_prefixes_and_schema_for_endpoints, query_sparql
 from sparql_llm.validate_sparql import validate_sparql_in_msg
@@ -95,7 +95,13 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
             if sparql_query and endpoint_url:
                 execute_resp = ""
                 try:
-                    res = query_sparql(sparql_query, endpoint_url, timeout=10, check_service_desc=False, post=False)
+                    res = query_sparql(
+                        sparql_query,
+                        endpoint_url,
+                        timeout=10,
+                        check_service_desc=False,
+                        post=False,
+                    )
                     res_bindings = res.get("results", {}).get("bindings", [])
                     if len(res_bindings) == 0:
                         # If no results, return a message to ask fix the query
@@ -109,7 +115,8 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
                     execute_resp = f"Query on {endpoint_url} returned error:\n\n{e}\n\n{FIX_QUERY_PROMPT}\n```sparql\n{sparql_query}\n```"
                 # print("EXECUTE RESP", execute_resp)
                 recall_messages.append(
-                    FunctionMessage(
+                    # FunctionMessage(
+                    HumanMessage(
                         content=execute_resp,
                         name="execute_sparql_query",
                     )

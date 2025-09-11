@@ -13,6 +13,16 @@
 ## Show logs:
 # sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose logs'
 
+## Re-index
+# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose exec api uv run src/expasy_agent/indexing/index_resources.py'
+
+
+# NOTE: if OOM error, check `dmsg` on server and search for `oom`
+# sudo -u podman bash -c 'journalctl -k '
+
+# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; tail -f data/logs/expasygpt_podman.log'
+
+
 
 ssh_cmd() {
     ssh -t expasychat "sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 $1'"

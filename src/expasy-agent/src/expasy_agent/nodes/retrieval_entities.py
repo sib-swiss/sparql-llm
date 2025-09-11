@@ -11,6 +11,7 @@ from expasy_agent.state import State, StepOutput
 
 # NOTE: experimental, not used in production
 
+
 def format_extracted_entities(entities_list: list[Any]) -> str:
     if len(entities_list) == 0:
         return "No entities found in the user question that matches entities in the endpoints. "

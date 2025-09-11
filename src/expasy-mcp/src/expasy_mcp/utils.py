@@ -10,6 +10,7 @@ from sparql_llm.utils import SparqlEndpointLinks
 # Silence overly verbose info logs from httpx
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
+
 @dataclass
 class ServerConfig:
     embedding_name: str = "BAAI/bge-small-en-v1.5"
@@ -75,9 +76,9 @@ class ServerConfig:
                 "description": "The hierarchical catalog of orthologs mapping genomics to functional data",
             },
             {
-                "label": "dbgi",
-                "endpoint_url": "https://biosoda.unil.ch/graphdb/repositories/emi-dbgi",
-                "description": "The Digital Botanical Gardens Initiative (DBGI) is a project that aims to create a digital representation of chemo- and biodiversity, from botanical collections to the global scale in wild ecosystems.",
+                "label": "METRIN-KG ",
+                "endpoint_url": "https://kg.earthmetabolome.org/metrin/api/",
+                "description": "The MEtabolomes, TRaits, and INteractions-Knowledge Graph (METRIN-KG) is a project that aims to create a digital representation of chemo- and biodiversity, from botanical collections to the global scale in wild ecosystems.",
             },
         ]
     )
@@ -100,7 +101,9 @@ def format_docs(docs: list[ScoredPoint]) -> str:
 
 def _format_doc(doc: ScoredPoint) -> str:
     """Format a single document, with special formatting based on doc type (sparql, schema)."""
-    doc_meta: dict[str, str] = doc.payload.get("metadata", {}) if doc.payload is not None else {}
+    if not doc.payload:
+        return ""
+    doc_meta: dict[str, str] = doc.payload.get("metadata", {})
     if doc_meta.get("answer"):
         doc_lang = ""
         doc_type = str(doc_meta.get("doc_type", "")).lower()

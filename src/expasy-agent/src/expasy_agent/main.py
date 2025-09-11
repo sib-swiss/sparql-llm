@@ -14,7 +14,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from langchain_core.runnables import RunnableConfig
-from langfuse.langchain import CallbackHandler
+from langfuse.langchain import CallbackHandler  # type: ignore
 from pydantic import BaseModel
 from starlette.middleware.cors import CORSMiddleware
 
@@ -129,7 +129,7 @@ async def stream_response(inputs: dict[str, list], config: RunnableConfig):
 @app.post("/chat")
 async def chat(request: Request):
     """Chat with the assistant main endpoint."""
-    auth_header = request.headers.get("Authorization")
+    auth_header = request.headers.get("Authorization", "")
     if settings.chat_api_key and (
         not auth_header or not auth_header.startswith("Bearer ")
     ):
@@ -137,11 +137,11 @@ async def chat(request: Request):
     if settings.chat_api_key and auth_header.split(" ")[1] != settings.chat_api_key:
         raise ValueError("Invalid API key")
 
-    request = ChatCompletionRequest(**await request.json())
+    chat_request = ChatCompletionRequest(**await request.json())
     # request.messages = [msg for msg in request.messages if msg.role != "system"]
     # request.messages = [Message(role="system", content=settings.system_prompt), *request.messages]
 
-    question: str = request.messages[-1].content if request.messages else ""
+    question: str = chat_request.messages[-1].content if chat_request.messages else ""
     logging.info(f"User question: {question}")
     if not question:
         raise ValueError("No question provided")
@@ -149,18 +149,18 @@ async def chat(request: Request):
     # print(request.model)
     config = RunnableConfig(
         configurable={
-            "model": request.model,
-            "validate_output": request.validate_output,
+            "model": chat_request.model,
+            "validate_output": chat_request.validate_output,
         },
         recursion_limit=25,
         callbacks=langfuse_handler,
     )
     inputs = {
-        "messages": [(msg.role, msg.content) for msg in request.messages],
+        "messages": [(msg.role, msg.content) for msg in chat_request.messages],
     }
 
     # request.stream = False
-    if request.stream:
+    if chat_request.stream:
         return StreamingResponse(
             stream_response(inputs, config),
             media_type="text/event-stream",
@@ -174,12 +174,14 @@ async def chat(request: Request):
 
 class LogMessage(Message):
     """Message model for logging purposes."""
+
     steps: Optional[list[Any]] = None
 
 
 class FeedbackRequest(BaseModel):
     like: bool
     messages: list[LogMessage]
+
 
 logs_folder = "/logs"
 
@@ -198,7 +200,11 @@ def log_msg(filename: str, messages: list[LogMessage]) -> None:
 @app.post("/feedback")
 def post_like(request: FeedbackRequest):
     """Save the user feedback in the logs files."""
-    filename = f"{logs_folder}/likes.jsonl" if request.like else f"{logs_folder}/dislikes.jsonl"
+    filename = (
+        f"{logs_folder}/likes.jsonl"
+        if request.like
+        else f"{logs_folder}/dislikes.jsonl"
+    )
     log_msg(filename, request.messages)
     return {"status": "success"}
 

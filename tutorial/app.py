@@ -141,7 +141,6 @@ async def validate_output(last_msg: str) -> str | None:
 
 
 # Setup chainlit web UI
-import chainlit as cl
 
 max_try_count = 3
 
