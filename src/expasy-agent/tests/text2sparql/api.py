@@ -6,7 +6,7 @@ import fastapi
 from fastembed import TextEmbedding
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
-from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from sparql_llm.utils import query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries, validate_sparql
 from expasy_agent.config import Configuration, settings
@@ -54,6 +54,7 @@ Your response must follow these rules:
     - Always output one SPARQL query.
     - Enclose the SPARQL query in a single markdown code block using the "sparql" language tag.
     - Include a comment at the beginning of the query that specifies the target endpoint using the following format: "#+ endpoint: ".
+    - Define PREFIX for all namespaces used in the query.
     - Prefer a single endpoint; use a federated SPARQL query only if access across multiple endpoints is required.
     - Do not add more codeblocks than necessary.
 """
@@ -112,13 +113,12 @@ async def get_answer(question: str, dataset: str):
 
     #Validation and fixing of the generated SPARQL query
     num_of_tries = 0
-    resp_msg = ''
+    resp_msg = '\n\n# Make sure you will not repeat the mistakes below: \n'
     while num_of_tries < settings.default_max_try_fix_sparql:
 
         try:
             generated_sparql = ''
             chat_resp_md = response.model_dump()["content"]
-            messages.append(AIMessage(content=chat_resp_md))
 
             generated_sparqls = extract_sparql_queries(chat_resp_md)
             generated_sparql = generated_sparqls[-1]['query'].strip()
@@ -126,14 +126,16 @@ async def get_answer(question: str, dataset: str):
             # print(f"Generated SPARQL query: {generated_sparql}")
             # print(f"Response message: {resp_msg}")
         except Exception as e:
-            resp_msg = f"No SPARQL query could be extracted from the model response. Please provide a valid SPARQL query based on the provided information and try again."
+            resp_msg += f"## No SPARQL query could be extracted from the model response. Please provide a valid SPARQL query based on the provided information and try again.\n"
         if generated_sparql != '':
             try:
                 res = query_sparql(generated_sparql, DOCKER_ENDPOINT_URL)
                 if res.get("results", {}).get("bindings"):
                     # Successfully generated a query with results
                     if num_of_tries > 0:
-                        print(f"Fixed SPARQL query. Conversation:\n {'\n\n'.join(messages)}.")
+                        print(f"✅ Fixed SPARQL query. Conversation:\n")
+                        for msg in messages:
+                            print(f"{msg.type}: {msg.content}\n")
                     break
                 else:
                     raise Exception("No results")
@@ -142,16 +144,19 @@ async def get_answer(question: str, dataset: str):
                 validation_output = validate_sparql(query=generated_sparql, endpoint_url=DOCKER_ENDPOINT_URL, endpoints_void_dict=SCHEMAS[dataset])
                 if validation_output["errors"]:
                     error_str = "- " + "\n- ".join(validation_output["errors"])
-                    resp_msg = f"SPARQL query not valid. Please fix the query based on the provided information and try again.\n### Inspection output:\n{error_str}\n### Erroneous SPARQL query\n```sparql\n{validation_output['original_query']}\n```\n"
-                elif str(e) == "No results":
-                    resp_msg = f"SPARQL query returned no results. Please fix the query based on the provided information and try again.\n### Erroneous SPARQL query\n```sparql\n{generated_sparql}\n```"
+                    resp_msg += f"## SPARQL query not valid. Please fix the query based on the provided information and try again.\n### Erroneous SPARQL query\n```sparql\n{validation_output['original_query']}\n```\n### Validation Errors:\n{error_str}\n"
                 else:
-                    resp_msg = f"SPARQL query returned error: {e}. Please fix the query based on the provided information and try again.\n### Erroneous SPARQL query\n```sparql\n{generated_sparql}\n```"
+                    resp_msg += f"## SPARQL query returned error: {e}. Please provide an alternative query based on the provided information and try again.\n### Erroneous SPARQL query\n```sparql\n{generated_sparql}\n```\n"
 
         # If no valid SPARQL query was generated, ask the model to fix it
         num_of_tries += 1
-        messages.append(HumanMessage(content=resp_msg))
+        messages = [
+            HumanMessage(content=question + resp_msg)
+        ]
         response = client.invoke(messages)
+
+        if num_of_tries == settings.default_max_try_fix_sparql:
+            print(f"❌ Could not fix generate SPARQL query for question: {question} \n")
 
     return {
         "dataset": dataset,
