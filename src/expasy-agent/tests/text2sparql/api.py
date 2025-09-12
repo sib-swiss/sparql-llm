@@ -19,7 +19,7 @@ KNOWN_DATASETS = [
     "https://text2sparql.aksw.org/2025/corporate/"
 ]
 
-MODEL = 'openai/gpt-4.1-nano'
+MODEL = 'openrouter/openai/gpt-4.1-nano'
 DOCKER_ENDPOINT_URL = 'http://text2sparql-virtuoso:8890/sparql/'
 ENDPOINT_URL = 'http://localhost:8890/sparql/'
 
