@@ -53,7 +53,7 @@ class EndpointSchema:
 
     _EXCLUDE_CLASS_PATTERN = re.compile(r'^http://www\.w3\.org/2002/07/owl#Thing$|ontologydesignpatterns\.org')
 
-    def __init__(self, endpoint_url: str, graph: str, limit_queries: dict[str, float], max_workers: int):
+    def __init__(self, endpoint_url: str, graph: str, limit_queries: dict[str, float], max_workers: int, force_recompute: bool, schema_path: str) -> None:
         """
         Fetch class and predicate information from the SPARQL endpoint.
         Args:
@@ -62,17 +62,32 @@ class EndpointSchema:
             limit_queries (dict[str, float]): A dictionary specifying query limits.
             max_workers (int): The maximum number of worker threads to use for concurrent operations.
         Funtions:
-            get_schema(): Returns information about classes and predicates retrieved from the endpoint.
-            save_schema_dict(path: str): Saves information about classes and predicates retrieved from the endpoint.
+            get_schema(path: str): Returns information about classes and predicates retrieved from the endpoint.
         """
         
         self._endpoint_url = endpoint_url
         self._graph = graph
         self._limit_queries = limit_queries
         self._max_workers = max_workers
+        self._force_recompute = force_recompute
+        self._schema_path = schema_path
 
     def get_schema(self) -> pd.DataFrame:
-        """Fetch class and predicate information from the SPARQL endpoint."""
+        """Load schema information from a JSON file."""
+
+        if not os.path.exists(self._schema_path) or self._force_recompute:
+            self._save_schema_dict()
+
+        with open(self._schema_path, 'r', encoding='utf-8') as f:
+            schema = pd.DataFrame([{'class':key, 'predicates':value} for key, value in json.load(f)[self._endpoint_url].items()])
+
+        # Add a human-readable name for each class
+        schema['name'] = schema['class'].apply(lambda c: re.sub(r'(?<!^)(?=[A-Z])', ' ', c.split('/')[-1].split('#')[-1]))
+
+        return schema
+    
+    def _save_schema_dict(self) -> None:
+        """Fetch class and predicate information from the SPARQL endpoint and save to JSON file."""
         # Fetch class information
         logger.info(f'Fetching class information from {self._endpoint_url}...')
         schema = query_sparql(self._CLASS_QUERY.format(graph=self._graph), endpoint_url=self._endpoint_url)['results']['bindings']
@@ -87,22 +102,15 @@ class EndpointSchema:
         schema = schema[schema['count'] >= count_threshold].sort_values(by='count', ascending=False).reset_index(drop=True)
         logger.info(f'Keeping {len(schema)}/{num_classes} most frequent classes.')
 
-        # Add a human-readable name for each class
-        schema['name'] = schema['class'].apply(lambda c: re.sub(r'(?<!^)(?=[A-Z])', ' ', c.split('/')[-1].split('#')[-1]))
-
         # Fetch predicate information
         logger.info(f'Fetching predicate information from {self._endpoint_url}...')
         schema['predicates'] = Parallel(n_jobs=self._max_workers)(
             delayed(self._retrieve_class_information)(class_name=c) for c in tqdm(schema['class'].tolist(), total=len(schema))
         )
-        return schema
-    
-    def save_schema_dict(self, path: str) -> None:
-        """Save the schema information to a JSON file."""
-        schema = self.get_schema()
+
         schema_dict = SchemaDict({i['class']:i['predicates'] for i in schema.to_dict(orient='records')})
         endpoint_schema_dict = EndpointsSchemaDict({self._endpoint_url:schema_dict})
-        with open(path, 'w') as f:
+        with open(self._schema_path, 'w') as f:
             json.dump(endpoint_schema_dict, f, indent=2)
 
     def _retrieve_class_information(self, class_name: str) -> dict[str, list[str]]:
@@ -153,10 +161,10 @@ if __name__ == "__main__":
             'top_n_predicates': 20,
             'top_n_ranges': 1,
         },
-        max_workers=4
+        max_workers=4,
+        force_recompute=True,
+        schema_path=os.path.join('data', 'benchmarks', 'Text2SPARQL', 'schemas', 'corporate_schema.json'),
     )
-    path = os.path.join('data', 'benchmarks', 'Text2SPARQL', 'schemas', 'corporate_schema.json')
-    schema.save_schema_dict(path)
     
     schema = EndpointSchema(
         endpoint_url='http://localhost:8890/sparql/',
@@ -166,12 +174,13 @@ if __name__ == "__main__":
             'top_n_predicates': 20,
             'top_n_ranges': 1,
         },
-        max_workers=4
+        max_workers=4,
+        force_recompute=True,
+        schema_path=os.path.join('data', 'benchmarks', 'Text2SPARQL', 'schemas', 'dbpedia_schema.json'),
     )
-    path = os.path.join('data', 'benchmarks', 'Text2SPARQL', 'schemas', 'dbpedia_schema.json')
-    schema.save_schema_dict(path)
     
     # Debugging examples
+    # schema._save_schema_dict()
     # schema = schema._retrieve_class_information(class_name='http://ld.company.org/prod-vocab/Supplier')
     # schema = schema._retrieve_predicate_information(class_name='http://ld.company.org/prod-vocab/Supplier', predicate_name='http://ld.company.org/prod-vocab/country')
     # schema = schema._retrieve_predicate_information(class_name='http://dbpedia.org/ontology/City', predicate_name='http://dbpedia.org/property/longd')

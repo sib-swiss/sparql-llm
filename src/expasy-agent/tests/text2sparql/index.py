@@ -12,7 +12,7 @@ from expasy_agent.nodes.retrieval_docs import make_dense_encoder
 QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'queries.csv')
 VECTORDB_URL = 'http://localhost:6334'
 
-def init_vectordb(endpoint_url: str, graph: str, limit_queries: dict[str, float], max_workers: int) -> None:
+def init_vectordb(endpoint_url: str, graph: str, limit_queries: dict[str, float], max_workers: int, force_recompute: bool, schema_path: str) -> None:
     """Initialize the vectordb with example queries and schema information from the SPARQL endpoints"""
     docs: list[Document] = []
 
@@ -38,11 +38,10 @@ def init_vectordb(endpoint_url: str, graph: str, limit_queries: dict[str, float]
         endpoint_url=endpoint_url,
         graph=graph,
         limit_queries=limit_queries,
-        max_workers=max_workers
-    )
-
-    schema.save_schema_dict(os.path.join('data', 'benchmarks', 'Text2SPARQL', 'schemas', f"{graph.split('/')[-2]}_schema.json"))
-    schema = schema.get_schema()
+        max_workers=max_workers,
+        force_recompute=force_recompute,
+        schema_path=schema_path,
+    ).get_schema()
 
     docs += schema.apply(lambda c: Document(page_content=c['name'], 
                                             metadata = {'desc': f"- Class URI: {c['class']}\n\t - Predicates:\n" + 
@@ -82,7 +81,9 @@ if __name__ == "__main__":
         'top_n_predicates': 20,
         'top_n_ranges': 1,
     },
-    max_workers=4
+    max_workers=4,
+    force_recompute=True,
+    schema_path=os.path.join('data', 'benchmarks', 'Text2SPARQL', 'schemas', 'corporate_schema.json'),
 )
     # Init vectordb for dbpedia dataset
     init_vectordb( 
@@ -93,5 +94,7 @@ if __name__ == "__main__":
         'top_n_predicates': 20,
         'top_n_ranges': 1,
     },
-    max_workers=4
+    max_workers=4,
+    force_recompute=True,
+    schema_path=os.path.join('data', 'benchmarks', 'Text2SPARQL', 'schemas', 'dbpedia_schema.json'),
 )
