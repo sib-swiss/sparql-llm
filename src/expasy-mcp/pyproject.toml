@@ -18,7 +18,7 @@ keywords = [
 requires-python = ">=3.10"
 dependencies = [
     "mcp[cli] >=1.9.1",
-    "qdrant-client >=1.14.2",
+    "qdrant-client ==1.13.3",
     "fastembed >=0.7.0",
     "sparql-llm >=0.0.8",
 ]

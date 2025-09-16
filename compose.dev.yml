@@ -31,12 +31,12 @@ services:
       # - DEFAULT_LLM_MODEL=openai/gpt-4o-mini
     entrypoint: ["uv", "run", "uvicorn", "src.expasy_agent.main:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
 
-  # mcp-server:
-  #   extends:
-  #     file: compose.yml
-  #     service: mcp-server
-  #   ports:
-  #     - 8888:8888
+  mcp-server:
+    extends:
+      file: compose.yml
+      service: mcp-server
+    ports:
+      - 8888:8888
 
   # In case we need a GPU-enabled workspace, e.g. for generating embeddings
   # workspace:
