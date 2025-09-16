@@ -93,7 +93,7 @@ SELECT DISTINCT * WHERE {{
 }}"""
     void_dict = {}
     try:
-        label_res = query_sparql(get_labels_query, endpoint_url, post=True)
+        label_res = query_sparql(get_labels_query, endpoint_url, post=True, check_service_desc=True)
         for label_triple in label_res["results"]["bindings"]:
             cls = label_triple["cls"]["value"]
             if cls not in shex_dict:

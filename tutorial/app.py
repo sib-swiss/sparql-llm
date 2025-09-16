@@ -138,6 +138,7 @@ async def validate_output(last_msg: str) -> str | None:
             ) as step:
                 step.output = recall_msg
             return recall_msg
+    return None
 
 
 # Setup chainlit web UI

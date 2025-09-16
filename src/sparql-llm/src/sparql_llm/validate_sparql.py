@@ -20,7 +20,7 @@ queries_pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
 endpoint_pattern = re.compile(r"#\+ endpoint:\s*(https?://\S+)", re.MULTILINE)
 
 
-def extract_sparql_queries(md_resp: str) -> list[dict[str, Optional[str]]]:
+def extract_sparql_queries(md_resp: str) -> list[dict[str, str]]:
     """Extract SPARQL queries and endpoint URL from a markdown response."""
     extracted_queries = []
     queries = queries_pattern.findall(md_resp)

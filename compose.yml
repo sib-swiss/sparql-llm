@@ -33,27 +33,27 @@ services:
       - ./src:/app/src
     env_file:
       - .env
-    logging:
-      driver: k8s-file
-      options:
-        path: /logs/expasygpt_podman.log
-        max_size: 10mb
-        rotate: 10
+    # logging:
+    #   driver: k8s-file
+    #   options:
+    #     path: /logs/expasygpt_podman.log
+    #     max_size: 10mb
+    #     rotate: 10
 
-  # mcp-server:
-  #   build: ./src/expasy-mcp
-  #   restart: unless-stopped
-  #   depends_on:
-  #     - vectordb
-  #   ports:
-  #     - 8888:8888
-  #   environment:
-  #     - VECTORDB_HOST=vectordb
-  #     # NOTE: dirty hack to fix a bug with podman internal network on prod server
-  #     # - VECTORDB_HOST=10.89.1.2
-  #   volumes:
-  #     - ./src/expasy-mcp/src:/app/src
-  #     - ./data/fastembed_cache:/tmp/fastembed_cache
+  mcp-server:
+    build: ./src/expasy-mcp
+    restart: unless-stopped
+    depends_on:
+      - vectordb
+    ports:
+      - 8888:8888
+    environment:
+      - VECTORDB_HOST=vectordb
+      # NOTE: dirty hack to fix a bug with podman internal network on prod server
+      # - VECTORDB_HOST=10.89.1.2
+    volumes:
+      - ./src/expasy-mcp/src:/app/src
+      - ./data/fastembed_cache:/tmp/fastembed_cache
 
   # langgraph-redis:
   #   image: redis:6

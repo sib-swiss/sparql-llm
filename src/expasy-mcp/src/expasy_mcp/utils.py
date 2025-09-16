@@ -38,13 +38,13 @@ class ServerConfig:
                 "homepage_url": "https://www.bgee.org/",
                 # "ontology": "http://purl.org/genex",
             },
-            {
-                "label": "Orthology MAtrix (OMA)",
-                "endpoint_url": "https://sparql.omabrowser.org/sparql/",
-                "homepage_url": "https://omabrowser.org/",
-                # "ontology": "http://purl.org/net/orth",
-                "description": "OMA is a method and database for the inference of orthologs among complete genomes.",
-            },
+            # {
+            #     "label": "Orthology MAtrix (OMA)",
+            #     "endpoint_url": "https://sparql.omabrowser.org/sparql/",
+            #     "homepage_url": "https://omabrowser.org/",
+            #     # "ontology": "http://purl.org/net/orth",
+            #     "description": "OMA is a method and database for the inference of orthologs among complete genomes.",
+            # },
             {
                 "label": "HAMAP",
                 "endpoint_url": "https://hamap.expasy.org/sparql/",
