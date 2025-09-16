@@ -39,7 +39,10 @@ def init_vectordb(endpoint_url: str, graph: str, limit_queries: dict[str, float]
         graph=graph,
         limit_queries=limit_queries,
         max_workers=max_workers
-    ).get_schema()
+    )
+
+    schema.save_schema_dict(os.path.join('data', 'benchmarks', 'Text2SPARQL', 'schemas', f"{graph.split('/')[-2]}_schema.json"))
+    schema = schema.get_schema()
 
     docs += schema.apply(lambda c: Document(page_content=c['name'], 
                                             metadata = {'desc': f"- Class URI: {c['class']}\n\t - Predicates:\n" + 
