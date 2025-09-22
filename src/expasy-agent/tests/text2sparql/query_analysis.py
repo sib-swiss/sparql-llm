@@ -29,38 +29,57 @@ def plot_queries_by_dataset(queries: pd.DataFrame):
     else:
         plt.show()
 
-def plot_dataset_details(queries: pd.DataFrame):
-    queries = queries.copy()
-    queries['dataset'] = queries['dataset'].map(lambda d: {'Generated-CK': 'Corporate-Generated', 'Text2SPARQL-db': 'Text2SPARQL-DBpedia', 'Text2SPARQL-ck': 'Text2SPARQL-Corporate'}.get(d, d))
-    queries = queries.sort_values(by=['dataset'])
-
+def plot_result_length(queries: pd.DataFrame):
+    queries['result length'] = queries['result length'].apply(lambda x: 2 if x > 2 else x)
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
-    _, axes = plt.subplots(1, 2, figsize=(20, 10), sharey=True)
-
-    queries['result length'] = queries['result length'].apply(lambda x: 3 if x > 3 else x)
-    queries['triple patterns'] = queries['triple patterns'].apply(lambda x: 4 if x > 4 else x)
-
-    ax = sns.histplot(data=queries, x='result length', hue='dataset', multiple='dodge', stat='count', shrink=0.8, discrete=True, palette='tab10', ax=axes[0])
+    plt.figure(figsize=(20, 10))
+    ax = sns.histplot(data=queries, x='result length', hue='dataset', multiple='dodge', stat='count', shrink=0.8, discrete=True, palette='tab10')
     ax.set_xlabel('Result Length')
     ax.set_ylabel('Queries')
     ax.set_yscale('log')
     ax.set_ylim(.5, 10000)
-    ax.get_legend().remove()
-    ax.set_xticks([0, 1, 2, 3], ['0', '1', '2', '3+'])
-    sns.despine(ax=ax, top=True, right=True)
+    ax.legend_.set_title('Dataset')
+    ax.legend_.set_bbox_to_anchor((1, 1.05))
+    ax.set_xticks([0, 1, 2], ['0', '1', '2+'])
+    sns.despine(top=True, right=True)
+    if SAVE_PLOTS:
+        plt.savefig(os.path.join(bench_folder, f"{file_time_prefix}_result_length.png"), bbox_inches='tight')
+    else:
+        plt.show()
 
-    ax = sns.histplot(data=queries, x='triple patterns', hue='dataset', multiple='dodge', stat='count', shrink=0.8, discrete=True, palette='tab10', ax=axes[1])
+def plot_triple_patterns(queries: pd.DataFrame):
+    queries = queries.copy()
+    queries['triple patterns'] = queries['triple patterns'].apply(lambda x: 6 if x > 6 else x)
+    queries['dataset'] = queries['dataset'].map(lambda d: {'Generated-CK': 'LLM-Generated (Corporate)', 'Text2SPARQL-db': 'Text2SPARQL (DBpedia)', 'Text2SPARQL-ck': 'Text2SPARQL (Corporate)', 'LC-QuAD': 'LC-QuAD (DBpedia)', 'QALD-9+': 'QALD-9+ (DBpedia)'}.get(d, d))
+    queries = queries.groupby(['dataset', 'triple patterns']).size().reset_index(name='count')
+
+    sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
+    
+    ax = sns.lineplot(data=queries,
+                      x='triple patterns',
+                      y='count',
+                      hue='dataset',
+                      hue_order=['LC-QuAD (DBpedia)', 'QALD-9+ (DBpedia)', 'Text2SPARQL (DBpedia)', 'LLM-Generated (Corporate)', 'Text2SPARQL (Corporate)'],
+                      markersize=10,
+                      linewidth=3,
+                      palette=sns.color_palette('Blues')[1::2] + sns.color_palette('Oranges')[1:4:2],
+                    )
+    
+    ax.lines[2].set_linestyle('dashed')
+    ax.lines[4].set_linestyle('dashed')
     ax.set_xlabel('Triple Patterns')
     ax.set_ylabel('Queries')
     ax.set_yscale('log')
     ax.set_ylim(.5, 10000)
-    ax.legend_.set_title('Dataset')
-    ax.legend_.set_bbox_to_anchor((.7, 1))
-    ax.set_xticks([1, 2, 3, 4], ['1', '2', '3', '4+'])
-    sns.despine(ax=ax, top=True, right=True)
+    ax.legend_.set_title('KGQA Corpus')
+    ax.legend_.get_lines()[2].set_linestyle('dashed')
+    ax.legend_.get_lines()[4].set_linestyle('dashed')
+    ax.legend_.set_bbox_to_anchor((1, 1))
+    ax.set_xticks([1, 2, 3, 4, 5, 6], ['1', '2', '3', '4', '5', '[6-8]'])
+    sns.despine(top=True, right=True)
 
     if SAVE_PLOTS:
-        plt.savefig(os.path.join(bench_folder, f"{file_time_prefix}_dataset_details.png"), bbox_inches='tight')
+        plt.savefig(os.path.join(bench_folder, f"{file_time_prefix}_triple_patterns.png"), bbox_inches='tight')
     else:
         plt.show()
 
@@ -81,5 +100,6 @@ def print_error_histogram():
 if __name__ == "__main__":
     queries = pd.read_csv(QUERIES_FILE)
     plot_queries_by_dataset(queries)
-    plot_dataset_details(queries)
+    plot_result_length(queries)
+    plot_triple_patterns(queries)
     print_error_histogram()
