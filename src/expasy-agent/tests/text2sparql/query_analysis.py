@@ -50,7 +50,7 @@ def plot_result_length(queries: pd.DataFrame):
 def plot_triple_patterns(queries: pd.DataFrame):
     queries = queries.copy()
     queries['triple patterns'] = queries['triple patterns'].apply(lambda x: 6 if x > 6 else x)
-    queries['dataset'] = queries['dataset'].map(lambda d: {'Generated-CK': 'LLM-Generated (Corporate)', 'Text2SPARQL-db': 'Text2SPARQL (DBpedia)', 'Text2SPARQL-ck': 'Text2SPARQL (Corporate)', 'LC-QuAD': 'LC-QuAD (DBpedia)', 'QALD-9+': 'QALD-9+ (DBpedia)'}.get(d, d))
+    queries['dataset'] = queries['dataset'].map(lambda d: {'Generated-CK': 'LLM-Generated (Corporate)', 'Text2SPARQL-db': 'TEXT2SPARQL (DBpedia)', 'Text2SPARQL-ck': 'TEXT2SPARQL (Corporate)', 'LC-QuAD': 'LC-QuAD (DBpedia)', 'QALD-9+': 'QALD-9+ (DBpedia)'}.get(d, d))
     queries = queries.groupby(['dataset', 'triple patterns']).size().reset_index(name='count')
 
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
@@ -59,8 +59,7 @@ def plot_triple_patterns(queries: pd.DataFrame):
                       x='triple patterns',
                       y='count',
                       hue='dataset',
-                      hue_order=['LC-QuAD (DBpedia)', 'QALD-9+ (DBpedia)', 'Text2SPARQL (DBpedia)', 'LLM-Generated (Corporate)', 'Text2SPARQL (Corporate)'],
-                      markersize=10,
+                      hue_order=['LC-QuAD (DBpedia)', 'QALD-9+ (DBpedia)', 'TEXT2SPARQL (DBpedia)', 'LLM-Generated (Corporate)', 'TEXT2SPARQL (Corporate)'],
                       linewidth=3,
                       palette=sns.color_palette('Blues')[1::2] + sns.color_palette('Oranges')[1:4:2],
                     )
