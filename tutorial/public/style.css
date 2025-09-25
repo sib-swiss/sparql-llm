@@ -1,6 +1,3 @@
-pre {
-    padding: .5em;
-}
-a.watermark {
+div.watermark {
     display: none !important;
 }

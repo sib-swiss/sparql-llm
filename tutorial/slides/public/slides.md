@@ -33,6 +33,8 @@ OPENAI_API_KEY=sk-proj-YYY
 ```
 
 > You can get a [free API key on groq.com](https://console.groq.com/keys) after login in with GitHub or Google. This gives you access to [various open-source models](https://groq.com/pricing/) with a limit of 6k tokens per minute.
+>
+> https://console.mistral.ai/api-keys
 
 ---
 

@@ -14,8 +14,8 @@ endpoints: list[dict[str, str]] = [
         "endpoint_url": "https://sparql.uniprot.org/sparql/",
         # If VoID description or SPARQL query examples are not available in the endpoint, you can provide a VoID file (local or remote URL)
         # "void_file": "../src/sparql-llm/tests/void_uniprot.ttl",
-        "void_file": "data/uniprot_void.ttl",
-        "examples_file": "data/uniprot_examples.ttl",
+        # "void_file": "data/uniprot_void.ttl",
+        # "examples_file": "data/uniprot_examples.ttl",
     },
     {
         "endpoint_url": "https://www.bgee.org/sparql/",

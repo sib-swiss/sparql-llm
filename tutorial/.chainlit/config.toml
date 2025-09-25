@@ -16,12 +16,15 @@ cache = false
 
 
 [UI]
-name = "SPARQL assistant"
+name = "Biodata assistant"
 # Description of the assistant, used for HTML tags.
 description = "Assistant that helps users to write SPARQL queries."
 custom_css = "/public/style.css"
 # Chain of Thought (CoT) display mode. Can be "hidden", "tool_call" or "full".
 cot = "full"
+
+logo_file_url = "https://github.com/sib-swiss/sparql-llm/blob/main/chat-with-context/demo/sib-logo.png?raw=true"
+default_avatar_file_url = "https://github.com/sib-swiss/sparql-llm/blob/main/chat-with-context/demo/sib-logo.png?raw=true"
 
 # default_theme = "dark"
 # layout = "wide"
