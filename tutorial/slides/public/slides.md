@@ -1,6 +1,6 @@
 ## Introduction
 
-In this tutorial, you'll learn how to build an LLM-powered app that assists in writing SPARQL queries, step by step.
+In this tutorial, you'll learn how to build an LLM-powered app that assists in writing SPARQL queries to access biodata resources, step by step.
 
 As we progress, you'll be provided with code snippets to gradually construct the system. Note that some earlier code may need to be modified or removed to prevent redundancy, ensuring a clean and efficient implementation.
 
@@ -11,9 +11,8 @@ As we progress, you'll be provided with code snippets to gradually construct the
 1. Programmatically query LLMs
 2. Index documents
 3. Use indexed documents as context
-4. Add a web UI
-5. Add SPARQL query validation
-6. Optional: use an agent framework
+4. Execute generated query
+5. Add a chat web UI
 
 ---
 
@@ -28,13 +27,14 @@ Create a new folder, you will be using this same folder along the tutorial.
 Create a `.env` file with the API key for the LLM provider you will use:
 
 ```sh
-GROQ_API_KEY=gsk_YYY
-OPENAI_API_KEY=sk-proj-YYY
+MISTRAL_API_KEY=YYY
+GROQ_API_KEY=YYY
 ```
 
-> You can get a [free API key on groq.com](https://console.groq.com/keys) after login in with GitHub or Google. This gives you access to [various open-source models](https://groq.com/pricing/) with a limit of 6k tokens per minute.
+> Many providers offers a relatively generous **free tier** that you can use for developments
 >
-> https://console.mistral.ai/api-keys
+> - [MistralAI](https://console.mistral.ai/api-keys) (requires your phone number) 🇪🇺
+> - [Groq](https://console.groq.com/keys) (login with GitHub or Google), gives access to [various open-source models](https://groq.com/pricing/) with a limit of 6k tokens/min.
 
 ---
 
@@ -51,10 +51,8 @@ dependencies = [
     "sparql-llm >=0.0.8",
     "langchain >=0.3.27",
     "langchain-mistralai >=0.2.12",
-    "langchain-google-genai >=0.1.5",
-    "langchain-openai >=0.3.33",
-    "langchain-ollama >=0.3.8",
     "langchain-groq >=0.3.8",
+    "langchain-ollama >=0.3.8",
     "qdrant-client >=1.15.1",
     "fastembed >=0.7.3",
     "chainlit >=2.8.1",
@@ -63,22 +61,62 @@ dependencies = [
 
 ---
 
-## Programmatically query a LLM
+## Script skeleton
 
-Create a `app.py` file in the same folder
+Create a `app.py` file in the same folder, alongside the `pyproject.toml`
 
 ```python
-from langchain_groq import ChatGroq
+import asyncio
+import logging
 
-question = "What are the rat orthologs of human TP53?"
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
-llm = ChatGroq(
-    model_name="meta-llama/llama-4-scout-17b-16e-instruct",
+## 1. Set up LLM provider
+
+## 2. Initialize vector database for similarity search, and index relevant documents
+
+## 3. Set up document retrieval, and pass relevant context to the system prompt
+
+## 4. Automatically execute generated query and interpret results
+
+## 5. Setup chat web UI (with Chainlit)
+
+async def main() -> None:
+    question = "What are the rat orthologs of human TP53?"
+    logging.info("Hello world")
+    # 🔨 Call the different steps of the pipeline here
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+Run it with:
+
+```sh
+uv run --env-file .env app.py
+```
+
+---
+
+## Programmatically query a LLM
+
+Setup the LLM provider, and update the `main` function to call it
+
+```python
+from langchain_mistralai import ChatMistralAI
+
+## 1. Set up LLM provider
+llm = ChatMistralAI(
+    model_name="mistral-small-latest",
     temperature=0,
+    max_tokens=1024,
 )
 
-resp = llm.invoke(question)
-print(resp)
+async def main():
+    question = "What are the rat orthologs of human TP53?"
+    resp = llm.invoke(question)
+    print(resp)
 ```
 
 Run it with:
@@ -92,8 +130,10 @@ uv run --env-file .env app.py
 ## Stream a LLM response
 
 ```python
-for msg in llm.stream(question):
-    print(msg.content, end="")
+async def main():
+    question = "What are the rat orthologs of human TP53?"
+    for msg in llm.stream(question):
+        print(msg.content, end="", flush=True)
 ```
 
 ---
@@ -103,20 +143,31 @@ for msg in llm.stream(question):
 ```python
 from langchain_core.language_models import BaseChatModel
 
+## 1. Set up LLM provider
 def load_chat_model(model: str) -> BaseChatModel:
     provider, model_name = model.split("/", maxsplit=1)
-    if provider == "groq":
-        # https://python.langchain.com/docs/integrations/chat/groq/
-        from langchain_groq import ChatGroq
-        return ChatGroq(model_name=model_name, temperature=0)
-    if provider == "openai":
-        # https://python.langchain.com/docs/integrations/chat/openai/
-        from langchain_openai import ChatOpenAI
-        return ChatOpenAI(model_name=model_name, temperature=0)
+    if provider == "google":
+        # https://python.langchain.com/docs/integrations/chat/google_generative_ai/
+        from langchain_google_genai import ChatGoogleGenerativeAI
+
+        return ChatGoogleGenerativeAI(
+            model=model_name,
+            temperature=0,
+            max_tokens=1024,
+        )
+    if provider == "mistralai":
+        # https://python.langchain.com/docs/integrations/chat/mistralai/
+        from langchain_mistralai import ChatMistralAI
+
+        return ChatMistralAI(
+            model=model_name,
+            temperature=0,
+            max_tokens=1024,
+        )
     raise ValueError(f"Unknown provider: {provider}")
 
-llm = load_chat_model("groq/llama-3.3-70b-versatile")
-# llm = load_chat_model("openai/gpt-4o-mini")
+llm = load_chat_model("mistralai/mistral-small-latest")
+# llm = load_chat_model("google/gemini-2.5-flash")
 ```
 
 > Alternatively you could replace LangChain by [LiteLLM](https://docs.litellm.ai/docs/) here
@@ -150,91 +201,45 @@ llm = load_chat_model("ollama/mistral")
 
 ---
 
-## Setup vector store
-
-Deploy a **[Qdrant](https://qdrant.tech/documentation/)** vector store using [docker](https://hub.docker.com/r/qdrant/qdrant/tags) to store indexed documents:
-
-```sh
-docker run -d -p 6333:6333 -p 6334:6334 -v $(pwd)/data/qdrant:/qdrant/storage qdrant/qdrant
-```
-
-Or create a `compose.yml` file and start with `docker compose up -d`
-
-```yml
-services:
-  vectordb:
-    image: docker.io/qdrant/qdrant:v1.13.4
-    ports:
-      - "6333:6333"
-      - "6334:6334"
-    volumes:
-      - ./data/qdrant:/qdrant/storage
-    environment:
-      - QDRANT__TELEMETRY_DISABLED=true
-```
-
-If you don't have docker you can try to [download and deploy the binary](https://github.com/qdrant/qdrant/releases/tag/v1.13.4) for your platform (this might require to install additional dependencies though)
-
-> Using in-memory vector store is also an option, but limited to 1 thread, with high risk of conflicts and no dashboard.
-
----
-
 ## Index context
 
-Create a new script that will be run to index data from SPARQL endpoints: `app.py`
-
-```python
-import logging
-
-from sparql_llm import SparqlEndpointLinks
-
-logging.getLogger("httpx").setLevel(logging.WARNING)
-
-endpoints: list[SparqlEndpointLinks] = [
-    {
-        # The URL of the SPARQL endpoint from which most info will be extracted
-        "endpoint_url": "https://sparql.uniprot.org/sparql/",
-        # If metadata not in the endpoint, you can provide a VoID file (local or remote URL)
-        # "void_file": "data/uniprot_void.ttl",
-        # "examples_file": "data/uniprot_examples.ttl",
-    },
-    { "endpoint_url": "https://www.bgee.org/sparql/" },
-    { "endpoint_url": "https://sparql.omabrowser.org/sparql/" },
-]
-```
-
-> Replace the values by your own endpoints URLs, and previously generated files for the VoID description and examples if applicable.
-
----
-
-## Index context
-
-Setup the Qdrant vector database and embedding model using fastembed, see [supported models](https://qdrant.github.io/fastembed/examples/Supported_Models/#supported-text-embedding-models).
+Setup the [Qdrant vector database](https://qdrant.tech/documentation/) and embedding model using fastembed, see [supported models](https://qdrant.github.io/fastembed/examples/Supported_Models/#supported-text-embedding-models).
 
 ```python
 from fastembed import TextEmbedding
 from qdrant_client import QdrantClient
 
+## 2. Set up vector database for document retrieval
 embedding_model = TextEmbedding("BAAI/bge-small-en-v1.5")
 embedding_dimensions = 384
 collection_name = "sparql-docs"
 vectordb = QdrantClient(path="data/vectordb")
 ```
 
-
-
 ---
 
 ## Index context
 
-Use the loaders from the **[sparql-llm](https://pypi.org/project/sparql-llm/)** library to extract and load documents for queries examples and classes schemas in the endpoint:
+1. Use the loaders from the **[sparql-llm](https://pypi.org/project/sparql-llm/)** library to fetch documents from SPARQL endpoints (queries examples and classes schemas),
+2. Generate embeddings for the documents descriptions locally using **[FastEmbed](https://qdrant.github.io/fastembed/)**,
+3. Index these documents embeddings in the **[Qdrant](https://qdrant.tech/documentation/)** vector store.
 
 ```python
 from langchain_core.documents import Document
+from qdrant_client.http.models import Distance, VectorParams
 from sparql_llm import SparqlExamplesLoader, SparqlVoidShapesLoader, SparqlInfoLoader
 
+## 2. Set up vector database for document retrieval
+endpoints: list[dict[str, str]] = [
+    { "endpoint_url": "https://sparql.uniprot.org/sparql/" },
+    { "endpoint_url": "https://www.bgee.org/sparql/" },
+    { "endpoint_url": "https://sparql.omabrowser.org/sparql/" },
+]
+
 def index_endpoints():
+    """Index SPARQL endpoints metadata in the vector database."""
     docs: list[Document] = []
+    # Fetch documents from endpoints
     for endpoint in endpoints:
         logging.info(f"🔎 Retrieving metadata for {endpoint['endpoint_url']}")
         docs += SparqlExamplesLoader(
@@ -247,12 +252,21 @@ def index_endpoints():
             examples_file=endpoint.get("examples_file"),
         ).load()
     docs += SparqlInfoLoader(endpoints, source_iri="https://www.expasy.org/").load()
-```
 
-Run with:
-
-```sh
-uv run index.py
+    # Load documents in vectordb
+    if vectordb.collection_exists(collection_name):
+        vectordb.delete_collection(collection_name)
+    vectordb.create_collection(
+        collection_name=collection_name,
+        vectors_config=VectorParams(size=embedding_dimensions, distance=Distance.COSINE),
+    )
+    embeddings = embedding_model.embed([q.page_content for q in docs])
+    vectordb.upload_collection(
+        collection_name=collection_name,
+        vectors=[embed.tolist() for embed in embeddings],
+        payload=[doc.metadata for doc in docs],
+    )
+    logging.info(f"✅ Indexed {len(docs)} documents in collection {collection_name}")
 ```
 
 ----
@@ -279,66 +293,10 @@ docs.append(Document(
 
 ## Index context
 
-Finally we can load these documents in the **[Qdrant](https://qdrant.tech/documentation/)** vector store.
-
-We use **[FastEmbed](https://qdrant.github.io/fastembed/)** to generate embeddings locally with [open source embedding models](https://qdrant.github.io/fastembed/examples/Supported_Models/#supported-text-embedding-models).
+Run initialization function, that will only run if the vector database has no entries
 
 ```python
-from qdrant_client.http.models import Distance, VectorParams
-
-def index_endpoints():
-    # [...]
-    if vectordb.collection_exists(collection_name):
-        vectordb.delete_collection(collection_name)
-    vectordb.create_collection(
-        collection_name=collection_name,
-        vectors_config=VectorParams(size=embedding_dimensions, distance=Distance.COSINE),
-    )
-
-    embeddings = embedding_model.embed([q.page_content for q in docs])
-    vectordb.upload_collection(
-        collection_name=collection_name,
-        vectors=[embed.tolist() for embed in embeddings],
-        payload=[doc.metadata for doc in docs],
-    )
-    logging.info(f"✅ Indexed {len(docs)} documents in collection {collection_name}")
-```
-
-> Checkout indexed docs at http://localhost:6333/dashboard
-
-----
-
-Alternatively you could use a LangChain retriever instead of the Qdrant client directly
-
-```python
-from langchain_qdrant import QdrantVectorStore
-from langchain_community.embeddings import FastEmbedEmbeddings
-
-def index_endpoints():
-    # [...]
-    QdrantVectorStore.from_documents(
-        docs,
-        host="localhost",
-        prefer_grpc=True,
-        # location=":memory:", # if not using Qdrant as a service
-        collection_name="sparql-docs",
-        embedding=FastEmbedEmbeddings(
-            model_name="BAAI/bge-small-en-v1.5",
-            # providers=["CUDAExecutionProvider"], # Replace the fastembed dependency with fastembed-gpu to use your GPUs
-        ),
-        force_recreate=True,
-    )
-```
-
-> You will need to add the `langchain-qdrant` dependency to your `pyproject.toml`
-
----
-
-## Index context
-
-Initialize the vector database if not already done
-
-```python
+## 2. Set up vector database for document retrieval
 if not vectordb.collection_exists(collection_name) or vectordb.get_collection(collection_name).points_count == 0:
     index_endpoints()
 else:
@@ -354,104 +312,16 @@ else:
 Retrieve documents related to the user question using the vector store
 
 ```python
-question_embeddings = next(iter(embedding_model.embed([question])))
-
-retrieved_docs_count = 3
-retrieved_docs = vectordb.search(
-    collection_name=collection_name,
-    query_vector=question_embeddings,
-    limit=retrieved_docs_count,
-)
-relevant_docs = "\n".join(doc.payload["question"] + "\n" + doc.payload["answer"] for doc in retrieved_docs)
-print(f"📚️ Retrieved {len(retrieved_docs)} documents", retrieved_docs[0])
-```
-
-----
-
-If you are using LangChain retriever
-
-```python
-from langchain_qdrant import QdrantVectorStore
-from langchain_community.embeddings import FastEmbedEmbeddings
-
-vectordb = QdrantVectorStore.from_existing_collection(
-    host="localhost",
-    prefer_grpc=True,
-    collection_name="sparql-docs",
-    embedding=FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5"),
-)
-retriever = vectordb.as_retriever()
-
-retrieved_docs_count = 3
-retrieved_docs = retriever.invoke(question, k=retrieved_docs_count)
-relevant_docs = "\n".join(doc.page_content + "\n" + doc.metadata.get("answer") for doc in retrieved_docs)
-print(f"📚️ Retrieved {len(retrieved_docs)} documents", retrieved_docs[0])
-```
-
-> LangChain retriever returns a list of `Document` instead of `ScoredPoint`, access the fields using `metadata` instead of `payload`
-
----
-
-## Provide context to the LLM
-
-Customize the system prompt to provide the retrieved documents
-
-```python
-SYSTEM_PROMPT = """You are an assistant that helps users to write SPARQL queries.
-Put the SPARQL query inside a markdown codeblock with the "sparql" language tag, and always add the URL of the endpoint on which the query should be executed in a comment at the start of the query inside the codeblocks.
-Use the queries examples and classes shapes provided in the prompt to derive your answer, don't try to create a query from nothing and do not provide a generic query.
-Try to always answer with one query, if the answer lies in different endpoints, provide a federated query.
-And briefly explain the query.
-Here is a list of documents (reference questions and query answers, classes schema) relevant to the user question that will help you answer the user question accurately:
-{relevant_docs}"""
-messages = [
-    ("system", SYSTEM_PROMPT.format(relevant_docs=relevant_docs)),
-    ("human", question),
-]
-```
-
-> Try now to pass `messages` to `llm.stream()`
-
----
-
-## Provide context to the LLM
-
-We can improve how the documents are formatted when passed to the LLM
-
-```python
 from qdrant_client.models import ScoredPoint
 
-def _format_doc(doc: ScoredPoint) -> str:
-    """Format a question/answer document to be provided as context to the model."""
-    doc_lang = (
-        "sparql"
-        if "query" in doc.payload.get("doc_type", "")
-        else "shex"
-        if "schema" in doc.payload.get("doc_type", "")
-        else ""
-    )
-    return f"\n{doc.payload['question']} ({doc.payload.get('endpoint_url', '')}):\n\n```{doc_lang}\n{doc.payload.get('answer')}\n```\n\n"
-
-relevant_docs = '\n'.join(_format_doc(doc) for doc in retrieved_docs)
-```
-
----
-
-## Provide context to the LLM
-
-We can retrieve documents related to query examples and classes shapes separately, to make sure we always get a number of examples and classes shapes
-
-```python
-from qdrant_client.models import FieldCondition, Filter, MatchValue
-
+## 3. Set up document retrieval and system prompt
 retrieved_docs_count = 3
-
-async def retrieve_docs(question: str) -> str:
+def retrieve_docs(question: str) -> list[ScoredPoint]:
     """Retrieve documents relevant to the user's question."""
     question_embeddings = next(iter(embedding_model.embed([question])))
-    retrieved_docs = vectordb.search(
+    retrieved_docs = vectordb.query_points(
         collection_name=collection_name,
-        query_vector=question_embeddings,
+        query=question_embeddings,
         limit=retrieved_docs_count,
         query_filter=Filter(
             must=[
@@ -461,62 +331,148 @@ async def retrieve_docs(question: str) -> str:
                 )
             ]
         ),
-    )
-    retrieved_docs += vectordb.search(
+    ).points
+    retrieved_docs += vectordb.query_points(
         collection_name=collection_name,
-        query_vector=question_embeddings,
+        query=question_embeddings,
         limit=retrieved_docs_count,
         query_filter=Filter(
-            must_not=[
+            must=[
                 FieldCondition(
                     key="doc_type",
-                    match=MatchValue(value="SPARQL endpoints query examples"),
+                    match=MatchValue(value="SPARQL endpoints classes schema"),
                 )
             ]
         ),
-    )
-    relevant_docs = "\n".join(_format_doc(doc) for doc in retrieved_docs)
-    # async with cl.Step(name=f"{len(retrieved_docs)} relevant documents 📚️") as step:
-    #     step.output = relevant_docs
-    return relevant_docs
-
-relevant_docs = retrieve_docs(question)
+    ).points
+    return retrieved_docs
 ```
 
-----
+---
 
-If using LangChain retriever:
+## Provide context to the LLM
+
+Format the retrieved documents in order to pass them to the LLM
 
 ```python
-from qdrant_client.models import FieldCondition, Filter, MatchValue
-
-def retrieve_docs(question: str) -> str:
-    retrieved_docs = retriever.invoke(
-        question,
-        k=retrieved_docs_count,
-        filter=Filter(must=[FieldCondition(
-            key="metadata.doc_type",
-            match=MatchValue(value="SPARQL endpoints query examples"),
-        )])
+## 3. Set up document retrieval and system prompt
+def format_doc(doc: ScoredPoint) -> str:
+    """Format a question/answer document to be provided as context to the model."""
+    doc_lang = (
+        f"sparql\n#+ endpoint: {doc.payload.get('endpoint_url', 'not provided')}"
+        if "query" in doc.payload.get("doc_type", "")
+        else ""
     )
-    retrieved_docs += retriever.invoke(
-        question,
-        k=retrieved_docs_count,
-        filter=Filter(must_not=[FieldCondition(
-            key="metadata.doc_type",
-            match=MatchValue(value="SPARQL endpoints query examples"),
-        )])
-    )
-    return f"<documents>\n{'\n'.join(_format_doc(doc) for doc in retrieved_docs)}\n</documents>"
+    return f"\n{doc.payload['question']} ({doc.payload.get('endpoint_url', '')}):\n\n```{doc_lang}\n{doc.payload.get('answer')}\n```\n\n"
+```
 
-relevant_docs = retrieve_docs(question)
+---
+
+## Provide context to the LLM
+
+Provide the system prompt that is the instructions the LLM will follow in priority
+
+```python
+SYSTEM_PROMPT = """You are an assistant that helps users to write SPARQL queries.
+Put the SPARQL query inside a markdown codeblock with the "sparql" language tag, and always add the URL of the endpoint on which the query should be executed in a comment at the start of the query inside the codeblocks starting with "#+ endpoint: " (always only 1 endpoint).
+Use the queries examples and classes shapes provided in the prompt to derive your answer, don't try to create a query from nothing and do not provide a generic query.
+Try to always answer with one query, if the answer lies in different endpoints, provide a federated query.
+And briefly explain the query.
+Here is a list of documents (reference questions and query answers, classes schema) relevant to the user question that will help you answer the user question accurately:
+{relevant_docs}
+"""
+```
+
+---
+
+## Provide context to the LLM
+
+Put the workflow together in the `main` function
+
+```python
+async def main():
+    question = "What are the rat orthologs of human TP53?"
+    retrieved_docs = retrieve_docs(question)
+    formatted_docs = "\n".join(format_doc(doc) for doc in retrieved_docs)
+    messages = [
+        ("system", SYSTEM_PROMPT.format(relevant_docs=formatted_docs)),
+        ("user", question),
+    ]
+    for resp in llm.stream(messages):
+        print(resp.content, end="", flush=True)
+        if resp.usage_metadata:
+            print("\n")
+            logging.info(f"🎰 {resp.usage_metadata}")
+```
+
+---
+
+## Add query execution step
+
+Use helper function from the `sparql-llm` package
+
+```python
+from sparql_llm.validate_sparql import extract_sparql_queries
+from sparql_llm.utils import query_sparql
+
+## 4. Execute generated SPARQL query
+def execute_query(last_msg: str) -> list[dict[str, str]]:
+    """Extract SPARQL query from markdown and execute it."""
+    for extracted_query in extract_sparql_queries(last_msg):
+        if extracted_query.get("query") and extracted_query.get("endpoint_url"):
+            res = query_sparql(extracted_query.get("query"), extracted_query.get("endpoint_url"))
+            return res.get("results", {}).get("bindings", [])
+```
+
+---
+
+## Add query execution step
+
+Change the `main` function to execute the query, and loop on the LLM if no results
+
+```python
+max_try_count = 3
+
+async def main():
+    question = "What are the rat orthologs of human TP53?"
+    # Retrieve relevant documents and add them to conversation
+    retrieved_docs = retrieve_docs(question)
+    formatted_docs = "\n".join(format_doc(doc) for doc in retrieved_docs)
+    messages = [
+        ("system", SYSTEM_PROMPT.format(relevant_docs=formatted_docs)),
+        ("user", question),
+    ]
+    # Loop until query execution is successful or max tries reached
+    query_success = False
+    for _i in range(max_try_count):
+        complete_answer = ""
+        for resp in llm.stream(messages):
+            print(resp.content, end="", flush=True)
+            complete_answer += resp.content
+            if resp.usage_metadata:
+                print("\n")
+                logging.info(f"🎰 {resp.usage_metadata}")
+
+        messages.append(("assistant", complete_answer))
+        if query_success:
+            break
+
+        # Run execution on the final answer
+        query_res = execute_query(complete_answer)
+        if len(query_res) < 1:
+            logging.warning("⚠️ No results, trying to fix")
+            messages.append(("user", f"""The query you provided returned no results, please fix the query:\n\n{complete_answer}"""))
+        else:
+            logging.info(f"✅ Got {len(query_res)} results, summarizing them")
+            messages.append(("user", f"""The query you provided returned these results, summarize them:\n\n{json.dumps(query_res, indent=2)}"""))
+            query_success = True
 ```
 
 ---
 
 ## Deploy with a nice web UI
 
-Using [Chainlit](https://chainlit.io/)
+For this we will move the workflow code to a custom chainlit `@cl.on_message` function instead of the `main` function, and start the app with the [`chainlit`](https://github.com/Chainlit/chainlit) command line tool
 
 ```python
 import chainlit as cl
@@ -524,19 +480,37 @@ import chainlit as cl
 @cl.on_message
 async def on_message(msg: cl.Message):
     """Main function to handle when user send a message to the assistant."""
-    relevant_docs = retrieve_docs(msg.content)
-    async with cl.Step(name="relevant documents 📚️") as step:
-        step.output = relevant_docs
+    retrieved_docs = retrieve_docs(msg.content)
+    formatted_docs = "\n".join(format_doc(doc) for doc in retrieved_docs)
+    async with cl.Step(name=f"{len(retrieved_docs)} relevant documents 📚️") as step:
+        step.output = formatted_docs
     messages = [
-        ("system", SYSTEM_PROMPT.format(relevant_docs=relevant_docs)),
+        ("system", SYSTEM_PROMPT.format(relevant_docs=formatted_docs)),
         *cl.chat_context.to_openai(),
     ]
-    answer = cl.Message(content="")
-    for resp in llm.stream(messages):
-        await answer.stream_token(resp.content)
-        if resp.usage_metadata:
-        	print(resp.usage_metadata)
-    await answer.send()
+
+    query_success = False
+    for _i in range(max_try_count):
+        answer = cl.Message(content="")
+        for resp in llm.stream(messages):
+            await answer.stream_token(resp.content)
+            if resp.usage_metadata:
+                logging.info(f"🎰 {resp.usage_metadata}")
+        await answer.send()
+
+        if query_success:
+            break
+
+        query_res = execute_query(answer.content)
+        if len(query_res) < 1:
+            logging.warning("⚠️ No results, trying to fix")
+            messages.append(("user", f"""The query you provided returned no results, please fix the query:\n\n{answer.content}"""))
+        else:
+            logging.info(f"✅ Got {len(query_res)} results! Summarizing them, then stopping the chat")
+            async with cl.Step(name=f"{len(query_res)} query results ✨") as step:
+                step.output = f"```json\n{json.dumps(query_res, indent=2)}\n```"
+            messages.append(("user", f"""The query you provided returned these results, summarize them:\n\n{json.dumps(query_res, indent=2)}"""))
+            query_success = True
 ```
 
 Deploy the UI on http://localhost:8000 with:
@@ -562,118 +536,10 @@ async def set_starters():
     ]
 ```
 
-And [customize the UI](https://docs.chainlit.io/customisation/overview)
+And [customize the UI](https://docs.chainlit.io/customisation/overview) in `.chainlit/config.toml`
 
-- Change general settings in `.chainlit/config.toml`
-  - e.g. set `custom_css= "/public/style.css"` containing: `pre { padding: .5em; } a.watermark { display: none !important; }`
-
-- Add your logo in the `public` folder:
-  - `logo_dark.png`, `logo_light.png`, `favicon`
-
----
-
-## Deploy with a nice web UI
-
-You can also change `retrieve_docs()` to make it `async`, and directly define the chainlit step in the retrieval function
-
-```python
-async def retrieve_docs(question: str) -> str:
-    # [...]
-    async with cl.Step(name=f"{len(retrieved_docs)} relevant documents 📚️") as step:
-        step.output = relevant_docs
-    return relevant_docs
-
-@cl.on_message
-async def on_message(msg: cl.Message):
-	relevant_docs = await retrieve_docs(msg.content)
-    # [...]
-```
-
----
-
-## Add SPARQL query validation
-
-<div class="r-stretch" style="display: flex;">
-    <div style="flex: 1;">
-
-Why do we add validation of the query generated:
-
-🧠 fix missing prefixes
-
-🍄 detect use of a wrong predicate with a class
-
-</div>
-<div style="flex: 1;">
-    <img src="sparql_workflow.png" alt="SPARQL agent workflow">
-</div>
-</div>
-
----
-
-## Add SPARQL query validation
-
-Initialize the prefixes map and VoID classes schema that will be used by validation
-
-```python
-from sparql_llm.utils import get_prefixes_and_schema_for_endpoints
-
-logging.info("Initializing endpoints metadata...")
-prefixes_map, endpoints_void_dict = get_prefixes_and_schema_for_endpoints(endpoints)
-```
-
----
-
-## Add SPARQL query validation
-
-Create the validation function
-
-```python
-from sparql_llm import validate_sparql_in_msg
-from langchain_core.messages import AIMessage
-
-async def validate_output(last_msg: str) -> str | None:
-    """Validate the output of a LLM call, e.g. SPARQL queries generated."""
-    validation_outputs = validate_sparql_in_msg(last_msg, prefixes_map, endpoints_void_dict)
-    for validation_output in validation_outputs:
-        # Add step when missing prefixes have been fixed
-        if validation_output["fixed_query"]:
-            async with cl.Step(name="missing prefixes correction ✅") as step:
-                step.output = f"Missing prefixes added to the generated query:\n```sparql\n{validation_output['fixed_query']}\n```"
-        # Create a new message to ask the model to fix the errors
-        if validation_output["errors"]:
-            recall_msg = f"""Fix the SPARQL query helping yourself with the error message and context from previous messages in a way that it is a fully valid query.\n
-### Error messages:\n- {'\n- '.join(validation_output['errors'])}\n
-### Erroneous SPARQL query\n```sparql\n{validation_output.get('fixed_query', validation_output['original_query'])}\n```"""
-            async with cl.Step(name=f"SPARQL query validation, got {len(validation_output['errors'])} errors to fix 🐞") as step:
-                step.output = recall_msg
-            return recall_msg
-```
-
----
-
-## Add SPARQL query validation
-
-Update the main `on_message` function running the chat to add a loop that makes sure the validation passes, if not we recall the LLM asking to fix the wrong query
-
-```python
-max_try_count = 3
-
-@cl.on_message
-async def on_message(msg: cl.Message):
-    # [...]
-    for _i in range(max_try_count):
-        answer = cl.Message(content="")
-        for resp in llm.stream(messages):
-            await answer.stream_token(resp.content)
-        await answer.send()
-        validation_msg = await validate_output(answer.content)
-        if validation_msg is None:
-            break
-        else:
-            messages.append(("human", validation_msg))
-```
-
-> Try running your agent again now
+- set `custom_css= "/public/style.css"` containing: `div.watermark { display: none !important; }`
+- set `logo_file_url`
 
 ---
 
@@ -707,7 +573,7 @@ from langgraph.graph.message import MessagesState
 class AgentState(MessagesState):
     """State of the agent available inside each node."""
     relevant_docs: str
-    passed_validation: bool
+    execution_success: bool
     try_count: int
 
 
@@ -741,16 +607,13 @@ def call_model(state: AgentState):
 Update the function that does validation
 
 ```python
-async def validate_output(state) -> dict[str, bool | list[tuple[str, str]] | int]:
-	recall_messages = []
+async def execute_query(state) -> dict[str, bool | list[tuple[str, str]] | int]:
     last_msg = next(msg.content for msg in reversed(state["messages"]) if msg.content)
     # [...]
-    		# Add a new message to ask the model to fix the error
-            recall_messages.append(("human", recall_msg))
     return {
-        "messages": recall_messages,
+        "messages": messages,
         "try_count": state.get("try_count", 0) + 1,
-        "passed_validation": not recall_messages,
+        "execution_success": len(res) > 0,
     }
 ```
 
@@ -770,7 +633,7 @@ def route_model_output(state: AgentState) -> Literal["call_model", "__end__"]:
     """Determine the next node based on the model's output."""
     if state["try_count"] > max_try_count:
         return "__end__"
-    if not state["passed_validation"]:
+    if not state["execution_success"]:
         return "call_model"
     return "__end__"
 ```
@@ -788,12 +651,12 @@ builder = StateGraph(AgentState)
 
 builder.add_node(retrieve_docs)
 builder.add_node(call_model)
-builder.add_node(validate_output)
+builder.add_node(execute_query)
 
 builder.add_edge("__start__", "retrieve_docs")
 builder.add_edge("retrieve_docs", "call_model")
-builder.add_edge("call_model", "validate_output")
-builder.add_conditional_edges("validate_output", route_model_output)
+builder.add_edge("call_model", "execute_query")
+builder.add_conditional_edges("execute_query", route_model_output)
 
 graph = builder.compile()
 ```

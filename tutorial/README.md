@@ -17,9 +17,8 @@ npm run dev
 Create `.env` file with providers API keys:
 
 ```sh
-HF_TOKEN=hf_YYY
 MISTRAL_API_KEY=YYY
-GOOGLE_API_KEY=YYY
+GROQ_API_KEY=YYY
 OPENAI_API_KEY=sk-proj-YYY
 ```
 
@@ -34,6 +33,14 @@ Reset vectordb:
 ```sh
 rm -rf data/vectordb
 ```
+
+> [!NOTE]
+>
+> Or just run the `main` function:
+>
+> ```sh
+> uv run --env-file .env app.py
+> ```
 
 ## Tutorial history
 
