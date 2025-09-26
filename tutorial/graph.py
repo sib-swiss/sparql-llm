@@ -163,16 +163,10 @@ async def validate_output(
     """Node to validate the output of a LLM call, e.g. SPARQL queries generated."""
     recall_messages = []
     # print(state["messages"])
-    last_msg = next(
-        msg.content
-        for msg in reversed(state["messages"])
-        if isinstance(msg, AIMessage) and msg.content
-    )
+    last_msg = next(msg.content for msg in reversed(state["messages"]) if isinstance(msg, AIMessage) and msg.content)
     # print(last_msg)
     # last_msg = state["messages"][-1].content
-    validation_outputs = validate_sparql_in_msg(
-        last_msg, prefixes_map, endpoints_void_dict
-    )
+    validation_outputs = validate_sparql_in_msg(last_msg, prefixes_map, endpoints_void_dict)
     for validation_output in validation_outputs:
         if validation_output["fixed_query"]:
             async with cl.Step(name="missing prefixes correction ✅") as step:

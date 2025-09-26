@@ -44,18 +44,20 @@ Create a `pyproject.toml` file with this content:
 
 ```toml
 [project]
-name = "tutorial-sparql-agent"
+name = "tutorial-biodata-agent"
 version = "0.0.1"
 requires-python = "==3.12.*"
 dependencies = [
     "sparql-llm >=0.0.8",
-    "langchain >=0.3.19",
-    "langchain-openai >=0.3.6",
-    "langchain-groq >=0.2.4",
-    "langchain-ollama >=0.2.3",
-    "qdrant-client >=1.13.0",
-    "fastembed >=0.5.1",
-    "chainlit >=2.2.1",
+    "langchain >=0.3.27",
+    "langchain-mistralai >=0.2.12",
+    "langchain-google-genai >=0.1.5",
+    "langchain-openai >=0.3.33",
+    "langchain-ollama >=0.3.8",
+    "langchain-groq >=0.3.8",
+    "qdrant-client >=1.15.1",
+    "fastembed >=0.7.3",
+    "chainlit >=2.8.1",
 ]
 ```
 
@@ -71,7 +73,7 @@ from langchain_groq import ChatGroq
 question = "What are the rat orthologs of human TP53?"
 
 llm = ChatGroq(
-    model_name="llama-3.3-70b-versatile",
+    model_name="meta-llama/llama-4-scout-17b-16e-instruct",
     temperature=0,
 )
 
@@ -179,19 +181,22 @@ If you don't have docker you can try to [download and deploy the binary](https:/
 
 ## Index context
 
-Create a new script that will be run to index data from SPARQL endpoints: `index.py`
+Create a new script that will be run to index data from SPARQL endpoints: `app.py`
 
 ```python
+import logging
+
 from sparql_llm import SparqlEndpointLinks
+
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 endpoints: list[SparqlEndpointLinks] = [
     {
         # The URL of the SPARQL endpoint from which most info will be extracted
         "endpoint_url": "https://sparql.uniprot.org/sparql/",
-        # If VoID or query examples are not in the endpoint,
-        # you can provide a VoID file (local or remote URL)
-        "void_file": "data/uniprot_void.ttl",
-        "examples_file": "data/uniprot_examples.ttl",
+        # If metadata not in the endpoint, you can provide a VoID file (local or remote URL)
+        # "void_file": "data/uniprot_void.ttl",
+        # "examples_file": "data/uniprot_examples.ttl",
     },
     { "endpoint_url": "https://www.bgee.org/sparql/" },
     { "endpoint_url": "https://sparql.omabrowser.org/sparql/" },
@@ -204,7 +209,25 @@ endpoints: list[SparqlEndpointLinks] = [
 
 ## Index context
 
-Use the loaders from **[sparql-llm](https://pypi.org/project/sparql-llm/)** to easily extract and load documents for queries examples and classes schemas in the endpoint:
+Setup the Qdrant vector database and embedding model using fastembed, see [supported models](https://qdrant.github.io/fastembed/examples/Supported_Models/#supported-text-embedding-models).
+
+```python
+from fastembed import TextEmbedding
+from qdrant_client import QdrantClient
+
+embedding_model = TextEmbedding("BAAI/bge-small-en-v1.5")
+embedding_dimensions = 384
+collection_name = "sparql-docs"
+vectordb = QdrantClient(path="data/vectordb")
+```
+
+
+
+---
+
+## Index context
+
+Use the loaders from the **[sparql-llm](https://pypi.org/project/sparql-llm/)** library to extract and load documents for queries examples and classes schemas in the endpoint:
 
 ```python
 from langchain_core.documents import Document
@@ -213,7 +236,7 @@ from sparql_llm import SparqlExamplesLoader, SparqlVoidShapesLoader, SparqlInfoL
 def index_endpoints():
     docs: list[Document] = []
     for endpoint in endpoints:
-        print(f"\n  🔎 Getting metadata for {endpoint['endpoint_url']}")
+        logging.info(f"🔎 Retrieving metadata for {endpoint['endpoint_url']}")
         docs += SparqlExamplesLoader(
             endpoint["endpoint_url"],
             examples_file=endpoint.get("examples_file"),
@@ -224,11 +247,6 @@ def index_endpoints():
             examples_file=endpoint.get("examples_file"),
         ).load()
     docs += SparqlInfoLoader(endpoints, source_iri="https://www.expasy.org/").load()
-    print(f"✅ {len(docs)} documents indexed")
-    print(docs[0])
-
-if __name__ == "__main__":
-    index_endpoints()
 ```
 
 Run with:
@@ -266,21 +284,8 @@ Finally we can load these documents in the **[Qdrant](https://qdrant.tech/docume
 We use **[FastEmbed](https://qdrant.github.io/fastembed/)** to generate embeddings locally with [open source embedding models](https://qdrant.github.io/fastembed/examples/Supported_Models/#supported-text-embedding-models).
 
 ```python
-from fastembed import TextEmbedding
-from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
 
-embedding_model = TextEmbedding(
-    "BAAI/bge-small-en-v1.5",
-    # providers=["CUDAExecutionProvider"], # Replace the fastembed dependency with fastembed-gpu to use your GPUs
-)
-embedding_dimensions = 384
-collection_name = "sparql-docs"
-vectordb = QdrantClient(
-    host="localhost",
-    prefer_grpc=True,
-    # location=":memory:", # if not using Qdrant as a service
-)
 def index_endpoints():
     # [...]
     if vectordb.collection_exists(collection_name):
@@ -289,12 +294,14 @@ def index_endpoints():
         collection_name=collection_name,
         vectors_config=VectorParams(size=embedding_dimensions, distance=Distance.COSINE),
     )
+
     embeddings = embedding_model.embed([q.page_content for q in docs])
     vectordb.upload_collection(
         collection_name=collection_name,
         vectors=[embed.tolist() for embed in embeddings],
         payload=[doc.metadata for doc in docs],
     )
+    logging.info(f"✅ Indexed {len(docs)} documents in collection {collection_name}")
 ```
 
 > Checkout indexed docs at http://localhost:6333/dashboard
@@ -327,15 +334,26 @@ def index_endpoints():
 
 ---
 
-## Provide context to the LLM
+## Index context
 
-Now we can go back to our `app.py` file.
-
-And retrieve documents related to the user question using the vector store
+Initialize the vector database if not already done
 
 ```python
-from index import vectordb, embedding_model, collection_name
+if not vectordb.collection_exists(collection_name) or vectordb.get_collection(collection_name).points_count == 0:
+    index_endpoints()
+else:
+    logging.info(
+        f"ℹ️  Using existing collection '{collection_name}' with {vectordb.get_collection(collection_name).points_count} vectors"
+    )
+```
 
+---
+
+## Provide context to the LLM
+
+Retrieve documents related to the user question using the vector store
+
+```python
 question_embeddings = next(iter(embedding_model.embed([question])))
 
 retrieved_docs_count = 3
@@ -406,13 +424,15 @@ from qdrant_client.models import ScoredPoint
 def _format_doc(doc: ScoredPoint) -> str:
     """Format a question/answer document to be provided as context to the model."""
     doc_lang = (
-        "sparql" if "query" in doc.payload.get("doc_type", "")
-        else "shex" if "schema" in doc.payload.get("doc_type", "")
+        "sparql"
+        if "query" in doc.payload.get("doc_type", "")
+        else "shex"
+        if "schema" in doc.payload.get("doc_type", "")
         else ""
     )
-    return f"<document>\n{doc.payload['question']} ({doc.payload.get('endpoint_url', '')}):\n\n```{doc_lang}\n{doc.payload.get('answer')}\n```\n</document>"
+    return f"\n{doc.payload['question']} ({doc.payload.get('endpoint_url', '')}):\n\n```{doc_lang}\n{doc.payload.get('answer')}\n```\n\n"
 
-relevant_docs = f"<documents>\n{'\n'.join(_format_doc(doc) for doc in retrieved_docs)}\n</documents>"
+relevant_docs = '\n'.join(_format_doc(doc) for doc in retrieved_docs)
 ```
 
 ---
@@ -424,27 +444,41 @@ We can retrieve documents related to query examples and classes shapes separatel
 ```python
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
-def retrieve_docs(question: str) -> str:
+retrieved_docs_count = 3
+
+async def retrieve_docs(question: str) -> str:
+    """Retrieve documents relevant to the user's question."""
     question_embeddings = next(iter(embedding_model.embed([question])))
-    example_queries = vectordb.query_points(
+    retrieved_docs = vectordb.search(
         collection_name=collection_name,
-        query=question_embeddings,
+        query_vector=question_embeddings,
         limit=retrieved_docs_count,
-        query_filter=Filter(must=[FieldCondition(
-            key="doc_type",
-            match=MatchValue(value="SPARQL endpoints query examples"),
-        )]),
+        query_filter=Filter(
+            must=[
+                FieldCondition(
+                    key="doc_type",
+                    match=MatchValue(value="SPARQL endpoints query examples"),
+                )
+            ]
+        ),
     )
-    other_docs += vectordb.query_points(
+    retrieved_docs += vectordb.search(
         collection_name=collection_name,
-        query=question_embeddings,
+        query_vector=question_embeddings,
         limit=retrieved_docs_count,
-        query_filter=Filter(must_not=[FieldCondition(
-            key="doc_type",
-            match=MatchValue(value="SPARQL endpoints query examples"),
-        )]),
+        query_filter=Filter(
+            must_not=[
+                FieldCondition(
+                    key="doc_type",
+                    match=MatchValue(value="SPARQL endpoints query examples"),
+                )
+            ]
+        ),
     )
-    return f"<documents>\n{'\n'.join(_format_doc(doc) for doc in example_queries.points + other_docs.points)}\n</documents>"
+    relevant_docs = "\n".join(_format_doc(doc) for doc in retrieved_docs)
+    # async with cl.Step(name=f"{len(retrieved_docs)} relevant documents 📚️") as step:
+    #     step.output = relevant_docs
+    return relevant_docs
 
 relevant_docs = retrieve_docs(question)
 ```
@@ -581,11 +615,8 @@ Why do we add validation of the query generated:
 Initialize the prefixes map and VoID classes schema that will be used by validation
 
 ```python
-import logging
 from sparql_llm.utils import get_prefixes_and_schema_for_endpoints
-from index import endpoints
 
-logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.info("Initializing endpoints metadata...")
 prefixes_map, endpoints_void_dict = get_prefixes_and_schema_for_endpoints(endpoints)
 ```

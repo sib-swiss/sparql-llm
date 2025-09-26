@@ -1,12 +1,12 @@
 import logging
-import os
 
 from langchain_core.language_models import BaseChatModel
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
-import chainlit as cl
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.info("Initializing endpoints metadata...")
+
+## 1. Set up LLM provider
 
 
 def load_chat_model(model: str) -> BaseChatModel:
@@ -31,16 +31,6 @@ def load_chat_model(model: str) -> BaseChatModel:
             model=model_name,
             temperature=0,
         )
-    if provider == "huggingface":
-        # https://huggingface.co/docs/inference-providers/
-        from langchain_openai import ChatOpenAI
-
-        return ChatOpenAI(
-            base_url="https://router.huggingface.co/v1",
-            model_name=model_name,
-            temperature=0,
-            api_key=os.environ["HF_TOKEN"],
-        )
     if provider == "openai":
         # https://python.langchain.com/docs/integrations/chat/openai/
         from langchain_openai import ChatOpenAI
@@ -49,24 +39,38 @@ def load_chat_model(model: str) -> BaseChatModel:
             model_name=model_name,
             temperature=0,
         )
+    if provider == "groq":
+        # https://python.langchain.com/docs/integrations/chat/groq/
+        from langchain_groq import ChatGroq
+
+        return ChatGroq(
+            model=model_name,
+            temperature=0,
+        )
+    if provider == "ollama":
+        # https://python.langchain.com/docs/integrations/chat/ollama/
+        from langchain_ollama import ChatOllama
+
+        return ChatOllama(model=model_name, temperature=0)
     raise ValueError(f"Unknown provider: {provider}")
 
 
 # Change the model and provider used for the chat here
 llm = load_chat_model("mistralai/mistral-small-latest")
 # llm = load_chat_model("google/gemini-2.5-flash")
-# llm = load_chat_model("huggingface/meta-llama/Llama-3.1-8B-Instruct")
 # llm = load_chat_model("openai/gpt-5-mini")
+# llm = load_chat_model("groq/meta-llama/llama-4-scout-17b-16e-instruct")
+# llm = load_chat_model("groq/moonshotai/kimi-k2-instruct")
 # llm = load_chat_model("ollama/mistral")
 
 
-from langchain_core.documents import Document
-from sparql_llm import SparqlExamplesLoader, SparqlVoidShapesLoader, SparqlInfoLoader
+## 2. Set up vector database for document retrieval
 
 from fastembed import TextEmbedding
+from langchain_core.documents import Document
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
-
+from sparql_llm import SparqlExamplesLoader, SparqlInfoLoader, SparqlVoidShapesLoader
 
 # List of endpoints that will be used
 # endpoints: list[SparqlEndpointLinks] = [
@@ -87,26 +91,28 @@ endpoints: list[dict[str, str]] = [
     },
 ]
 
+# Supported models: https://qdrant.github.io/fastembed/examples/Supported_Models/#supported-text-embedding-models
 embedding_model = TextEmbedding(
     "BAAI/bge-small-en-v1.5",
     # providers=["CUDAExecutionProvider"], # Replace the fastembed dependency with fastembed-gpu to use your GPUs
 )
 embedding_dimensions = 384
 
-# vectordb = QdrantClient(host="localhost", prefer_grpc=True)
-vectordb = QdrantClient(path="data/vectordb")
 collection_name = "sparql-docs"
+vectordb = QdrantClient(path="data/vectordb")
+# vectordb = QdrantClient(location=":memory:")
+# vectordb = QdrantClient(host="localhost", prefer_grpc=True)
+
 
 def index_endpoints():
-    # Get documents from the SPARQL endpoints
+    """Index SPARQL endpoints metadata in the vector database."""
     docs: list[Document] = []
     for endpoint in endpoints:
-        print(f"\n  🔎 Getting metadata for {endpoint['endpoint_url']}")
+        logging.info(f"🔎 Retrieving metadata for {endpoint['endpoint_url']}")
         docs += SparqlExamplesLoader(
             endpoint["endpoint_url"],
             examples_file=endpoint.get("examples_file"),
         ).load()
-
         docs += SparqlVoidShapesLoader(
             endpoint["endpoint_url"],
             void_file=endpoint.get("void_file"),
@@ -118,9 +124,7 @@ def index_endpoints():
         vectordb.delete_collection(collection_name)
     vectordb.create_collection(
         collection_name=collection_name,
-        vectors_config=VectorParams(
-            size=embedding_dimensions, distance=Distance.COSINE
-        ),
+        vectors_config=VectorParams(size=embedding_dimensions, distance=Distance.COSINE),
     )
 
     embeddings = embedding_model.embed([q.page_content for q in docs])
@@ -129,16 +133,19 @@ def index_endpoints():
         vectors=[embed.tolist() for embed in embeddings],
         payload=[doc.metadata for doc in docs],
     )
+    logging.info(f"✅ Indexed {len(docs)} documents in collection {collection_name}")
 
 
 # Initialize the vector database if not already done
 if not vectordb.collection_exists(collection_name) or vectordb.get_collection(collection_name).points_count == 0:
     index_endpoints()
 else:
-    print(f"ℹ️  Using existing collection '{collection_name}' with {vectordb.get_collection(collection_name).points_count} vectors")
+    logging.info(
+        f"ℹ️  Using existing collection '{collection_name}' with {vectordb.get_collection(collection_name).points_count} vectors"
+    )
 
 
-## RETRIEVE DOCS
+## 3. Set up document retrieval and system prompt
 
 retrieved_docs_count = 3
 
@@ -171,7 +178,7 @@ async def retrieve_docs(question: str) -> str:
             ]
         ),
     )
-    relevant_docs = '\n'.join(_format_doc(doc) for doc in retrieved_docs)
+    relevant_docs = "\n".join(_format_doc(doc) for doc in retrieved_docs)
     async with cl.Step(name=f"{len(retrieved_docs)} relevant documents 📚️") as step:
         step.output = relevant_docs
     return relevant_docs
@@ -187,11 +194,13 @@ def _format_doc(doc: ScoredPoint) -> str:
         else ""
     )
     return f"\n{doc.payload['question']} ({doc.payload.get('endpoint_url', '')}):\n\n```{doc_lang}\n{doc.payload.get('answer')}\n```\n\n"
-    # # Generic formatting:
-    # meta = "".join(f" {k}={v!r}" for k, v in doc.metadata.items())
-    # if meta:
-    #     meta = f" {meta}"
-    # return f"<document{meta}>\n{doc.page_content}\n</document>"
+
+
+# # Generic formatting:
+# meta = "".join(f" {k}={v!r}" for k, v in doc.metadata.items())
+# if meta:
+#     meta = f" {meta}"
+# return f"<document{meta}>\n{doc.page_content}\n</document>"
 
 
 SYSTEM_PROMPT = """You are an assistant that helps users to write SPARQL queries.
@@ -203,6 +212,10 @@ Here is a list of documents (reference questions and query answers, classes sche
 {relevant_docs}
 """
 
+
+## 4. Set up SPARQL query validation (post-processing of LLM output)
+
+from sparql_llm import validate_sparql_in_msg
 from sparql_llm.utils import get_prefixes_and_schema_for_endpoints
 
 # Retrieve the prefixes map and initialize VoID schema dictionary from the indexed endpoints
@@ -210,14 +223,9 @@ from sparql_llm.utils import get_prefixes_and_schema_for_endpoints
 prefixes_map, endpoints_void_dict = get_prefixes_and_schema_for_endpoints(endpoints)
 
 
-from sparql_llm import validate_sparql_in_msg
-
-
 async def validate_output(last_msg: str) -> str | None:
-    """Validate the output of a LLM call, e.g. SPARQL queries generated."""
-    validation_outputs = validate_sparql_in_msg(
-        last_msg, prefixes_map, endpoints_void_dict
-    )
+    """Validate the output of a LLM call, i.e. SPARQL queries generated."""
+    validation_outputs = validate_sparql_in_msg(last_msg, prefixes_map, endpoints_void_dict)
     for validation_output in validation_outputs:
         if validation_output["fixed_query"]:
             async with cl.Step(name="missing prefixes correction ✅") as step:
@@ -233,7 +241,9 @@ async def validate_output(last_msg: str) -> str | None:
             return recall_msg
 
 
-# Setup chainlit web UI
+## 5. Setup chat web UI with Chainlit
+
+import chainlit as cl
 
 max_try_count = 3
 
@@ -246,17 +256,12 @@ async def on_message(msg: cl.Message):
         ("system", SYSTEM_PROMPT.format(relevant_docs=relevant_docs)),
         *cl.chat_context.to_openai(),
     ]
-    # # NOTE: to fix issue with ollama only considering the last message:
-    # messages = [
-    #     ("human", SYSTEM_PROMPT.format(relevant_docs=relevant_docs) + f"\n\nHere is the user question:\n{msg.content}"),
-    # ]
-
     for _i in range(max_try_count):
         answer = cl.Message(content="")
         for resp in llm.stream(messages):
             await answer.stream_token(resp.content)
             if resp.usage_metadata:
-                print(resp.usage_metadata)
+                logging.info(resp.usage_metadata)
         await answer.send()
 
         validation_msg = await validate_output(answer.content)
@@ -272,7 +277,6 @@ async def set_starters():
         cl.Starter(
             label="Supported resources",
             message="Which resources do you support?",
-            # icon="/public/idea.svg",
         ),
         cl.Starter(
             label="Rat orthologs",

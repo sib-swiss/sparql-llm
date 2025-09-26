@@ -56,9 +56,7 @@ def index_endpoints():
         vectordb.delete_collection(collection_name)
     vectordb.create_collection(
         collection_name=collection_name,
-        vectors_config=VectorParams(
-            size=embedding_dimensions, distance=Distance.COSINE
-        ),
+        vectors_config=VectorParams(size=embedding_dimensions, distance=Distance.COSINE),
     )
 
     embeddings = embedding_model.embed([q.page_content for q in docs])

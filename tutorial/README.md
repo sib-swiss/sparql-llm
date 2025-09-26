@@ -29,6 +29,12 @@ Start on http://localhost:8000
 uv run chainlit run app.py
 ```
 
+Reset vectordb:
+
+```sh
+rm -rf data/vectordb
+```
+
 ## Tutorial history
 
 - 1st version (05-2025)
