@@ -42,7 +42,7 @@ async def main():
         tools
     )
     resp = await agent.ainvoke(
-        {"messages": [{"role": "user", "content": "How can I get the uniprot ID for HBB?"}]}
+        {"messages": [{"role": "user", "content": "Get the uniprot ID for HBB by executing a SPARQL query."}]}
     )
     print(resp)
 

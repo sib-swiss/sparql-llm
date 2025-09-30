@@ -142,7 +142,7 @@ def execute_sparql_query(sparql_query: str, endpoint_url: str) -> str:
     """
     resp_msg = ""
     try:
-        res = query_sparql(sparql_query, endpoint_url, timeout=10, check_service_desc=False, post=True)
+        res = query_sparql(sparql_query, endpoint_url, timeout=10, post=True)
         # If no results, return a message to ask fix the query
         if not res.get("results", {}).get("bindings"):
             resp_msg += f"SPARQL query returned no results. {FIX_QUERY_PROMPT}\n```sparql\n{sparql_query}\n```"
@@ -163,11 +163,11 @@ ignore case, make sure you are not overriding an existing variable with BIND, or
 and check them one by one."""
 
 
-# https://modelcontextprotocol.io/docs/concepts/resources
-@mcp.resource("examples://{question}")
-def get_examples(question: str) -> str:
-    """Get relevant SPARQL query examples and other documents to help the user write a SPARQL query."""
-    return access_sib_biodata_sparql(question, [], [])
+# # https://modelcontextprotocol.io/docs/concepts/resources
+# @mcp.resource("examples://{question}")
+# def get_examples(question: str) -> str:
+#     """Get relevant SPARQL query examples and other documents to help the user write a SPARQL query."""
+#     return access_sib_biodata_sparql(question, [], [])
 
 
 def main() -> None:
