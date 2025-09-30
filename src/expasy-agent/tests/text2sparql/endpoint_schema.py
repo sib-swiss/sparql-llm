@@ -7,6 +7,8 @@ import time
 from joblib import Parallel, delayed
 from tqdm import tqdm
 import json
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 logger = logging.getLogger("sparql_llm")
 logger.setLevel(logging.INFO)
@@ -51,6 +53,16 @@ class EndpointSchema:
     LIMIT {limit}
     """
 
+    _HEATMAP_QUERY = """
+    SELECT ?class ?predicate COUNT(*) AS ?count
+    FROM <{graph}>
+    WHERE {{
+        ?s a ?class ;
+            ?predicate ?o .
+    }}
+    GROUP BY ?class ?predicate
+    """
+
     _EXCLUDE_CLASS_PATTERN = re.compile(r'^http://www\.w3\.org/2002/07/owl#Thing$|ontologydesignpatterns\.org')
 
     def __init__(self, endpoint_url: str, graph: str, limit_queries: dict[str, float], max_workers: int, force_recompute: bool, schema_path: str) -> None:
@@ -62,7 +74,8 @@ class EndpointSchema:
             limit_queries (dict[str, float]): A dictionary specifying query limits.
             max_workers (int): The maximum number of worker threads to use for concurrent operations.
         Funtions:
-            get_schema(path: str): Returns information about classes and predicates retrieved from the endpoint.
+            get_schema(): Returns information about classes and predicates retrieved from the endpoint.
+            plot_heatmap(): Plots heatmap with classes and predicates retrieved from the endpoint.
         """
         
         self._endpoint_url = endpoint_url
@@ -71,20 +84,6 @@ class EndpointSchema:
         self._max_workers = max_workers
         self._force_recompute = force_recompute
         self._schema_path = schema_path
-
-    def get_schema(self) -> pd.DataFrame:
-        """Load schema information from a JSON file."""
-
-        if not os.path.exists(self._schema_path) or self._force_recompute:
-            self._save_schema_dict()
-
-        with open(self._schema_path, 'r', encoding='utf-8') as f:
-            schema = pd.DataFrame([{'class':key, 'predicates':value} for key, value in json.load(f)[self._endpoint_url].items()])
-
-        # Add a human-readable name for each class
-        schema['name'] = schema['class'].apply(lambda c: re.sub(r'(?<!^)(?=[A-Z])', ' ', c.split('/')[-1].split('#')[-1]))
-
-        return schema
     
     def _save_schema_dict(self) -> None:
         """Fetch class and predicate information from the SPARQL endpoint and save to JSON file."""
@@ -150,6 +149,45 @@ class EndpointSchema:
 
         return range
 
+    def get_schema(self) -> pd.DataFrame:
+        """Load schema information from a JSON file."""
+
+        if not os.path.exists(self._schema_path) or self._force_recompute:
+            self._save_schema_dict()
+
+        with open(self._schema_path, 'r', encoding='utf-8') as f:
+            schema = pd.DataFrame([{'class':key, 'predicates':value} for key, value in json.load(f)[self._endpoint_url].items()])
+
+        # Add a human-readable name for each class
+        schema['name'] = schema['class'].apply(lambda c: re.sub(r'(?<!^)(?=[A-Z])', ' ', c.split('/')[-1].split('#')[-1]))
+
+        return schema
+
+    def plot_heatmap(self) -> None:
+        # Fetch counts information
+        logger.info(f'Fetching counts information from {self._endpoint_url}...')
+        counts = query_sparql(self._HEATMAP_QUERY.format(graph=self._graph), endpoint_url=self._endpoint_url)['results']['bindings']
+        counts = pd.DataFrame(counts).map(lambda x: x['value']).assign(count=lambda df: df['count'].astype(int))
+        counts = counts.sort_values(by='count', ascending=False)
+
+        # Exclude unwanted classes
+        counts = counts[counts['class'].apply(lambda c: not bool(re.search(self._EXCLUDE_CLASS_PATTERN, c)))]
+
+        # Transform counts DataFrame to have class-predicate matrix format
+        heatmap = counts.pivot_table(index='class', columns='predicate', values='count', fill_value=0)
+        heatmap = heatmap.reindex(index=counts['class'].unique(), columns=counts['predicate'].unique())
+
+        #Plot heatmap
+        sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
+        plt.figure(figsize=(20, 10))
+        ax = sns.heatmap(heatmap, mask = (heatmap == 0), cmap='rocket_r', cbar=True, robust=True)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xlabel('Predicates')
+        ax.set_ylabel('Classes')
+        ax.set_title(f'{self._schema_path.split('/')[-1].split('_')[0].capitalize()} Co-Occurrence Heatmap', fontsize=20)
+        sns.despine(top=True, right=True)
+        plt.savefig(f"{self._schema_path.split('.')[0]}.png", bbox_inches='tight')
 
 if __name__ == "__main__":
     start_time = time.time()
@@ -180,6 +218,7 @@ if __name__ == "__main__":
     )
     
     # Debugging examples
+    # schema.plot_heatmap()
     # schema._save_schema_dict()
     # schema = schema._retrieve_class_information(class_name='http://ld.company.org/prod-vocab/Supplier')
     # schema = schema._retrieve_predicate_information(class_name='http://ld.company.org/prod-vocab/Supplier', predicate_name='http://ld.company.org/prod-vocab/country')
