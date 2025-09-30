@@ -61,9 +61,11 @@ dependencies = [
 
 ---
 
-## Script skeleton
+## Workflow skeleton
 
-Create a `app.py` file in the same folder, alongside the `pyproject.toml`
+Create a `app.py` file in the same folder, alongside the `pyproject.toml`, it will be used to build your workflow.
+
+The numbered comments are placeholders for the different parts of your workflow.
 
 ```python
 import asyncio
@@ -146,20 +148,20 @@ from langchain_core.language_models import BaseChatModel
 ## 1. Set up LLM provider
 def load_chat_model(model: str) -> BaseChatModel:
     provider, model_name = model.split("/", maxsplit=1)
-    if provider == "google":
-        # https://python.langchain.com/docs/integrations/chat/google_generative_ai/
-        from langchain_google_genai import ChatGoogleGenerativeAI
-
-        return ChatGoogleGenerativeAI(
-            model=model_name,
-            temperature=0,
-            max_tokens=1024,
-        )
     if provider == "mistralai":
         # https://python.langchain.com/docs/integrations/chat/mistralai/
         from langchain_mistralai import ChatMistralAI
 
         return ChatMistralAI(
+            model=model_name,
+            temperature=0,
+            max_tokens=1024,
+        )
+    if provider == "groq":
+        # https://python.langchain.com/docs/integrations/chat/groq/
+        from langchain_groq import ChatGroq
+
+        return ChatGroq(
             model=model_name,
             temperature=0,
             max_tokens=1024,
@@ -198,6 +200,52 @@ llm = load_chat_model("ollama/mistral")
 > Ollama is mainly a wrapper around [llama.cpp](https://python.langchain.com/docs/integrations/chat/llamacpp/), you can also [download `.gguf` files](https://huggingface.co/lmstudio-community/Mistral-7B-Instruct-v0.3-GGUF) and use them directly.
 
 > [vLLM](https://github.com/vllm-project/vllm) and [llamafile](https://github.com/Mozilla-Ocho/llamafile) are other solutions to serve LLMs locally.
+
+---
+
+## Add context from a CSV file
+
+We will use [this CSV file](https://github.com/sib-swiss/sparql-llm/blob/main/src/expasy-agent/expasy_resources_metadata.csv) containing informations about SIB resources.
+
+```python
+import httpx
+
+SYSTEM_PROMPT = """You are an assistant that helps users to navigate the resources and databases from the SIB Swiss Institute of Bioinformatics.
+Here is the description of resources available at the SIB:
+{context}
+Use it to answer the question"""
+
+async def main() -> None:
+  	question = "..."
+    response = httpx.get("https://github.com/sib-swiss/sparql-llm/raw/refs/heads/main/src/expasy-agent/expasy_resources_metadata.csv", follow_redirects=True)
+    messages = [
+        ("system", SYSTEM_PROMPT.format(context=response.text)),
+        ("human", question),
+    ]
+    for resp in llm.stream(messages):
+        print(resp.content, end="", flush=True)
+        if resp.usage_metadata:
+            print(f"\n\n{resp.usage_metadata}")
+```
+
+> ⚠️ Checkout the amount of used tokens: this approach uses a lot of them! Splitting the file in smaller indexable pieces could help
+
+> 💡 You can do this directly through most LLM provider web UI: upload a file and ask a question!
+
+---
+
+## Index context
+
+A solution to handle large context is to build a **semantic search index**, and only retrieve the documents or part of documents that are relevant to the question.
+
+It also brings explainability of how the response was generated, reducing the black box effect.
+
+When preparing data for semantic search, focus on two essential components:
+
+- **Semantic label**: a short, human-readable title or description that guides the search engine in matching questions effectively.
+- **Detailed information**: the set of metadata or full  content of the data element, which will be passed to the LLM and used to generate informed responses.
+
+> 💡 While you can use the same text for both parts, complex data often benefits from a clear, concise semantic label(s) paired with a richer, detailed description for the LLM.
 
 ---
 
@@ -385,7 +433,7 @@ Here is a list of documents (reference questions and query answers, classes sche
 
 ---
 
-## Provide context to the LLM
+## Complete workflow
 
 Put the workflow together in the `main` function
 

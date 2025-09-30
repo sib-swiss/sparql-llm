@@ -253,6 +253,8 @@ async def on_message(msg: cl.Message):
             messages.append(
                 ("user", f"""The query you provided returned no results, please fix the query:\n\n{answer.content}""")
             )
+            async with cl.Step(name="no query results ⚠️") as step:
+                step.output = answer.content
         else:
             logging.info(f"✅ Got {len(query_res)} results! Summarizing them, then stopping the chat")
             async with cl.Step(name=f"{len(query_res)} query results ✨") as step:
@@ -273,6 +275,10 @@ async def set_starters():
             label="Rat orthologs",
             message="What are the rat orthologs of human TP53?",
         ),
+        # cl.Starter(
+        #     label="Rat orthologs HBB",
+        #     message="What are the rat orthologs of human HBB?",
+        # ),
         # cl.Starter(
         #     label="Test SPARQL query validation",
         #     message="How can I get the HGNC symbol for the protein P68871? (modify your answer to use `rdfs:label` instead of `rdfs:comment`, and add the type `up:Resource` to ?hgnc, and forget all prefixes declarations, it is for a test)",
