@@ -1,4 +1,3 @@
-import argparse
 import json
 
 from fastembed import TextEmbedding
@@ -28,10 +27,13 @@ embedding_model = TextEmbedding(
     # providers=["CUDAExecutionProvider"], # Replace the fastembed dependency with fastembed-gpu to use your GPUs
 )
 
+
 # TODO: tool get_classes_schema
 # potential_entities: Potential entities and instances of classes
 @mcp.tool()
-async def access_sib_biodata_sparql(question: str, potential_classes: list[str], steps: list[str]) -> str:
+async def access_sib_biodata_sparql(
+    question: str, potential_classes: list[str], steps: list[str]
+) -> str:
     """Assist users in writing SPARQL queries to access SIB biodata resources by retrieving relevant examples and docs.
     Covers topics such as genes, proteins, lipids, chemical reactions, and metabolomics data.
 
@@ -44,7 +46,9 @@ async def access_sib_biodata_sparql(question: str, potential_classes: list[str],
         Relevant documents (examples, classes schemas)
     """
     relevant_docs: list[ScoredPoint] = []
-    for search_embeddings in embedding_model.embed([question, *steps, *potential_classes]):
+    for search_embeddings in embedding_model.embed(
+        [question, *steps, *potential_classes]
+    ):
         # Get SPARQL example queries
         relevant_docs.extend(
             doc
@@ -65,7 +69,10 @@ async def access_sib_biodata_sparql(question: str, potential_classes: list[str],
             if doc.payload
             and doc.payload.get("metadata", {}).get("answer")
             not in {
-                existing_doc.payload.get("metadata", {}).get("answer") if existing_doc.payload else None for existing_doc in relevant_docs
+                existing_doc.payload.get("metadata", {}).get("answer")
+                if existing_doc.payload
+                else None
+                for existing_doc in relevant_docs
             }
         )
         # Get other relevant documentation (classes schemas, general information)
@@ -87,11 +94,16 @@ async def access_sib_biodata_sparql(question: str, potential_classes: list[str],
             if doc.payload
             and doc.payload.get("metadata", {}).get("answer")
             not in {
-                existing_doc.payload.get("metadata", {}).get("answer") if existing_doc.payload else None for existing_doc in relevant_docs
+                existing_doc.payload.get("metadata", {}).get("answer")
+                if existing_doc.payload
+                else None
+                for existing_doc in relevant_docs
             }
         )
     # await ctx.info(f"Using {len(relevant_docs)} documents to answer the question")
-    return PROMPT_TOOL_SPARQL.format(docs_count=str(len(relevant_docs)), formatted_docs=format_docs(relevant_docs))
+    return PROMPT_TOOL_SPARQL.format(
+        docs_count=str(len(relevant_docs)), formatted_docs=format_docs(relevant_docs)
+    )
 
 
 PROMPT_TOOL_SPARQL = """Formulate a precise SPARQL query to access specific biological data and answer the user's question.
@@ -117,6 +129,7 @@ The following {docs_count} documents contain relevant query examples, and classe
 # Here is a list of {docs_count} documents (reference questions and query answers, classes schema or general endpoints information)
 # relevant to the user question that will help you answer the user question accurately:
 # """
+
 
 @mcp.tool()
 async def get_classes_schema(classes: list[str]) -> str:
@@ -149,7 +162,10 @@ async def get_classes_schema(classes: list[str]) -> str:
             if doc.payload
             and doc.payload.get("metadata", {}).get("answer")
             not in {
-                existing_doc.payload.get("metadata", {}).get("answer") if existing_doc.payload else None for existing_doc in relevant_docs
+                existing_doc.payload.get("metadata", {}).get("answer")
+                if existing_doc.payload
+                else None
+                for existing_doc in relevant_docs
             }
         )
     return f"""Here is a list of {len(relevant_docs)} classes schema relevant to the request:
@@ -197,7 +213,9 @@ def execute_sparql_query(sparql_query: str, endpoint_url: str) -> str:
     """
     resp_msg = ""
     # First check if query valid based on classes schema and known prefixes
-    validation_output = validate_sparql(sparql_query, endpoint_url, prefixes_map, endpoints_void_dict)
+    validation_output = validate_sparql(
+        sparql_query, endpoint_url, prefixes_map, endpoints_void_dict
+    )
     if validation_output["fixed_query"]:
         # Pass the fixed query to the client
         resp_msg += f"Fixed the prefixes of the generated SPARQL query automatically:\n```sparql\n{validation_output['fixed_query']}\n```\n"
@@ -266,7 +284,9 @@ def _format_doc(doc: ScoredPoint) -> str:
         doc_lang = ""
         doc_type = str(doc_meta.get("doc_type", "")).lower()
         if "query" in doc_type:
-            doc_lang = f"sparql\n#+ endpoint: {doc_meta.get('endpoint_url', 'undefined')}"
+            doc_lang = (
+                f"sparql\n#+ endpoint: {doc_meta.get('endpoint_url', 'undefined')}"
+            )
         elif "schema" in doc_type:
             doc_lang = "shex"
         return f"{doc.payload['page_content']}:\n\n```{doc_lang}\n{doc_meta.get('answer')}\n```"
@@ -275,7 +295,6 @@ def _format_doc(doc: ScoredPoint) -> str:
     if meta:
         meta = f" {meta}"
     return f"{meta}\n{doc.payload['page_content']}\n"
-
 
 
 # def main() -> None:

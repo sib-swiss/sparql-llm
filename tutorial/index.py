@@ -1,10 +1,8 @@
-from langchain_core.documents import Document
-from sparql_llm import SparqlExamplesLoader, SparqlVoidShapesLoader, SparqlInfoLoader
-
 from fastembed import TextEmbedding
+from langchain_core.documents import Document
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
-
+from sparql_llm import SparqlExamplesLoader, SparqlInfoLoader, SparqlVoidShapesLoader
 
 # List of endpoints that will be used
 # endpoints: list[SparqlEndpointLinks] = [

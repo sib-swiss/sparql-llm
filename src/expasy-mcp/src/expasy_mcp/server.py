@@ -4,8 +4,8 @@ import json
 from mcp.server.fastmcp import FastMCP
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 from sparql_llm.utils import get_prefixes_and_schema_for_endpoints, query_sparql
-# from sparql_llm.validate_sparql import validate_sparql
 
+# from sparql_llm.validate_sparql import validate_sparql
 from expasy_mcp.utils import config, embedding_model, format_docs, vectordb
 
 # What are the rat orthologs of the human TP53?

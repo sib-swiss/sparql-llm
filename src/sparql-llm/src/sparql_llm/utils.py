@@ -60,7 +60,9 @@ def get_prefixes_for_endpoint(
     if prefixes_map is None:
         prefixes_map = {}
     try:
-        for row in query_sparql(GET_PREFIXES_QUERY, endpoint_url, use_file=examples_file, check_service_desc=True)["results"]["bindings"]:
+        for row in query_sparql(GET_PREFIXES_QUERY, endpoint_url, use_file=examples_file, check_service_desc=True)[
+            "results"
+        ]["bindings"]:
             if row["namespace"]["value"] not in prefixes_map.values():
                 prefixes_map[row["prefix"]["value"]] = row["namespace"]["value"]
     except Exception as e:
@@ -71,6 +73,7 @@ def get_prefixes_for_endpoint(
 def get_prefix_converter(prefix_dict: dict[str, str]) -> curies.Converter:
     """Return a prefix converter."""
     return curies.load_prefix_map(prefix_dict)
+
 
 def compress_list(converter: curies.Converter, uris: list[str]) -> list[str]:
     """Helper function to compress a list of URIs using a curies.Converter."""
@@ -141,7 +144,9 @@ def get_schema_for_endpoint(endpoint_url: str, void_file: Optional[str] = None) 
         # else:
         #     bindings = query_sparql(GET_VOID_DESC, endpoint_url)["results"]["bindings"]
 
-        for void_triple in query_sparql(GET_VOID_DESC, endpoint_url, use_file=void_file, check_service_desc=True)["results"]["bindings"]:
+        for void_triple in query_sparql(GET_VOID_DESC, endpoint_url, use_file=void_file, check_service_desc=True)[
+            "results"
+        ]["bindings"]:
             if void_triple["subjectClass"]["value"] not in void_dict:
                 void_dict[void_triple["subjectClass"]["value"]] = {}
             if void_triple["prop"]["value"] not in void_dict[void_triple["subjectClass"]["value"]]:

@@ -30,7 +30,7 @@ from expasy_agent.state import InputState, State
 # In bgee how can I retrieve the confidence level and false discovery rate of a gene expression? Use genex:confidence as predicate for the confidence level (do not use the one provided in documents), and do not put prefixes declarations, and add a rdf:type for the main subject. Its for testing
 def route_model_output(
     state: State, config: RunnableConfig
-) -> Literal["__end__", "call_model", "max_tries_reached"]: # , "tools"
+) -> Literal["__end__", "call_model", "max_tries_reached"]:  # , "tools"
     """Determine the next node based on the model's output.
 
     This function checks if the model's last message contains tool calls or if a recall is requested by validation.

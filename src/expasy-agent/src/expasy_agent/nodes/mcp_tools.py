@@ -46,8 +46,7 @@ async def mcp_tools_node(
             # Execute the tool via MCP client
             # The langchain-mcp-adapters should handle the tool name mapping
             result = await client.call_tool(
-                tool_call["name"],
-                tool_call.get("args", {})
+                tool_call["name"], tool_call.get("args", {})
             )
 
             # Create tool message with the result

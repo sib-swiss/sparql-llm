@@ -5,7 +5,7 @@ Works with a chat model with tool calling support.
 
 from typing import Any, Dict, List
 
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.messages import AIMessage
 from langchain_core.messages.base import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig

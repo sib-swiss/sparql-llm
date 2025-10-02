@@ -12,12 +12,12 @@ from typing import Any, Optional
 from langchain_core.runnables import RunnableConfig
 from langfuse.langchain import CallbackHandler  # type: ignore
 from pydantic import BaseModel
+from sparql_llm.utils import logger
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, StreamingResponse
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
-from sparql_llm.utils import logger
 
 from expasy_agent.config import qdrant_client, settings
 from expasy_agent.graph import graph
@@ -74,11 +74,17 @@ except Exception:
 # Check if the docs collection exists and has data, initialize if not
 try:
     collection_exists = qdrant_client.collection_exists(settings.docs_collection_name)
-    if settings.force_index or not qdrant_client.collection_exists(settings.docs_collection_name) or qdrant_client.get_collection(settings.docs_collection_name).points_count < 1:
-        logger.info(f"📊 Initializing vectordb...")
+    if (
+        settings.force_index
+        or not qdrant_client.collection_exists(settings.docs_collection_name)
+        or qdrant_client.get_collection(settings.docs_collection_name).points_count < 1
+    ):
+        logger.info("📊 Initializing vectordb...")
         init_vectordb()
     else:
-        logger.info(f"✅ Collection '{settings.docs_collection_name}' exists with {qdrant_client.get_collection(settings.docs_collection_name).points_count} points. Skipping initialization.")
+        logger.info(
+            f"✅ Collection '{settings.docs_collection_name}' exists with {qdrant_client.get_collection(settings.docs_collection_name).points_count} points. Skipping initialization."
+        )
 except Exception as e:
     logger.error(f"⚠️ Error checking or initializing vectordb: {e}")
     # Continue without initialization to avoid blocking the app startup
@@ -88,6 +94,7 @@ logger.info(f"""⚡️ Streamable HTTP MCP server started on {api_url}/mcp
   💬 Chat UI at {api_url}
   📚 OpenAPI docs at {api_url}/docs
   🔎 Using similarity search service on {settings.vectordb_url}""")
+
 
 class Message(BaseModel):
     role: str
@@ -257,6 +264,7 @@ async def logs_handler(request: Request):
 
     return JSONResponse(content=list(questions))
 
+
 # Serve website built using vitejs
 templates = Jinja2Templates(directory="src/expasy_agent/webapp")
 app.mount(
@@ -286,6 +294,7 @@ async def ui_handler(request: Request) -> HTMLResponse:
             #             "favicon": "https://www.expasy.org/favicon.ico",
         },
     )
+
 
 # Add routes directly to the MCP app
 app.router.add_route("/", ui_handler, methods=["GET"])

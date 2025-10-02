@@ -1,38 +1,56 @@
 import os
 import time
 
-from langchain_core.documents import Document
-from langchain_qdrant import QdrantVectorStore
 import pandas as pd
 from endpoint_schema import get_class_info
+from langchain_core.documents import Document
+from langchain_qdrant import QdrantVectorStore
 
 from expasy_agent.config import settings
 from expasy_agent.nodes.retrieval_docs import make_dense_encoder
 
-QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'queries.csv')
-ENDPOINT_URL = 'http://localhost:8890/sparql/'
-VECTORDB_URL = 'http://localhost:6334'
-VECTORDB_COLLECTION_NAME = 'text2sparql'
+QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), "queries.csv")
+ENDPOINT_URL = "http://localhost:8890/sparql/"
+VECTORDB_URL = "http://localhost:6334"
+VECTORDB_COLLECTION_NAME = "text2sparql"
+
 
 def init_vectordb() -> None:
     """Initialize the vectordb with example queries from the SPARQL endpoints"""
     docs: list[Document] = []
 
     queries = pd.read_csv(QUERIES_FILE)
-    queries = queries[queries['dataset'] != 'Text2SPARQL'].reset_index(drop=True)
-    docs = queries.apply(lambda q: Document(page_content=q['question'], 
-                                            metadata = {'question': q['question'],
-                                                        'anser': q['query'],
-                                                        'endpoint_url': ENDPOINT_URL,
-                                                        'query_type': 'SelectQuery' if q['query type'] == 'SELECT' else 'AskQuery' if q['query type'] == 'ASK' else '',
-                                                        'doc_type': 'SPARQL endpoints query examples'}), axis=1).tolist()
-
+    queries = queries[queries["dataset"] != "Text2SPARQL"].reset_index(drop=True)
+    docs = queries.apply(
+        lambda q: Document(
+            page_content=q["question"],
+            metadata={
+                "question": q["question"],
+                "anser": q["query"],
+                "endpoint_url": ENDPOINT_URL,
+                "query_type": "SelectQuery"
+                if q["query type"] == "SELECT"
+                else "AskQuery"
+                if q["query type"] == "ASK"
+                else "",
+                "doc_type": "SPARQL endpoints query examples",
+            },
+        ),
+        axis=1,
+    ).tolist()
 
     classes = get_class_info(endpoint_url=ENDPOINT_URL)
-    docs += classes.apply(lambda c: Document(page_content=c['name'], 
-                                            metadata = {'Class URI': c['class'],
-                                                        'Predicate URIs': c['predicates'],
-                                                        'doc_type': 'classes'}), axis=1).tolist()
+    docs += classes.apply(
+        lambda c: Document(
+            page_content=c["name"],
+            metadata={
+                "Class URI": c["class"],
+                "Predicate URIs": c["predicates"],
+                "doc_type": "classes",
+            },
+        ),
+        axis=1,
+    ).tolist()
 
     print(f"Generating embeddings for {len(docs)} documents")
     start_time = time.time()
@@ -53,6 +71,7 @@ def init_vectordb() -> None:
     print(
         f"Done generating and indexing {len(docs)} documents into the vectordb in {time.time() - start_time} seconds"
     )
+
 
 if __name__ == "__main__":
     init_vectordb()

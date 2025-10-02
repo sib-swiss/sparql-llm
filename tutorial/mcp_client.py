@@ -5,12 +5,13 @@
 
 import asyncio
 
+from langchain.agents import create_agent
+from langchain_mcp_adapters.client import MultiServerMCPClient
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
-from langchain_mcp_adapters.client import MultiServerMCPClient
-from langchain.agents import create_agent
 
 mcp_url = "http://localhost:8888/mcp"
+
 
 async def main():
     # Use official MCP SDK client
@@ -18,14 +19,12 @@ async def main():
         read_stream,
         write_stream,
         _,
-    ):
-        # Create a session using the client streams
-        async with ClientSession(read_stream, write_stream) as session:
-            # Initialize the connection
-            await session.initialize()
-            # List available tools
-            tools = await session.list_tools()
-            print(f"Available tools: {[tool.name for tool in tools.tools]}")
+    ), ClientSession(read_stream, write_stream) as session:
+        # Initialize the connection
+        await session.initialize()
+        # List available tools
+        tools = await session.list_tools()
+        print(f"Available tools: {[tool.name for tool in tools.tools]}")
 
     # Use LangChain built-in agent
     client = MultiServerMCPClient(
@@ -37,10 +36,7 @@ async def main():
         }
     )
     tools = await client.get_tools()
-    agent = create_agent(
-        "mistralai:mistral-small-latest",
-        tools
-    )
+    agent = create_agent("mistralai:mistral-small-latest", tools)
     resp = await agent.ainvoke(
         {"messages": [{"role": "user", "content": "Get the uniprot ID for HBB by executing a SPARQL query."}]}
     )
