@@ -2,15 +2,17 @@
 
 import json
 import os
+
 import fastapi
 from fastembed import TextEmbedding
+from langchain_core.messages import HumanMessage, SystemMessage
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
-from langchain_core.messages import HumanMessage, SystemMessage
+
+from sparql_llm.agent.config import Configuration, settings
+from sparql_llm.agent.utils import load_chat_model
 from sparql_llm.utils import query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries, validate_sparql
-from expasy_agent.config import Configuration, settings
-from expasy_agent.utils import load_chat_model
 
 app = fastapi.FastAPI(title="TEXT2SPARQL API")
 

@@ -5,18 +5,18 @@ import sys
 import time
 from collections import defaultdict
 
-from fastembed import TextEmbedding
 import httpx
 import pandas as pd
+from fastembed import TextEmbedding
 from langchain_core.messages import HumanMessage, SystemMessage
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
+
+from sparql_llm.agent.config import Configuration, settings
+from sparql_llm.agent.prompts import RESOLUTION_PROMPT
+from sparql_llm.agent.utils import load_chat_model
 from sparql_llm.utils import query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries
-
-from expasy_agent.config import Configuration, settings
-from expasy_agent.prompts import RESOLUTION_PROMPT
-from expasy_agent.utils import load_chat_model
 
 file_time_prefix = time.strftime("%Y%m%d_%H%M")
 bench_folder = os.path.join("data", "benchmarks")

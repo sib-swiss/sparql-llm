@@ -1,4 +1,5 @@
 import json
+import os
 import re
 
 import pandas as pd
@@ -7,7 +8,6 @@ from rdflib.plugins.sparql.algebra import translateQuery
 from rdflib.plugins.sparql.parser import parseQuery
 
 from sparql_llm.utils import query_sparql
-import os
 
 RAW_QUERIES_FOLDER = os.path.join('data', 'benchmarks', 'Text2SPARQL', 'queries')
 TEXT2SPARQL_DB_QUERIES_FILE = os.path.join(RAW_QUERIES_FOLDER, 'questions_db25.yaml')
@@ -52,10 +52,10 @@ def count_triple_patterns(query: str) -> int:
 def transform_text2sparql_queries(input_file: str, endpoint_url: str) -> pd.DataFrame:
     """
     Transforms text2sparql queries from a YAML file into a DataFrame.
-    
+
     Args:
         input_file (str): Path to the YAML file containing text2sparql queries.
-        
+
     Returns:
         pd.DataFrame: DataFrame containing the transformed queries.
     """
@@ -171,11 +171,11 @@ def transform_Generated_CK_queries(input_file: str, endpoint_url: str) -> pd.Dat
     queries['query type'] = queries['query'].apply(lambda q: 'ASK' if 'ASK WHERE' in q.upper() else 'SELECT')
     queries = queries[queries['result length'] != 0]
     queries['dataset'] = 'Generated-CK'
-    
+
     return queries
 
 if __name__ == "__main__":
-    queries = []    
+    queries = []
     if os.path.exists(OUTPUT_QUERIES_FILE):
         queries.append(pd.read_csv(OUTPUT_QUERIES_FILE))
     else:

@@ -7,12 +7,12 @@ from collections import defaultdict
 import httpx
 import pandas as pd
 from langchain_core.messages import HumanMessage, SystemMessage
+
+from sparql_llm.agent.config import Configuration, settings
+from sparql_llm.agent.prompts import RESOLUTION_PROMPT
+from sparql_llm.agent.utils import load_chat_model
 from sparql_llm.utils import query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries
-
-from expasy_agent.config import Configuration, settings
-from expasy_agent.prompts import RESOLUTION_PROMPT
-from expasy_agent.utils import load_chat_model
 
 file_time_prefix = time.strftime("%Y%m%d_%H%M")
 bench_folder = os.path.join("data", "benchmarks")

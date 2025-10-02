@@ -1,5 +1,6 @@
 import os
 import time
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -24,7 +25,7 @@ def plot_proportion_tuning_results(results: pd.DataFrame) -> None:
                       linewidth=3,
                       palette=sns.color_palette('Blues')[1::3],
                     )
-    
+
     ax.set_xlabel('Proportion of DBpedia Schema')
     ax.set_ylabel('F1 Score')
     ax.set_xlim(0, 1)
@@ -52,7 +53,7 @@ def plot_examples_tuning_results(results: pd.DataFrame) -> None:
                       linewidth=3,
                       palette=sns.color_palette('Blues')[1:5:3] + sns.color_palette('Oranges')[1:2] + sns.color_palette('Greens')[1:2],
                     )
-    
+
     ax.set_xlabel('Number of Provided Examples')
     ax.set_ylabel('F1 Score')
     ax.set_xlim(0, 21)
@@ -83,7 +84,7 @@ if __name__ == "__main__":
         {'proportion': .95, 'dataset': 'DBpedia (ES)', 'F1 Score': .57},
         ])
     plot_proportion_tuning_results(results)
-    
+
     # Results from examples tuning
     results = pd.DataFrame([
         {'examples': 1, 'dataset': 'DBpedia (EN)', 'F1 Score': .50},

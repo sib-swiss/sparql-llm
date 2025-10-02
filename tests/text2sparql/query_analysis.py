@@ -1,5 +1,6 @@
 import os
 import time
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -54,7 +55,7 @@ def plot_triple_patterns(queries: pd.DataFrame):
     queries = queries.groupby(['dataset', 'triple patterns']).size().reset_index(name='count')
 
     sns.set_theme(context='paper', style='white', color_codes=True, font_scale=2.5)
-    
+
     ax = sns.lineplot(data=queries,
                       x='triple patterns',
                       y='count',
@@ -63,7 +64,7 @@ def plot_triple_patterns(queries: pd.DataFrame):
                       linewidth=3,
                       palette=sns.color_palette('Blues')[1::2] + sns.color_palette('Oranges')[1:4:2],
                     )
-    
+
     ax.lines[2].set_linestyle('dashed')
     ax.lines[4].set_linestyle('dashed')
     ax.set_xlabel('Triple Patterns')
@@ -95,7 +96,7 @@ def print_error_histogram():
             .value_counts()
         )
         print(error_counts)
-    
+
 if __name__ == "__main__":
     queries = pd.read_csv(QUERIES_FILE)
     plot_queries_by_dataset(queries)

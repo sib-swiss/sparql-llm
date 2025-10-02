@@ -1,13 +1,13 @@
 import os
 import time
 
-from langchain_core.documents import Document
-from langchain_qdrant import QdrantVectorStore
 import pandas as pd
 from endpoint_schema import EndpointSchema
+from langchain_core.documents import Document
+from langchain_qdrant import QdrantVectorStore
 
-from expasy_agent.config import settings
-from expasy_agent.nodes.retrieval_docs import make_dense_encoder
+from sparql_llm.agent.config import settings
+from sparql_llm.agent.nodes.retrieval_docs import make_dense_encoder
 
 QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'queries.csv')
 VECTORDB_URL = 'http://localhost:6334'
@@ -20,11 +20,11 @@ def init_vectordb(endpoint_url: str, graph: str, limit_queries: dict[str, float]
     if graph == 'https://text2sparql.aksw.org/2025/dbpedia/':
         examples = ['QALD-9+', 'LC-QuAD']
     elif graph == 'https://text2sparql.aksw.org/2025/corporate/':
-        examples = ['Generated-CK']    
+        examples = ['Generated-CK']
 
     queries = pd.read_csv(QUERIES_FILE)
     queries = queries[queries['dataset'].isin(examples)].reset_index(drop=True)
-    docs += queries.apply(lambda q: Document(page_content=q['question'], 
+    docs += queries.apply(lambda q: Document(page_content=q['question'],
                                             metadata = {'question': q['question'],
                                                         'anser': q['query'],
                                                         'endpoint_url': endpoint_url,
@@ -43,8 +43,8 @@ def init_vectordb(endpoint_url: str, graph: str, limit_queries: dict[str, float]
         schema_path=schema_path,
     ).get_schema()
 
-    docs += schema.apply(lambda c: Document(page_content=c['name'], 
-                                            metadata = {'desc': f"- Class URI: {c['class']}\n\t - Predicates:\n" + 
+    docs += schema.apply(lambda c: Document(page_content=c['name'],
+                                            metadata = {'desc': f"- Class URI: {c['class']}\n\t - Predicates:\n" +
                                                         "\n".join([f"\t\t {p}" + (f" : ({c['predicates'][p][0]})" if c['predicates'][p] else "") for p in c['predicates'].keys()]),
                                                         'doc_type': 'classes'}), axis=1).tolist()
 
@@ -73,7 +73,7 @@ def init_vectordb(endpoint_url: str, graph: str, limit_queries: dict[str, float]
 
 if __name__ == "__main__":
     # Init vectordb for corporate dataset
-    init_vectordb( 
+    init_vectordb(
     endpoint_url='http://localhost:8890/sparql/',
     graph='https://text2sparql.aksw.org/2025/corporate/',
     limit_queries={
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     schema_path=os.path.join('data', 'benchmarks', 'Text2SPARQL', 'schemas', 'corporate_schema.json'),
 )
     # Init vectordb for dbpedia dataset
-    init_vectordb( 
+    init_vectordb(
     endpoint_url='http://localhost:8890/sparql/',
     graph='https://text2sparql.aksw.org/2025/dbpedia/',
     limit_queries={

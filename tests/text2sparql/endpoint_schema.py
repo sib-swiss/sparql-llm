@@ -1,14 +1,16 @@
+import json
 import logging
 import os
 import re
-import pandas as pd
-from sparql_llm.utils import EndpointsSchemaDict, SchemaDict, query_sparql
 import time
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 from joblib import Parallel, delayed
 from tqdm import tqdm
-import json
-import seaborn as sns
-import matplotlib.pyplot as plt
+
+from sparql_llm.utils import EndpointsSchemaDict, SchemaDict, query_sparql
 
 logger = logging.getLogger("sparql_llm")
 logger.setLevel(logging.INFO)
@@ -77,21 +79,21 @@ class EndpointSchema:
             get_schema(): Returns information about classes and predicates retrieved from the endpoint.
             plot_heatmap(): Plots heatmap with classes and predicates retrieved from the endpoint.
         """
-        
+
         self._endpoint_url = endpoint_url
         self._graph = graph
         self._limit_queries = limit_queries
         self._max_workers = max_workers
         self._force_recompute = force_recompute
         self._schema_path = schema_path
-    
+
     def _save_schema_dict(self) -> None:
         """Fetch class and predicate information from the SPARQL endpoint and save to JSON file."""
         # Fetch class information
         logger.info(f'Fetching class information from {self._endpoint_url}...')
         schema = query_sparql(self._CLASS_QUERY.format(graph=self._graph), endpoint_url=self._endpoint_url)['results']['bindings']
         schema = pd.DataFrame(schema).map(lambda x: x['value']).assign(count=lambda df: df['count'].astype(int))
-        
+
         # Exclude unwanted classes
         schema = schema[schema['class'].apply(lambda c: not bool(re.search(self._EXCLUDE_CLASS_PATTERN, c)))]
 
@@ -203,7 +205,7 @@ if __name__ == "__main__":
         force_recompute=True,
         schema_path=os.path.join('data', 'benchmarks', 'Text2SPARQL', 'schemas', 'corporate_schema.json'),
     )
-    
+
     schema = EndpointSchema(
         endpoint_url='http://localhost:8890/sparql/',
         graph='https://text2sparql.aksw.org/2025/dbpedia/',
@@ -216,7 +218,7 @@ if __name__ == "__main__":
         force_recompute=True,
         schema_path=os.path.join('data', 'benchmarks', 'Text2SPARQL', 'schemas', 'dbpedia_schema.json'),
     )
-    
+
     # Debugging examples
     # schema.plot_heatmap()
     # schema._save_schema_dict()
