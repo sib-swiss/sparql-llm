@@ -14,7 +14,7 @@ COPY . /app/
 
 # WORKDIR /app/src/expasy-agent
 
-RUN uv sync --frozen --extra cpu --extra agent
+RUN uv sync --frozen --extra agent
 
 ENV PYTHONUNBUFFERED='1'
 

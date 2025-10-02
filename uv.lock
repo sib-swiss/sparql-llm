@@ -3999,8 +3999,11 @@ source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "curies" },
+    { name = "fastembed" },
     { name = "httpx" },
     { name = "langchain-core" },
+    { name = "mcp" },
+    { name = "qdrant-client" },
     { name = "rdflib" },
     { name = "sparqlwrapper" },
 ]
@@ -4023,13 +4026,10 @@ agent = [
     { name = "pandas" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
-    { name = "qdrant-client" },
     { name = "seaborn" },
     { name = "sentry-sdk", extra = ["fastapi"] },
+    { name = "starlette" },
     { name = "uvicorn", extra = ["standard"] },
-]
-cpu = [
-    { name = "fastembed" },
 ]
 gpu = [
     { name = "fastembed-gpu" },
@@ -4049,7 +4049,7 @@ dev = [
 requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.13.0" },
     { name = "curies", specifier = ">=0.11.0" },
-    { name = "fastembed", marker = "extra == 'cpu'", specifier = ">=0.5.1" },
+    { name = "fastembed", specifier = ">=0.5.1" },
     { name = "fastembed-gpu", marker = "extra == 'gpu'", specifier = ">=0.5.1" },
     { name = "httpx", specifier = ">=0.27.2" },
     { name = "jinja2", marker = "extra == 'agent'", specifier = ">=3.1.5" },
@@ -4066,17 +4066,19 @@ requires-dist = [
     { name = "langgraph", marker = "extra == 'agent'", specifier = ">=0.2.61" },
     { name = "markdownify", marker = "extra == 'agent'", specifier = ">=1.1.0" },
     { name = "matplotlib", marker = "extra == 'agent'", specifier = ">=3.10.3" },
+    { name = "mcp", specifier = ">=1.15.0" },
     { name = "pandas", marker = "extra == 'agent'", specifier = ">=2.2.3" },
     { name = "pydantic", marker = "extra == 'agent'", specifier = ">=2.10.0" },
     { name = "pydantic-settings", marker = "extra == 'agent'", specifier = ">=2.7.0" },
-    { name = "qdrant-client", marker = "extra == 'agent'", specifier = ">=1.13.0" },
+    { name = "qdrant-client", specifier = ">=1.13.0" },
     { name = "rdflib", specifier = ">=7.0.0" },
     { name = "seaborn", marker = "extra == 'agent'", specifier = ">=0.13.2" },
     { name = "sentry-sdk", extras = ["fastapi"], marker = "extra == 'agent'", specifier = ">=2.27.0" },
     { name = "sparqlwrapper", specifier = ">=2.0.0" },
+    { name = "starlette", marker = "extra == 'agent'", specifier = ">=0.48.0" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'agent'", specifier = ">=0.34.0" },
 ]
-provides-extras = ["agent", "cpu", "gpu"]
+provides-extras = ["agent", "gpu"]
 
 [package.metadata.requires-dev]
 dev = [

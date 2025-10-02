@@ -10,10 +10,9 @@
 
 This project provides tools to enhance the capabilities of Large Language Models (LLMs) in generating [SPARQL](https://www.w3.org/TR/sparql11-overview/) queries for specific endpoints:
 
-- reusable components in `src/sparql-llm` and published as the [`sparql-llm`](https://pypi.org/project/sparql-llm/) pip package
-- a MCP server to expose tools to help LLM write SPARQL queries for a set of endpoints
-- a complete chat web service in `src/expasy-agent`
-- an experimental MCP server to generate and execute SPARQL queries on SIB resources in `src/expasy-mcp`
+- a **MCP server** to expose tools to help LLM write SPARQL queries for a set of endpoints
+- a complete **chat web service**
+- **reusable components** published as the [`sparql-llm`](https://pypi.org/project/sparql-llm/) pip package
 
 The system integrates Retrieval-Augmented Generation (RAG) and SPARQL query validation through endpoint schemas, to ensure more accurate and relevant query generation on large scale knowledge graphs.
 
@@ -33,7 +32,9 @@ The components are designed to work either independently or as part of a full ch
 
 ## 🔌 MCP server
 
-The server exposes a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) endpoint to access [biodata resources](https://www.expasy.org/) at the [SIB](https://www.sib.swiss/), through their [SPARQL](https://www.w3.org/TR/sparql12-query/) endpoints, such as UniProt, Bgee, OMA, SwissLipids, Cellosaurus. Available tools are:
+The server exposes a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) endpoint to access [biodata resources](https://www.expasy.org/) at the [SIB](https://www.sib.swiss/), through their [SPARQL](https://www.w3.org/TR/sparql12-query/) endpoints, such as UniProt, Bgee, OMA, SwissLipids, Cellosaurus at **[chat.expasy.org/mcp](https://chat.expasy.org/mcp)**
+
+Available tools are:
 
 - **📝 Retrieve relevant documents** (query examples and classes schema) to help writing SPARQL queries to access SIB biodata resources
   - Arguments:
@@ -79,11 +80,139 @@ You can click the wrench and screwdriver button 🛠️ (`Select Tools...`) to e
 
 ## 📦️ Reusable components
 
-Checkout the [`src/sparql-llm/README.md`](https://github.com/sib-swiss/sparql-llm/tree/main/src/sparql-llm) for more details on how to use the reusable components.
+### Installation
 
-## 🧑‍🏫 Tutorial
+> Requires Python >=3.10
 
-There is a step by step tutorial to show how a LLM-based chat system for generating SPARQL queries can be easily built here: https://sib-swiss.github.io/sparql-llm
+```bash
+pip install sparql-llm
+```
+
+Or with `uv`:
+
+```sh
+uv add sparql-llm
+```
+
+### SPARQL query examples loader
+
+Load SPARQL query examples defined using the SHACL ontology from a SPARQL endpoint. See **[github.com/sib-swiss/sparql-examples](https://github.com/sib-swiss/sparql-examples)** for more details on how to define the examples.
+
+```python
+from sparql_llm import SparqlExamplesLoader
+
+loader = SparqlExamplesLoader("https://sparql.uniprot.org/sparql/")
+docs = loader.load()
+print(len(docs))
+print(docs[0].metadata)
+```
+
+You can provide the examples as a file if it is not integrated in the endpoint, e.g.:
+
+```python
+loader = SparqlExamplesLoader("https://sparql.uniprot.org/sparql/", examples_file="uniprot_examples.ttl")
+```
+
+> Refer to the [LangChain documentation](https://python.langchain.com/v0.2/docs/) to figure out how to best integrate documents loaders to your system.
+
+> [!NOTE]
+>
+> You can check the completeness of your examples against the endpoint schema using [this notebook](https://github.com/sib-swiss/sparql-llm/blob/main/notebooks/compare_queries_examples_to_void.ipynb).
+
+### SPARQL endpoint schema loader
+
+Generate a human-readable schema using the ShEx format to describe all classes of a SPARQL endpoint based on the [VoID description](https://www.w3.org/TR/void/) present in the endpoint. Ideally the endpoint should also contain the ontology describing the classes, so the `rdfs:label` and `rdfs:comment` of the classes can be used to generate embeddings and improve semantic matching.
+
+> [!TIP]
+>
+> Checkout the **[void-generator](https://github.com/JervenBolleman/void-generator)** project to automatically generate VoID description for your endpoint.
+
+```python
+from sparql_llm import SparqlVoidShapesLoader
+
+loader = SparqlVoidShapesLoader("https://sparql.uniprot.org/sparql/")
+docs = loader.load()
+print(len(docs))
+print(docs[0].metadata)
+```
+
+You can provide the VoID description as a file if it is not integrated in the endpoint, e.g.:
+
+```python
+loader = SparqlVoidShapesLoader("https://sparql.uniprot.org/sparql/", void_file="uniprot_void.ttl")
+```
+
+> The generated shapes are well-suited for use with a LLM or a human, as they provide clear information about which predicates are available for a class, and the corresponding classes or datatypes those predicates point to. Each object property references a list of classes rather than another shape, making each shape self-contained and interpretable on its own, e.g. for a *Disease Annotation* in UniProt:
+>
+> ```turtle
+> up:Disease_Annotation {
+> a [ up:Disease_Annotation ] ;
+> up:sequence [ up:Chain_Annotation up:Modified_Sequence ] ;
+> rdfs:comment xsd:string ;
+> up:disease IRI
+> }
+> ```
+
+### Generate complete ShEx shapes from VoID description
+
+You can also generate the complete ShEx shapes for a SPARQL endpoint with:
+
+```python
+from sparql_llm import get_shex_from_void
+
+shex_str = get_shex_from_void("https://sparql.uniprot.org/sparql/")
+print(shex_str)
+```
+
+### Validate a SPARQL query based on VoID description
+
+This takes a SPARQL query and validates the predicates/types used are compliant with the VoID description present in the SPARQL endpoint the query is executed on.
+
+This function supports:
+
+* federated queries (VoID description will be automatically retrieved for each SERVICE call in the query),
+* path patterns (e.g. `orth:organism/obo:RO_0002162/up:scientificName`)
+
+This function requires that at least one type is defined for each endpoint, but it will be able to infer types of subjects that are connected to the subject for which the type is defined.
+
+It will return a list of issues described in natural language, with hints on how to fix them (by listing the available classes/predicates), which can be passed to an LLM as context to help it figuring out how to fix the query.
+
+```python
+from sparql_llm import validate_sparql_with_void
+
+sparql_query = """PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX up: <http://purl.uniprot.org/core/>
+PREFIX taxon: <http://purl.uniprot.org/taxonomy/>
+PREFIX orth: <http://purl.org/net/orth#>
+PREFIX obo: <http://purl.obolibrary.org/obo/>
+PREFIX lscr: <http://purl.org/lscr#>
+PREFIX genex: <http://purl.org/genex#>
+PREFIX sio: <http://semanticscience.org/resource/>
+SELECT DISTINCT ?humanProtein ?orthologRatProtein ?orthologRatGene
+WHERE {
+    ?humanProtein a orth:Protein ;
+        lscr:xrefUniprot <http://purl.uniprot.org/uniprot/Q9Y2T1> .
+    ?orthologRatProtein a orth:Protein ;
+        sio:SIO_010078 ?orthologRatGene ;
+        orth:organism/obo:RO_0002162/up:name 'Rattus norvegicus' .
+    ?cluster a orth:OrthologsCluster .
+    ?cluster orth:hasHomologousMember ?node1 .
+    ?cluster orth:hasHomologousMember ?node2 .
+    ?node1 orth:hasHomologousMember* ?humanProtein .
+    ?node2 orth:hasHomologousMember* ?orthologRatProtein .
+    FILTER(?node1 != ?node2)
+    SERVICE <https://www.bgee.org/sparql/> {
+        ?orthologRatGene a orth:Gene ;
+            genex:expressedIn ?anatEntity ;
+            orth:organism ?ratOrganism .
+        ?anatEntity rdfs:label 'brain' .
+        ?ratOrganism obo:RO_0002162 taxon:10116 .
+    }
+}"""
+
+issues = validate_sparql_with_void(sparql_query, "https://sparql.omabrowser.org/sparql/")
+print("\n".join(issues))
+```
 
 ## 🚀 Complete chat system
 
@@ -144,6 +273,14 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 
    > All data from the containers are stored persistently in the `data` folder (e.g. vectordb indexes)
 
+> [!NOTE]
+>
+> Query the chat API:
+>
+> ```sh
+> curl -X POST http://localhost:8000/chat -H "Content-Type: application/json" -d '{"messages": [{"role": "user", "content": "What is the HGNC symbol for the P68871 protein?"}], "model": "mistralai/mistral-small-latest", "stream": true}'
+> ```
+
 > [!WARNING]
 >
 > **Experimental entities indexing**: it can take a lot of time to generate embeddings for millions of entities. So we recommend to run the script to generate embeddings on a machine with GPU (does not need to be a powerful one, but at least with a GPU, checkout [fastembed GPU docs](https://qdrant.github.io/fastembed/examples/FastEmbed_GPU/) to install the GPU drivers and dependencies)
@@ -156,15 +293,27 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 >
 > Then move the entities collection containing the embeddings in `data/qdrant/collections/entities` before starting the stack
 
-There is a benchmarking scripts for the system that will run a list of questions and compare their results to a reference SPARQL queries, with and without query validation, against a list of LLM providers. You will need to change the list of queries if you want to use it for different endpoints. You will need to start the stack in development mode to run it:
+### 🥇 Benchmarks
 
-```sh
-uv run --env-file .env src/expasy-agent/tests/benchmark.py
-```
+There are a few benchmarks available for the system:
 
-> It takes time to run and will log the output and results in `data/benchmarks`
+- The `tests/benchmark.py` script will run a list of questions and compare their results to a reference SPARQL queries, with and without query validation, against a list of LLM providers. You will need to change the list of queries if you want to use it for different endpoints. You will need to start the stack in development mode to run it:
 
-Follow [these instructions](src/expasy-agent/tests/text2sparql/README.md) to run the `Text2SPARQL Benchmark`.
+  ```sh
+  uv run --env-file .env src/expasy-agent/tests/benchmark.py
+  ```
+
+  > It takes time to run and will log the output and results in `data/benchmarks`
+
+- Follow [these instructions](src/expasy-agent/tests/text2sparql/README.md) to run the `Text2SPARQL Benchmark`.
+
+## 🧑‍🏫 Tutorial
+
+There is a step by step tutorial to show how a LLM-based chat system for generating SPARQL queries can be easily built here: https://sib-swiss.github.io/sparql-llm
+
+## 🧑‍💻 Contributing
+
+Checkout the [`CONTRIBUTING.md`](https://github.com/sib-swiss/sparql-llm/blob/main/CONTRIBUTING.md) page.
 
 ## 🪶 How to cite this work
 

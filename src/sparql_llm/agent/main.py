@@ -21,7 +21,7 @@ from starlette.templating import Jinja2Templates
 from sparql_llm.agent.config import qdrant_client, settings
 from sparql_llm.agent.graph import graph
 from sparql_llm.agent.indexing.index_resources import init_vectordb
-from sparql_llm.agent.mcp import mcp
+from sparql_llm.mcp_server import mcp
 from sparql_llm.utils import logger
 
 if settings.sentry_url:
