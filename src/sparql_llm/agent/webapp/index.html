@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chat Expasy</title>
+    <meta
+      name="description"
+      content="Assistant to navigate resources from the Swiss Institute of Bioinformatics (SIB)."
+    />
+    <link rel="icon" type="image/png" href="/assets/sib-logo--jUM9mer.png" />
+
+
+
+    <!-- <link href="https://unpkg.com/@sib-swiss/chat-with-context/dist/style.css" rel="stylesheet" />
+    <script type="module" src="https://unpkg.com/@sib-swiss/chat-with-context/dist/chat-with-context.js"></script> -->
+    <script type="module" crossorigin src="/assets/index-BaQRDYW2.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-C2ZLL9jG.css">
+  </head>
+
+  <!-- Demo chat webpage served by the SIB Expasy API -->
+
+  <!-- <body class="bg-gray-100 dark:bg-gray-800 text-black dark:text-white"> -->
+  <body>
+    <div class="flex flex-col h-screen w-full">
+      <nav class="flex justify-end">
+        <a
+          href="https://github.com/sib-swiss/sparql-llm"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-black hover:text-black dark:text-white align-middle"
+        >
+          <button
+            title="Source code on GitHub"
+            class="px-4 py-2 m-1 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500"
+          >
+            <img src="data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='24'%20height='24'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='currentColor'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%20class='feather%20feather-github'%3e%3cpath%20d='M9%2019c-5%201.5-5-2.5-7-3m14%206v-3.87a3.37%203.37%200%200%200-.94-2.61c3.14-.35%206.44-1.54%206.44-7A5.44%205.44%200%200%200%2020%204.77%205.07%205.07%200%200%200%2019.91%201S18.73.65%2016%202.48a13.38%2013.38%200%200%200-7%200C6.27.65%205.09%201%205.09%201A5.07%205.07%200%200%200%205%204.77a5.44%205.44%200%200%200-1.5%203.78c0%205.42%203.3%206.61%206.44%207A3.37%203.37%200%200%200%209%2018.13V22'%3e%3c/path%3e%3c/svg%3e" alt="GitHub logo" />
+          </button>
+        </a>
+      </nav>
+
+      <div class="text-left text-sm mb-5 prose max-w-3xl mx-auto pb-5 border-b">
+        <h2 class="text-xl text-center font-semibold border-b pb-2">
+          Ask Expasy
+          <div
+            class="inline-block ml-3 px-3 py-1 bg-red-600 text-white text-sm font-semibold rounded-full justify-center items-center"
+          >
+            Beta
+          </div>
+        </h2>
+        <p>
+          <strong>ExpasyGPT</strong> is reshaping how researchers explore life science data, streamlining searches
+          across the <a href="https://www.sib.swiss/">SIB Swiss Institute of Bioinformatics</a>’ databases (learn more
+          <a href="https://www.expasy.org/about-chat">here</a>). This AI-driven tool is powered by metadata and example
+          queries from SPARQL endpoints like:
+        </p>
+        <ul style="list-style: inside">
+          <li>
+            <a href="http://www.uniprot.org/uniprot/" target="_blank">UniProt</a>, an expertly curated database of
+            proteins
+          </li>
+          <li><a href="https://omabrowser.org/oma/home/" target="_blank">OMA</a>, the orthologous matrix</li>
+          <li>
+            <a href="https://www.bgee.org/" target="_blank">Bgee</a>, an expertly curated gene expression database
+          </li>
+          <li>
+            <a href="https://www.rhea-db.org/" target="_blank">Rhea</a>, an expertly curated database of biochemical
+            reactions
+          </li>
+          <li>
+            <a href="http://www.swisslipids.org/#/" target="_blank">SwissLipids</a>, an expertly curated database of
+            lipids.
+          </li>
+        </ul>
+        <p>
+          As the service evolves, it will integrate additional endpoints from the
+          <a href="https://www.expasy.org/search/SPARQL" target="_blank">SIB Knowledge Graph</a>.
+        </p>
+        <p>
+          <strong>We value your input!</strong> For any questions or suggestions, feel free to reach out to the
+          <a href="https://www.expasy.org/contact" target="_blank">Expasy helpdesk</a>.
+        </p>
+      </div>
+
+      <div class="flex-grow mx-5">
+        <chat-with-context
+          chat-endpoint="{{ chat_endpoint }}"
+          feedback-endpoint="{{ feedback_endpoint }}"
+          api-key="{{ api_key }}"
+          examples="{{ examples }}"
+        >
+        </chat-with-context>
+      </div>
+    </div>
+  </body>
+</html>

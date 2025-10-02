@@ -25,7 +25,7 @@ The components are designed to work either independently or as part of a full ch
 - **SPARQL Query Validation**: A function to automatically parse and validate federated SPARQL queries against the VoID description of the target endpoints.
 - **MCP server** with tools to help LLM write SPARQL queries for a set of endpoints
 - **Deployable Chat System**: A reusable and containerized system for deploying an LLM-based chat service with a web UI, API, and vector database. This system helps users write SPARQL queries by leveraging endpoint metadata (WIP).
-- **Live Example**: Configuration for **[chat.expasy.org](https://chat.expasy.org)**, an LLM-powered chat system supporting SPARQL query generation for endpoints maintained by the [SIB](https://www.sib.swiss/).
+- **Live Example**: Configuration for **[expasy.org/chat](https://expasy.org/chat)**, an LLM-powered chat system supporting SPARQL query generation for endpoints maintained by the [SIB](https://www.sib.swiss/).
 
 > [!TIP]
 >
@@ -143,12 +143,6 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
    ```
 
    > All data from the containers are stored persistently in the `data` folder (e.g. vectordb indexes)
-
-5. When the stack is up you can run the script to **index** the SPARQL endpoints from within the container (need to do it once):
-
-   ```sh
-   docker compose exec api uv run src/expasy_agent/indexing/index_resources.py
-   ```
 
 > [!WARNING]
 >

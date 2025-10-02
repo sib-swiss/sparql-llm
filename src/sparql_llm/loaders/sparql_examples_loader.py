@@ -41,9 +41,9 @@ class SparqlExamplesLoader(BaseLoader):
         prefix_map: dict[str, str] = {}
         try:
             prefix_map = get_prefixes_for_endpoint(self.endpoint_url, self.examples_file)
-            for row in query_sparql(GET_SPARQL_EXAMPLES_QUERY, self.endpoint_url, use_file=self.examples_file, check_service_desc=True)[
-                "results"
-            ]["bindings"]:
+            for row in query_sparql(
+                GET_SPARQL_EXAMPLES_QUERY, self.endpoint_url, use_file=self.examples_file, check_service_desc=True
+            )["results"]["bindings"]:
                 docs.append(self._create_document(row, prefix_map))
         except Exception as e:
             logger.warning(f"Could not retrieve SPARQL query examples from endpoint {self.endpoint_url}: {e}")
