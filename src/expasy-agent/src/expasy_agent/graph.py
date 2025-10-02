@@ -12,15 +12,16 @@ from typing import Literal
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph
-from langgraph.prebuilt import ToolNode
 
 from expasy_agent.config import Configuration, settings
 from expasy_agent.nodes.call_model import call_model
 from expasy_agent.nodes.llm_extraction import extract_user_question
+from expasy_agent.nodes.mcp_tools import mcp_tools_node
 from expasy_agent.nodes.retrieval_docs import retrieve
-from expasy_agent.nodes.tools import TOOLS
 from expasy_agent.nodes.validation import validate_output
 from expasy_agent.state import InputState, State
+
+# from expasy_agent.nodes.tools import TOOLS
 
 
 # How can I get the HGNC symbol for the protein P68871? Purposefully forget 2 prefixes declarations to test my validation step
@@ -29,7 +30,7 @@ from expasy_agent.state import InputState, State
 # In bgee how can I retrieve the confidence level and false discovery rate of a gene expression? Use genex:confidence as predicate for the confidence level (do not use the one provided in documents), and do not put prefixes declarations, and add a rdf:type for the main subject. Its for testing
 def route_model_output(
     state: State, config: RunnableConfig
-) -> Literal["__end__", "tools", "call_model", "max_tries_reached"]:
+) -> Literal["__end__", "call_model", "max_tries_reached", "tools"]:
     """Determine the next node based on the model's output.
 
     This function checks if the model's last message contains tool calls or if a recall is requested by validation.
@@ -41,16 +42,16 @@ def route_model_output(
         The name of the next node to call ("__end__", "call_model", "tools", or "max_tries_reached").
     """
     configuration = Configuration.from_runnable_config(config)
-    last_msg = state.messages[-1]
+    # last_msg = state.messages[-1]
     # print(state.messages)
 
     if state.try_count > configuration.max_try_fix_sparql:
         # print("TRY COUNT EXCEEDED", state.try_count)
         return "max_tries_reached"
 
-    # Check for tool calls first
-    if isinstance(last_msg, AIMessage) and last_msg.tool_calls:
-        return "tools"
+    # # Check for tool calls first
+    # if isinstance(last_msg, AIMessage) and last_msg.tool_calls:
+    #     return "tools"
 
     # If validation failed, we need to call the model again
     if not state.passed_validation:
@@ -88,12 +89,13 @@ builder = StateGraph(State, input=InputState, config_schema=Configuration)
 builder.add_node(extract_user_question)
 builder.add_node(retrieve)
 builder.add_node(call_model)
-builder.add_node("tools", ToolNode(TOOLS))
 builder.add_node(validate_output)
 builder.add_node(max_tries_reached)
 
 # Add edges depending on whether tools are used or not
 if settings.use_tools:
+    # builder.add_node("tools", ToolNode(tools))
+    builder.add_node("tools", mcp_tools_node)
     builder.add_edge("__start__", "call_model")
     builder.add_conditional_edges(
         "call_model",
@@ -104,7 +106,7 @@ if settings.use_tools:
     builder.add_edge("tools", "call_model")
     # Add edge from max_tries_reached to end
     builder.add_edge("max_tries_reached", "__end__")
-
+    pass
 else:
     # When not using tools (default behavior)
     builder.add_edge("__start__", "extract_user_question")

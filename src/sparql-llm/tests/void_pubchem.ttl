@@ -1,0 +1,189 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix vocab: <http://rdf.ncbi.nlm.nih.gov/pubchem/vocabulary#> .
+@prefix ruleset: <http://rdf.ncbi.nlm.nih.gov/pubchem/ruleset/> .
+@prefix anatomy: <http://rdf.ncbi.nlm.nih.gov/pubchem/anatomy/> .
+@prefix author: <http://rdf.ncbi.nlm.nih.gov/pubchem/author/> .
+@prefix bioassay: <http://rdf.ncbi.nlm.nih.gov/pubchem/bioassay/> .
+@prefix book: <http://rdf.ncbi.nlm.nih.gov/pubchem/book/> .
+@prefix cell: <http://rdf.ncbi.nlm.nih.gov/pubchem/cell/> .
+@prefix compound: <http://rdf.ncbi.nlm.nih.gov/pubchem/compound/> .
+@prefix concept: <http://rdf.ncbi.nlm.nih.gov/pubchem/concept/> .
+@prefix conserveddomain: <http://rdf.ncbi.nlm.nih.gov/pubchem/conserveddomain/> .
+@prefix cooccurrence: <http://rdf.ncbi.nlm.nih.gov/pubchem/cooccurrence/> .
+@prefix descriptor: <http://rdf.ncbi.nlm.nih.gov/pubchem/descriptor/> .
+@prefix disease: <http://rdf.ncbi.nlm.nih.gov/pubchem/disease/> .
+@prefix endpoint: <http://rdf.ncbi.nlm.nih.gov/pubchem/endpoint/> .
+@prefix gene: <http://rdf.ncbi.nlm.nih.gov/pubchem/gene/> .
+@prefix grant: <http://rdf.ncbi.nlm.nih.gov/pubchem/grant/> .
+@prefix inchikey: <http://rdf.ncbi.nlm.nih.gov/pubchem/inchikey> .
+@prefix journal: <http://rdf.ncbi.nlm.nih.gov/pubchem/journal/> .
+@prefix measuregroup: <http://rdf.ncbi.nlm.nih.gov/pubchem/measuregroup/> .
+@prefix organization: <http://rdf.ncbi.nlm.nih.gov/pubchem/organization/> .
+@prefix patent: <http://rdf.ncbi.nlm.nih.gov/pubchem/patent/> .
+@prefix patentassignee: <http://rdf.ncbi.nlm.nih.gov/pubchem/patentassignee/> .
+@prefix patentinventor: <http://rdf.ncbi.nlm.nih.gov/pubchem/patentinventor/> .
+@prefix patentcpc: <http://rdf.ncbi.nlm.nih.gov/pubchem/patentcpc/> .
+@prefix patentipc: <http://rdf.ncbi.nlm.nih.gov/pubchem/patentipc/> .
+@prefix pathway: <http://rdf.ncbi.nlm.nih.gov/pubchem/pathway/> .
+@prefix protein: <http://rdf.ncbi.nlm.nih.gov/pubchem/protein/> .
+@prefix reaction: <http://rdf.ncbi.nlm.nih.gov/pubchem/reaction/> .
+@prefix reference: <http://rdf.ncbi.nlm.nih.gov/pubchem/reference/> .
+@prefix source: <http://rdf.ncbi.nlm.nih.gov/pubchem/source/> .
+@prefix substance: <http://rdf.ncbi.nlm.nih.gov/pubchem/substance/> .
+@prefix synonym: <http://rdf.ncbi.nlm.nih.gov/pubchem/synonym/> .
+@prefix taxonomy: <http://rdf.ncbi.nlm.nih.gov/pubchem/taxonomy/> .
+@prefix agr: <https://www.alliancegenome.org/gene/> .
+@prefix alphafold: <https://alphafold.ebi.ac.uk/entry/> .
+@prefix bao: <http://www.bioassayontology.org/bao#> .
+@prefix bp3: <http://www.biopax.org/release/biopax-level3.owl#> .
+@prefix brenda: <https://www.brenda-enzymes.org/enzyme.php?> .
+@prefix chembl: <http://rdf.ebi.ac.uk/resource/chembl/molecule/> .
+@prefix chembl.assay: <http://rdf.ebi.ac.uk/resource/chembl/assay/> .
+@prefix chembl.cell_line: <http://rdf.ebi.ac.uk/resource/chembl/cell_line/> .
+@prefix chembl.molecule: <http://rdf.ebi.ac.uk/resource/chembl/molecule/> .
+@prefix chembl.target: <http://rdf.ebi.ac.uk/resource/chembl/target/> .
+@prefix chembl.tissue: <https://www.ebi.ac.uk/chembl/explore/tissue/> .
+@prefix cheminf: <http://semanticscience.org/resource/> .
+@prefix cito: <http://purl.org/spar/cito/> .
+@prefix cmp: <https://cellmodelpassports.sanger.ac.uk/passports/> .
+@prefix cosmic.cell_lines: <https://cancer.sanger.ac.uk/cell_lines/sample/overview?id=> .
+@prefix crossref.funder: <https://data.crossref.org/fundingdata/funder/> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix depmap.cell_line: <https://depmap.org/portal/cell_line/> .
+@prefix drugbank.bio_entities: <https://www.drugbank.ca/bio_entities/> .
+@prefix covid19dzmap: <https://fairdomhub.org/models/> .
+@prefix edam: <http://edamontology.org/> .
+@prefix efo: <http://www.ebi.ac.uk/efo/> .
+@prefix ensembl: <http://rdf.ebi.ac.uk/resource/ensembl/> .
+@prefix epo_cpc: <http://data.epo.org/linked-data/def/cpc/> .
+@prefix epo_ipc: <http://data.epo.org/linked-data/def/ipc/> .
+@prefix epo_patent: <http://data.epo.org/linked-data/def/patent/> .
+@prefix fabio: <http://purl.org/spar/fabio/> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix frapo: <http://purl.org/cerif/frapo/> .
+@prefix gard: <https://rarediseases.info.nih.gov/diseases/> .
+@prefix gdsc.cellline: <https://www.cancerrxgene.org/translation/CellLine/> .
+@prefix gencc: <https://search.thegencc.org/genes/> .
+@prefix ghr: <https://medlineplus.gov/genetics/gene/> .
+@prefix glycoinfo.glycan: <http://rdf.glycoinfo.org/glycan/> .
+@prefix glycoinfo.source: <http://rdf.glycoinfo.org/source/> .
+@prefix glycosmos.glycoproteins: <https://glycosmos.org/glycoproteins/> .
+@prefix glycosmos.pathways: <https://glycosmos.org/pathways/show/> .
+@prefix glygen.protein: <https://glygen.org/protein/> .
+@prefix gtopdb.disease: <https://www.guidetopharmacology.org/GRAC/DiseaseDisplayForward?diseaseId=> .
+@prefix idorg: <http://identifiers.org/> .
+@prefix intact: <https://www.ebi.ac.uk/intact/search?query=> .
+@prefix issn: <https://portal.issn.org/resource/ISSN/> .
+@prefix itis: <https://www.itis.gov/servlet/SingleRpt/SingleRpt?search_topic=TSN&search_value=> .
+@prefix lincs.hms: <https://lincs.hms.harvard.edu/db/cells/> .
+@prefix lipidmaps: <https://www.lipidmaps.org/data/IntegratedPathwaysData/SetupIntegratedPathways.pl?imgsize=730&Mode=BMDMATPS11&DataType=> .
+@prefix mesh: <http://id.nlm.nih.gov/mesh/> .
+@prefix meshv: <http://id.nlm.nih.gov/mesh/vocab#> .
+@prefix ncbi.books: <https://www.ncbi.nlm.nih.gov/books/> .
+@prefix ncbi.cdd: <https://www.ncbi.nlm.nih.gov/Structure/cdd/cddsrv.cgi?uid=> .
+@prefix ncbi.nlmcatalog: <https://www.ncbi.nlm.nih.gov/nlmcatalog/> .
+@prefix ncit: <http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#> .
+@prefix ndfrt: <http://purl.bioontology.org/ontology/NDFRT> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix opentargets: <https://platform.opentargets.org/target/> .
+@prefix orcid: <https://orcid.org/> .
+@prefix pathbank: <https://pathbank.org/view/> .
+@prefix pav: <http://purl.org/pav/> .
+@prefix pdbo: <http://rdf.wwpdb.org/schema/pdbx-v50.owl#> .
+@prefix pharos.targets: <https://pharos.nih.gov/targets/> .
+@prefix plantcyc: <https://pmn.plantcyc.org/pathway?orgid=PLANT&id=> .
+@prefix plantreactome: <https://plantreactome.gramene.org/content/detail/> .
+@prefix prism: <http://prismstandard.org/namespaces/basic/3.0/> .
+@prefix sio: <http://semanticscience.org/resource/> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix snomedct: <http://purl.bioontology.org/ontology/SNOMEDCT> .
+@prefix uniprot: <http://purl.uniprot.org/uniprot/> .
+@prefix uniprot.enzyme: <http://purl.uniprot.org/enzyme/> .
+@prefix uniprot.taxonomy: <http://purl.uniprot.org/taxonomy/> .
+@prefix up: <http://purl.uniprot.org/core/> .
+@prefix vcard2006: <http://www.w3.org/2006/vcard/ns#> .
+@prefix veupathdb: <https://www.veupathdb.org/gene/> .
+@prefix void: <http://rdfs.org/ns/void#> .
+@prefix wd: <http://www.wikidata.org/entity/> .
+@prefix wipo_ipc: <http://www.wipo.int/classifications/ipc/ipcpub/?notion=scheme&symbol=> .
+@prefix wormbase.gene: <http://www.wormbase.org/db/gene/gene?class=Gene;name=> .
+@prefix wormbase.protein: <http://www.wormbase.org/db/seq/protein?class=Protein;name=> .
+@prefix wwpdb: <http://rdf.wwpdb.org/pdb/> .
+@prefix : <http://rdf.ncbi.nlm.nih.gov/pubchem/> .
+
+
+<http://rdf.ncbi.nlm.nih.gov/pubchem/>
+    a void:Dataset ;
+    dcterms:title "PubChem RDF" ;
+    dcterms:description "VoID description generated from PubChem ShEx schema." ;
+    dcterms:publisher [ a foaf:Organization ; foaf:name "National Center for Biotechnology Information (NCBI)" ] ;
+    dcterms:license <https://www.ncbi.nlm.nih.gov/home/about/policies/> ;
+    void:sparqlEndpoint <https://pubchem.ncbi.nlm.nih.gov/sparql> ;
+    void:exampleResource <https://pubchem.ncbi.nlm.nih.gov/docs/rdf-use-cases> ;
+    void:classPartition [ void:class vocab:Anatomy ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property skos:prefLabel ; rdfs:label "name" ], [ void:property skos:altLabel ; rdfs:label "alternative label" ], [ void:property cito:isDiscussedBy ; rdfs:label "is discussed by" ], [ void:property rdfs:seeAlso ; rdfs:label "see also" ] ],
+                        [ void:class vocab:Author ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property vcard2006:family-name ; rdfs:label "family name" ], [ void:property vcard2006:given-name ; rdfs:label "given name" ], [ void:property vcard2006:fn ; rdfs:label "formatted name" ], [ void:property vcard2006:organization-name ; rdfs:label "organization name" ], [ void:property vcard2006:hasUID ; rdfs:label "has UID" ], [ void:property dcterms:source ; rdfs:label "source" ] ],
+                        [ void:class vocab:BioAssay ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property dcterms:identifier ; rdfs:label "identifier" ], [ void:property dcterms:title ; rdfs:label "title" ], [ void:property bao:BAO_0000210 ; rdfs:label "has assay stage" ], [ void:property dcterms:source ; rdfs:label "source" ], [ void:property bao:BAO_0000209 ; rdfs:label "has measure group" ], [ void:property bao:BAO_0000540 ; rdfs:label "is confirmatory assay of" ], [ void:property bao:BAO_0001067 ; rdfs:label "is primary assay of" ], [ void:property bao:BAO_0001094 ; rdfs:label "is summary assay of" ], [ void:property cito:isDiscussedBy ; rdfs:label "is discussed by" ], [ void:property rdfs:seeAlso ; rdfs:label "see also" ] ],
+                        [ void:class vocab:Book ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property dcterms:title ; rdfs:label "title" ], [ void:property prism:isbn ; rdfs:label "ISBN" ], [ void:property prism:location ; rdfs:label "location" ], [ void:property dcterms:date ; rdfs:label "date" ], [ void:property dcterms:publisher ; rdfs:label "publisher" ], [ void:property dcterms:creator ; rdfs:label "creator" ], [ void:property skos:exactMatch ; rdfs:label "exact match" ] ],
+                        [ void:class vocab:Cell ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property skos:prefLabel ; rdfs:label "name" ], [ void:property skos:altLabel ; rdfs:label "alternative label" ], [ void:property obo:BFO_0000050 ; rdfs:label "part of" ], [ void:property up:organism ; rdfs:label "organism" ], [ void:property obo:RO_0001000 ; rdfs:label "derived from" ], [ void:property cito:isDiscussedBy ; rdfs:label "is discussed by" ], [ void:property rdfs:seeAlso ; rdfs:label "see also" ] ],
+                        [ void:class vocab:Compound ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property dcterms:identifier ; rdfs:label "identifier" ], [ void:property skos:prefLabel ; rdfs:label "name" ], [ void:property obo:RO_0000087 ; rdfs:label "has role" ], [ void:property vocab:is_active_ingredient_of ; rdfs:label "is active ingredient of" ], [ void:property cheminf:CHEMINF_000455 ; rdfs:label "is isotopologue of" ], [ void:property cheminf:CHEMINF_000461 ; rdfs:label "is stereoisomer of" ], [ void:property cheminf:CHEMINF_000480 ; rdfs:label "has component with uncharged counterpart" ], [ void:property cheminf:CHEMINF_000462 ; rdfs:label "has same connectivity as" ], [ void:property vocab:has_parent ; rdfs:label "has parent" ], [ void:property vocab:connectivity_smiles ; rdfs:label "connectivity SMILES" ], [ void:property vocab:covalent_unit_count ; rdfs:label "covalent unit count" ], [ void:property vocab:defined_atom_stereo_count ; rdfs:label "defined atom stereo count" ], [ void:property vocab:defined_bond_stereo_count ; rdfs:label "defined bond stereo count" ], [ void:property vocab:exact_mass ; rdfs:label "exact mass" ], [ void:property vocab:hydrogen_bond_acceptor_count ; rdfs:label "hydrogen bond acceptor count" ], [ void:property vocab:hydrogen_bond_donor_count ; rdfs:label "hydrogen bond donor count" ], [ void:property vocab:inchikey ; rdfs:label "InChIKey" ], [ void:property vocab:isotope_atom_count ; rdfs:label "isotope atom count" ], [ void:property vocab:iupac_inchi ; rdfs:label "IUPAC InChI" ], [ void:property vocab:molecular_formula ; rdfs:label "molecular formula" ], [ void:property vocab:molecular_weight ; rdfs:label "molecular weight" ], [ void:property vocab:mono_isotopic_weight ; rdfs:label "mono isotopic weight" ], [ void:property vocab:non_hydrogen_atom_count ; rdfs:label "non hydrogen atom count" ], [ void:property vocab:preferred_iupac_name ; rdfs:label "preferred IUPAC name" ], [ void:property vocab:rotatable_bond_count ; rdfs:label "rotatable bond count" ], [ void:property vocab:smiles ; rdfs:label "SMILES" ], [ void:property vocab:structure_complexity ; rdfs:label "structure complexity" ], [ void:property vocab:total_formal_charge ; rdfs:label "total formal charge" ], [ void:property vocab:tpsa ; rdfs:label "Topological Polar Surface Area" ], [ void:property vocab:undefined_atom_stereo_count ; rdfs:label "undefined atom stereo count" ], [ void:property vocab:undefined_bond_stereo_count ; rdfs:label "undefined bond stereo count" ], [ void:property vocab:xlogp3 ; rdfs:label "XLOPG3" ], [ void:property obo:RO_0002162 ; rdfs:label "in taxon" ], [ void:property sio:SIO_000008 ; rdfs:label "has attribute" ], [ void:property rdfs:seeAlso ; rdfs:label "see also" ] ],
+                        [ void:class vocab:Concept ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property skos:prefLabel ; rdfs:label "name" ], [ void:property pav:importedFrom ; rdfs:label "imported from" ], [ void:property skos:broader ; rdfs:label "broader" ], [ void:property skos:inScheme ; rdfs:label "in scheme" ] ],
+                        [ void:class vocab:ConservedDomain ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property dcterms:title ; rdfs:label "title" ], [ void:property dcterms:abstract ; rdfs:label "abstract" ], [ void:property cito:isDiscussedBy ; rdfs:label "is discussed by" ], [ void:property rdfs:seeAlso ; rdfs:label "see also" ] ],
+                        [ void:class vocab:CooccurrenceCompoundCompound ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ], [ void:property sio:SIO_001157 ; rdfs:label "is result of text mining" ], [ void:property rdf:subject ; rdfs:label "subject" ], [ void:property rdf:object ; rdfs:label "object" ] ],
+                        [ void:class vocab:CooccurrenceCompoundDisease ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ], [ void:property sio:SIO_001157 ; rdfs:label "is result of text mining" ], [ void:property rdf:subject ; rdfs:label "subject" ], [ void:property rdf:object ; rdfs:label "object" ] ],
+                        [ void:class vocab:CooccurrenceCompoundGene ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ], [ void:property sio:SIO_001157 ; rdfs:label "is result of text mining" ], [ void:property rdf:subject ; rdfs:label "subject" ], [ void:property rdf:object ; rdfs:label "object" ] ],
+                        [ void:class vocab:CooccurrenceDiseaseCompound ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ], [ void:property sio:SIO_001157 ; rdfs:label "is result of text mining" ], [ void:property rdf:subject ; rdfs:label "subject" ], [ void:property rdf:object ; rdfs:label "object" ] ],
+                        [ void:class vocab:CooccurrenceDiseaseDisease ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ], [ void:property sio:SIO_001157 ; rdfs:label "is result of text mining" ], [ void:property rdf:subject ; rdfs:label "subject" ], [ void:property rdf:object ; rdfs:label "object" ] ],
+                        [ void:class vocab:CooccurrenceDiseaseGene ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ], [ void:property sio:SIO_001157 ; rdfs:label "is result of text mining" ], [ void:property rdf:subject ; rdfs:label "subject" ], [ void:property rdf:object ; rdfs:label "object" ] ],
+                        [ void:class vocab:CooccurrenceGeneCompound ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ], [ void:property sio:SIO_001157 ; rdfs:label "is result of text mining" ], [ void:property rdf:subject ; rdfs:label "subject" ], [ void:property rdf:object ; rdfs:label "object" ] ],
+                        [ void:class vocab:CooccurrenceGeneDisease ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ], [ void:property sio:SIO_001157 ; rdfs:label "is result of text mining" ], [ void:property rdf:subject ; rdfs:label "subject" ], [ void:property rdf:object ; rdfs:label "object" ] ],
+                        [ void:class vocab:CooccurrenceGeneGene ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ], [ void:property sio:SIO_001157 ; rdfs:label "is result of text mining" ], [ void:property rdf:subject ; rdfs:label "subject" ], [ void:property rdf:object ; rdfs:label "object" ] ],
+                        [ void:class vocab:DescriptorCompoundIdentifier ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorConnectivitySmiles ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorCovalentUnitCount ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorDefinedAtomStereoCount ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorDefinedBondStereoCount ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorExactMass ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ], [ void:property sio:SIO_000221 ; rdfs:label "has unit" ] ],
+                        [ void:class vocab:DescriptorHeavyAtomCount ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorHydrogenBondAcceptorCount ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorHydrogenBondDonorCount ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorInChI ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorIsotopeAtomCount ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorIUPACName ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorMolecularFormula ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorMolecularWeight ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ], [ void:property sio:SIO_000221 ; rdfs:label "has unit" ] ],
+                        [ void:class vocab:DescriptorMonoIsotopicWeight ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ], [ void:property sio:SIO_000221 ; rdfs:label "has unit" ] ],
+                        [ void:class vocab:DescriptorRotatableBondCount ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorSmiles ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorStructureComplexity ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorTotalFormalCharge ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorTPSA ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ], [ void:property sio:SIO_000221 ; rdfs:label "has unit" ] ],
+                        [ void:class vocab:DescriptorUndefinedAtomStereoCount ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorUndefinedBondStereoCount ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorXLOGP3 ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:DescriptorSubstanceVersion ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:Disease ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property skos:prefLabel ; rdfs:label "name" ], [ void:property skos:altLabel ; rdfs:label "alternative label" ], [ void:property skos:closeMatch ; rdfs:label "close match" ], [ void:property skos:relatedMatch ; rdfs:label "related match" ] ],
+                        [ void:class vocab:Endpoint ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property rdfs:label ; rdfs:label "label" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ], [ void:property vocab:hasQualifier ; rdfs:label "has qualifier" ], [ void:property sio:SIO_000221 ; rdfs:label "has unit" ], [ void:property vocab:PubChemAssayOutcome ; rdfs:label "pubchem assay outcome" ], [ void:property obo:IAO_0000136 ; rdfs:label "is about" ], [ void:property cito:citesAsDataSource ; rdfs:label "cites as data source" ] ],
+                        [ void:class vocab:Gene ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property dcterms:identifier ; rdfs:label "identifier" ], [ void:property skos:prefLabel ; rdfs:label "name" ], [ void:property skos:altLabel ; rdfs:label "alternative label" ], [ void:property obo:RO_0000056 ; rdfs:label "participates in" ], [ void:property obo:RO_0000085 ; rdfs:label "has function" ], [ void:property obo:RO_0001025 ; rdfs:label "located in" ], [ void:property sio:SIO_000558 ; rdfs:label "is ortholog to" ], [ void:property bao:BAO_0002870 ; rdfs:label "has gene symbol" ], [ void:property up:organism ; rdfs:label "organism" ], [ void:property cito:isDiscussedBy ; rdfs:label "is discussed by" ], [ void:property rdfs:seeAlso ; rdfs:label "see also" ] ],
+                        [ void:class vocab:GeneSymbol ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ] ],
+                        [ void:class vocab:Grant ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property frapo:hasGrantNumber ; rdfs:label "has grant number" ], [ void:property frapo:hasFundingAgency ; rdfs:label "has funding agency" ] ],
+                        [ void:class vocab:InChIKey ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ], [ void:property dcterms:subject ; rdfs:label "subject" ], [ void:property sio:SIO_000011 ; rdfs:label "is attribute of" ] ],
+                        [ void:class vocab:Journal ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property prism:eissn ; rdfs:label "eISSN" ], [ void:property prism:issn ; rdfs:label "ISSN" ], [ void:property dcterms:title ; rdfs:label "title" ], [ void:property fabio:hasNLMJournalTitleAbbreviation ; rdfs:label "has NLM journal title abbreviation" ], [ void:property fabio:hasNationalLibraryOfMedicineJournalId ; rdfs:label "has National Library of Medicine journal id" ], [ void:property skos:exactMatch ; rdfs:label "exact match" ] ],
+                        [ void:class vocab:MeasureGroup ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property dcterms:title ; rdfs:label "title" ], [ void:property obo:OBI_0000299 ; rdfs:label "has specified output" ], [ void:property obo:RO_0000057 ; rdfs:label "has participant" ], [ void:property dcterms:source ; rdfs:label "source" ] ],
+                        [ void:class vocab:Organization ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property vcard2006:country-name ; rdfs:label "country name" ], [ void:property vcard2006:fn ; rdfs:label "formatted name" ], [ void:property skos:closeMatch ; rdfs:label "close match" ] ],
+                        [ void:class vocab:Patent ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property dcterms:abstract ; rdfs:label "abstract" ], [ void:property epo_patent:filingDate ; rdfs:label "filing date" ], [ void:property epo_patent:grantDate ; rdfs:label "grant date" ], [ void:property vocab:priorityDate ; rdfs:label "priority date" ], [ void:property epo_patent:publicationDate ; rdfs:label "publication date" ], [ void:property epo_patent:publicationNumber ; rdfs:label "publication number" ], [ void:property epo_patent:titleOfInvention ; rdfs:label "title of invention" ], [ void:property epo_patent:applicantVC ; rdfs:label "assignee" ], [ void:property epo_patent:inventorVC ; rdfs:label "inventor" ], [ void:property epo_patent:classificationIPCInventive ; rdfs:label "classification IPC inventive" ], [ void:property epo_patent:classificationCPCInventive ; rdfs:label "classification CPC inventive" ], [ void:property epo_patent:classificationCPCAdditional ; rdfs:label "classification CPC additional" ], [ void:property epo_patent:classificationIPCAdditional ; rdfs:label "classification IPC additional" ], [ void:property cito:isCitedBy ; rdfs:label "is cited by" ] ],
+                        [ void:class vocab:PatentAssignee ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property vcard2006:fn ; rdfs:label "formatted name" ] ],
+                        [ void:class vocab:PatentCPC ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property dcterms:modified ; rdfs:label "modified date" ], [ void:property dcterms:title ; rdfs:label "title" ], [ void:property epo_cpc:level ; rdfs:label "level" ], [ void:property epo_cpc:symbol ; rdfs:label "symbol" ], [ void:property skos:broader ; rdfs:label "broader" ], [ void:property epo_cpc:concordantIPC ; rdfs:label "concordant IPC" ] ],
+                        [ void:class vocab:PatentInventor ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property vcard2006:fn ; rdfs:label "formatted name" ] ],
+                        [ void:class vocab:PatentIPC ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property owl:sameAs ; rdfs:label "same as" ], [ void:property dcterms:title ; rdfs:label "title" ], [ void:property rdfs:label ; rdfs:label "label" ], [ void:property skos:broader ; rdfs:label "broader" ] ],
+                        [ void:class vocab:Pathway ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property dcterms:title ; rdfs:label "title" ], [ void:property up:organism ; rdfs:label "organism" ], [ void:property dcterms:source ; rdfs:label "source" ], [ void:property cito:isDiscussedBy ; rdfs:label "is discussed by" ], [ void:property bp3:pathwayComponent ; rdfs:label "pathway component" ], [ void:property skos:related ; rdfs:label "related pathway" ], [ void:property obo:RO_0000057 ; rdfs:label "has participant" ], [ void:property rdfs:seeAlso ; rdfs:label "see also" ] ],
+                        [ void:class vocab:Protein ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property dcterms:identifier ; rdfs:label "identifier" ], [ void:property skos:prefLabel ; rdfs:label "name" ], [ void:property skos:altLabel ; rdfs:label "alternative label" ], [ void:property bao:BAO_0002817 ; rdfs:label "has sequence" ], [ void:property vocab:hasSimilarProtein ; rdfs:label "has similar protein" ], [ void:property up:enzyme ; rdfs:label "enzyme" ], [ void:property up:encodedBy ; rdfs:label "encoded by" ], [ void:property up:organism ; rdfs:label "organism" ], [ void:property cito:isDiscussedBy ; rdfs:label "is discussed by" ], [ void:property obo:RO_0002180 ; rdfs:label "has component" ], [ void:property pdbo:link_to_pdb ; rdfs:label "link to PDB" ], [ void:property rdfs:seeAlso ; rdfs:label "see also" ] ],
+                        [ void:class vocab:Enzyme ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property skos:prefLabel ; rdfs:label "name" ], [ void:property skos:altLabel ; rdfs:label "alternative label" ], [ void:property rdfs:subClassOf ; rdfs:label "subclass of" ], [ void:property rdfs:seeAlso ; rdfs:label "see also" ] ],
+                        [ void:class vocab:Reference ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property prism:contentType ; rdfs:label "content type" ], [ void:property dcterms:title ; rdfs:label "title" ], [ void:property dcterms:bibliographicCitation ; rdfs:label "bibliographic citation" ], [ void:property dcterms:date ; rdfs:label "date" ], [ void:property prism:startingPage ; rdfs:label "starting page" ], [ void:property prism:endingPage ; rdfs:label "ending page" ], [ void:property prism:pageRange ; rdfs:label "page range" ], [ void:property prism:isbn ; rdfs:label "ISBN" ], [ void:property prism:issn ; rdfs:label "ISSN" ], [ void:property prism:issueIdentifier ; rdfs:label "issue identifier" ], [ void:property dcterms:language ; rdfs:label "language" ], [ void:property prism:publicationName ; rdfs:label "publication name" ], [ void:property dcterms:source ; rdfs:label "source" ], [ void:property fabio:hasSubjectTerm ; rdfs:label "has subject term" ], [ void:property fabio:hasPrimarySubjectTerm ; rdfs:label "has primary subject term" ], [ void:property cito:discusses ; rdfs:label "discusses" ], [ void:property dcterms:identifier ; rdfs:label "identifier" ], [ void:property dcterms:isPartOf ; rdfs:label "is part of" ], [ void:property dcterms:creator ; rdfs:label "creator" ], [ void:property frapo:hasFundingAgency ; rdfs:label "has funding agency" ], [ void:property frapo:isSupportedBy ; rdfs:label "is supported_by" ], [ void:property vocab:discussesAsDerivedByTextMining ; rdfs:label "discusses as derived by text mining" ] ],
+                        [ void:class vocab:Source ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property dcterms:title ; rdfs:label "title" ], [ void:property dcterms:alternative ; rdfs:label "alternative name" ], [ void:property dcterms:rights ; rdfs:label "license note" ], [ void:property dcterms:license ; rdfs:label "license url" ], [ void:property foaf:homepage ; rdfs:label "homepage" ], [ void:property dcterms:subject ; rdfs:label "subject" ] ],
+                        [ void:class vocab:Substance ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property dcterms:identifier ; rdfs:label "identifier" ], [ void:property dcterms:available ; rdfs:label "available date" ], [ void:property dcterms:modified ; rdfs:label "modified date" ], [ void:property vocab:substance_version ; rdfs:label "substance version" ], [ void:property dcterms:source ; rdfs:label "source" ], [ void:property sio:SIO_000008 ; rdfs:label "has attribute" ], [ void:property obo:RO_0000056 ; rdfs:label "participates in" ], [ void:property cheminf:CHEMINF_000477 ; rdfs:label "has pubchem normalized counterpart" ], [ void:property cito:isDiscussedBy ; rdfs:label "is discussed by" ], [ void:property pdbo:link_to_pdb ; rdfs:label "link to PDB" ], [ void:property rdfs:seeAlso ; rdfs:label "see also" ] ],
+                        [ void:class vocab:Synonym ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property sio:SIO_000300 ; rdfs:label "has value" ], [ void:property dcterms:subject ; rdfs:label "subject" ], [ void:property sio:SIO_000011 ; rdfs:label "is attribute of" ] ],
+                        [ void:class vocab:Taxonomy ; void:propertyPartition [ void:property rdf:type ; rdfs:label "type" ], [ void:property dcterms:identifier ; rdfs:label "identifier" ], [ void:property skos:prefLabel ; rdfs:label "name" ], [ void:property skos:altLabel ; rdfs:label "alternative label" ], [ void:property cito:isDiscussedBy ; rdfs:label "is discussed by" ], [ void:property rdfs:seeAlso ; rdfs:label "see also" ] ] .
+
