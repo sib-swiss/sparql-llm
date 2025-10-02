@@ -2,7 +2,7 @@ import re
 from collections import defaultdict
 from typing import Any, Optional, TypedDict, Union
 
-from curies_rs import Converter
+import curies
 from rdflib import Namespace, Variable
 from rdflib.paths import AlternativePath, MulPath, Path, SequencePath
 from rdflib.plugins.sparql import prepareQuery
@@ -10,6 +10,7 @@ from rdflib.plugins.sparql import prepareQuery
 from sparql_llm.utils import (
     EndpointsSchemaDict,
     SchemaDict,
+    compress_list,
     get_prefix_converter,
     get_prefixes_for_endpoint,
     get_schema_for_endpoint,
@@ -140,7 +141,7 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> EndpointsSc
 def validate_sparql_with_void(
     query: str,
     endpoint_url: str,
-    prefix_converter: Optional[Converter] = None,
+    prefix_converter: Optional[curies.Converter] = None,
     endpoints_void_dict: Optional[EndpointsSchemaDict] = None,
 ) -> set[str]:
     """Validate SPARQL query using the VoID description of endpoints. Returns a set of human-readable error messages."""
@@ -173,14 +174,14 @@ def validate_sparql_with_void(
                         continue
                     if subj_type not in void_dict and not subj_type.startswith("?"):
                         issues.add(
-                            f"Type {prefix_converter.compress_list([subj_type])[0]} for subject {subj} in endpoint {endpoint} does not exist. Available classes are: `{'`, `'.join(prefix_converter.compress_list(list(void_dict.keys())))}`"
+                            f"Type {prefix_converter.compress(subj_type, passthrough=True)} for subject {subj} in endpoint {endpoint} does not exist. Available classes are: `{'`, `'.join(compress_list(prefix_converter, list(void_dict.keys())))}`"
                         )
                     elif pred not in void_dict.get(subj_type, {}) and not pred.startswith("?"):
                         # TODO: also check if object type matches? (if defined, because it's not always available)
                         # NOTE: we use compress_list for single values also because it has passthrough enabled by default for when there is no match in the converter
                         # print(subj_type, pred, list(void_dict.get(subj_type, {}).keys()), void_dict.get(subj_type, {}))
                         issues.add(
-                            f"Subject {subj} with type `{prefix_converter.compress_list([subj_type])[0]}` in endpoint {endpoint} does not support the predicate `{prefix_converter.compress_list([pred])[0]}`. It can have the following predicates: `{'`, `'.join(prefix_converter.compress_list(list(void_dict.get(subj_type, {}).keys())))}`"
+                            f"Subject {subj} with type `{prefix_converter.compress(subj_type)}` in endpoint {endpoint} does not support the predicate `{compress_list(prefix_converter, [pred])[0]}`. It can have the following predicates: `{'`, `'.join(compress_list(prefix_converter, list(void_dict.get(subj_type, {}).keys())))}`"
                         )
                     for obj in pred_dict[pred]:
                         # Recursively validates objects that are variables
@@ -217,7 +218,7 @@ def validate_sparql_with_void(
                 if missing_pred is not None:
                     # print(f"Subject {subj} {parent_type} {parent_pred} is not a valid {potential_types} !")
                     issues.add(
-                        f"Subject {subj} in endpoint {endpoint} does not support the predicate `{prefix_converter.compress_list([missing_pred])[0]}`. Correct predicate might be one of the following: `{'`, `'.join(prefix_converter.compress_list(list(potential_preds)))}` (we inferred this variable might be of the type `{prefix_converter.compress_list([potential_type])[0]}`)"
+                        f"Subject {subj} in endpoint {endpoint} does not support the predicate `{prefix_converter.compress(missing_pred)}`. Correct predicate might be one of the following: `{'`, `'.join(compress_list(prefix_converter, list(potential_preds)))}` (we inferred this variable might be of the type `{prefix_converter.compress(potential_type)}`)"
                     )
 
         # TODO: when no type and no parent but more than 1 predicate is used, we could try to infer the type from the predicates
@@ -336,7 +337,7 @@ def validate_sparql(
                     line for line in str(e).splitlines() if "Unknown namespace prefix" not in line
                 ]
             else:
-                validation_output["errors"] = [line for line in str(e).splitlines()]
+                validation_output["errors"] = list(str(e).splitlines())
 
     # 2. Validate the SPARQL query based on schema from VoID description if no syntactic errors
     if endpoint_url and not validation_output["errors"]:

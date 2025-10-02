@@ -1,10 +1,9 @@
-import json
 import logging
 from typing import Any, Optional, TypedDict
 
+import curies
 import httpx
 import rdflib
-from curies_rs import Converter
 
 # Disable logger in your code with logging.getLogger("sparql_llm").setLevel(logging.WARNING)
 logger = logging.getLogger("sparql_llm")
@@ -69,9 +68,13 @@ def get_prefixes_for_endpoint(
     return prefixes_map
 
 
-def get_prefix_converter(prefix_dict: dict[str, str]) -> Converter:
+def get_prefix_converter(prefix_dict: dict[str, str]) -> curies.Converter:
     """Return a prefix converter."""
-    return Converter.from_prefix_map(json.dumps(prefix_dict))
+    return curies.load_prefix_map(prefix_dict)
+
+def compress_list(converter: curies.Converter, uris: list[str]) -> list[str]:
+    """Helper function to compress a list of URIs using a curies.Converter."""
+    return [converter.compress(uri, passthrough=True) for uri in uris]
 
 
 # VoID description utilities

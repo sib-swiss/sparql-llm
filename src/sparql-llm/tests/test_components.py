@@ -24,7 +24,7 @@ def test_sparql_void_shape_loader_uniprot():
 
 
 def test_sparql_void_shape_loader_bgee():
-    loader = SparqlVoidShapesLoader("https://bgee.org/sparql/")
+    loader = SparqlVoidShapesLoader("https://www.bgee.org/sparql/")
     docs = loader.load()
     assert len(docs) >= 10
 

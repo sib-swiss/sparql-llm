@@ -44,7 +44,7 @@ def get_shex_dict_from_void(
         if ignore_namespaces(namespaces_to_ignore, subject_cls):
             continue
         try:
-            subj = prefix_converter.compress(subject_cls)
+            subj = prefix_converter.compress(subject_cls, passthrough=True)
         except Exception as _e:
             subj = f"<{subject_cls}>"
         shape_iri = f"shape:{subj.replace(':', '_')}"
@@ -52,15 +52,15 @@ def get_shex_dict_from_void(
 
         for predicate, object_list in predicates.items():
             try:
-                pred = prefix_converter.compress(predicate)
+                pred = prefix_converter.compress(predicate, passthrough=True)
             except Exception as _e:
                 pred = f"<{predicate}>"
 
-            compressed_obj_list = prefix_converter.compress_list(object_list, passthrough=True)
+            # compressed_obj_list = compress_list(prefix_converter, object_list)
             compressed_obj_list = []
             for obj in object_list:
                 try:
-                    compressed_obj_list.append(prefix_converter.compress(obj))
+                    compressed_obj_list.append(prefix_converter.compress(obj, passthrough=True))
                 except Exception as _e:
                     compressed_obj_list.append(f"<{obj}>")
 
