@@ -4,6 +4,6 @@ __version__ = "0.0.8"
 
 from .utils import SparqlEndpointLinks, query_sparql
 from .validate_sparql import validate_sparql, validate_sparql_in_msg, validate_sparql_with_void
-from .sparql_examples_loader import SparqlExamplesLoader
-from .sparql_void_shapes_loader import SparqlVoidShapesLoader, get_shex_dict_from_void, get_shex_from_void
-from .sparql_info_loader import SparqlInfoLoader
+from .loaders.sparql_examples_loader import SparqlExamplesLoader
+from .loaders.sparql_void_shapes_loader import SparqlVoidShapesLoader, get_shex_dict_from_void, get_shex_from_void
+from .loaders.sparql_info_loader import SparqlInfoLoader

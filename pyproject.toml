@@ -1,33 +1,173 @@
 [project]
-name = "expasy"
+requires-python = ">=3.10"
+name = "sparql-llm"
 description = "Reusable components and complete chat system to improve Large Language Models (LLMs) capabilities when generating SPARQL queries for a given set of endpoints, using Retrieval-Augmented Generation (RAG) and SPARQL query validation from the endpoint schema."
-version = "0.0.1"
+readme = "README.md"
+license = { file = "LICENSE.txt" }
+authors = [
+    { name = "Vincent Emonet", email = "vincent.emonet@gmail.com" },
+]
+maintainers = [
+    { name = "Vincent Emonet", email = "vincent.emonet@gmail.com" },
+]
+keywords = [
+    "SPARQL",
+    "LLM",
+    "Expasy",
+    "KGQA",
+    "Chatbot",
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dynamic = ["version"]
 
-[tool.uv]
-package = false
+dependencies = [
+    "httpx >=0.27.2",
+    "rdflib >=7.0.0",
+    "SPARQLWrapper >=2.0.0",
+    "beautifulsoup4 >=4.13.0",
+    "curies >=0.11.0",
+    "langchain-core >=0.3.34",
+]
 
-# https://docs.astral.sh/uv/concepts/projects/workspaces
-[tool.uv.workspace]
-members = ["src/*"]
-
-[tool.uv.sources]
-sparql-llm = { workspace = true }
-expasy-agent = { workspace = true }
+[project.optional-dependencies]
+agent = [
+    # LangGraph dependencies
+    "langgraph >=0.2.61",
+    "langchain >=0.3.14",
+    "langchain-community >=0.3.17",
+    "langchain-openai >=0.1.22",
+    "langchain-azure-ai >=0.1.0",
+    "langchain-groq >=0.2.4",
+    "langchain-together >=0.3.0",
+    "langchain-mcp-adapters >=0.1.10",
+    "langchain-qdrant @ git+https://github.com/langchain-ai/langchain.git#subdirectory=libs/partners/qdrant",
+    "qdrant-client >=1.13.0",
+    "langfuse >=3.0.8",
+    # "langchain-qdrant >=0.2.1",
+    # "langchain-huggingface", # This will install torch and many heavy nvidia dependencies
+    # "langchain-deepseek >=0.1.1",
+    # "langchain-anthropic >=0.1.23",
+    # "langchain-fireworks >=0.1.7",
+    # Dependencies to deploy the API
+    "uvicorn[standard] >=0.34.0",
+    "pydantic >=2.10.0",
+    "pydantic-settings >=2.7.0",
+    "jinja2 >=3.1.5",
+    "sentry-sdk[fastapi] >=2.27.0", # Error reporting at the SIB
+    # Extract potential entities from text without LLM
+    # "scispacy >=0.5.5",
+    # "en_core_sci_md @ https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_md-0.5.4.tar.gz",
+    "pandas >=2.2.3",
+    "markdownify>=1.1.0",
+    "matplotlib>=3.10.3",
+    "seaborn>=0.13.2",
+]
+cpu = [
+    "fastembed >=0.5.1",
+]
+gpu = [
+    "fastembed-gpu >=0.5.1",
+]
 
 [dependency-groups]
 dev = [
     "pytest >=8.3.4",
     "pytest-cov >=6.0.0",
-    "ruff >=0.9.6",
+    "ruff >=0.9.5",
     "mypy >=1.15.0",
     "pre-commit >=4.1.0",
-    "ipykernel >=6.29.5",
     "pandas >=2.2.3",
-    "SPARQLWrapper >=2.0.0",
-    "sparql-llm",
-    "expasy-agent[cpu]",
-
-    # "chainlit",
-    # "pyright",
-    # "oxrdflib",
+    # "ipykernel >=6.29.5",
 ]
+
+# # Required for onnxruntime-gpu on CUDA 12
+# [tool.uv.pip]
+# extra-index-url = ["https://aiinfra.pkgs.visualstudio.com/Publicsrc/_packaging/onnxruntime-cuda-12/pypi/simple/"]
+
+[project.urls]
+Homepage = "https://github.com/sib-swiss/sparql-llm"
+Documentation = "https://github.com/sib-swiss/sparql-llm"
+History = "https://github.com/sib-swiss/sparql-llm/releases"
+Tracker = "https://github.com/sib-swiss/sparql-llm/issues"
+Source = "https://github.com/sib-swiss/sparql-llm"
+
+[project.scripts]
+sparql-llm = "sparql_llm.agent.mcp:cli"
+
+## TOOLS
+[tool.hatch.version]
+path = "src/sparql_llm/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sparql_llm"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope="session"
+addopts = [
+    "-vvv",           # Verbose level 3
+    "--durations=10", # Show 10 slowest tests durations
+    "--cov=src",
+    "--color=yes",
+    "--cov-report=term-missing",
+]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+exclude = [
+    "notebooks",
+    "**/__init__.py",
+]
+
+[tool.ruff.lint]
+select = [
+    "I",     # isort
+    "N",     # pep8-naming
+    "S",     # bandit
+    "A",     # flake8-builtins
+    "YTT",   # flake8-2020
+    "B",     # flake8-bugbear
+    "C",     # flake8-comprehensions
+    "ICN",   # flake8-import-conventions
+    "SIM",   # flake8-simplify
+    "TID",   # flake8-tidy-imports
+    "Q",     # flake8-quotes
+    # "FBT",   # flake8-boolean-trap
+    "F",     # pyflakes
+    "UP",    # pyupgrade
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "PLC",   # pylint convention
+    "PLE",   # pylint error
+    "PLW",   # pylint warning
+    "RUF",   # ruff specific
+    "T",
+]
+ignore = [
+    "E501", # line too long
+    "C901", # too complex
+    "T201", # do not use print
+    "B008", # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["I", "F401"] # module imported but unused
+# Tests can use magic values, assertions, and relative imports:
+"tests/*" = ["PLR2004", "S101", "S105", "TID252"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

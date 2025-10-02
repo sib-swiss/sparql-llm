@@ -8,13 +8,15 @@ RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 # COPY src/sparql-llm/pyproject.toml /app/src/sparql-llm/pyproject.toml
 # RUN uv sync
 
+WORKDIR /app
+
 COPY . /app/
 
-WORKDIR /app/src/expasy-agent
+# WORKDIR /app/src/expasy-agent
 
-RUN uv sync --frozen --extra cpu
+RUN uv sync --frozen --extra cpu --extra agent
 
 ENV PYTHONUNBUFFERED='1'
 
 # ENTRYPOINT [ "sleep", "infinity" ]
-ENTRYPOINT ["uv", "run", "uvicorn", "src.expasy_agent.main:app", "--host", "0.0.0.0", "--port", "80", "--workers", "6"]
+ENTRYPOINT ["uv", "run", "uvicorn", "src.sparql_llm.agent.main:app", "--host", "0.0.0.0", "--port", "80", "--workers", "6"]

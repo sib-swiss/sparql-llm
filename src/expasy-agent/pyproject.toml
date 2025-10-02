@@ -72,8 +72,8 @@ dev = [
     "langgraph-cli[inmem] >=0.1.71",
 ]
 
-[tool.uv.sources]
-sparql-llm = { workspace = true }
+# [tool.uv.sources]
+# sparql-llm = { workspace = true }
 
 [build-system]
 requires = ["setuptools>=73.0.0", "wheel"]

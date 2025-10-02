@@ -15,11 +15,14 @@ mcp_url = "http://localhost:8888/mcp"
 
 async def main():
     # Use official MCP SDK client
-    async with streamablehttp_client(mcp_url) as (
-        read_stream,
-        write_stream,
-        _,
-    ), ClientSession(read_stream, write_stream) as session:
+    async with (
+        streamablehttp_client(mcp_url) as (
+            read_stream,
+            write_stream,
+            _,
+        ),
+        ClientSession(read_stream, write_stream) as session,
+    ):
         # Initialize the connection
         await session.initialize()
         # List available tools
