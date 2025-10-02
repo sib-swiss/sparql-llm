@@ -9,27 +9,25 @@ import re
 from datetime import datetime
 from typing import Any, Optional
 
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from langchain_core.runnables import RunnableConfig
 from langfuse.langchain import CallbackHandler  # type: ignore
 from pydantic import BaseModel
 from starlette.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+from starlette.responses import HTMLResponse, JSONResponse, StreamingResponse
+from starlette.staticfiles import StaticFiles
+from starlette.templating import Jinja2Templates
 
 from expasy_agent.config import settings
 from expasy_agent.graph import graph
-
-# Alternative: https://github.com/JoshuaC215/agent-service-toolkit
+from expasy_agent.mcp import mcp
 
 if settings.sentry_url:
     import sentry_sdk
 
     sentry_sdk.init(
         dsn=settings.sentry_url,
-        # Add data like request headers and IP for users,
-        # see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
+        # Add data like request headers and IP for users, see https://docs.sentry.io/platforms/python/data-management/data-collected/ for more info
         send_default_pii=True,
         # Set traces_sample_rate to 1.0 to capture 100% of transactions for tracing.
         traces_sample_rate=0.0,
@@ -39,11 +37,15 @@ if settings.sentry_url:
 # langfuse = get_client()
 langfuse_handler = [CallbackHandler()] if os.getenv("LANGFUSE_SECRET_KEY") else []
 
-app = FastAPI(
-    title=settings.app_name,
-    description="""This service helps users to use resources from the Swiss Institute of Bioinformatics,
-such as SPARQL endpoints, to get information about proteins, genes, and other biological entities.""",
-)
+# app = FastAPI(
+#     title=settings.app_name,
+#     description="""This service helps users to use resources from the Swiss Institute of Bioinformatics,
+# such as SPARQL endpoints, to get information about proteins, genes, and other biological entities.""",
+#     # lifespan=mcp_app.lifespan
+# )
+
+# Get the MCP Starlette app and mount routes to it
+app = mcp.streamable_http_app()
 
 app.add_middleware(
     CORSMiddleware,
@@ -125,9 +127,7 @@ async def stream_response(inputs: dict[str, list], config: RunnableConfig):
     yield "data: [DONE]"
 
 
-# @app.post("/chat/completions")
-@app.post("/chat")
-async def chat(request: Request):
+async def chat_handler(request: Request):
     """Chat with the assistant main endpoint."""
     auth_header = request.headers.get("Authorization", "")
     if settings.chat_api_key and (
@@ -169,7 +169,11 @@ async def chat(request: Request):
 
     response = await graph.ainvoke(inputs, config=config)
     # print(response)
-    return response
+    return JSONResponse(content=response)
+
+
+# Add chat routes directly to the MCP app
+app.router.add_route("/chat", chat_handler, methods=["POST"])
 
 
 class LogMessage(Message):
@@ -197,26 +201,26 @@ def log_msg(filename: str, messages: list[LogMessage]) -> None:
         f.write(json.dumps(feedback_data) + "\n")
 
 
-@app.post("/feedback")
-def post_like(request: FeedbackRequest):
+async def feedback_handler(request: Request):
     """Save the user feedback in the logs files."""
+    feedback_request = FeedbackRequest(**await request.json())
     filename = (
         f"{logs_folder}/likes.jsonl"
-        if request.like
+        if feedback_request.like
         else f"{logs_folder}/dislikes.jsonl"
     )
-    log_msg(filename, request.messages)
-    return {"status": "success"}
+    log_msg(filename, feedback_request.messages)
+    return JSONResponse(content={"status": "success"})
 
 
 class LogsRequest(BaseModel):
     api_key: str
 
 
-@app.post("/logs", response_model=list[str])
-def get_user_logs(request: LogsRequest):
+async def logs_handler(request: Request):
     """Get the list of user questions from the logs file."""
-    if settings.logs_api_key and request.api_key != settings.logs_api_key:
+    logs_request = LogsRequest(**await request.json())
+    if settings.logs_api_key and logs_request.api_key != settings.logs_api_key:
         raise ValueError("Invalid API key")
     questions = set()
     pattern = re.compile(
@@ -231,8 +235,7 @@ def get_user_logs(request: LogsRequest):
                 # questions.append({"date": date_time, "question": question})
                 questions.add(question)
 
-    return list(questions)
-
+    return JSONResponse(content=list(questions))
 
 # Serve website built using vitejs
 templates = Jinja2Templates(directory="src/expasy_agent/webapp")
@@ -243,8 +246,7 @@ app.mount(
 )
 
 
-@app.get("/", response_class=HTMLResponse, include_in_schema=False)
-def chat_ui(request: Request) -> Any:
+async def ui_handler(request: Request) -> HTMLResponse:
     """Render the chat UI using jinja2 + HTML."""
     return templates.TemplateResponse(
         "index.html",
@@ -264,3 +266,8 @@ def chat_ui(request: Request) -> Any:
             #             "favicon": "https://www.expasy.org/favicon.ico",
         },
     )
+
+# Add routes directly to the MCP app
+app.router.add_route("/", ui_handler, methods=["GET"])
+app.router.add_route("/feedback", feedback_handler, methods=["POST"])
+app.router.add_route("/logs", logs_handler, methods=["POST"])

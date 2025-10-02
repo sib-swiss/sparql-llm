@@ -23,6 +23,7 @@ dependencies = [
     "langchain-azure-ai >=0.1.0",
     "langchain-groq >=0.2.4",
     "langchain-together >=0.3.0",
+    "langchain-mcp-adapters",
     "langchain-qdrant @ git+https://github.com/langchain-ai/langchain.git#subdirectory=libs/partners/qdrant",
     "qdrant-client >=1.13.0",
     "langfuse >=3.0.8",
