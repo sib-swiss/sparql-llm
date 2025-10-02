@@ -26,13 +26,12 @@ def extract_sparql_queries(md_resp: str) -> list[dict[str, Optional[str]]]:
     queries = queries_pattern.findall(md_resp)
     for query in queries:
         extracted_endpoint = endpoint_pattern.search(query.strip())
-        if extracted_endpoint:
-            extracted_queries.append(
-                {
-                    "query": str(query).strip(),
-                    "endpoint_url": str(extracted_endpoint.group(1)).strip() if extracted_endpoint else None,
-                }
-            )
+        extracted_queries.append(
+            {
+                "query": str(query).strip(),
+                "endpoint_url": str(extracted_endpoint.group(1)).strip() if extracted_endpoint else None,
+            }
+        )
     return extracted_queries
 
 

@@ -49,6 +49,7 @@ dependencies = [
     "markdownify>=1.1.0",
     "matplotlib>=3.10.3",
     "seaborn>=0.13.2",
+    "joblib>=1.5.1",
 ]
 
 [project.optional-dependencies]
