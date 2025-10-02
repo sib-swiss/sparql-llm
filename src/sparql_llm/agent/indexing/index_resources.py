@@ -23,10 +23,10 @@ SCHEMA = Namespace("http://schema.org/")
 def load_schemaorg_description(endpoint: SparqlEndpointLinks) -> list[Document]:
     """Extract datasets descriptions from the schema.org metadata in homepage of the endpoint"""
     docs = []
-    if endpoint["homepage_url"]:
-        try:
+    try:
+        if endpoint.get("homepage_url"):
             resp = httpx.get(
-                endpoint["homepage_url"],
+                endpoint.get("homepage_url"),
                 headers={
                     # "User-Agent": "BgeeBot/1.0",
                     # Adding a user-agent to make it look like we are a google bot to trigger SSR on Bgee
@@ -92,8 +92,8 @@ def load_schemaorg_description(endpoint: SparqlEndpointLinks) -> list[Document]:
                 )
             )
             # print("\n".join(descs))
-        except Exception as e:
-            print(f"Error while fetching schema.org metadata from {endpoint['label']}: {e}")
+    except Exception as e:
+        print(f"Error while fetching schema.org metadata from {endpoint['label']}: {e}")
     return docs
 
 

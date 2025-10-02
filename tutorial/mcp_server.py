@@ -4,9 +4,9 @@ import os
 from dataclasses import dataclass, field
 
 from fastembed import TextEmbedding
+from mcp.server.fastmcp import FastMCP
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
-from mcp.server.fastmcp import FastMCP
 from sparql_llm.utils import query_sparql
 
 
@@ -19,11 +19,12 @@ class ServerConfig:
     vectordb_host: str = os.getenv("VECTORDB_HOST", "localhost")
     endpoints: list[dict[str, str]] = field(
         default_factory=lambda: [
-            { "endpoint_url": "https://sparql.uniprot.org/sparql/" },
-            { "endpoint_url": "https://www.bgee.org/sparql/" },
+            {"endpoint_url": "https://sparql.uniprot.org/sparql/"},
+            {"endpoint_url": "https://www.bgee.org/sparql/"},
             {"endpoint_url": "https://sparql.omabrowser.org/sparql/"},
         ]
     )
+
 
 config = ServerConfig()
 
@@ -76,7 +77,8 @@ async def access_sib_biodata_sparql(question: str, potential_classes: list[str],
             if doc.payload
             and doc.payload.get("metadata", {}).get("answer")
             not in {
-                existing_doc.payload.get("metadata", {}).get("answer") if existing_doc.payload else None for existing_doc in relevant_docs
+                existing_doc.payload.get("metadata", {}).get("answer") if existing_doc.payload else None
+                for existing_doc in relevant_docs
             }
         )
         # Get other relevant documentation (classes schemas, general information)
@@ -98,14 +100,16 @@ async def access_sib_biodata_sparql(question: str, potential_classes: list[str],
             if doc.payload
             and doc.payload.get("metadata", {}).get("answer")
             not in {
-                existing_doc.payload.get("metadata", {}).get("answer") if existing_doc.payload else None for existing_doc in relevant_docs
+                existing_doc.payload.get("metadata", {}).get("answer") if existing_doc.payload else None
+                for existing_doc in relevant_docs
             }
         )
-    return PROMPT_TOOL_SPARQL +  format_docs(relevant_docs)
+    return PROMPT_TOOL_SPARQL + format_docs(relevant_docs)
 
 
 def format_docs(docs: list[ScoredPoint]) -> str:
     return "\n".join(_format_doc(doc) for doc in docs)
+
 
 def _format_doc(doc: ScoredPoint) -> str:
     """Format a question/answer document to be provided as context to the model."""
@@ -156,7 +160,6 @@ def execute_sparql_query(sparql_query: str, endpoint_url: str) -> str:
     return resp_msg
 
 
-
 FIX_QUERY_PROMPT = """Please fix the query, and try again.
 We suggest you to make the query less restricted, e.g. use a broader regex for string matching instead of exact match,
 ignore case, make sure you are not overriding an existing variable with BIND, or break down your query in smaller parts
@@ -172,7 +175,9 @@ and check them one by one."""
 
 def main() -> None:
     """Run the MCP server with appropriate transport."""
-    parser = argparse.ArgumentParser(description="A Model Context Protocol (MCP) server for BioData resources at the SIB.")
+    parser = argparse.ArgumentParser(
+        description="A Model Context Protocol (MCP) server for BioData resources at the SIB."
+    )
     parser.add_argument("--stdio", action="store_true", help="Use STDIO transport")
     parser.add_argument("--port", type=int, default=8888, help="Port to run the server on")
     args = parser.parse_args()

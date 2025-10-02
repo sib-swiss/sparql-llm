@@ -13,7 +13,10 @@ handler = logging.StreamHandler()
 formatter = logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s")
 # handler.setFormatter(formatter)
 logger.addHandler(handler)
-# logger.propagate = False
+logger.propagate = False
+
+# logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 class SparqlEndpointLinks(TypedDict, total=False):

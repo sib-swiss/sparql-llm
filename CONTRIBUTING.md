@@ -72,7 +72,6 @@ Get a PyPI API token at [pypi.org/manage/account](https://pypi.org/manage/accoun
 
    ```bash
    uv build
-   cd ../..
    uv publish
    ```
 

@@ -49,7 +49,6 @@ except Exception as e:
     # Continue without initialization to avoid blocking the app startup
 
 
-
 # TODO: tool get_classes_schema
 # potential_entities: Potential entities and instances of classes
 @mcp.tool()
@@ -305,7 +304,9 @@ def _format_doc(doc: ScoredPoint) -> str:
 
 def cli() -> None:
     """Run the MCP server with appropriate transport."""
-    parser = argparse.ArgumentParser(description="A Model Context Protocol (MCP) server for BioData resources at the SIB.")
+    parser = argparse.ArgumentParser(
+        description="A Model Context Protocol (MCP) server for BioData resources at the SIB."
+    )
     parser.add_argument("--stdio", action="store_true", help="Use STDIO transport")
     parser.add_argument("--port", type=int, default=8888, help="Port to run the server on")
     args = parser.parse_args()
@@ -314,6 +315,7 @@ def cli() -> None:
     else:
         mcp.settings.port = args.port
         mcp.run(transport="streamable-http")
+
 
 # if __name__ == "__main__":
 #     cli()

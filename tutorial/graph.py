@@ -1,12 +1,13 @@
 from typing import Literal
-from langchain_qdrant import QdrantVectorStore
+
+import chainlit as cl
 from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_core.documents import Document
 from langchain_core.language_models import BaseChatModel
+from langchain_qdrant import QdrantVectorStore
 from langgraph.graph import StateGraph
 from langgraph.graph.message import MessagesState
 from qdrant_client.models import FieldCondition, Filter, MatchValue
-import chainlit as cl
 
 
 def load_chat_model(model: str) -> BaseChatModel:
@@ -144,7 +145,9 @@ def call_model(state: AgentState):
 
 
 import logging
+
 from sparql_llm.utils import get_prefixes_and_schema_for_endpoints
+
 from index import endpoints
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -153,8 +156,8 @@ logging.info("Initializing endpoints metadata...")
 prefixes_map, endpoints_void_dict = get_prefixes_and_schema_for_endpoints(endpoints)
 
 
-from sparql_llm import validate_sparql_in_msg
 from langchain_core.messages import AIMessage
+from sparql_llm import validate_sparql_in_msg
 
 
 async def validate_output(

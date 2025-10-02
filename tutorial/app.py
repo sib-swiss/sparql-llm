@@ -77,7 +77,7 @@ from fastembed import TextEmbedding
 from langchain_core.documents import Document
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
-from sparql_llm import SparqlExamplesLoader, SparqlInfoLoader, SparqlVoidShapesLoader
+from sparql_llm import SparqlExamplesLoader, SparqlVoidShapesLoader
 
 # List of endpoints that will be used
 endpoints: list[dict[str, str]] = [
@@ -191,7 +191,6 @@ def format_doc(doc: ScoredPoint) -> str:
     return f"\n{doc.payload['question']} ({doc.payload.get('endpoint_url', '')}):\n\n```{doc_lang}\n{doc.payload.get('answer')}\n```\n\n"
 
 
-
 SYSTEM_PROMPT = """You are an assistant that helps users to write SPARQL queries.
 Put the SPARQL query inside a markdown codeblock with the "sparql" language tag, and always add the URL of the endpoint on which the query should be executed in a comment at the start of the query inside the codeblocks starting with "#+ endpoint: " (always only 1 endpoint).
 Use the queries examples and classes shapes provided in the prompt to derive your answer, don't try to create a query from nothing and do not provide a generic query.
@@ -204,8 +203,8 @@ Here is a list of documents (reference questions and query answers, classes sche
 
 ## 4. Execute generated SPARQL query
 
-from sparql_llm.validate_sparql import extract_sparql_queries
 from sparql_llm.utils import query_sparql
+from sparql_llm.validate_sparql import extract_sparql_queries
 
 
 def execute_query(last_msg: str) -> list[dict[str, str]]:
@@ -285,11 +284,13 @@ async def set_starters():
         # ),
     ]
 
+
 # To start the chat web UI, run:
 # uv run chainlit run app.py
 
 # To run the main function, run:
 # uv run --env-file .env app.py
+
 
 async def main():
     question = "What are the rat orthologs of human TP53?"

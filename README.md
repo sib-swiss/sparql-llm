@@ -72,7 +72,11 @@ In VSCode `mcp.json` you should have the following:
 }
 ```
 
-You can click the wrench and screwdriver button 🛠️ (`Select Tools...`) to enable/disable specific tools
+> [!IMPORTANT]
+>
+> Click on `Start` just on top of `"expasy-mcp-server"` to start the connection to the MCP server.
+>
+> You can click the wrench and screwdriver button 🛠️ (`Select Tools...`) to enable/disable specific tools
 
 > [!NOTE]
 >

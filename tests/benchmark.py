@@ -24,9 +24,7 @@ logger = logging.getLogger("benchmark")
 logger.propagate = False
 logger.setLevel(logging.INFO)
 
-file_handler = logging.FileHandler(
-    os.path.join(bench_folder, f"{file_time_prefix}_tests_output.md"), mode="w"
-)
+file_handler = logging.FileHandler(os.path.join(bench_folder, f"{file_time_prefix}_tests_output.md"), mode="w")
 file_handler.setFormatter(logging.Formatter("%(message)s"))
 logger.addHandler(file_handler)
 console_handler = logging.StreamHandler(sys.stdout)
@@ -682,18 +680,14 @@ for i, test_query in enumerate(example_queries):
     while not res_ref_finally_pass:
         try:
             query_start_time = time.time()
-            res_from_ref = query_sparql(
-                test_query["query"], test_query["endpoint"], timeout=300
-            )["results"]["bindings"]
+            res_from_ref = query_sparql(test_query["query"], test_query["endpoint"], timeout=300)["results"]["bindings"]
             logger.info(
                 f"- [x] Reference query {i} '{test_query['question']}' took {time.time() - query_start_time:.2f} seconds"
             )
             ref_results.append(res_from_ref)
             res_ref_finally_pass = True
         except Exception as e:
-            logger.info(
-                f"- [ ] Timeout for reference query {i}: {e}, Trying again because we know it should work."
-            )
+            logger.info(f"- [ ] Timeout for reference query {i}: {e}, Trying again because we know it should work.")
             res_ref_finally_pass = False
     # res_from_ref = query_sparql(test_query["query"], QLEVER_UNIPROT)["results"]["bindings"]
 
@@ -716,30 +710,19 @@ for model_label, model in models.items():
                 # TODO: loop over all messages to get the total token usage in case of multiple messages (fix by calling LLM)
                 for msg in response["messages"]:
                     # Retrieve token usage for all messages in the response
-                    if (
-                        "response_metadata" in msg
-                        and "token_usage" in msg["response_metadata"]
-                    ):
-                        res[approach]["input_tokens"] += msg["response_metadata"][
-                            "token_usage"
-                        ]["prompt_tokens"]
-                        res[approach]["output_tokens"] += msg["response_metadata"][
-                            "token_usage"
-                        ]["completion_tokens"]
+                    if "response_metadata" in msg and "token_usage" in msg["response_metadata"]:
+                        res[approach]["input_tokens"] += msg["response_metadata"]["token_usage"]["prompt_tokens"]
+                        res[approach]["output_tokens"] += msg["response_metadata"]["token_usage"]["completion_tokens"]
                         # res[approach]["input_tokens"] += response["messages"][-1]["response_metadata"]["token_usage"]["  prompt_tokens"]
                         # res[approach]["output_tokens"] += response["messages"][-1]["response_metadata"]["token_usage"]["completion_tokens"]
                         # print(chat_resp_md)
                 try:
                     generated_sparqls = extract_sparql_queries(chat_resp_md)
                     if len(generated_sparqls) == 0:
-                        raise Exception(
-                            f"No SPARQL query could be extracted from {chat_resp_md}"
-                        )
+                        raise Exception(f"No SPARQL query could be extracted from {chat_resp_md}")
                     generated_sparql = generated_sparqls[-1]
                     if generated_sparql["query"].strip() == test_query["query"].strip():
-                        logger.info(
-                            f"✅ {t + 1}/{number_of_tries} {test_query['question']}. EXACT MATCH\n"
-                        )
+                        logger.info(f"✅ {t + 1}/{number_of_tries} {test_query['question']}. EXACT MATCH\n")
                         res[approach]["success"] += 1
                         continue
 
@@ -751,9 +734,7 @@ for model_label, model in models.items():
                     )["results"]["bindings"]
                     # res_from_generated = query_sparql(generated_sparql["query"], QLEVER_UNIPROT)["results"]["bindings"]
 
-                    if not result_sets_are_same(
-                        res_from_generated, ref_results[query_num]
-                    ):
+                    if not result_sets_are_same(res_from_generated, ref_results[query_num]):
                         if len(res_from_generated) == 0:
                             res[approach]["no_results"] += 1
                         else:
@@ -770,9 +751,7 @@ for model_label, model in models.items():
                 except Exception as e:
                     res[approach]["fail"] += 1
                     if approach == "RAG with validation":
-                        logger.info(
-                            f"❌ {t + 1}/{number_of_tries} {test_query['question']}\n{e}\n"
-                        )
+                        logger.info(f"❌ {t + 1}/{number_of_tries} {test_query['question']}\n{e}\n")
                         logger.info(f"```sparql\n{generated_sparql['query']}\n```\n")
                         logger.info("Correct query:\n")
                         logger.info(f"```sparql\n{test_query['query']}\n```\n")
@@ -788,39 +767,27 @@ for model_label, model in models.items():
             + (result_row["output_tokens"] * model["price_output"] / 1000000)
         ) / (len(example_queries) * number_of_tries)
         precision = result_row["success"] / (result_row["success"] + result_row["fail"])
-        recall = result_row["success"] / (
-            result_row["success"] + result_row["fail"] - result_row["different_results"]
-        )
+        recall = result_row["success"] / (result_row["success"] + result_row["fail"] - result_row["different_results"])
         results_data["Model"].append(model_label)
         results_data["RAG Approach"].append(approach)
         results_data["Success"].append(result_row["success"])
         results_data["Different Results"].append(result_row["different_results"])
         results_data["No Results"].append(result_row["no_results"])
-        results_data["Errors"].append(
-            result_row["fail"]
-            - result_row["no_results"]
-            - result_row["different_results"]
-        )
+        results_data["Errors"].append(result_row["fail"] - result_row["no_results"] - result_row["different_results"])
         results_data["Price"].append(round(mean_price, 5))
         # results_data['Precision'].append(precision)
         # results_data['Recall'].append(recall)
         if precision + recall == 0:
             results_data["F1"].append(0)
         else:
-            results_data["F1"].append(
-                round(2 * (precision * recall) / (precision + recall), 2)
-            )
+            results_data["F1"].append(round(2 * (precision * recall) / (precision + recall), 2))
 
 logger.info("## Results\n")
 
 df = pd.DataFrame(results_data)
 logger.info(df)
 logger.info("\n\n")
-logger.info(
-    df.to_csv(
-        os.path.join(bench_folder, f"{file_time_prefix}_tests_results.csv"), index=False
-    )
-)
+logger.info(df.to_csv(os.path.join(bench_folder, f"{file_time_prefix}_tests_results.csv"), index=False))
 
 # Output Latex table
 # latex_str = ""

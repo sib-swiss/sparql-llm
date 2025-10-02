@@ -16,23 +16,22 @@ from sparql_llm.validate_sparql import extract_sparql_queries, validate_sparql
 
 app = fastapi.FastAPI(title="TEXT2SPARQL API")
 
-KNOWN_DATASETS = [
-    "https://text2sparql.aksw.org/2025/dbpedia/",
-    "https://text2sparql.aksw.org/2025/corporate/"
-]
+KNOWN_DATASETS = ["https://text2sparql.aksw.org/2025/dbpedia/", "https://text2sparql.aksw.org/2025/corporate/"]
 
-MODEL = 'openrouter/openai/gpt-4.1-nano'
-DOCKER_ENDPOINT_URL = 'http://text2sparql-virtuoso:8890/sparql/'
-ENDPOINT_URL = 'http://localhost:8890/sparql/'
+MODEL = "openrouter/openai/gpt-4.1-nano"
+DOCKER_ENDPOINT_URL = "http://text2sparql-virtuoso:8890/sparql/"
+ENDPOINT_URL = "http://localhost:8890/sparql/"
 
 SCHEMAS = {}
 for dataset in KNOWN_DATASETS:
-    with open(os.path.join('/', 'data', 'benchmarks', 'Text2SPARQL', 'schemas', f'{dataset.split('/')[-2]}_schema.json'), 'r', encoding='utf-8') as f:
+    with open(
+        os.path.join("/", "data", "benchmarks", "Text2SPARQL", "schemas", f"{dataset.split('/')[-2]}_schema.json"),
+        encoding="utf-8",
+    ) as f:
         SCHEMAS[dataset] = json.load(f)
     SCHEMAS[dataset][DOCKER_ENDPOINT_URL] = SCHEMAS[dataset].pop(ENDPOINT_URL)
 
-RAG_PROMPT = (
-"""
+RAG_PROMPT = """
 
 Here is a list of reference user questions and corresponding SPARQL query answers that will help you formulate the SPARQL query:
 
@@ -45,10 +44,8 @@ When there is no range information for a predicate, try to infer it based on the
 {relevant_classes}
 
 """
-)
 
-RESOLUTION_PROMPT = (
-"""
+RESOLUTION_PROMPT = """
 You are an assistant that helps users formulate SPARQL queries to be executed on a SPARQL endpoint.
 Your role is to transform the user question into a SPARQL query based on the context provided in the prompt.
 
@@ -60,16 +57,16 @@ Your response must follow these rules:
     - Prefer a single endpoint; use a federated SPARQL query only if access across multiple endpoints is required.
     - Do not add more codeblocks than necessary.
 """
-)
 
 embedding_model = TextEmbedding(settings.embedding_model)
 vectordb = QdrantClient(url=settings.vectordb_url, prefer_grpc=True)
+
 
 @app.get("/")
 async def get_answer(question: str, dataset: str):
     if dataset not in KNOWN_DATASETS:
         raise fastapi.HTTPException(404, "Unknown dataset ...")
-    #Retrieve relevant queries
+    # Retrieve relevant queries
     question_embeddings = next(iter(embedding_model.embed([question])))
     retrieved_queries = vectordb.query_points(
         collection_name=f"text2sparql-{dataset.split('/')[-2]}",
@@ -85,7 +82,7 @@ async def get_answer(question: str, dataset: str):
         ),
     )
 
-    #Retrieve relevant classes
+    # Retrieve relevant classes
     retrieved_classes = vectordb.query_points(
         collection_name=f"text2sparql-{dataset.split('/')[-2]}",
         query=question_embeddings,
@@ -100,41 +97,43 @@ async def get_answer(question: str, dataset: str):
         ),
     )
 
-    #Initial interaction with the chat model
-    relevant_queries = '\n\n'.join(json.dumps(doc.payload['metadata'], indent=2) for doc in retrieved_queries.points)
-    relevant_classes = '\n\n'.join(doc.payload['metadata']['desc'] for doc in retrieved_classes.points)
+    # Initial interaction with the chat model
+    relevant_queries = "\n\n".join(json.dumps(doc.payload["metadata"], indent=2) for doc in retrieved_queries.points)
+    relevant_classes = "\n\n".join(doc.payload["metadata"]["desc"] for doc in retrieved_classes.points)
     # logger.info(f"📚️ Retrieved {len(retrieved_docs.points)} documents")
     client = load_chat_model(Configuration(model=MODEL))
     messages = [
-                SystemMessage(content=RESOLUTION_PROMPT + RAG_PROMPT.format(relevant_queries=relevant_queries, relevant_classes=relevant_classes)),
-                HumanMessage(content=question)
-            ]
+        SystemMessage(
+            content=RESOLUTION_PROMPT
+            + RAG_PROMPT.format(relevant_queries=relevant_queries, relevant_classes=relevant_classes)
+        ),
+        HumanMessage(content=question),
+    ]
 
     response = client.invoke(messages)
 
-    #Validation and fixing of the generated SPARQL query
+    # Validation and fixing of the generated SPARQL query
     num_of_tries = 0
-    resp_msg = '\n\n# Make sure you will not repeat the mistakes below: \n'
+    resp_msg = "\n\n# Make sure you will not repeat the mistakes below: \n"
     while num_of_tries < settings.default_max_try_fix_sparql:
-
         try:
-            generated_sparql = ''
+            generated_sparql = ""
             chat_resp_md = response.model_dump()["content"]
 
             generated_sparqls = extract_sparql_queries(chat_resp_md)
-            generated_sparql = generated_sparqls[-1]['query'].strip()
+            generated_sparql = generated_sparqls[-1]["query"].strip()
             generated_sparql = generated_sparql.replace(ENDPOINT_URL, DOCKER_ENDPOINT_URL)
             # print(f"Generated SPARQL query: {generated_sparql}")
             # print(f"Response message: {resp_msg}")
-        except Exception as e:
-            resp_msg += f"## No SPARQL query could be extracted from the model response. Please provide a valid SPARQL query based on the provided information and try again.\n"
-        if generated_sparql != '':
+        except Exception:
+            resp_msg += "## No SPARQL query could be extracted from the model response. Please provide a valid SPARQL query based on the provided information and try again.\n"
+        if generated_sparql != "":
             try:
                 res = query_sparql(generated_sparql, DOCKER_ENDPOINT_URL)
                 if res.get("results", {}).get("bindings"):
                     # Successfully generated a query with results
                     if num_of_tries > 0:
-                        print(f"✅ Fixed SPARQL query. Conversation:\n")
+                        print("✅ Fixed SPARQL query. Conversation:\n")
                         for msg in messages:
                             print(f"{msg.type}: {msg.content}\n")
                     break
@@ -142,7 +141,9 @@ async def get_answer(question: str, dataset: str):
                     raise Exception("No results")
 
             except Exception as e:
-                validation_output = validate_sparql(query=generated_sparql, endpoint_url=DOCKER_ENDPOINT_URL, endpoints_void_dict=SCHEMAS[dataset])
+                validation_output = validate_sparql(
+                    query=generated_sparql, endpoint_url=DOCKER_ENDPOINT_URL, endpoints_void_dict=SCHEMAS[dataset]
+                )
                 if validation_output["errors"]:
                     error_str = "- " + "\n- ".join(validation_output["errors"])
                     resp_msg += f"## SPARQL query not valid. Please fix the query based on the provided information and try again.\n### Erroneous SPARQL query\n```sparql\n{validation_output['original_query']}\n```\n### Validation Errors:\n{error_str}\n"
@@ -151,16 +152,10 @@ async def get_answer(question: str, dataset: str):
 
         # If no valid SPARQL query was generated, ask the model to fix it
         num_of_tries += 1
-        messages = [
-            HumanMessage(content=question + resp_msg)
-        ]
+        messages = [HumanMessage(content=question + resp_msg)]
         response = client.invoke(messages)
 
         if num_of_tries == settings.default_max_try_fix_sparql:
             print(f"❌ Could not fix generate SPARQL query for question: {question} \n")
 
-    return {
-        "dataset": dataset,
-        "question": question,
-        "query": generated_sparql
-    }
+    return {"dataset": dataset, "question": question, "query": generated_sparql}

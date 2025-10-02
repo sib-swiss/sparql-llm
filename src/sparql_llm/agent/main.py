@@ -18,9 +18,8 @@ from starlette.responses import HTMLResponse, JSONResponse, StreamingResponse
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
-from sparql_llm.agent.config import qdrant_client, settings
+from sparql_llm.agent.config import settings
 from sparql_llm.agent.graph import graph
-from sparql_llm.agent.indexing.index_resources import init_vectordb
 from sparql_llm.mcp_server import mcp
 from sparql_llm.utils import logger
 
@@ -69,7 +68,6 @@ try:
     )
 except Exception:
     logging.warning(f"⚠️ Logs filepath {settings.logs_filepath} not writable.")
-
 
 api_url = "http://localhost:8000"
 logger.info(f"""⚡️ Streamable HTTP MCP server started on {api_url}/mcp
