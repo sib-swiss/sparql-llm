@@ -11,6 +11,7 @@
 This project provides tools to enhance the capabilities of Large Language Models (LLMs) in generating [SPARQL](https://www.w3.org/TR/sparql11-overview/) queries for specific endpoints:
 
 - reusable components in `src/sparql-llm` and published as the [`sparql-llm`](https://pypi.org/project/sparql-llm/) pip package
+- a MCP server to expose tools to help LLM write SPARQL queries for a set of endpoints
 - a complete chat web service in `src/expasy-agent`
 - an experimental MCP server to generate and execute SPARQL queries on SIB resources in `src/expasy-mcp`
 
@@ -22,12 +23,59 @@ The components are designed to work either independently or as part of a full ch
 
 - **Metadata Extraction**: Functions to extract and load relevant metadata from SPARQL endpoints. These loaders are compatible with [LangChain](https://python.langchain.com) but are flexible enough to be used independently, providing metadata as JSON for custom vector store integration.
 - **SPARQL Query Validation**: A function to automatically parse and validate federated SPARQL queries against the VoID description of the target endpoints.
+- **MCP server** with tools to help LLM write SPARQL queries for a set of endpoints
 - **Deployable Chat System**: A reusable and containerized system for deploying an LLM-based chat service with a web UI, API, and vector database. This system helps users write SPARQL queries by leveraging endpoint metadata (WIP).
 - **Live Example**: Configuration for **[chat.expasy.org](https://chat.expasy.org)**, an LLM-powered chat system supporting SPARQL query generation for endpoints maintained by the [SIB](https://www.sib.swiss/).
 
 > [!TIP]
 >
 > You can quickly check if an endpoint contains the expected metadata at [sib-swiss.github.io/sparql-editor/check](https://sib-swiss.github.io/sparql-editor/check)
+
+## 🔌 MCP server
+
+The server exposes a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) endpoint to access [biodata resources](https://www.expasy.org/) at the [SIB](https://www.sib.swiss/), through their [SPARQL](https://www.w3.org/TR/sparql12-query/) endpoints, such as UniProt, Bgee, OMA, SwissLipids, Cellosaurus. Available tools are:
+
+- **📝 Retrieve relevant documents** (query examples and classes schema) to help writing SPARQL queries to access SIB biodata resources
+  - Arguments:
+    - `question` (string): the user's question
+    - `potential_classes` (list[string]): high level concepts and potential classes that could be found in the SPARQL endpoints
+    - `steps` (list[string]): split the question in standalone smaller parts if relevant
+- **🏷️ Retrieve relevant classes schema** to help writing SPARQL queries to access SIB biodata resources
+  - Arguments:
+    - `classes` (list[string]): high level concepts and potential classes that could be found in the SPARQL endpoints
+- 📡  **Execute a SPARQL query** against a SPARQL endpoint
+  - Arguments:
+    - `query` (string): a valid SPARQL query string
+    - `endpoint` (string): the SPARQL endpoint URL to execute the query against
+
+### 🐙 Connect client
+
+Follow the instructions of your client, and use the `/mcp` URL of your deployed server (e.g. http://localhost:8000/mcp)
+
+For example, for GitHub Copilot in VSCode, to add a new MCP server through the VSCode UI:
+
+- [x] Open side panel chat (`ctrl+shift+i` or `cmd+shift+i`), and make sure the mode is set to `Agent` in the bottom right
+- [x] Open command palette (`ctrl+shift+p` or `cmd+shift+p`), and search for `MCP: Open User Configuration`, this will open a `mcp.json` file
+
+In VSCode `mcp.json` you should have the following:
+
+```sh
+{
+	"servers": {
+		"expasy-mcp-server": {
+			"url": "http://localhost:8000/mcp",
+			"type": "http"
+		}
+	},
+	"inputs": []
+}
+```
+
+You can click the wrench and screwdriver button 🛠️ (`Select Tools...`) to enable/disable specific tools
+
+> [!NOTE]
+>
+> More details in [the official docs](https://code.visualstudio.com/docs/copilot/chat/mcp-servers).
 
 ## 📦️ Reusable components
 

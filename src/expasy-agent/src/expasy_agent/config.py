@@ -115,6 +115,7 @@ It provides a unified, searchable framework that connects chemical profiles of p
     # embedding_dimensions: int = 768
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_dimensions: int = 384
+    force_index: bool = False
 
     # Sparse embeddings are only used for the entities resolution
     sparse_embedding_model: str = "Qdrant/bm25"
