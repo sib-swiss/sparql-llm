@@ -7,15 +7,55 @@ dependencies = [
     "sparql-llm >=0.0.8",
     # "sparql-llm @ git+https://github.com/sib-swiss/sparql-llm.git#subdirectory=src/sparql-llm",
     # "sparql-llm @ file:///home/vemonet/dev/expasy/sparql-llm/src/sparql-llm",
-    "langchain >=0.3.19",
-    "langchain-openai >=0.3.6",
-    "langchain-groq >=0.2.4",
-    "langchain-ollama >=0.2.3",
-    "qdrant-client >=1.13.0",
-    "fastembed >=0.5.1",
-    # "fastembed-gpu >=0.5.1", # Optional GPU support
-    "chainlit",
-    "langgraph >=0.2.73",
-    "langchain-qdrant >=0.2.0",
-    "langchain-community >=0.3.17",
+    "langchain >=0.3.27",
+    "langchain-mistralai >=0.2.12",
+    "langchain-google-genai >=0.1.5",
+    "langchain-openai >=0.3.33",
+    "langchain-ollama >=0.3.8",
+    "langchain-groq >=0.3.8",
+
+    "qdrant-client >=1.15.1",
+    "fastembed >=0.7.3",
+    # "fastembed-gpu >=0.7.3", # Optional GPU support
+    "chainlit >=2.8.1",
+    # "langgraph >=0.2.73",
+    # "langchain-qdrant >=0.2.0",
+    # "langchain-community >=0.3.17",
+    "mcp >=1.15.0",
+]
+
+
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "I",     # isort
+    "N",     # pep8-naming
+    "S",     # bandit
+    "A",     # flake8-builtins
+    "YTT",   # flake8-2020
+    "B",     # flake8-bugbear
+    "C",     # flake8-comprehensions
+    "ICN",   # flake8-import-conventions
+    "SIM",   # flake8-simplify
+    "TID",   # flake8-tidy-imports
+    "Q",     # flake8-quotes
+    # "FBT",   # flake8-boolean-trap
+    "F",     # pyflakes
+    "UP",    # pyupgrade
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "PLC",   # pylint convention
+    "PLE",   # pylint error
+    "PLW",   # pylint warning
+    "RUF",   # ruff specific
+    "T",
+]
+ignore = [
+    "E501", # line too long
+    "E402", # too complex
+    "T201", # do not use print
 ]

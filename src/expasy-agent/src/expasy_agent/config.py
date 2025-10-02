@@ -86,12 +86,11 @@ class Settings(BaseSettings):
 It provides a unified, searchable framework that connects chemical profiles of plants with ecological and biological attributes.""",
             # "homepage_url": "https://dbgi.eu/",
         },
-        # No metadata in these endpoints
-        # {
-        #     "label": "MetaNetx",
-        #     "endpoint_url": "https://rdf.metanetx.org/sparql/",
-        #     "homepage_url": "https://www.metanetx.org/",
-        # },
+        {
+            "label": "MetaNetX",
+            "endpoint_url": "https://rdf.metanetx.org/sparql/",
+            "homepage_url": "https://www.metanetx.org/",
+        },
         # Error querying NExtProt
         # {
         #     "label": "NextProt",
