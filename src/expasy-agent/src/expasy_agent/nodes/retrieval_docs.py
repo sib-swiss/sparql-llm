@@ -114,9 +114,7 @@ async def retrieve(
         StepOutput(label=doc_type, details=format_docs(docs))
         for doc_type, docs in docs_by_type.items()
     ]
-
-    print(format_docs(docs))
-
+    # print(format_docs(docs))
     return {
         # "retrieved_docs": docs,
         "messages": [
