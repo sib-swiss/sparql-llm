@@ -56,7 +56,7 @@ vectordb = QdrantClient(url=settings.vectordb_url, prefer_grpc=True)
 async def get_answer(question: str, dataset: str):
     if dataset not in KNOWN_DATASETS:
         raise fastapi.HTTPException(404, "Unknown dataset ...")
-    
+
     question_embeddings = next(iter(embedding_model.embed([question])))
     retrieved_queries = vectordb.query_points(
         collection_name=VECTORDB_COLLECTION_NAME,
