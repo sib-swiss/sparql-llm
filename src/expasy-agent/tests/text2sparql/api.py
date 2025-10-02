@@ -67,7 +67,6 @@ vectordb = QdrantClient(url=settings.vectordb_url, prefer_grpc=True)
 async def get_answer(question: str, dataset: str):
     if dataset not in KNOWN_DATASETS:
         raise fastapi.HTTPException(404, "Unknown dataset ...")
-    
     #Retrieve relevant queries
     question_embeddings = next(iter(embedding_model.embed([question])))
     retrieved_queries = vectordb.query_points(
@@ -139,7 +138,7 @@ async def get_answer(question: str, dataset: str):
                     break
                 else:
                     raise Exception("No results")
-                        
+
             except Exception as e:
                 validation_output = validate_sparql(query=generated_sparql, endpoint_url=DOCKER_ENDPOINT_URL, endpoints_void_dict=SCHEMAS[dataset])
                 if validation_output["errors"]:

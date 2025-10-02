@@ -22,8 +22,6 @@ mcp = FastMCP(
     stateless_http=True,
     json_response=True,
 )
-# mcp.settings.stateless_http = True
-# mcp.settings.json_response = True
 
 embedding_model = TextEmbedding(
     settings.embedding_model,
@@ -186,9 +184,6 @@ def get_resources_info(question: str) -> str:
 {format_docs(relevant_docs)}"""
 
 
-## TOOL: execute SPARQL query
-
-
 @mcp.tool()
 def execute_sparql_query(sparql_query: str, endpoint_url: str) -> str:
     """Execute a SPARQL query against a SPARQL endpoint.
@@ -220,14 +215,17 @@ def execute_sparql_query(sparql_query: str, endpoint_url: str) -> str:
     # Execute the SPARQL query
     try:
         res = query_sparql(sparql_query, endpoint_url, timeout=10, post=True)
-        # If no results, return a message to ask fix the query
-        if not res.get("results", {}).get("bindings"):
+        bindings = res.get("results", {}).get("bindings")
+        if not bindings:
+            # If no results, return a message to ask fix the query
             resp_msg += f"SPARQL query returned no results. {FIX_QUERY_PROMPT}\n```sparql\n{sparql_query}\n```"
         else:
-            resp_msg += (
-                f"Executed SPARQL query on {endpoint_url}:\n```sparql\n{sparql_query}\n```\n\nResults:\n"
-                f"```\n{json.dumps(res, indent=2)}\n```"
-            )
+            # If results, return them (limit to first 50 rows if too many)
+            resp_msg += f"Results of SPARQL query execution on {endpoint_url}"
+            if len(bindings) > 50:
+                res["results"]["bindings"] = bindings[:50]
+                resp_msg += f" (showing first 50 of {len(bindings)} results)"
+            resp_msg += f":\n```\n{json.dumps(res, indent=2)}\n```"
     except Exception as e:
         resp_msg += f"SPARQL query returned error: {e}. {FIX_QUERY_PROMPT}\n```sparql\n{sparql_query}\n```"
     return resp_msg
@@ -245,7 +243,6 @@ and check them one by one."""
 @mcp.resource("examples://{question}")
 def get_examples(question: str) -> str:
     """Get relevant SPARQL query examples and other documents to help the user write a SPARQL query."""
-    # return format_docs(retrieve_docs(question))
     return access_sib_biodata_sparql(question, [], [])
 
 
@@ -281,21 +278,18 @@ def _format_doc(doc: ScoredPoint) -> str:
 
 
 
-def main() -> None:
-    """Run the MCP server with appropriate transport."""
-    parser = argparse.ArgumentParser(description="A Model Context Protocol (MCP) server for BioData resources at the SIB.")
-    parser.add_argument("--stdio", action="store_true", help="Use STDIO transport")
-    parser.add_argument("--port", type=int, default=8888, help="Port to run the server on")
-    args = parser.parse_args()
-    if args.stdio:
-        mcp.run()
-    else:
-        mcp.settings.port = args.port
-        # mcp.run(transport="streamable-http")
-        mcp.run(transport="sse")
+# def main() -> None:
+#     """Run the MCP server with appropriate transport."""
+#     parser = argparse.ArgumentParser(description="A Model Context Protocol (MCP) server for BioData resources at the SIB.")
+#     parser.add_argument("--stdio", action="store_true", help="Use STDIO transport")
+#     parser.add_argument("--port", type=int, default=8888, help="Port to run the server on")
+#     args = parser.parse_args()
+#     if args.stdio:
+#         mcp.run()
+#     else:
+#         mcp.settings.port = args.port
+#         # mcp.run(transport="streamable-http")
+#         mcp.run(transport="sse")
 
-
-if __name__ == "__main__":
-    main()
-    # print(access_biodata_sparql("What are the rat orthologs of the human TP53?"))
-    # print(execute_sparql_query("CONSTRUCT {?s ?p ?o } WHERE { ?s ?p ?o } LIMIT 10", "https://sparql.uniprot.org"))
+# if __name__ == "__main__":
+#     main()
