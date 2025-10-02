@@ -10,10 +10,11 @@ from curies_rs import Converter
 logger = logging.getLogger("sparql_llm")
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
-formatter = logging.Formatter("%(levelname)s: %(message)s")
-# formatter = logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s")
+# formatter = logging.Formatter("%(levelname)s: %(message)s")
+formatter = logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s")
 # handler.setFormatter(formatter)
 logger.addHandler(handler)
+# logger.propagate = False
 
 
 class SparqlEndpointLinks(TypedDict, total=False):
