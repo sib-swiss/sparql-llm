@@ -6,7 +6,7 @@ from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_core.runnables import RunnableConfig
 from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
 
-from sparql_llm.agent.config import Configuration, settings
+from sparql_llm.agent.config import Configuration, qdrant_client, settings
 from sparql_llm.agent.state import State, StepOutput
 
 # NOTE: experimental, not used in production
@@ -54,10 +54,10 @@ async def resolve_entities(state: State, config: RunnableConfig) -> dict[str, li
     # potential_entities = nlp(user_input).ents
     # print(potential_entities)
 
-    vectordb = QdrantVectorStore.from_existing_collection(
-        # client=qdrant_client,
-        url=settings.vectordb_url,
-        prefer_grpc=True,
+    vectordb = QdrantVectorStore(
+        client=qdrant_client,
+        # url=settings.vectordb_url,
+        # prefer_grpc=True,
         collection_name=settings.entities_collection_name,
         embedding=FastEmbedEmbeddings(model_name=settings.embedding_model),
         sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),

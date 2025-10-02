@@ -6,92 +6,94 @@ from bs4 import BeautifulSoup
 from langchain_core.documents import Document
 from langchain_qdrant import QdrantVectorStore
 from markdownify import markdownify
+from qdrant_client.http.models import Distance, VectorParams
 from rdflib import RDF, Dataset, Namespace
 
 from sparql_llm import SparqlExamplesLoader, SparqlInfoLoader, SparqlVoidShapesLoader
-from sparql_llm.agent.config import settings
+from sparql_llm.agent.config import qdrant_client, settings
 from sparql_llm.agent.nodes.retrieval_docs import make_dense_encoder
 from sparql_llm.loaders.sparql_info_loader import DOC_TYPE
-from sparql_llm.utils import get_prefixes_and_schema_for_endpoints
+from sparql_llm.utils import SparqlEndpointLinks, get_prefixes_and_schema_for_endpoints
 
 SCHEMA = Namespace("http://schema.org/")
 
 # DOC_TYPE = "General information"
 
 
-def load_schemaorg_description(endpoint: dict[str, str]) -> list[Document]:
+def load_schemaorg_description(endpoint: SparqlEndpointLinks) -> list[Document]:
     """Extract datasets descriptions from the schema.org metadata in homepage of the endpoint"""
     docs = []
-    try:
-        resp = httpx.get(
-            endpoint["homepage_url"],
-            headers={
-                # "User-Agent": "BgeeBot/1.0",
-                # Adding a user-agent to make it look like we are a google bot to trigger SSR on Bgee
-                "User-Agent": "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.96 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html) X-Middleton/1",
-            },
-            timeout=10,
-            follow_redirects=True,
-        )
-        if resp.status_code != 200:
-            raise Exception(f"Failed to fetch the webpage: {resp.status_code}")
-        # print(resp.text)
-
-        # Parse HTML and find the JSON-LD script tag
-        soup = BeautifulSoup(resp.content, "html.parser")
-        json_ld_tags = soup.find_all("script", type="application/ld+json")
-        if not json_ld_tags:
-            raise Exception("No JSON-LD script tags found")
-
-        g = Dataset()
-        for json_ld_tag in json_ld_tags:
-            json_ld_content = str(json_ld_tag.string)
-            # print(json_ld_content, type(json_ld_content))
-            if json_ld_content:
-                # TODO: error here now, even if JSON-LD is valid
-                g.parse(data=json_ld_content, format="json-ld")
-                # json_ld_content = json.loads(json_ld_content)
-                question = f"What are the general metadata about {endpoint['label']} resource? (description, creators, maintainers, license, dates, version, etc)"
-                docs.append(
-                    Document(
-                        page_content=question,
-                        metadata={
-                            "question": question,
-                            "answer": json_ld_content,
-                            # "answer": f"```json\n{json_ld_content}\n```",
-                            "iri": endpoint["homepage_url"],
-                            "endpoint_url": endpoint["endpoint_url"],
-                            "doc_type": DOC_TYPE,
-                        },
-                    )
-                )
-
-        # Concat all schema:description of all classes in the graph
-        descs = set()
-        # print(len(g))
-        # print(g.serialize(format="turtle"))
-        for s, _p, _o in g.triples((None, RDF.type, None)):
-            for _sd, _pd, desc in g.triples((s, SCHEMA.description, None)):
-                descs.add(str(desc))
-
-        if len(descs) == 0:
-            raise Exception("No schema:description found in the JSON-LD script tag")
-        question = f"What is the SIB resource {endpoint['label']} about?"
-        docs.append(
-            Document(
-                page_content=question,
-                metadata={
-                    "question": question,
-                    "answer": "\n".join(descs),
-                    "endpoint_url": endpoint["endpoint_url"],
-                    "iri": endpoint["homepage_url"],
-                    "doc_type": DOC_TYPE,
+    if endpoint["homepage_url"]:
+        try:
+            resp = httpx.get(
+                endpoint["homepage_url"],
+                headers={
+                    # "User-Agent": "BgeeBot/1.0",
+                    # Adding a user-agent to make it look like we are a google bot to trigger SSR on Bgee
+                    "User-Agent": "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.96 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html) X-Middleton/1",
                 },
+                timeout=10,
+                follow_redirects=True,
             )
-        )
-        # print("\n".join(descs))
-    except Exception as e:
-        print(f"Error while fetching schema.org metadata from {endpoint['label']}: {e}")
+            if resp.status_code != 200:
+                raise Exception(f"Failed to fetch the webpage: {resp.status_code}")
+            # print(resp.text)
+
+            # Parse HTML and find the JSON-LD script tag
+            soup = BeautifulSoup(resp.content, "html.parser")
+            json_ld_tags = soup.find_all("script", type="application/ld+json")
+            if not json_ld_tags:
+                raise Exception("No JSON-LD script tags found")
+
+            g = Dataset()
+            for json_ld_tag in json_ld_tags:
+                json_ld_content = str(json_ld_tag.string)
+                # print(json_ld_content, type(json_ld_content))
+                if json_ld_content:
+                    # TODO: error here now, even if JSON-LD is valid
+                    g.parse(data=json_ld_content, format="json-ld")
+                    # json_ld_content = json.loads(json_ld_content)
+                    question = f"What are the general metadata about {endpoint['label']} resource? (description, creators, maintainers, license, dates, version, etc)"
+                    docs.append(
+                        Document(
+                            page_content=question,
+                            metadata={
+                                "question": question,
+                                "answer": json_ld_content,
+                                # "answer": f"```json\n{json_ld_content}\n```",
+                                "iri": endpoint["homepage_url"],
+                                "endpoint_url": endpoint["endpoint_url"],
+                                "doc_type": DOC_TYPE,
+                            },
+                        )
+                    )
+
+            # Concat all schema:description of all classes in the graph
+            descs = set()
+            # print(len(g))
+            # print(g.serialize(format="turtle"))
+            for s, _p, _o in g.triples((None, RDF.type, None)):
+                for _sd, _pd, desc in g.triples((s, SCHEMA.description, None)):
+                    descs.add(str(desc))
+
+            if len(descs) == 0:
+                raise Exception("No schema:description found in the JSON-LD script tag")
+            question = f"What is the SIB resource {endpoint['label']} about?"
+            docs.append(
+                Document(
+                    page_content=question,
+                    metadata={
+                        "question": question,
+                        "answer": "\n".join(descs),
+                        "endpoint_url": endpoint["endpoint_url"],
+                        "iri": endpoint["homepage_url"],
+                        "doc_type": DOC_TYPE,
+                    },
+                )
+            )
+            # print("\n".join(descs))
+        except Exception as e:
+            print(f"Error while fetching schema.org metadata from {endpoint['label']}: {e}")
     return docs
 
 
@@ -212,19 +214,23 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
     print(f"Generating embeddings for {len(docs)} documents")
     start_time = time.time()
 
-    # Generate embeddings and loads documents into the vectordb
-    QdrantVectorStore.from_documents(
-        docs,
-        # client=qdrant_client,
-        url=settings.vectordb_url,
-        prefer_grpc=True,
+    # Initialize the collection
+    if qdrant_client.collection_exists(settings.docs_collection_name):
+        qdrant_client.delete_collection(settings.docs_collection_name)
+    qdrant_client.create_collection(
         collection_name=settings.docs_collection_name,
-        force_recreate=True,
+        vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
+    )
+
+    # Initialize the vector store
+    vectorstore = QdrantVectorStore(
+        client=qdrant_client,
+        collection_name=settings.docs_collection_name,
         embedding=make_dense_encoder(settings.embedding_model),
         # sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
         # retrieval_mode=RetrievalMode.HYBRID,
     )
-
+    vectorstore.add_documents(docs)
     print(f"Done generating and indexing {len(docs)} documents into the vectordb in {time.time() - start_time} seconds")
 
 

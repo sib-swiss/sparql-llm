@@ -71,28 +71,9 @@ except Exception:
     logging.warning(f"⚠️ Logs filepath {settings.logs_filepath} not writable.")
 
 
-# Check if the docs collection exists and has data, initialize if not
-try:
-    collection_exists = qdrant_client.collection_exists(settings.docs_collection_name)
-    if (
-        settings.force_index
-        or not qdrant_client.collection_exists(settings.docs_collection_name)
-        or qdrant_client.get_collection(settings.docs_collection_name).points_count < 1
-    ):
-        logger.info("📊 Initializing vectordb...")
-        init_vectordb()
-    else:
-        logger.info(
-            f"✅ Collection '{settings.docs_collection_name}' exists with {qdrant_client.get_collection(settings.docs_collection_name).points_count} points. Skipping initialization."
-        )
-except Exception as e:
-    logger.error(f"⚠️ Error checking or initializing vectordb: {e}")
-    # Continue without initialization to avoid blocking the app startup
-
 api_url = "http://localhost:8000"
 logger.info(f"""⚡️ Streamable HTTP MCP server started on {api_url}/mcp
   💬 Chat UI at {api_url}
-  📚 OpenAPI docs at {api_url}/docs
   🔎 Using similarity search service on {settings.vectordb_url}""")
 
 

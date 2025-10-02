@@ -1739,7 +1739,7 @@ wheels = [
 [[package]]
 name = "langchain-core"
 version = "0.3.77"
-source = { git = "https://github.com/langchain-ai/langchain.git?subdirectory=libs%2Fcore#48b77752d0cf446ca4ad2a7ce5c4758947198cfa" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jsonpatch" },
     { name = "langsmith" },
@@ -1748,6 +1748,10 @@ dependencies = [
     { name = "pyyaml" },
     { name = "tenacity" },
     { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/40/cc/786184e5f6a921a2aa4d2ac51d3adf0cd037289f3becff39644bee9654ee/langchain_core-0.3.77.tar.gz", hash = "sha256:1d6f2ad6bb98dd806c6c66a822fa93808d821e9f0348b28af0814b3a149830e7", size = 580255, upload-time = "2025-10-01T14:34:37.368Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/64/18/e7462ae0ce57caa9f6d5d975dca861e9a751e5ca253d60a809e0d833eac3/langchain_core-0.3.77-py3-none-any.whl", hash = "sha256:9966dfe3d8365847c5fb85f97dd20e3e21b1904ae87cfd9d362b7196fb516637", size = 449525, upload-time = "2025-10-01T14:34:35.672Z" },
 ]
 
 [[package]]
@@ -1794,11 +1798,15 @@ wheels = [
 [[package]]
 name = "langchain-qdrant"
 version = "0.2.1"
-source = { git = "https://github.com/langchain-ai/langchain.git?subdirectory=libs%2Fpartners%2Fqdrant#48b77752d0cf446ca4ad2a7ce5c4758947198cfa" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "langchain-core" },
     { name = "pydantic" },
     { name = "qdrant-client" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a2/f0/a5624a77f6f69f9b8c1533460e92b7afe7f4574d79a4ba6415da8a8098c6/langchain_qdrant-0.2.1.tar.gz", hash = "sha256:19d8cce3e305e87c32f3be6fdcca6b5acb595297695a4f373f233e7fda6a2b7c", size = 34823, upload-time = "2025-09-10T18:07:06.555Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e1/a7/61365d11afa5e20fa194ad54cc299b4b0b6708b96975ed121a7fffa6f669/langchain_qdrant-0.2.1-py3-none-any.whl", hash = "sha256:d82637eae4828ca67ac806d722fc21b660617fdd5d7eef07b99249d0e7976c3b", size = 24335, upload-time = "2025-09-10T18:07:05.669Z" },
 ]
 
 [[package]]
@@ -4001,7 +4009,11 @@ dependencies = [
     { name = "curies" },
     { name = "fastembed" },
     { name = "httpx" },
+    { name = "langchain-community" },
     { name = "langchain-core" },
+    { name = "langchain-qdrant" },
+    { name = "langgraph" },
+    { name = "markdownify" },
     { name = "mcp" },
     { name = "qdrant-client" },
     { name = "rdflib" },
@@ -4013,15 +4025,11 @@ agent = [
     { name = "jinja2" },
     { name = "langchain" },
     { name = "langchain-azure-ai" },
-    { name = "langchain-community" },
     { name = "langchain-groq" },
     { name = "langchain-mcp-adapters" },
     { name = "langchain-openai" },
-    { name = "langchain-qdrant" },
     { name = "langchain-together" },
     { name = "langfuse" },
-    { name = "langgraph" },
-    { name = "markdownify" },
     { name = "matplotlib" },
     { name = "pandas" },
     { name = "pydantic" },
@@ -4055,16 +4063,16 @@ requires-dist = [
     { name = "jinja2", marker = "extra == 'agent'", specifier = ">=3.1.5" },
     { name = "langchain", marker = "extra == 'agent'", specifier = ">=0.3.14" },
     { name = "langchain-azure-ai", marker = "extra == 'agent'", specifier = ">=0.1.0" },
-    { name = "langchain-community", marker = "extra == 'agent'", specifier = ">=0.3.17" },
+    { name = "langchain-community", specifier = ">=0.3.17" },
     { name = "langchain-core", specifier = ">=0.3.34" },
     { name = "langchain-groq", marker = "extra == 'agent'", specifier = ">=0.2.4" },
     { name = "langchain-mcp-adapters", marker = "extra == 'agent'", specifier = ">=0.1.10" },
     { name = "langchain-openai", marker = "extra == 'agent'", specifier = ">=0.1.22" },
-    { name = "langchain-qdrant", marker = "extra == 'agent'", git = "https://github.com/langchain-ai/langchain.git?subdirectory=libs%2Fpartners%2Fqdrant" },
+    { name = "langchain-qdrant", specifier = ">=0.2.1" },
     { name = "langchain-together", marker = "extra == 'agent'", specifier = ">=0.3.0" },
     { name = "langfuse", marker = "extra == 'agent'", specifier = ">=3.0.8" },
-    { name = "langgraph", marker = "extra == 'agent'", specifier = ">=0.2.61" },
-    { name = "markdownify", marker = "extra == 'agent'", specifier = ">=1.1.0" },
+    { name = "langgraph", specifier = ">=0.2.61" },
+    { name = "markdownify", specifier = ">=1.1.0" },
     { name = "matplotlib", marker = "extra == 'agent'", specifier = ">=3.10.3" },
     { name = "mcp", specifier = ">=1.15.0" },
     { name = "pandas", marker = "extra == 'agent'", specifier = ">=2.2.3" },

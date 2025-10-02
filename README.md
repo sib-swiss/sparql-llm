@@ -49,7 +49,7 @@ Available tools are:
     - `query` (string): a valid SPARQL query string
     - `endpoint` (string): the SPARQL endpoint URL to execute the query against
 
-### 🐙 Connect client
+### 🐙 Connect client to MCP
 
 Follow the instructions of your client, and use the `/mcp` URL of your deployed server (e.g. http://localhost:8000/mcp)
 
@@ -64,7 +64,7 @@ In VSCode `mcp.json` you should have the following:
 {
 	"servers": {
 		"expasy-mcp-server": {
-			"url": "http://localhost:8000/mcp",
+			"url": "https://chat.expasy.org/mcp",
 			"type": "http"
 		}
 	},
@@ -77,6 +77,12 @@ You can click the wrench and screwdriver button 🛠️ (`Select Tools...`) to e
 > [!NOTE]
 >
 > More details in [the official docs](https://code.visualstudio.com/docs/copilot/chat/mcp-servers).
+
+Or use it with stdio transport:
+
+```sh
+uvx sparql-llm --stdio
+```
 
 ## 📦️ Reusable components
 

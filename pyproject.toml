@@ -38,22 +38,23 @@ dependencies = [
     "mcp >=1.15.0",
     "qdrant-client >=1.13.0",
     "fastembed >=0.5.1",
+    "langgraph >=0.2.61",
+    "langchain-qdrant >=0.2.1",
+    "langchain-community >=0.3.17",
+    "markdownify >=1.1.0",
 ]
 
 [project.optional-dependencies]
 agent = [
     # LangGraph dependencies
-    "langgraph >=0.2.61",
     "langchain >=0.3.14",
-    "langchain-community >=0.3.17",
     "langchain-openai >=0.1.22",
     "langchain-azure-ai >=0.1.0",
     "langchain-groq >=0.2.4",
     "langchain-together >=0.3.0",
     "langchain-mcp-adapters >=0.1.10",
-    "langchain-qdrant @ git+https://github.com/langchain-ai/langchain.git#subdirectory=libs/partners/qdrant",
+    # "langchain-qdrant @ git+https://github.com/langchain-ai/langchain.git#subdirectory=libs/partners/qdrant",
     "langfuse >=3.0.8",
-    # "langchain-qdrant >=0.2.1",
     # "langchain-huggingface", # This will install torch and many heavy nvidia dependencies
     # "langchain-deepseek >=0.1.1",
     # "langchain-anthropic >=0.1.23",
@@ -69,9 +70,8 @@ agent = [
     # "scispacy >=0.5.5",
     # "en_core_sci_md @ https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_md-0.5.4.tar.gz",
     "pandas >=2.2.3",
-    "markdownify>=1.1.0",
-    "matplotlib>=3.10.3",
-    "seaborn>=0.13.2",
+    "matplotlib >=3.10.3",
+    "seaborn >=0.13.2",
 ]
 gpu = [
     "fastembed-gpu >=0.5.1",

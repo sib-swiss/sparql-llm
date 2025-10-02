@@ -6,8 +6,9 @@ from mcp.server.fastmcp import FastMCP
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 
 from sparql_llm.agent.config import qdrant_client, settings
+from sparql_llm.agent.indexing.index_resources import init_vectordb
 from sparql_llm.agent.nodes.validation import endpoints_void_dict, prefixes_map
-from sparql_llm.utils import query_sparql
+from sparql_llm.utils import logger, query_sparql
 from sparql_llm.validate_sparql import validate_sparql
 
 # What are the rat orthologs of the human TP53?
@@ -27,6 +28,26 @@ embedding_model = TextEmbedding(
     settings.embedding_model,
     # providers=["CUDAExecutionProvider"], # Replace the fastembed dependency with fastembed-gpu to use your GPUs
 )
+
+
+# Check if the docs collection exists and has data, initialize if not
+try:
+    collection_exists = qdrant_client.collection_exists(settings.docs_collection_name)
+    if (
+        settings.force_index
+        or not qdrant_client.collection_exists(settings.docs_collection_name)
+        or not qdrant_client.get_collection(settings.docs_collection_name).points_count
+    ):
+        logger.info("📊 Initializing vectordb...")
+        init_vectordb()
+    else:
+        logger.info(
+            f"✅ Collection '{settings.docs_collection_name}' exists with {qdrant_client.get_collection(settings.docs_collection_name).points_count} points. Skipping initialization."
+        )
+except Exception as e:
+    logger.error(f"⚠️ Error checking or initializing vectordb: {e}")
+    # Continue without initialization to avoid blocking the app startup
+
 
 
 # TODO: tool get_classes_schema
@@ -259,7 +280,7 @@ def get_examples(question: str) -> str:
 
 def format_docs(docs: list[ScoredPoint]) -> str:
     """Format a list of documents."""
-    return f"{'\n'.join(_format_doc(doc) for doc in docs)}"
+    return "\n".join(_format_doc(doc) for doc in docs)
 
 
 def _format_doc(doc: ScoredPoint) -> str:

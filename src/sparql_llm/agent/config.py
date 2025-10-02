@@ -107,7 +107,8 @@ It provides a unified, searchable framework that connects chemical profiles of p
 
     # Settings for the vector store and embeddings
     # ⚠️ changing the embedding models require to reindex the data
-    vectordb_url: str = "http://vectordb:6334/"
+    # vectordb_url: str = "http://vectordb:6334/"
+    vectordb_url: str = "data/vectordb"
     # https://qdrant.github.io/fastembed/examples/Supported_Models/#supported-text-embedding-models
     # embedding_model: str = "BAAI/bge-large-en-v1.5"
     # embedding_dimensions: int = 1024

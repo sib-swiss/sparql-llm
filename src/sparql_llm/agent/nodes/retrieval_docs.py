@@ -14,7 +14,7 @@ from langchain_core.vectorstores import VectorStoreRetriever
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
-from sparql_llm.agent.config import Configuration, settings
+from sparql_llm.agent.config import Configuration, qdrant_client, settings
 from sparql_llm.agent.state import State, StepOutput
 from sparql_llm.agent.utils import get_message_text
 
@@ -144,10 +144,10 @@ def make_qdrant_retriever(
     configuration: Configuration,
 ) -> Generator["ScoredRetriever", None, None]:
     """Configure this agent to connect to a specific Qdrant index."""
-    vectordb = QdrantVectorStore.from_existing_collection(
-        # client=qdrant_client,
-        url=settings.vectordb_url,
-        prefer_grpc=True,
+    vectordb = QdrantVectorStore(
+        client=qdrant_client,
+        # url=settings.vectordb_url,
+        # prefer_grpc=True,
         collection_name=settings.docs_collection_name,
         embedding=make_dense_encoder(settings.embedding_model),
         # sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
