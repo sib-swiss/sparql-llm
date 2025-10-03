@@ -1,5 +1,3 @@
-from typing import Optional
-
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
 
@@ -28,10 +26,10 @@ def ignore_namespaces(ns_to_ignore: list[str], cls: str) -> bool:
 
 def get_shex_dict_from_void(
     endpoint_url: str,
-    prefix_map: Optional[dict[str, str]] = None,
-    namespaces_to_ignore: Optional[list[str]] = None,
-    void_file: Optional[str] = None,
-    examples_file: Optional[str] = None,
+    prefix_map: dict[str, str] | None = None,
+    namespaces_to_ignore: list[str] | None = None,
+    void_file: str | None = None,
+    examples_file: str | None = None,
 ) -> dict[str, dict[str, str]]:
     """Get a dict of shex shapes from the VoID description."""
     prefix_map = prefix_map or get_prefixes_for_endpoint(endpoint_url, examples_file)
@@ -110,9 +108,9 @@ SELECT DISTINCT * WHERE {{
 
 def get_shex_from_void(
     endpoint_url: str,
-    namespaces_to_ignore: Optional[list[str]] = None,
-    void_file: Optional[str] = None,
-    examples_file: Optional[str] = None,
+    namespaces_to_ignore: list[str] | None = None,
+    void_file: str | None = None,
+    examples_file: str | None = None,
 ) -> str:
     """Function to build complete ShEx from VoID description with prefixes and all shapes"""
     prefix_map = get_prefixes_for_endpoint(endpoint_url, examples_file)
@@ -138,10 +136,10 @@ class SparqlVoidShapesLoader(BaseLoader):
     def __init__(
         self,
         endpoint_url: str,
-        void_file: Optional[str] = None,
-        examples_file: Optional[str] = None,
-        namespaces_to_ignore: Optional[list[str]] = None,
-        prefix_map: Optional[dict[str, str]] = None,
+        void_file: str | None = None,
+        examples_file: str | None = None,
+        namespaces_to_ignore: list[str] | None = None,
+        prefix_map: dict[str, str] | None = None,
     ):
         """
         Initialize the SparqlVoidShapesLoader.

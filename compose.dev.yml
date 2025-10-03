@@ -18,9 +18,10 @@ services:
       - ./src:/app/src
     environment:
       - VECTORDB_URL=http://vectordb:6334/
+      # - DEFAULT_LLM_MODEL=openai/gpt-5
       # - FORCE_REINDEX=true
-      # - DEFAULT_LLM_MODEL=openrouter/mistralai/mistral-large
-      # - DEFAULT_LLM_MODEL=openrouter/anthropic/claude-sonnet-4
+      - DEFAULT_LLM_MODEL=openrouter/mistralai/mistral-large
+      # - DEFAULT_LLM_MODEL=openrouter/anthropic/claude-sonnet-4.5
       # - DEFAULT_LLM_MODEL=groq/deepseek-r1-distill-llama-70b
       # - DEFAULT_LLM_MODEL=groq/llama-3.3-70b-versatile
       # - DEFAULT_LLM_MODEL=deepseek/deepseek-reasoner
@@ -30,7 +31,7 @@ services:
       # - DEFAULT_LLM_MODEL=together/meta-llama/Llama-3-70b-chat-hf
       # - DEFAULT_LLM_MODEL=openai/o3-mini
       # - DEFAULT_LLM_MODEL=openai/gpt-4o-mini
-    entrypoint: ["uv", "run", "uvicorn", "src.sparql_llm.agent.main:app", "--host", "0.0.0.0", "--port", "80", "--reload"]
+    entrypoint: ["uv", "run", "uvicorn", "src.sparql_llm.agent.main:app", "--host", "0.0.0.0", "--port", "80", "--reload", "--log-config", "logging.yml"]
 
   # In case we need a GPU-enabled workspace, e.g. for generating embeddings
   # workspace:

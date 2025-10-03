@@ -4,10 +4,9 @@ import asyncio
 import json
 import logging
 import os
-import pathlib
 import re
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from langchain_core.runnables import RunnableConfig
 from langfuse.langchain import CallbackHandler  # type: ignore
@@ -35,15 +34,8 @@ if settings.sentry_url:
     )
 
 # Initialize Langfuse logs tracing CallbackHandler for Langchain https://langfuse.com/docs/integrations/langchain/example-python-langgraph
-# langfuse = get_client()
 langfuse_handler = [CallbackHandler()] if os.getenv("LANGFUSE_SECRET_KEY") else []
 
-# app = FastAPI(
-#     title=settings.app_name,
-#     description="""This service helps users to use resources from the Swiss Institute of Bioinformatics,
-# such as SPARQL endpoints, to get information about proteins, genes, and other biological entities.""",
-#     # lifespan=mcp_app.lifespan
-# )
 
 # Get the MCP Starlette app and mount routes to it
 app = mcp.streamable_http_app()
@@ -56,18 +48,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create logs file if it doesn't exist
-try:
-    if not os.path.exists(settings.logs_filepath):
-        pathlib.Path(settings.logs_filepath).parent.mkdir(parents=True, exist_ok=True)
-        pathlib.Path(settings.logs_filepath).touch()
-    logging.basicConfig(
-        filename=settings.logs_filepath,
-        level=logging.INFO,
-        format="%(asctime)s - %(message)s",
-    )
-except Exception:
-    logging.warning(f"⚠️ Logs filepath {settings.logs_filepath} not writable.")
+# # Create logs file if it doesn't exist
+# try:
+#     if not os.path.exists(settings.logs_filepath):
+#         pathlib.Path(settings.logs_filepath).parent.mkdir(parents=True, exist_ok=True)
+#         pathlib.Path(settings.logs_filepath).touch()
+#     logging.basicConfig(
+#         filename=settings.logs_filepath,
+#         level=logging.INFO,
+#         format="%(asctime)s - %(message)s",
+#     )
+# except Exception:
+#     logging.warning(f"⚠️ Logs filepath {settings.logs_filepath} not writable.")
+
+uvicorn_logger = logging.getLogger("uvicorn")
+uvicorn_logger.setLevel(logging.WARNING)
 
 api_url = "http://localhost:8000"
 logger.info(f"""⚡️ Streamable HTTP MCP server started on {api_url}/mcp
@@ -82,12 +77,12 @@ class Message(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     messages: list[Message]
-    model: Optional[str] = settings.default_llm_model
-    max_tokens: Optional[int] = settings.default_max_tokens
-    temperature: Optional[float] = settings.default_temperature
-    stream: Optional[bool] = False
-    validate_output: Optional[bool] = True
-    headers: Optional[dict[str, str]] = {}
+    model: str | None = settings.default_llm_model
+    max_tokens: int | None = settings.default_max_tokens
+    temperature: float | None = settings.default_temperature
+    stream: bool | None = False
+    validate_output: bool | None = True
+    headers: dict[str, str] | None = {}
 
 
 def convert_chunk_to_dict(obj: Any) -> Any:
@@ -181,7 +176,7 @@ app.router.add_route("/chat", chat_handler, methods=["POST"])
 class LogMessage(Message):
     """Message model for logging purposes."""
 
-    steps: Optional[list[Any]] = None
+    steps: list[Any] | None = None
 
 
 class FeedbackRequest(BaseModel):

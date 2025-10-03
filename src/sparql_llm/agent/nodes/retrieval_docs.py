@@ -2,7 +2,6 @@
 
 from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Optional
 
 from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
@@ -16,7 +15,7 @@ from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from sparql_llm.agent.config import Configuration, qdrant_client, settings
 from sparql_llm.agent.state import State, StepOutput
-from sparql_llm.agent.utils import get_message_text
+from sparql_llm.agent.utils import get_msg_text
 
 # TODO: use grouping? https://qdrant.tech/documentation/concepts/search/#grouping-api
 # Which tools can I use for enrichment analysis?
@@ -40,7 +39,7 @@ async def retrieve(
         containing a list of retrieved Document objects.
     """
     configuration = Configuration.from_runnable_config(config)
-    user_question = get_message_text(state.messages[-1])
+    user_question = get_msg_text(state.messages[-1])
     docs: list[Document] = []
 
     if state.structured_question.intent == "general_information":
@@ -169,7 +168,7 @@ class ScoredRetriever(VectorStoreRetriever):
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun
     ) -> list[Document]:
         # # query_embedding = await self.vectorstore._aembed_query(query)
-        # query_embedding = await self.vectorstore.embeddings.aembed_query(query)
+        # query_em`bedding = await self.vectorstore.embeddings.aembed_query(query)
 
         # docs, scores = await self.vectorstore.asimilarity_search_with_score(
         #     query_embedding,
@@ -182,8 +181,8 @@ class ScoredRetriever(VectorStoreRetriever):
         #     **kwargs,
         # )
 
-        docs, scores = zip(*self.vectorstore.similarity_search_with_score(query, **self.search_kwargs))
-        for doc, score in zip(docs, scores):
+        docs, scores = zip(*self.vectorstore.similarity_search_with_score(query, **self.search_kwargs), strict=False)
+        for doc, score in zip(docs, scores, strict=False):
             doc.metadata["score"] = score
         return list(docs)
         # # Search SPARQL query examples
@@ -254,7 +253,7 @@ def _format_doc(doc: Document) -> str:
     return f"\n{doc.page_content}\n"
 
 
-def format_docs(docs: Optional[list[Document]]) -> str:
+def format_docs(docs: list[Document] | None) -> str:
     """Format a list of documents.
 
     This function takes a list of Document objects and formats them into a string.

@@ -1,0 +1,38 @@
+# See https://pre-commit.com for more information
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+    - id: check-added-large-files
+      name: " 🐘 Check for added large files"
+    - id: check-toml
+      name: " ✔️  Check TOML"
+    - id: check-yaml
+      name: " ✔️  Check YAML"
+      args:
+      - --unsafe
+    - id: end-of-file-fixer
+      name: " 🪚 Fix end of files"
+    - id: trailing-whitespace
+      name: " ✂️  Trim trailing whitespaces"
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.13.2
+    hooks:
+      - id: ruff
+        name: " ⚡️ Lint code with ruff"
+        args:
+        - --fix
+      - id: ruff-format
+        name: " ✒️  Format code with ruff"
+  # Does not read the config from pyproject.toml
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.4.1
+  #   hooks:
+  #   - id: mypy
+  #     name: 🔎 Check types with mypy
+  #     args:
+  #     - --config-file=pyproject.toml
+
+ci:
+    autofix_commit_msg: 🎨 [pre-commit] Auto format
+    autoupdate_commit_msg: ⬆ [pre-commit] pre-commit auto update

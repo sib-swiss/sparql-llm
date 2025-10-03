@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
-from typing import Annotated, Any, Optional, Type, TypeVar
+from typing import Annotated, Any, TypeVar
 
 from langchain_core.runnables import RunnableConfig, ensure_config
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -247,7 +247,7 @@ class Configuration:
     )
 
     @classmethod
-    def from_runnable_config(cls: Type[T], config: Optional[RunnableConfig] = None) -> T:
+    def from_runnable_config(cls: type[T], config: RunnableConfig | None = None) -> T:
         """Create an IndexConfiguration instance from a RunnableConfig object.
 
         Adds defaults values to the configurable.

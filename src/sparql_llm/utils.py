@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional, TypedDict
+from typing import Any, TypedDict
 
 import curies
 import httpx
@@ -8,12 +8,11 @@ import rdflib
 # Disable logger in your code with logging.getLogger("sparql_llm").setLevel(logging.WARNING)
 logger = logging.getLogger("sparql_llm")
 logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-# formatter = logging.Formatter("%(levelname)s: %(message)s")
-formatter = logging.Formatter("[%(asctime)s] %(levelname)s: %(message)s")
+# handler = logging.StreamHandler()
+# formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
 # handler.setFormatter(formatter)
-logger.addHandler(handler)
-logger.propagate = False
+# logger.addHandler(handler)
+# logger.propagate = False
 
 # logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -23,11 +22,11 @@ class SparqlEndpointLinks(TypedDict, total=False):
     """A dictionary to store links and filepaths about a SPARQL endpoint."""
 
     endpoint_url: str
-    void_file: Optional[str]
-    examples_file: Optional[str]
-    homepage_url: Optional[str]
-    label: Optional[str]
-    description: Optional[str]
+    void_file: str | None
+    examples_file: str | None
+    homepage_url: str | None
+    label: str | None
+    description: str | None
     # ontology_url: Optional[str]
 
 
@@ -57,7 +56,7 @@ def get_prefixes_and_schema_for_endpoints(
 
 
 def get_prefixes_for_endpoint(
-    endpoint_url: str, examples_file: Optional[str] = None, prefixes_map: Optional[dict[str, str]] = None
+    endpoint_url: str, examples_file: str | None = None, prefixes_map: dict[str, str] | None = None
 ) -> dict[str, str]:
     """Return a dictionary of prefixes for the given endpoint."""
     if prefixes_map is None:
@@ -114,7 +113,7 @@ EndpointsSchemaDict = dict[str, SchemaDict]
 """A dictionary to store the classes schema of multiple endpoints: dict[endpoint_url][subject_cls][predicate] = list[object_cls/datatype]"""
 
 
-def get_schema_for_endpoint(endpoint_url: str, void_file: Optional[str] = None) -> SchemaDict:
+def get_schema_for_endpoint(endpoint_url: str, void_file: str | None = None) -> SchemaDict:
     """Get a dict of VoID description of a SPARQL endpoint directly from the endpoint or from a VoID description URL.
 
     Formatted as: dict[subject_cls][predicate] = list[object_cls/datatype]"""
@@ -179,9 +178,9 @@ def query_sparql(
     query: str,
     endpoint_url: str,
     post: bool = False,
-    timeout: Optional[int] = None,
-    client: Optional[httpx.Client] = None,
-    use_file: Optional[str] = None,
+    timeout: int | None = None,
+    client: httpx.Client | None = None,
+    use_file: str | None = None,
     check_service_desc: bool = False,
 ) -> Any:
     """Execute a SPARQL query on a SPARQL endpoint or its service description using httpx or a RDF turtle file using rdflib."""
@@ -231,7 +230,9 @@ def query_sparql(
                         bindings.append({str(k): {"value": str(v)} for k, v in row.asdict().items()})
                     else:
                         # Handle tuple results
-                        bindings.append({str(var): {"value": str(val)} for var, val in zip(results.vars, row)})
+                        bindings.append(
+                            {str(var): {"value": str(val)} for var, val in zip(results.vars, row, strict=False)}
+                        )
                 return {"results": {"bindings": bindings}}
             return resp_json
         finally:

@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Publish tutorial to GitHub Pages
 on:
   push:
     branches: ["main"]

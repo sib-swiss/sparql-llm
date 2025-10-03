@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Annotated, Any, Literal, Optional
+from typing import Annotated, Any, Literal
 
 from langchain_core.documents import Document
 from langchain_core.messages import AnyMessage
@@ -44,13 +44,13 @@ class StepOutput(BaseModel):
     details: str = Field(default="")
     """Details of the steps results in markdown to be displayed to the user. It can be either a markdown string or a list of StepOutput."""
 
-    substeps: Optional[list[StepOutput]] = Field(default_factory=lambda: [])
+    substeps: list[StepOutput] | None = Field(default_factory=lambda: [])
     """Optional substeps for a step."""
 
     type: Literal["context", "fix-message", "recall"] = Field(default="context")
     """The type of the step."""
 
-    fixed_message: Optional[str] = None
+    fixed_message: str | None = None
     """The fixed message to replace the last message sent to the user."""
 
 

@@ -1,6 +1,6 @@
 import re
 from collections import defaultdict
-from typing import Any, Optional, TypedDict, Union
+from typing import Any, TypedDict
 
 import curies
 from rdflib import Namespace, Variable
@@ -69,7 +69,7 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> EndpointsSc
     query_dict: EndpointsSchemaDict = defaultdict(SchemaDict)
     path_var_count = 1
 
-    def handle_path(endpoint: str, subj: str, pred: Union[str, Path], obj: str):
+    def handle_path(endpoint: str, subj: str, pred: str | Path, obj: str):
         """
         Recursively handle a Path object in a SPARQL query.
         Check here to understand why we need this: https://github.com/sib-swiss/sparql-examples/blob/master/examples/UniProt/26_component_HLA_class_I_histocompatibility_domain.ttl
@@ -141,8 +141,8 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> EndpointsSc
 def validate_sparql_with_void(
     query: str,
     endpoint_url: str,
-    prefix_converter: Optional[curies.Converter] = None,
-    endpoints_void_dict: Optional[EndpointsSchemaDict] = None,
+    prefix_converter: curies.Converter | None = None,
+    endpoints_void_dict: EndpointsSchemaDict | None = None,
 ) -> set[str]:
     """Validate SPARQL query using the VoID description of endpoints. Returns a set of human-readable error messages."""
     if prefix_converter is None:
@@ -158,8 +158,8 @@ def validate_sparql_with_void(
         void_dict: SchemaDict,
         endpoint: str,
         issues: set[str],
-        parent_type: Optional[str] = None,
-        parent_pred: Optional[str] = None,
+        parent_type: str | None = None,
+        parent_pred: str | None = None,
         recursion: int = 0,
     ) -> set[str]:
         pred_dict = subj_dict.get(subj, {})
@@ -297,16 +297,16 @@ def validate_sparql_with_void(
 
 class QueryValidationOutput(TypedDict):
     original_query: str
-    endpoint_url: Optional[str]
-    fixed_query: Optional[str]
+    endpoint_url: str | None
+    fixed_query: str | None
     errors: list[str]
 
 
 def validate_sparql(
     query: str,
-    endpoint_url: Optional[str] = None,
-    prefixes_map: Optional[dict[str, str]] = None,
-    endpoints_void_dict: Optional[EndpointsSchemaDict] = None,
+    endpoint_url: str | None = None,
+    prefixes_map: dict[str, str] | None = None,
+    endpoints_void_dict: EndpointsSchemaDict | None = None,
 ) -> QueryValidationOutput:
     """Validate a SPARQL query using VoID descriptions of endpoints."""
     # Get prefixes if not provided
@@ -354,8 +354,8 @@ def validate_sparql(
 
 def validate_sparql_in_msg(
     msg: str,
-    prefixes_map: Optional[dict[str, str]] = None,
-    endpoints_void_dict: Optional[EndpointsSchemaDict] = None,
+    prefixes_map: dict[str, str] | None = None,
+    endpoints_void_dict: EndpointsSchemaDict | None = None,
 ) -> list[QueryValidationOutput]:
     """Validate SPARQL queries in a markdown response using VoID descriptions of endpoints."""
     validation_outputs = []

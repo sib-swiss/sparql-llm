@@ -10,7 +10,7 @@ This section is for if you want to run the package and reusable components in de
 
 > Requirements: [`uv`](https://docs.astral.sh/uv/getting-started/installation/) to easily handle scripts and virtual environments, docker to deploy qdrant and the server
 
-## 📥️ Clone
+## 📥️ Setup
 
 Clone the repository:
 
@@ -19,7 +19,13 @@ git clone https://github.com/sib-swiss/sparql-llm
 cd sparql-llm
 ```
 
-## ☑️ Run tests
+Install pre-commit hooks:
+
+```sh
+uv run pre-commit install
+```
+
+## ✅ Run tests
 
 Make sure the existing tests still work by running the test suite and linting checks. Note that any pull requests to the fairworkflows repository on github will automatically trigger running of the test suite;
 
@@ -42,7 +48,15 @@ uvx ruff check --fix
 
 ## ⚡️ Run the server
 
-Checkout the `README.md` for instructions to run the server in development with docker.
+You can run the server with uvicorn:
+
+```sh
+uv run --extra agent --env-file .env uvicorn src.sparql_llm.agent.main:app --host 0.0.0.0 --port 8000 --log-config logging.yml --reload
+```
+
+> [!NOTE]
+>
+> Checkout the `README.md` for instructions to run the server in development with docker.
 
 ## ♻️ Reset the environment
 
@@ -58,11 +72,11 @@ Clean `uv` cache:
 uv cache clean
 ```
 
-## 🏷️ New release process
+## 🏷️ Release process
 
 Get a PyPI API token at [pypi.org/manage/account](https://pypi.org/manage/account).
 
-1. Increment the `version` number in the `pyproject.toml` file.
+1. Increment the `version` number in the `pyproject.toml` file (`fix`, `minor`, or `major`).
 
    ```bash
    uvx hatch version fix
@@ -73,6 +87,18 @@ Get a PyPI API token at [pypi.org/manage/account](https://pypi.org/manage/accoun
    ```bash
    uv build
    uv publish
+   ```
+
+3. Create a new tag:
+
+   ```sh
+   VERSION=$(uvx hatch version)
+   uvx git-cliff -o CHANGELOG.md --tag v$VERSION
+
+   git add src/sparql_llm/__init__.py
+   git commit -m "Bump to v$VERSION"
+   git tag -a "v$VERSION" -m "Release v$VERSION"
+   git push origin "v$VERSION"
    ```
 
 > If `uv publish` is still broken:

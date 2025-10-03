@@ -1,7 +1,5 @@
 """Custom MCP tool node for handling async tool calls."""
 
-from typing import Dict, List, Union
-
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -9,7 +7,7 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from sparql_llm.agent.state import State
 
 
-async def mcp_tools_node(state: State, config: RunnableConfig) -> Dict[str, List[Union[ToolMessage, AIMessage]]]:
+async def mcp_tools_node(state: State, config: RunnableConfig) -> dict[str, list[ToolMessage | AIMessage]]:
     """Handle MCP tool calls asynchronously.
 
     Args:

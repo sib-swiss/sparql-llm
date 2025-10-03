@@ -1,5 +1,3 @@
-from typing import Optional
-
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
 
@@ -14,7 +12,7 @@ class SparqlInfoLoader(BaseLoader):
     def __init__(
         self,
         endpoints: list[SparqlEndpointLinks],
-        source_iri: Optional[str] = None,
+        source_iri: str | None = None,
         org_label: str = "",
         service_label: str = "",
     ):

@@ -15,18 +15,19 @@ mcp_url = "http://localhost:8888/mcp"
 
 async def main():
     # Use official MCP SDK client
-    async with streamablehttp_client(mcp_url) as (
-        read_stream,
-        write_stream,
-        _,
+    async with (
+        streamablehttp_client(mcp_url) as (
+            read_stream,
+            write_stream,
+            _,
+        ),
+        ClientSession(read_stream, write_stream) as session,
     ):
-        # Create a session using the client streams
-        async with ClientSession(read_stream, write_stream) as session:
-            # Initialize the connection
-            await session.initialize()
-            # List available tools
-            tools = await session.list_tools()
-            print(f"Available tools: {[tool.name for tool in tools.tools]}")
+        # Initialize the connection
+        await session.initialize()
+        # List available tools
+        tools = await session.list_tools()
+        print(f"Available tools: {[tool.name for tool in tools.tools]}")
 
     # Use LangChain built-in agent
     client = MultiServerMCPClient(

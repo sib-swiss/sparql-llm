@@ -1,6 +1,6 @@
 import re
 import warnings
-from typing import Any, Optional
+from typing import Any
 
 from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
 from langchain_core.document_loaders.base import BaseLoader
@@ -25,7 +25,7 @@ class SparqlExamplesLoader(BaseLoader):
     Compatible with the LangChain framework.
     """
 
-    def __init__(self, endpoint_url: str, examples_file: Optional[str] = None):
+    def __init__(self, endpoint_url: str, examples_file: str | None = None):
         """
         Initialize the SparqlExamplesLoader.
 
