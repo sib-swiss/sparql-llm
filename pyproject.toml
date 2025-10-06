@@ -42,6 +42,7 @@ dependencies = [
     "langchain-qdrant >=0.2.1",
     "langchain-community >=0.3.17",
     "markdownify >=1.1.0",
+    "pandas >=2.2.3",
 ]
 
 [project.optional-dependencies]
@@ -69,7 +70,6 @@ agent = [
     # Extract potential entities from text without LLM
     # "scispacy >=0.5.5",
     # "en_core_sci_md @ https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_md-0.5.4.tar.gz",
-    "pandas >=2.2.3",
     "matplotlib >=3.10.3",
     "seaborn >=0.13.2",
     # "ag-ui-protocol >=0.1.9",
@@ -85,7 +85,6 @@ dev = [
     "pytest-cov >=6.0.0",
     "mypy >=1.15.0",
     "pre-commit >=4.1.0",
-    "pandas >=2.2.3",
     # "ipykernel >=6.29.5",
 ]
 
