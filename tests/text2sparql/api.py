@@ -20,6 +20,7 @@ KNOWN_DATASETS = ["https://text2sparql.aksw.org/2025/dbpedia/", "https://text2sp
 
 MODEL = "openrouter/openai/gpt-4.1-nano"
 DOCKER_ENDPOINT_URL = "http://text2sparql-virtuoso:8890/sparql/"
+DOCKER_VECTORDB_URL = "http://vectordb:6334"
 ENDPOINT_URL = "http://localhost:8890/sparql/"
 
 SCHEMAS = {}
@@ -59,7 +60,7 @@ Your response must follow these rules:
 """
 
 embedding_model = TextEmbedding(settings.embedding_model)
-vectordb = QdrantClient(url=settings.vectordb_url, prefer_grpc=True)
+vectordb = QdrantClient(url=DOCKER_VECTORDB_URL, prefer_grpc=True)
 
 
 @app.get("/")
