@@ -18,7 +18,7 @@ app = fastapi.FastAPI(title="TEXT2SPARQL API")
 
 KNOWN_DATASETS = ["https://text2sparql.aksw.org/2025/dbpedia/", "https://text2sparql.aksw.org/2025/corporate/"]
 
-MODEL = "openrouter/openai/gpt-4.1-nano"
+MODEL = "openrouter/openai/gpt-4o"
 DOCKER_ENDPOINT_URL = "http://text2sparql-virtuoso:8890/sparql/"
 DOCKER_VECTORDB_URL = "http://vectordb:6334"
 ENDPOINT_URL = "http://localhost:8890/sparql/"
@@ -54,7 +54,7 @@ Your response must follow these rules:
     - Always output one SPARQL query.
     - Enclose the SPARQL query in a single markdown code block using the "sparql" language tag.
     - Include a comment at the beginning of the query that specifies the target endpoint using the following format: "#+ endpoint: ".
-    - Define PREFIX for all namespaces used in the query.
+    - Use full URIs for all entities in the SPARQL query.
     - Prefer a single endpoint; use a federated SPARQL query only if access across multiple endpoints is required.
     - Do not add more codeblocks than necessary.
 """
