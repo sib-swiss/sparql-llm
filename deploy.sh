@@ -5,6 +5,7 @@
 # expasychat is connecting to the server with your user
 # expasychatpodman is connecting to the server with the podman user (used to run the containers)
 
+# NOTE: right now issue with sudo password so we need to manually connect with ssh, and run commands from the server directly
 # ssh expasychat
 ## Just restart:
 # sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose up --force-recreate -d'

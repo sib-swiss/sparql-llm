@@ -30,12 +30,43 @@ services:
       - ./src:/app/src
     env_file:
       - .env
+    # Required for podman to resolve DNS properly
+    dns:
+      - 10.0.16.2
+      - 10.0.16.3
+      - 8.8.8.8
+      - 1.1.1.1
     # logging:
     #   driver: k8s-file
     #   options:
     #     path: /logs/expasygpt_podman.log
     #     max_size: 10mb
     #     rotate: 10
+
+  # Special api definition to work around some podman networking issues
+  # api:
+  #   # network_mode: host
+  #   build: .
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - vectordb
+  #   ports:
+  #     - 80:80
+  #   dns:
+  #     - 10.0.16.2
+  #     - 10.0.16.3
+  #     - 8.8.8.8
+  #     - 1.1.1.1
+  #   environment:
+  #     - VECTORDB_URL=http://sparql-llm_vectordb_1:6334/
+  #   volumes:
+  #     - ./data/fastembed_cache:/tmp/fastembed_cache
+  #     - ./data/logs:/logs
+  #     - ./data/embeddings:/app/data/embeddings
+  #     - ./src:/app/src
+  #   env_file:
+  #     - .env
+
 
   # langgraph-redis:
   #   image: redis:6
