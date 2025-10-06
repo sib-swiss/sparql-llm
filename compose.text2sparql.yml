@@ -1,4 +1,11 @@
 services:
+  vectordb:
+    extends:
+      file: compose.yml
+      service: vectordb
+    ports:
+      - 6333:6333
+      - 6334:6334
   text2sparql-virtuoso:
     image: openlink/virtuoso-opensource-7:latest
     restart: unless-stopped
@@ -21,6 +28,7 @@ services:
       - 8765:8765
     volumes:
       - ./src:/app/src
+      - ./tests:/app/tests
       - ./data:/data
     env_file:
       - .env
