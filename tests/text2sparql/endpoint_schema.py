@@ -199,7 +199,7 @@ class EndpointSchema:
 
         return schema
 
-    def plot_heatmap(self) -> None:
+    def plot_heatmap(self, apply_limit: bool = True) -> None:
         # Fetch counts information
         logger.info(f"Fetching counts information from {self._endpoint_url}...")
         counts = query_sparql(self._HEATMAP_QUERY.format(graph=self._graph), endpoint_url=self._endpoint_url)[
@@ -215,6 +215,11 @@ class EndpointSchema:
         heatmap = counts.pivot_table(index="class", columns="predicate", values="count", fill_value=0)
         heatmap = heatmap.reindex(index=counts["class"].unique(), columns=counts["predicate"].unique())
 
+        # Apply limits to the number of classes and predicates
+        if apply_limit:
+            heatmap = heatmap.iloc[:int((1 - self._limit_queries['top_classes_percentile']) * len(heatmap.index)), 
+                                   :int((1 - self._limit_queries['top_classes_percentile']) * len(heatmap.columns))]
+
         # Plot heatmap
         sns.set_theme(context="paper", style="white", color_codes=True, font_scale=2.5)
         plt.figure(figsize=(20, 10))
@@ -227,7 +232,7 @@ class EndpointSchema:
             f"{self._schema_path.split('/')[-1].split('_')[0].capitalize()} Co-Occurrence Heatmap", fontsize=20
         )
         sns.despine(top=True, right=True)
-        plt.savefig(f"{self._schema_path.split('.')[0]}.png", bbox_inches="tight")
+        plt.savefig(f"{self._schema_path.split('.')[0] + ('' if apply_limit else '_full')}.png", bbox_inches='tight')
 
 
 if __name__ == "__main__":
