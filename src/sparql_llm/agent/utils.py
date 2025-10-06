@@ -88,6 +88,10 @@ def load_chat_model(configuration: Configuration) -> BaseChatModel:
         timeout=None,
         max_retries=2,
         seed=configuration.seed,
+        # reasoning={
+        #     "effort": "low",  # 'low', 'medium', or 'high'
+        #     "summary": "auto",  # 'detailed', 'auto', or None
+        # },
     )
 
 

@@ -72,6 +72,8 @@ agent = [
     "pandas >=2.2.3",
     "matplotlib >=3.10.3",
     "seaborn >=0.13.2",
+    # "ag-ui-protocol >=0.1.9",
+    # "ag-ui-langgraph >=0.0.15",
 ]
 gpu = [
     "fastembed-gpu >=0.5.1",

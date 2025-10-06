@@ -73,6 +73,8 @@ async def call_model(state: State, config: RunnableConfig) -> dict[str, list[Bas
     # print(message_value.messages[0].content)
     response_msg = model.invoke(message_value, config)
 
+    # print(f"Model response: {response_msg.content}")
+
     # Check if the current response contains tool calls that should be processed
     if response_msg.tool_calls and not state.is_last_step:
         return {"messages": [response_msg], "passed_validation": False}

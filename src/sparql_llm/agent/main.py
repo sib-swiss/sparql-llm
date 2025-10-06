@@ -4,12 +4,13 @@ import asyncio
 import json
 import logging
 import os
+import pathlib
 import re
 from datetime import datetime
 from typing import Any
 
 from langchain_core.runnables import RunnableConfig
-from langfuse.langchain import CallbackHandler  # type: ignore
+from langfuse.langchain import CallbackHandler
 from pydantic import BaseModel
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
@@ -48,18 +49,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# # Create logs file if it doesn't exist
-# try:
-#     if not os.path.exists(settings.logs_filepath):
-#         pathlib.Path(settings.logs_filepath).parent.mkdir(parents=True, exist_ok=True)
-#         pathlib.Path(settings.logs_filepath).touch()
-#     logging.basicConfig(
-#         filename=settings.logs_filepath,
-#         level=logging.INFO,
-#         format="%(asctime)s - %(message)s",
-#     )
-# except Exception:
-#     logging.warning(f"⚠️ Logs filepath {settings.logs_filepath} not writable.")
+# Create logs file if it doesn't exist
+question_logger = logging.getLogger("question_logger")
+question_logger.setLevel(logging.INFO)
+try:
+    if not os.path.exists(settings.logs_filepath):
+        pathlib.Path(settings.logs_filepath).parent.mkdir(parents=True, exist_ok=True)
+        pathlib.Path(settings.logs_filepath).touch()
+    file_handler = logging.FileHandler(settings.logs_filepath)
+    file_handler.setFormatter(logging.Formatter("%(asctime)s - %(message)s"))
+    question_logger.addHandler(file_handler)
+except Exception:
+    logger.warning(f"⚠️ Logs filepath {settings.logs_filepath} not writable.")
 
 uvicorn_logger = logging.getLogger("uvicorn")
 uvicorn_logger.setLevel(logging.WARNING)
@@ -139,7 +140,7 @@ async def chat_handler(request: Request):
     # request.messages = [Message(role="system", content=settings.system_prompt), *request.messages]
 
     question: str = chat_request.messages[-1].content if chat_request.messages else ""
-    logging.info(f"User question: {question}")
+    question_logger.info(f"User question: {question}")
     if not question:
         raise ValueError("No question provided")
 
@@ -152,7 +153,7 @@ async def chat_handler(request: Request):
         recursion_limit=25,
         callbacks=langfuse_handler,
     )
-    inputs = {
+    inputs: Any = {
         "messages": [(msg.role, msg.content) for msg in chat_request.messages],
     }
 
@@ -184,9 +185,6 @@ class FeedbackRequest(BaseModel):
     messages: list[LogMessage]
 
 
-logs_folder = "/logs"
-
-
 def log_msg(filename: str, messages: list[LogMessage]) -> None:
     """Log a messages thread to a log file."""
     timestamp = datetime.now().isoformat()
@@ -201,7 +199,9 @@ def log_msg(filename: str, messages: list[LogMessage]) -> None:
 async def feedback_handler(request: Request):
     """Save the user feedback in the logs files."""
     feedback_request = FeedbackRequest(**await request.json())
-    filename = f"{logs_folder}/likes.jsonl" if feedback_request.like else f"{logs_folder}/dislikes.jsonl"
+    filename = (
+        f"{settings.logs_folder}/likes.jsonl" if feedback_request.like else f"{settings.logs_folder}/dislikes.jsonl"
+    )
     log_msg(filename, feedback_request.messages)
     return JSONResponse(content={"status": "success"})
 
@@ -225,7 +225,6 @@ async def logs_handler(request: Request):
                 question = match.group(2)
                 # questions.append({"date": date_time, "question": question})
                 questions.add(question)
-
     return JSONResponse(content=list(questions))
 
 
@@ -256,3 +255,26 @@ async def ui_handler(request: Request) -> HTMLResponse:
 app.router.add_route("/", ui_handler, methods=["GET"])
 app.router.add_route("/feedback", feedback_handler, methods=["POST"])
 app.router.add_route("/logs", logs_handler, methods=["POST"])
+
+
+# from ag_ui.core.types import RunAgentInput
+# from ag_ui.encoder import EventEncoder
+# async def langgraph_agent_endpoint(request: Request):
+#     """Handle LangGraph agent requests with SSE streaming."""
+#     # Parse the request body
+#     input_data = RunAgentInput(**await request.json())
+#     # Get the accept header from the request
+#     accept_header = request.headers.get("accept")
+#     # Create an event encoder to properly format SSE events
+#     encoder = EventEncoder(accept=accept_header)
+
+#     async def event_generator():
+#         async for event in graph.run(input_data):
+#             yield encoder.encode(event)
+
+#     return StreamingResponse(
+#         event_generator(),
+#         media_type=encoder.get_content_type()
+#     )
+
+# app.router.add_route("/agent", langgraph_agent_endpoint, methods=["POST"])

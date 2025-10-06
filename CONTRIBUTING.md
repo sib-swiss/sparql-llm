@@ -58,6 +58,27 @@ uv run --extra agent --env-file .env uvicorn src.sparql_llm.agent.main:app --hos
 >
 > Checkout the `README.md` for instructions to run the server in development with docker.
 
+Test the experimental AG-UI endpoint:
+
+```sh
+curl -X POST http://localhost:8000/agent \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{
+    "messages": [
+    	{"id": "msg_1", "role": "user", "content": "What is the HGNC symbol for the P68871 protein?"}
+    ],
+    "threadId": "t1",
+    "runId": "r1",
+    "tools": [],
+    "context": [],
+    "state": {},
+    "forwardedProps" : {}
+  }'
+```
+
+`"model": "mistralai/mistral-small-latest", "stream": true`
+
 ## ♻️ Reset the environment
 
 Upgrade `uv`:

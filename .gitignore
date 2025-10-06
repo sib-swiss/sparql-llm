@@ -17,6 +17,7 @@ __pycache__/
 
 # Data
 data/
+.fastembed_cache/
 notebooks/*.csv
 notebooks/*.txt
 nohup.out

@@ -28,7 +28,7 @@ class Settings(BaseSettings):
             "endpoint_url": "https://sparql.uniprot.org/sparql/",
             "description": "UniProt is a comprehensive resource for protein sequence and annotation data.",
             # If VoID description or SPARQL query examples are not available in the endpoint, you can provide a VoID file (local or remote)
-            "void_file": "../sparql-llm/tests/void_uniprot.ttl",
+            "void_file": "./tests/void_uniprot.ttl",
             # "void_file": "https://sparql.uniprot.org/.well-known/void/",
             # "examples_file": "../sparql-llm/tests/examples_uniprot.ttl",
             # Optional, a homepage from which we can extract more information using the JSON-LD context
@@ -153,11 +153,12 @@ It provides a unified, searchable framework that connects chemical profiles of p
     # Optional Sentry error report API key
     sentry_url: str = ""
 
+    logs_folder: str = "./data/logs"
+    logs_filepath: str = "./data/logs/user_questions.log"
+
     # External services API keys
     azure_inference_credential: str = ""
     azure_inference_endpoint: str = ""
-
-    logs_filepath: str = "/logs/user_questions.log"
 
     model_config = SettingsConfigDict(
         env_file=".env",

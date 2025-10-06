@@ -4,7 +4,6 @@ services:
     # https://hub.docker.com/r/qdrant/qdrant/tags
     image: docker.io/qdrant/qdrant:v1.15.1
     # image: qdrant/qdrant:v1.9.2-unprivileged # Unprivileged don't work when mounting a volume
-    # container_name: vectordb
     restart: unless-stopped
     volumes:
       - ./data/qdrant:/qdrant/storage
@@ -16,7 +15,6 @@ services:
 
   api:
     build: .
-    # container_name: api
     restart: unless-stopped
     depends_on:
       - vectordb
@@ -27,9 +25,8 @@ services:
       # NOTE: dirty hack to fix a bug with podman internal network on prod server
       # - VECTORDB_URL=http://10.89.1.2:6334/
     volumes:
-      - ./data/fastembed_cache:/tmp/fastembed_cache
-      - ./data/logs:/logs
-      - ./data/embeddings:/app/data/embeddings
+      - ./.fastembed_cache:/tmp/fastembed_cache
+      - ./data:/app/data
       - ./src:/app/src
     env_file:
       - .env

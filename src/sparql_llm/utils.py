@@ -1,3 +1,4 @@
+import json
 import logging
 from typing import Any, TypedDict
 
@@ -14,7 +15,6 @@ logger.setLevel(logging.INFO)
 # logger.addHandler(handler)
 # logger.propagate = False
 
-# logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
@@ -40,18 +40,39 @@ WHERE {
         sh:prefix ?prefix .
 } ORDER BY ?prefix"""
 
+ENDPOINTS_METADATA_FILE = "data/endpoints_metadata.json"
+
+
+def load_endpoints_metadata_file() -> tuple[dict[str, str], "EndpointsSchemaDict"]:
+    """Load prefixes and schema from the cached metadata file."""
+    try:
+        with open(ENDPOINTS_METADATA_FILE) as f:
+            data = json.load(f)
+            logger.info(
+                f"💾 Loaded endpoints metadata from {ENDPOINTS_METADATA_FILE} for {len(data.get('classes_schema', {}))} endpoints"
+            )
+            return data.get("prefixes_map", {}), data.get("classes_schema", {})
+    except Exception as e:
+        logger.warning(f"Could not load metadata from {ENDPOINTS_METADATA_FILE}: {e}")
+        return {}, {}
+
 
 def get_prefixes_and_schema_for_endpoints(
     endpoints: list[SparqlEndpointLinks],
 ) -> tuple[dict[str, str], "EndpointsSchemaDict"]:
     """Return a dictionary of prefixes and a dictionary of VoID classes schema for the given endpoints."""
-    prefixes_map: dict[str, str] = {}
-    endpoints_void_dict: EndpointsSchemaDict = {}
+    prefixes_map, endpoints_void_dict = load_endpoints_metadata_file()
+    if prefixes_map and endpoints_void_dict:
+        return prefixes_map, endpoints_void_dict
+    logger.info(f"Fetching metadata for {len(endpoints)} endpoints...")
     for endpoint in endpoints:
         endpoints_void_dict[endpoint["endpoint_url"]] = get_schema_for_endpoint(
             endpoint["endpoint_url"], endpoint.get("void_file")
         )
+        logger.info(f"Fetching {endpoint['endpoint_url']} metadata...")
         prefixes_map = get_prefixes_for_endpoint(endpoint["endpoint_url"], endpoint.get("examples_file"), prefixes_map)
+    with open(ENDPOINTS_METADATA_FILE, "w") as f:
+        json.dump({"prefixes_map": prefixes_map, "classes_schema": endpoints_void_dict}, f, indent=2)
     return prefixes_map, endpoints_void_dict
 
 
@@ -62,9 +83,9 @@ def get_prefixes_for_endpoint(
     if prefixes_map is None:
         prefixes_map = {}
     try:
-        for row in query_sparql(GET_PREFIXES_QUERY, endpoint_url, use_file=examples_file, check_service_desc=True)[
-            "results"
-        ]["bindings"]:
+        for row in query_sparql(
+            GET_PREFIXES_QUERY, endpoint_url, use_file=examples_file, check_service_desc=True, timeout=10
+        )["results"]["bindings"]:
             if row["namespace"]["value"] not in prefixes_map.values():
                 prefixes_map[row["prefix"]["value"]] = row["namespace"]["value"]
     except Exception as e:
@@ -216,6 +237,7 @@ def query_sparql(
                 return {"results": {"bindings": [{"ask-variable": {"value": str(resp_json["boolean"]).lower()}}]}}
             if check_service_desc and not resp_json.get("results", {}).get("bindings", []):
                 # If no results found directly in the endpoint we check in its service description
+                logger.debug(f"No results found, checking service description for {endpoint_url}...")
                 resp = client.get(
                     endpoint_url,
                     headers={"Accept": "text/turtle"},
