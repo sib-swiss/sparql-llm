@@ -115,8 +115,7 @@ Get a PyPI API token at [pypi.org/manage/account](https://pypi.org/manage/accoun
    ```sh
    VERSION=$(uvx hatch version)
    uvx git-cliff -o CHANGELOG.md --tag v$VERSION
-
-   git add src/sparql_llm/__init__.py
+   git add CHANGELOG.md src/sparql_llm/__init__.py
    git commit -m "Bump to v$VERSION"
    git tag -a "v$VERSION" -m "Release v$VERSION"
    git push origin "v$VERSION"
