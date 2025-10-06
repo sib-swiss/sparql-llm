@@ -10,7 +10,7 @@
 
 This project provides tools to enhance the capabilities of Large Language Models (LLMs) in generating [SPARQL](https://www.w3.org/TR/sparql11-overview/) queries for specific endpoints:
 
-- a **MCP server** to expose tools to help LLM write SPARQL queries for a set of endpoints
+- a **MCP server** to expose tools to help LLM write SPARQL queries for a set of endpoints available at https://chat.expasy.org/mcp
 - a complete **chat web service**
 - **reusable components** published as the [`sparql-llm`](https://pypi.org/project/sparql-llm/) pip package
 
@@ -51,7 +51,7 @@ Available tools are:
 
 ### 🐙 Connect client to MCP
 
-Follow the instructions of your client, and use the `/mcp` URL of your deployed server (e.g. http://localhost:8000/mcp)
+Follow the instructions of your client, and use the URL of the public server: **https://chat.expasy.org/mcp**
 
 For example, for GitHub Copilot in VSCode, to add a new MCP server through the VSCode UI:
 
@@ -80,9 +80,9 @@ In VSCode `mcp.json` you should have the following:
 
 > [!NOTE]
 >
-> More details in [the official docs](https://code.visualstudio.com/docs/copilot/chat/mcp-servers).
+> Find more details in the [official docs](https://code.visualstudio.com/docs/copilot/chat/mcp-servers).
 
-Or use it with stdio transport:
+Alternatively you can use it with stdio transport:
 
 ```sh
 uvx sparql-llm --stdio
