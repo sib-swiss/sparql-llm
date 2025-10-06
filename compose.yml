@@ -19,7 +19,8 @@ services:
     depends_on:
       - vectordb
     ports:
-      - 443:80
+      - 80:80
+      # - 443:80
     environment:
       - VECTORDB_URL=http://vectordb:6334/
       # NOTE: dirty hack to fix a bug with podman internal network on prod server
