@@ -8,7 +8,10 @@
 
 This section is for if you want to run the package and reusable components in development, and get involved by making a code contribution.
 
-> Requirements: [`uv`](https://docs.astral.sh/uv/getting-started/installation/) to easily handle scripts and virtual environments, docker to deploy qdrant and the server
+> Requirements:
+>
+> - [x] [`uv`](https://docs.astral.sh/uv/getting-started/installation/), to easily handle scripts and virtual environments
+> - [x] docker, to deploy the qdrant vector db and the server
 
 ## 📥️ Setup
 
@@ -23,6 +26,20 @@ Install pre-commit hooks:
 
 ```sh
 uv run pre-commit install
+```
+
+Create a `.env` file at the root of the repository to provide secrets and API keys:
+
+```sh
+CHAT_API_KEY=NOT_SO_SECRET_API_KEY_USED_BY_FRONTEND_TO_AVOID_SPAM_FROM_CRAWLERS
+LOGS_API_KEY=SECRET_PASSWORD_TO_EASILY_ACCESS_LOGS_THROUGH_THE_API
+
+OPENAI_API_KEY=sk-proj-YYY
+OPENROUTER_API_KEY=sk-YYY
+
+LANGFUSE_HOST=https://cloud.langfuse.com
+LANGFUSE_PUBLIC_KEY=
+LANGFUSE_SECRET_KEY=
 ```
 
 ## ✅ Run tests
@@ -58,26 +75,26 @@ uv run --extra agent --env-file .env uvicorn src.sparql_llm.agent.main:app --hos
 >
 > Checkout the `README.md` for instructions to run the server in development with docker.
 
-Test the experimental AG-UI endpoint:
-
-```sh
-curl -X POST http://localhost:8000/agent \
-  -H "Content-Type: application/json" \
-  -H "Accept: text/event-stream" \
-  -d '{
-    "messages": [
-    	{"id": "msg_1", "role": "user", "content": "What is the HGNC symbol for the P68871 protein?"}
-    ],
-    "threadId": "t1",
-    "runId": "r1",
-    "tools": [],
-    "context": [],
-    "state": {},
-    "forwardedProps" : {}
-  }'
-```
-
-`"model": "mistralai/mistral-small-latest", "stream": true`
+> Test the experimental AG-UI endpoint:
+>
+> ```sh
+> curl -X POST http://localhost:8000/agent \
+>   -H "Content-Type: application/json" \
+>   -H "Accept: text/event-stream" \
+>   -d '{
+>     "messages": [
+>     	{"id": "msg_1", "role": "user", "content": "What is the HGNC symbol for the P68871 protein?"}
+>     ],
+>     "threadId": "t1",
+>     "runId": "r1",
+>     "tools": [],
+>     "context": [],
+>     "state": {},
+>     "forwardedProps" : {}
+>   }'
+> ```
+>
+> `"model": "mistralai/mistral-small-latest", "stream": true`
 
 ## ♻️ Reset the environment
 
@@ -97,33 +114,8 @@ uv cache clean
 
 Get a PyPI API token at [pypi.org/manage/account](https://pypi.org/manage/account).
 
-1. Increment the `version` number in the `pyproject.toml` file (`fix`, `minor`, or `major`).
+Run the release script providing the type of version bump: `fix`, `minor`, or `major`
 
-   ```bash
-   uvx hatch version fix
-   ```
-
-2. Build and publish:
-
-   ```bash
-   uv build
-   uv publish
-   ```
-
-3. Create a new tag:
-
-   ```sh
-   VERSION=$(uvx hatch version)
-   uvx git-cliff -o CHANGELOG.md --tag v$VERSION
-   git add CHANGELOG.md src/sparql_llm/__init__.py
-   git commit -m "Bump to v$VERSION"
-   git tag -a "v$VERSION" -m "Release v$VERSION"
-   git push origin "v$VERSION"
-   ```
-
-> If `uv publish` is still broken:
->
-> ```sh
-> uvx hatch build
-> uvx hatch publish
-> ```
+```sh
+./release.sh fix
+```

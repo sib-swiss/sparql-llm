@@ -10,8 +10,8 @@
 
 This project provides tools to enhance the capabilities of Large Language Models (LLMs) in generating [SPARQL](https://www.w3.org/TR/sparql11-overview/) queries for specific endpoints:
 
-- a **MCP server** to expose tools to help LLM write SPARQL queries for a set of endpoints available at https://chat.expasy.org/mcp
-- a complete **chat web service**
+- a complete **chat web service** available at **[expasy.org/chat](https://expasy.org/chat)**
+- a **MCP server** exposing tools at **https://chat.expasy.org/mcp**
 - **reusable components** published as the [`sparql-llm`](https://pypi.org/project/sparql-llm/) pip package
 
 The system integrates Retrieval-Augmented Generation (RAG) and SPARQL query validation through endpoint schemas, to ensure more accurate and relevant query generation on large scale knowledge graphs.
@@ -243,11 +243,7 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
    LOGS_API_KEY=SECRET_PASSWORD_TO_EASILY_ACCESS_LOGS_THROUGH_THE_API
 
    OPENAI_API_KEY=sk-proj-YYY
-   GROQ_API_KEY=gsk_YYY
-   HUGGINGFACEHUB_API_TOKEN=
-   TOGETHER_API_KEY=
-   AZURE_INFERENCE_CREDENTIAL=
-   AZURE_INFERENCE_ENDPOINT=https://project-id.services.ai.azure.com/models
+   OPENROUTER_API_KEY=sk-YYY
 
    LANGFUSE_HOST=https://cloud.langfuse.com
    LANGFUSE_PUBLIC_KEY=
@@ -297,11 +293,10 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 >
 > ```sh
 > docker compose -f compose.dev.yml up vectordb -d
-> cd src/expasy-agent
-> VECTORDB_URL=http://localhost:6334 nohup uv run --extra gpu src/expasy_agent/indexing/index_entities.py --gpu &
+> VECTORDB_URL=http://localhost:6334 nohup uv run --extra gpu src/sparql_llm/agent/indexing/index_entities.py --gpu &
 > ```
 >
-> Then move the entities collection containing the embeddings in `data/qdrant/collections/entities` before starting the stack
+>Then move the entities collection containing the embeddings in `data/qdrant/collections/entities` before starting the stack
 
 ### 🥇 Benchmarks
 
@@ -310,12 +305,12 @@ There are a few benchmarks available for the system:
 - The `tests/benchmark.py` script will run a list of questions and compare their results to a reference SPARQL queries, with and without query validation, against a list of LLM providers. You will need to change the list of queries if you want to use it for different endpoints. You will need to start the stack in development mode to run it:
 
   ```sh
-  uv run --env-file .env src/expasy-agent/tests/benchmark.py
+  uv run --env-file .env tests/benchmark.py
   ```
 
   > It takes time to run and will log the output and results in `data/benchmarks`
 
-- Follow [these instructions](src/expasy-agent/tests/text2sparql/README.md) to run the `Text2SPARQL Benchmark`.
+- Follow [these instructions](tests/text2sparql/README.md) to run the `Text2SPARQL Benchmark`.
 
 ## 🧑‍🏫 Tutorial
 
