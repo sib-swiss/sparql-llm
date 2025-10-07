@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.1](https://github.com/sib-swiss/sparql-llm/compare/v0.1.0..v0.1.1) - 2025-10-07
+
+### ⚙️ Continuous Integration
+
+- Add release.sh script and improve docs - ([ce4aa58](https://github.com/sib-swiss/sparql-llm/commit/ce4aa58e486c9ddbf92f8c450787972ff42a97ed))
+
+### ⛰️ Features
+
+- Use stdio by default when starting MCP server alone - ([12754c8](https://github.com/sib-swiss/sparql-llm/commit/12754c8b578692df86cce2d938515cda33433519))
+
+### 🛠️ Miscellaneous Tasks
+
+- Fix dependency issue - ([ef5ea39](https://github.com/sib-swiss/sparql-llm/commit/ef5ea398e642aec68b18213d4c37f7a0c98b05df))
+
 ## [0.1.0](https://github.com/sib-swiss/sparql-llm/tree/v0.1.0) - 2025-10-06
 
 ### ⚙️ Continuous Integration
