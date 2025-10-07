@@ -26,6 +26,7 @@ if [[ "$1" == *"ck"* ]]; then
     uv run text2sparql evaluate -e "$ENDPOINT_URL" -o "$RESULTS_CK" ExpasyGPT "$QUESTIONS_CK" "$QUERIES"
 fi
 
+# if the argument contains "db" then use the db questions file
 if [[ "$1" == *"db"* ]]; then
     # Ask questions from the questions file on your endpoint
     uv run text2sparql ask --answers-db "$CACHE" -o "$QUERIES" "$QUESTIONS_DB" "$API_URL"
