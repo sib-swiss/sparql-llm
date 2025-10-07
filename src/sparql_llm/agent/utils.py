@@ -25,6 +25,7 @@ def load_chat_model(configuration: Configuration) -> BaseChatModel:
             model=model_name,
             temperature=configuration.temperature,
             api_key=SecretStr(os.getenv("OPENROUTER_API_KEY") or ""),
+            seed=configuration.seed,
             # default_headers={
             #     "HTTP-Referer": getenv("YOUR_SITE_URL"),
             #     "X-Title": getenv("YOUR_SITE_NAME"),

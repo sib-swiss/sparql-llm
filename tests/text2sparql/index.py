@@ -16,7 +16,7 @@ VECTORDB_URL = "http://localhost:6334"
 def init_vectordb(
     endpoint_url: str,
     graph: str,
-    limit_queries: dict[str, float],
+    limit_schema: dict[str, float],
     max_workers: int,
     force_recompute: bool,
     schema_path: str,
@@ -55,7 +55,7 @@ def init_vectordb(
     schema = EndpointSchema(
         endpoint_url=endpoint_url,
         graph=graph,
-        limit_queries=limit_queries,
+        limit_schema=limit_schema,
         max_workers=max_workers,
         force_recompute=force_recompute,
         schema_path=schema_path,
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     init_vectordb(
         endpoint_url="http://localhost:8890/sparql/",
         graph="https://text2sparql.aksw.org/2025/corporate/",
-        limit_queries={
+        limit_schema={
             "top_classes_percentile": 0,
             "top_n_predicates": 20,
             "top_n_ranges": 1,
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     init_vectordb(
         endpoint_url="http://localhost:8890/sparql/",
         graph="https://text2sparql.aksw.org/2025/dbpedia/",
-        limit_queries={
+        limit_schema={
             "top_classes_percentile": 0.90,
             "top_n_predicates": 20,
             "top_n_ranges": 1,
