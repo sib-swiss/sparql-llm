@@ -71,6 +71,18 @@ You can run the server with uvicorn:
 uv run --extra agent --env-file .env uvicorn src.sparql_llm.agent.main:app --host 0.0.0.0 --port 8000 --log-config logging.yml --reload
 ```
 
+Run the MCP server only, with STDIO transport:
+
+```sh
+uv run sparql-llm
+```
+
+With streamable HTTP transport:
+
+```sh
+uv run sparql-llm --http
+```
+
 > [!NOTE]
 >
 > Checkout the `README.md` for instructions to run the server in development with docker.
@@ -117,5 +129,5 @@ Get a PyPI API token at [pypi.org/manage/account](https://pypi.org/manage/accoun
 Run the release script providing the type of version bump: `fix`, `minor`, or `major`
 
 ```sh
-./release.sh fix
+.github/release.sh fix
 ```

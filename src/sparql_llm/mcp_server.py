@@ -307,14 +307,16 @@ def cli() -> None:
     parser = argparse.ArgumentParser(
         description="A Model Context Protocol (MCP) server for BioData resources at the SIB."
     )
-    parser.add_argument("--stdio", action="store_true", help="Use STDIO transport")
+    parser.add_argument("--http", action="store_true", help="Use Streamable HTTP transport")
     parser.add_argument("--port", type=int, default=8888, help="Port to run the server on")
     args = parser.parse_args()
-    if args.stdio:
+    if args.http:
         mcp.run()
-    else:
         mcp.settings.port = args.port
+        mcp.settings.log_level = "INFO"
         mcp.run(transport="streamable-http")
+    else:
+        mcp.run()
 
 
 # if __name__ == "__main__":

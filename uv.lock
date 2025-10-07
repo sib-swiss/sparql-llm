@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -3998,6 +3998,7 @@ dependencies = [
     { name = "langgraph" },
     { name = "markdownify" },
     { name = "mcp" },
+    { name = "pandas" },
     { name = "qdrant-client" },
     { name = "rdflib" },
     { name = "sparqlwrapper" },
@@ -4015,7 +4016,6 @@ agent = [
     { name = "langchain-together" },
     { name = "langfuse" },
     { name = "matplotlib" },
-    { name = "pandas" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "seaborn" },
@@ -4030,7 +4030,6 @@ gpu = [
 [package.dev-dependencies]
 dev = [
     { name = "mypy" },
-    { name = "pandas" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -4059,7 +4058,7 @@ requires-dist = [
     { name = "markdownify", specifier = ">=1.1.0" },
     { name = "matplotlib", marker = "extra == 'agent'", specifier = ">=3.10.3" },
     { name = "mcp", specifier = ">=1.16.0" },
-    { name = "pandas", marker = "extra == 'agent'", specifier = ">=2.2.3" },
+    { name = "pandas", specifier = ">=2.2.3" },
     { name = "pydantic", marker = "extra == 'agent'", specifier = ">=2.10.0" },
     { name = "pydantic-settings", marker = "extra == 'agent'", specifier = ">=2.7.0" },
     { name = "qdrant-client", specifier = ">=1.15.1" },
@@ -4075,7 +4074,6 @@ provides-extras = ["agent", "gpu"]
 [package.metadata.requires-dev]
 dev = [
     { name = "mypy", specifier = ">=1.15.0" },
-    { name = "pandas", specifier = ">=2.2.3" },
     { name = "pre-commit", specifier = ">=4.1.0" },
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "pytest-cov", specifier = ">=6.0.0" },

@@ -5,7 +5,6 @@ import os
 from langchain.chat_models import init_chat_model
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import BaseMessage
-from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
 from sparql_llm.agent.config import Configuration
@@ -19,6 +18,8 @@ def load_chat_model(configuration: Configuration) -> BaseChatModel:
     """
     provider, model_name = configuration.model.split("/", maxsplit=1)
     if provider == "openrouter":
+        from langchain_openai import ChatOpenAI
+
         # https://openrouter.ai/docs/community/lang-chain
         return ChatOpenAI(
             base_url="https://openrouter.ai/api/v1",
