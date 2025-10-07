@@ -83,6 +83,37 @@ With streamable HTTP transport:
 uv run sparql-llm --http
 ```
 
+🫆 Start the MCP inspector:
+
+```sh
+uv run mcp dev src/sparql_llm/mcp_server.py
+```
+
+🔌 Connect a client to the MCP server (cf. `README.md` for more details), the VSCode `mcp.json` should look like below, you will need to change the `cwd` field to provide the path to this repository on your machine:
+
+```json
+{
+   "servers": {
+      "sparql-mcp": {
+         "type": "stdio",
+         "cwd": "~/dev/sparql-llm",
+         "env": {
+      	   "SETTINGS_FILEPATH": "sparql-mcp.json"
+         },
+         "command": "uv",
+         "args": [
+           "run",
+           "sparql-llm"
+         ]
+      },
+      "sparql-mcp-http": {
+         "url": "http://localhost:8888/mcp",
+         "type": "http"
+      },
+   }
+}
+```
+
 > [!NOTE]
 >
 > Checkout the `README.md` for instructions to run the server in development with docker.

@@ -86,6 +86,7 @@ dev = [
     "pytest-cov >=6.0.0",
     "mypy >=1.15.0",
     "pre-commit >=4.1.0",
+    "mcp[cli]",
     # "ipykernel >=6.29.5",
 ]
 

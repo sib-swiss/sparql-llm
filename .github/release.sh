@@ -18,6 +18,7 @@ git commit -m "Bump to v$VERSION"
 git tag -a "v$VERSION" -m "Release v$VERSION"
 git push origin "v$VERSION"
 
+rm -rf dist
 uv build
 uv publish
 

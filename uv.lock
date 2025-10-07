@@ -1953,6 +1953,18 @@ wheels = [
 ]
 
 [[package]]
+name = "markdown-it-py"
+version = "4.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mdurl" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5b/f5/4ec618ed16cc4f8fb3b701563655a69816155e79e24a17b651541804721d/markdown_it_py-4.0.0.tar.gz", hash = "sha256:cb0a2b4aa34f932c007117b194e945bd74e0ec24133ceb5bac59009cda1cb9f3", size = 73070, upload-time = "2025-08-11T12:57:52.854Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/94/54/e7d793b573f298e1c9013b8c4dade17d481164aa517d1d7148619c2cedbf/markdown_it_py-4.0.0-py3-none-any.whl", hash = "sha256:87327c59b172c5011896038353a81343b6754500a08cd7a4973bb48c6d578147", size = 87321, upload-time = "2025-08-11T12:57:51.923Z" },
+]
+
+[[package]]
 name = "markdownify"
 version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2157,6 +2169,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/3d/a1/b1f328da3b153683d2ec34f849b4b6eac2790fb240e3aef06ff2fab3df9d/mcp-1.16.0.tar.gz", hash = "sha256:39b8ca25460c578ee2cdad33feeea122694cfdf73eef58bee76c42f6ef0589df", size = 472918, upload-time = "2025-10-02T16:58:20.631Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c9/0e/7cebc88e17daf94ebe28c95633af595ccb2864dc2ee7abd75542d98495cc/mcp-1.16.0-py3-none-any.whl", hash = "sha256:ec917be9a5d31b09ba331e1768aa576e0af45470d657a0319996a20a57d7d633", size = 167266, upload-time = "2025-10-02T16:58:19.039Z" },
+]
+
+[package.optional-dependencies]
+cli = [
+    { name = "python-dotenv" },
+    { name = "typer" },
+]
+
+[[package]]
+name = "mdurl"
+version = "0.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729, upload-time = "2022-08-14T12:40:10.846Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979, upload-time = "2022-08-14T12:40:09.779Z" },
 ]
 
 [[package]]
@@ -3790,6 +3817,19 @@ wheels = [
 ]
 
 [[package]]
+name = "rich"
+version = "14.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markdown-it-py" },
+    { name = "pygments" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fe/75/af448d8e52bf1d8fa6a9d089ca6c07ff4453d86c65c145d0a300bb073b9b/rich-14.1.0.tar.gz", hash = "sha256:e497a48b844b0320d45007cdebfeaeed8db2a4f4bcf49f15e455cfc4af11eaa8", size = 224441, upload-time = "2025-07-25T07:32:58.125Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e3/30/3c4d035596d3cf444529e0b2953ad0466f6049528a879d27534700580395/rich-14.1.0-py3-none-any.whl", hash = "sha256:536f5f1785986d6dbdea3c75205c473f970777b4a0d6c6dd1b696aa05a3fa04f", size = 243368, upload-time = "2025-07-25T07:32:56.73Z" },
+]
+
+[[package]]
 name = "rpds-py"
 version = "0.27.1"
 source = { registry = "https://pypi.org/simple" }
@@ -3958,6 +3998,15 @@ fastapi = [
 ]
 
 [[package]]
+name = "shellingham"
+version = "1.5.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/15/8b3609fd3830ef7b27b655beb4b4e9c62313a4e8da8c676e142cc210d58e/shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de", size = 10310, upload-time = "2023-10-24T04:13:40.426Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686", size = 9755, upload-time = "2023-10-24T04:13:38.866Z" },
+]
+
+[[package]]
 name = "six"
 version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -4029,6 +4078,7 @@ gpu = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "mcp", extra = ["cli"] },
     { name = "mypy" },
     { name = "pre-commit" },
     { name = "pytest" },
@@ -4073,6 +4123,7 @@ provides-extras = ["agent", "gpu"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "mcp", extras = ["cli"] },
     { name = "mypy", specifier = ">=1.15.0" },
     { name = "pre-commit", specifier = ">=4.1.0" },
     { name = "pytest", specifier = ">=8.3.4" },
@@ -4292,6 +4343,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a8/4b/29b4ef32e036bb34e4ab51796dd745cdba7ed47ad142a9f4a1eb8e0c744d/tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2", size = 169737, upload-time = "2024-11-24T20:12:22.481Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d0/30/dc54f88dd4a2b5dc8a0279bdd7270e735851848b762aeb1c1184ed1f6b14/tqdm-4.67.1-py3-none-any.whl", hash = "sha256:26445eca388f82e72884e0d580d5464cd801a3ea01e63e5601bdff9ba6a48de2", size = 78540, upload-time = "2024-11-24T20:12:19.698Z" },
+]
+
+[[package]]
+name = "typer"
+version = "0.19.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "rich" },
+    { name = "shellingham" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/21/ca/950278884e2ca20547ff3eb109478c6baf6b8cf219318e6bc4f666fad8e8/typer-0.19.2.tar.gz", hash = "sha256:9ad824308ded0ad06cc716434705f691d4ee0bfd0fb081839d2e426860e7fdca", size = 104755, upload-time = "2025-09-23T09:47:48.256Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/00/22/35617eee79080a5d071d0f14ad698d325ee6b3bf824fc0467c03b30e7fa8/typer-0.19.2-py3-none-any.whl", hash = "sha256:755e7e19670ffad8283db353267cb81ef252f595aa6834a0d1ca9312d9326cb9", size = 46748, upload-time = "2025-09-23T09:47:46.777Z" },
 ]
 
 [[package]]

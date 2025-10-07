@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import dataclass, field, fields
+from pathlib import Path
 from typing import Annotated, Any, TypeVar
 
 from langchain_core.runnables import RunnableConfig, ensure_config
@@ -166,8 +169,25 @@ It provides a unified, searchable framework that connects chemical profiles of p
         extra="allow",
     )
 
+    @classmethod
+    def from_file(cls, filepath: str) -> Settings:
+        """Create a Settings instance from a file.
 
-settings = Settings()
+        Args:
+            filepath: The path to the file.
+        """
+        path = Path(filepath)  # your JSON file path
+        if not path.exists():
+            return Settings()
+        with path.open("r") as f:
+            return Settings(**json.load(f))
+
+
+settings_filepath = os.getenv("SETTINGS_FILEPATH")
+settings = Settings.from_file(settings_filepath) if settings_filepath else Settings()
+# logger.info(f"📂 Using SETTINGS file: {settings_filepath}")
+
+# settings = Settings()
 
 # TODO: Getting `TypeError: cannot pickle '_thread.RLock' object` when doing `QdrantVectorStore.from_existing_collection(client=qdrant_client)`
 qdrant_client = (

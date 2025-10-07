@@ -81,7 +81,7 @@ In your VSCode `mcp.json` you should have the following:
 uvx sparql-llm
 ```
 
-Your VSCode `mcp.json` file you should have:
+Your VSCode `mcp.json` file you should have, optionally you can provide the path to a custom settings file:
 
 ```json
 {
@@ -89,6 +89,9 @@ Your VSCode `mcp.json` file you should have:
     "expasy-mcp": {
       "type": "stdio",
       "command": "uvx",
+      "env": {
+				"SETTINGS_FILEPATH": "~/dev/sparql-llm/sparql-mcp.json"
+			},
       "args": [
         "sparql-llm"
       ]

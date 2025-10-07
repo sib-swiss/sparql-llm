@@ -29,7 +29,6 @@ embedding_model = TextEmbedding(
     # providers=["CUDAExecutionProvider"], # Replace the fastembed dependency with fastembed-gpu to use your GPUs
 )
 
-
 # Check if the docs collection exists and has data, initialize if not
 try:
     collection_exists = qdrant_client.collection_exists(settings.docs_collection_name)
@@ -52,8 +51,8 @@ except Exception as e:
 # TODO: tool get_classes_schema
 # potential_entities: Potential entities and instances of classes
 @mcp.tool()
-async def access_sib_biodata_sparql(question: str, potential_classes: list[str], steps: list[str]) -> str:
-    """Assist users in writing SPARQL queries to access SIB biodata resources by retrieving relevant examples and docs.
+async def search_sparql_docs(question: str, potential_classes: list[str], steps: list[str]) -> str:
+    """Assist users in writing SPARQL queries to access SIB biodata resources by retrieving relevant examples and classes schema.
     Covers topics such as genes, proteins, lipids, chemical reactions, and metabolomics data.
 
     Args:
@@ -268,7 +267,7 @@ and check them one by one."""
 @mcp.resource("examples://{question}")
 def get_examples(question: str) -> str:
     """Get relevant SPARQL query examples and other documents to help the user write a SPARQL query."""
-    return access_sib_biodata_sparql(question, [], [])
+    return search_sparql_docs(question, [], [])
 
 
 # @mcp.resource("schema://{endpoint}/cls/{uri}")
@@ -309,7 +308,9 @@ def cli() -> None:
     )
     parser.add_argument("--http", action="store_true", help="Use Streamable HTTP transport")
     parser.add_argument("--port", type=int, default=8888, help="Port to run the server on")
+    # parser.add_argument("settings_filepath", type=str, nargs="?", default="sparql-mcp.json", help="Path to settings file")
     args = parser.parse_args()
+    # settings = Settings.from_file(args.settings_filepath)
     if args.http:
         mcp.run()
         mcp.settings.port = args.port
