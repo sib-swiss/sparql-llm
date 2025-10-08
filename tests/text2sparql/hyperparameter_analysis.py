@@ -31,7 +31,7 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame, example
     ax1.set_xlim(0, 1)
     ax1.set_ylim(0.1, 0.7)
     ax1.get_legend().remove()
-    ax1.set_xticks([0.0, 0.5, 1.0], ["0%", "50%", "100%"])
+    ax1.set_xticks([.0, .25, .5, .75, 1.0], ["0%", '25%', "50%", '75%', "100%"])
     ax1.set_yticks([.2, .3, .4, .5, .6, .7], [".2", ".3", ".4", ".5", ".6", ".7"])
 
     # Second subplot - examples tuning
@@ -63,50 +63,50 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame, example
 if __name__ == "__main__":
     proportion_results = pd.DataFrame(
         [
-            # {"proportion": 0.00, "dataset": "DBpedia (EN)", "F1 Score": },
-            # {"proportion": 0.00, "dataset": "DBpedia (EN)", "F1 Score": },
-            # {"proportion": 0.00, "dataset": "DBpedia (EN)", "F1 Score": },
-            {"proportion": 0.10, "dataset": "DBpedia (EN)", "F1 Score": 0.5177818642677522},
-            {"proportion": 0.10, "dataset": "DBpedia (EN)", "F1 Score": 0.5315289713061103},
-            {"proportion": 0.10, "dataset": "DBpedia (EN)", "F1 Score": 0.5171853349263068},
-            {"proportion": 0.20, "dataset": "DBpedia (EN)", "F1 Score": 0.5874967190140884},
-            {"proportion": 0.20, "dataset": "DBpedia (EN)", "F1 Score": 0.5786879881257998},
-            {"proportion": 0.20, "dataset": "DBpedia (EN)", "F1 Score": 0.5442170061900802},
+            {"proportion": 0.00, "dataset": "DBpedia (EN)", "F1 Score": 0.5586293994429258},
+            {"proportion": 0.00, "dataset": "DBpedia (EN)", "F1 Score": 0.5674128215974444},
+            {"proportion": 0.00, "dataset": "DBpedia (EN)", "F1 Score": 0.5577725555069302},
+            {"proportion": 0.25, "dataset": "DBpedia (EN)", "F1 Score": 0.5007120278213574},
+            {"proportion": 0.25, "dataset": "DBpedia (EN)", "F1 Score": 0.5267660830673997},
+            {"proportion": 0.25, "dataset": "DBpedia (EN)", "F1 Score": 0.5346610817243259},
             {"proportion": 0.50, "dataset": "DBpedia (EN)", "F1 Score": 0.6249156554756955},
             {"proportion": 0.50, "dataset": "DBpedia (EN)", "F1 Score": 0.5647916605980592},
             {"proportion": 0.50, "dataset": "DBpedia (EN)", "F1 Score": 0.5617943435850233},
+            {"proportion": 0.75, "dataset": "DBpedia (EN)", "F1 Score": 0.610549656229553},
+            {"proportion": 0.75, "dataset": "DBpedia (EN)", "F1 Score": 0.5953462769800143},
+            {"proportion": 0.75, "dataset": "DBpedia (EN)", "F1 Score": 0.5987760360118075},
             {"proportion": 1.00, "dataset": "DBpedia (EN)", "F1 Score": 0.5570257999788799},
             {"proportion": 1.00, "dataset": "DBpedia (EN)", "F1 Score": 0.5626547452618874},
             {"proportion": 1.00, "dataset": "DBpedia (EN)", "F1 Score": 0.5676321864962138},
 
-            # {"proportion": 0.00, "dataset": "DBpedia (ES)", "F1 Score": },
-            # {"proportion": 0.00, "dataset": "DBpedia (ES)", "F1 Score": },
-            # {"proportion": 0.00, "dataset": "DBpedia (ES)", "F1 Score": },
-            {"proportion": 0.10, "dataset": "DBpedia (ES)", "F1 Score": 0.4667763109596714},
-            {"proportion": 0.10, "dataset": "DBpedia (ES)", "F1 Score": 0.4677388738349151},
-            {"proportion": 0.10, "dataset": "DBpedia (ES)", "F1 Score": 0.4770042256350722},
-            {"proportion": 0.20, "dataset": "DBpedia (ES)", "F1 Score": 0.4709356344926672},
-            {"proportion": 0.20, "dataset": "DBpedia (ES)", "F1 Score": 0.47393503449746754},
-            {"proportion": 0.20, "dataset": "DBpedia (ES)", "F1 Score": 0.45786748886563167},
+            {"proportion": 0.00, "dataset": "DBpedia (ES)", "F1 Score": 0.44942354366452286},
+            {"proportion": 0.00, "dataset": "DBpedia (ES)", "F1 Score": 0.46589599979623997},
+            {"proportion": 0.00, "dataset": "DBpedia (ES)", "F1 Score": 0.4499721506825501},
+            {"proportion": 0.25, "dataset": "DBpedia (ES)", "F1 Score": 0.48322421974123897},
+            {"proportion": 0.25, "dataset": "DBpedia (ES)", "F1 Score": 0.4754533381505741},
+            {"proportion": 0.25, "dataset": "DBpedia (ES)", "F1 Score": 0.4692675547194026},
             {"proportion": 0.50, "dataset": "DBpedia (ES)", "F1 Score": 0.4272150033867241},
             {"proportion": 0.50, "dataset": "DBpedia (ES)", "F1 Score": 0.45629056532984175},
             {"proportion": 0.50, "dataset": "DBpedia (ES)", "F1 Score": 0.4870455208203278},
+            {"proportion": 0.75, "dataset": "DBpedia (ES)", "F1 Score": 0.45821566063040947},
+            {"proportion": 0.75, "dataset": "DBpedia (ES)", "F1 Score": 0.4281971067358794},
+            {"proportion": 0.75, "dataset": "DBpedia (ES)", "F1 Score": 0.44691214932689816},
             {"proportion": 1.00, "dataset": "DBpedia (ES)", "F1 Score": 0.45023871583225045},
             {"proportion": 1.00, "dataset": "DBpedia (ES)", "F1 Score": 0.4399706216187276},
             {"proportion": 1.00, "dataset": "DBpedia (ES)", "F1 Score": 0.4239424397423014},
 
-            # {"proportion": 0.00, "dataset": "Corporate", "F1 Score": },
-            # {"proportion": 0.00, "dataset": "Corporate", "F1 Score": },
-            # {"proportion": 0.00, "dataset": "Corporate", "F1 Score": },
-            {"proportion": 0.10, "dataset": "Corporate", "F1 Score": 0.18119046638740882},
-            {"proportion": 0.10, "dataset": "Corporate", "F1 Score": 0.2344946680680811},
-            {"proportion": 0.10, "dataset": "Corporate", "F1 Score": 0.18705899555346123},
-            {"proportion": 0.20, "dataset": "Corporate", "F1 Score": 0.19461938483737992},
-            {"proportion": 0.20, "dataset": "Corporate", "F1 Score": 0.1820129285871166},
-            {"proportion": 0.20, "dataset": "Corporate", "F1 Score": 0.18895475679202206},
+            {"proportion": 0.00, "dataset": "Corporate", "F1 Score": 0.19634836112425091},
+            {"proportion": 0.00, "dataset": "Corporate", "F1 Score": 0.22619230376571678},
+            {"proportion": 0.00, "dataset": "Corporate", "F1 Score": 0.24963302678538718},
+            {"proportion": 0.25, "dataset": "Corporate", "F1 Score": 0.1565782833448236},
+            {"proportion": 0.25, "dataset": "Corporate", "F1 Score": 0.14550866715155986},
+            {"proportion": 0.25, "dataset": "Corporate", "F1 Score": 0.15889616460213127},
             {"proportion": 0.50, "dataset": "Corporate", "F1 Score": 0.24795698419057718},
             {"proportion": 0.50, "dataset": "Corporate", "F1 Score": 0.2831563128703653},
             {"proportion": 0.50, "dataset": "Corporate", "F1 Score": 0.3097776133603328},
+            {"proportion": 0.75, "dataset": "Corporate", "F1 Score": 0.2919913094527303},
+            {"proportion": 0.75, "dataset": "Corporate", "F1 Score": 0.244902286195286},
+            {"proportion": 0.75, "dataset": "Corporate", "F1 Score": 0.29464500250890013},
             {"proportion": 1.00, "dataset": "Corporate", "F1 Score": 0.3015879005635923},
             {"proportion": 1.00, "dataset": "Corporate", "F1 Score": 0.3480555354382549},
             {"proportion": 1.00, "dataset": "Corporate", "F1 Score": 0.2935839848627154},
@@ -115,14 +115,13 @@ if __name__ == "__main__":
     # Calculate overall results as the mean of DBpedia (EN) and DBpedia (ES) and Corporate
     overall_results = proportion_results[proportion_results['dataset'] == 'DBpedia (EN)'].copy()
     overall_results.loc[:, 'dataset'] = 'Overall'
-    overall_f1_scores = np.array(
-                            [   np.array(
-                                    [proportion_results[proportion_results['dataset'] == 'DBpedia (EN)']['F1 Score'].values,
-                                    proportion_results[proportion_results['dataset'] == 'DBpedia (ES)']['F1 Score'].values]
-                                ).mean(axis=0),
-                                proportion_results[proportion_results['dataset'] == 'Corporate']['F1 Score'].values
-                            ]
-                        ).mean(axis=0)
+    overall_f1_scores = np.array([
+                                    proportion_results[proportion_results['dataset'] == 'DBpedia (EN)']['F1 Score'].values,
+                                    proportion_results[proportion_results['dataset'] == 'DBpedia (ES)']['F1 Score'].values,
+                                    proportion_results[proportion_results['dataset'] == 'Corporate']['F1 Score'].values,
+                                ]
+                        )
+    overall_f1_scores = np.average(overall_f1_scores, axis=0, weights=[1, 1, 0.5])
     overall_results.loc[:, 'F1 Score'] = overall_f1_scores
     proportion_results = pd.concat([proportion_results, overall_results], axis=0).reset_index(drop=True)
 
@@ -156,14 +155,13 @@ if __name__ == "__main__":
     # Calculate overall results as the mean of DBpedia (EN) and DBpedia (ES) and Corporate
     overall_results = examples_results[examples_results['dataset'] == 'DBpedia (EN)'].copy()
     overall_results.loc[:, 'dataset'] = 'Overall'
-    overall_f1_scores = np.array(
-                            [   np.array(
-                                    [examples_results[examples_results['dataset'] == 'DBpedia (EN)']['F1 Score'].values,
-                                    examples_results[examples_results['dataset'] == 'DBpedia (ES)']['F1 Score'].values]
-                                ).mean(axis=0),
-                                examples_results[examples_results['dataset'] == 'Corporate']['F1 Score'].values
-                            ]
-                        ).mean(axis=0)
+    overall_f1_scores = np.array([
+                                    examples_results[examples_results['dataset'] == 'DBpedia (EN)']['F1 Score'].values,
+                                    examples_results[examples_results['dataset'] == 'DBpedia (ES)']['F1 Score'].values,
+                                    examples_results[examples_results['dataset'] == 'Corporate']['F1 Score'].values,
+                                ]
+                        )
+    overall_f1_scores = np.average(overall_f1_scores, axis=0, weights=[1, 1, 0.5])
     overall_results.loc[:, 'F1 Score'] = overall_f1_scores
     examples_results = pd.concat([examples_results, overall_results], axis=0).reset_index(drop=True)
 

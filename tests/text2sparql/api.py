@@ -18,7 +18,7 @@ app = fastapi.FastAPI(title="TEXT2SPARQL API")
 
 KNOWN_DATASETS = ["https://text2sparql.aksw.org/2025/dbpedia/", "https://text2sparql.aksw.org/2025/corporate/"]
 
-MODEL = "openrouter/openai/gpt-4o"
+MODEL = "openrouter/openai/gpt-4o-mini"
 DOCKER_ENDPOINT_URL = "http://text2sparql-virtuoso:8890/sparql/"
 DOCKER_VECTORDB_URL = "http://vectordb:6334"
 ENDPOINT_URL = "http://localhost:8890/sparql/"
