@@ -10,9 +10,10 @@ import seaborn as sns
 Hyperparameter Analysis of SPARQL-LLM
 """
 
-def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame, examples_results: pd.DataFrame, save_plot: bool = False) -> None:
-    sns.set_theme(context="paper", style="white", color_codes=True, font_scale=3.5)
-    _, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10), sharey=True)
+def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame, embeddings_results: pd.DataFrame, examples_results: pd.DataFrame, save_plot: bool = False) -> None:
+    sns.set_theme(context="paper", style="white", color_codes=True, font_scale=5.5)
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(50, 10), sharey=True)
+    plt.subplots_adjust(wspace=.1)
 
     # First subplot - proportion tuning
     sns.lineplot(
@@ -20,9 +21,9 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame, example
         x="proportion",
         y="F1 Score",
         hue="dataset",
-        hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate", "Overall"],
+        hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate"],
         linewidth=5,
-        palette=sns.color_palette("Blues")[1:5:3] + sns.color_palette("Oranges")[1:2] + sns.color_palette("Greens")[1:2],
+        palette=sns.color_palette("Blues")[1:5:3] + sns.color_palette("Oranges")[1:2],
         ax=ax1,
     )
 
@@ -34,24 +35,38 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame, example
     ax1.set_xticks([.0, .25, .5, .75, 1.0], ["0%", '25%', "50%", '75%', "100%"])
     ax1.set_yticks([.2, .3, .4, .5, .6, .7], [".2", ".3", ".4", ".5", ".6", ".7"])
 
-    # Second subplot - examples tuning
+    # Second subplot - embeddings tuning
+    sns.barplot(
+        data=embeddings_results,
+        x="embeddings",
+        y="F1 Score",
+        hue="dataset",
+        hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate"],
+        palette=sns.color_palette("Blues")[1:5:3] + sns.color_palette("Oranges")[1:2],
+        ax=ax2,
+    )
+
+    ax2.set_xlabel("Embeddings Model")
+    ax2.get_legend().remove()
+
+    # Third subplot - examples tuning
     sns.lineplot(
         data=examples_results,
         x="examples",
         y="F1 Score",
         hue="dataset",
-        hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate", "Overall"],
+        hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate"],
         linewidth=5,
-        palette=sns.color_palette("Blues")[1:5:3] + sns.color_palette("Oranges")[1:2] + sns.color_palette("Greens")[1:2],
-        ax=ax2,
+        palette=sns.color_palette("Blues")[1:5:3] + sns.color_palette("Oranges")[1:2],
+        ax=ax3,
     )
 
-    ax2.set_xlabel("Number of Provided Examples")
-    ax2.set_xlim(0, 21)
-    ax2.legend_.set_title("TEXT2SPARQL Corpus")
-    ax2.legend_.set_bbox_to_anchor((1, 1))
-    ax2.set_xticks([0, 10, 20], ["0", "10", "20"])
+    ax3.set_xlabel("Number of Provided Examples")
+    ax3.set_xlim(0, 20)
+    ax3.get_legend().remove()
+    ax3.set_xticks([0, 5, 10, 15, 20], ["0", "5", "10", "15", "20"])
 
+    fig.legend(*ax2.get_legend_handles_labels(), bbox_to_anchor=(0.5, 1.1), loc='upper center', ncol=4, title="TEXT2SPARQL Corpus")
     sns.despine(top=True, right=True)
 
     if save_plot:
@@ -112,18 +127,83 @@ if __name__ == "__main__":
             {"proportion": 1.00, "dataset": "Corporate", "F1 Score": 0.2935839848627154},
         ]
     )
-    # Calculate overall results as the mean of DBpedia (EN) and DBpedia (ES) and Corporate
-    overall_results = proportion_results[proportion_results['dataset'] == 'DBpedia (EN)'].copy()
-    overall_results.loc[:, 'dataset'] = 'Overall'
-    overall_f1_scores = np.array([
-                                    proportion_results[proportion_results['dataset'] == 'DBpedia (EN)']['F1 Score'].values,
-                                    proportion_results[proportion_results['dataset'] == 'DBpedia (ES)']['F1 Score'].values,
-                                    proportion_results[proportion_results['dataset'] == 'Corporate']['F1 Score'].values,
-                                ]
-                        )
-    overall_f1_scores = np.average(overall_f1_scores, axis=0, weights=[1, 1, 0.5])
-    overall_results.loc[:, 'F1 Score'] = overall_f1_scores
-    proportion_results = pd.concat([proportion_results, overall_results], axis=0).reset_index(drop=True)
+    # # Calculate overall results as the mean of DBpedia (EN) and DBpedia (ES) and Corporate
+    # overall_results = proportion_results[proportion_results['dataset'] == 'DBpedia (EN)'].copy()
+    # overall_results.loc[:, 'dataset'] = 'Overall'
+    # overall_f1_scores = np.array([
+    #                                 proportion_results[proportion_results['dataset'] == 'DBpedia (EN)']['F1 Score'].values,
+    #                                 proportion_results[proportion_results['dataset'] == 'DBpedia (ES)']['F1 Score'].values,
+    #                                 proportion_results[proportion_results['dataset'] == 'Corporate']['F1 Score'].values,
+    #                             ]
+    #                     )
+    # overall_f1_scores = np.average(overall_f1_scores, axis=0, weights=[1, 1, 0.5])
+    # overall_results.loc[:, 'F1 Score'] = overall_f1_scores
+    # proportion_results = pd.concat([proportion_results, overall_results], axis=0).reset_index(drop=True)
+
+    embeddings_results = pd.DataFrame(
+        [
+            {"embeddings": r'$baai_S$', "dataset": "DBpedia (EN)", "F1 Score": 0.610549656229553},
+            {"embeddings": r'$baai_S$', "dataset": "DBpedia (EN)", "F1 Score": 0.5953462769800143},
+            {"embeddings": r'$baai_S$', "dataset": "DBpedia (EN)", "F1 Score": 0.5987760360118075},
+
+            {"embeddings": r'$baai_S$', "dataset": "DBpedia (ES)", "F1 Score": 0.45821566063040947},
+            {"embeddings": r'$baai_S$', "dataset": "DBpedia (ES)", "F1 Score": 0.4281971067358794},
+            {"embeddings": r'$baai_S$', "dataset": "DBpedia (ES)", "F1 Score": 0.44691214932689816},
+
+            {"embeddings": r'$baai_S$', "dataset": "Corporate", "F1 Score": 0.3015879005635923},
+            {"embeddings": r'$baai_S$', "dataset": "Corporate", "F1 Score": 0.3480555354382549},
+            {"embeddings": r'$baai_S$', "dataset": "Corporate", "F1 Score": 0.2935839848627154},
+
+            {"embeddings": r'$baai_L$', "dataset": "DBpedia (EN)", "F1 Score": 0.5475664755245478},
+            {"embeddings": r'$baai_L$', "dataset": "DBpedia (EN)", "F1 Score": 0.5454894879751043},
+            {"embeddings": r'$baai_L$', "dataset": "DBpedia (EN)", "F1 Score": 0.5980675247123317},
+
+            {"embeddings": r'$baai_L$', "dataset": "DBpedia (ES)", "F1 Score": 0.4558814141873955},
+            {"embeddings": r'$baai_L$', "dataset": "DBpedia (ES)", "F1 Score": 0.45194163264032927},
+            {"embeddings": r'$baai_L$', "dataset": "DBpedia (ES)", "F1 Score": 0.47112991203315463},
+
+            {"embeddings": r'$baai_L$', "dataset": "Corporate", "F1 Score": 0.28408004406959564},
+            {"embeddings": r'$baai_L$', "dataset": "Corporate", "F1 Score": 0.2966222832699755},
+            {"embeddings": r'$baai_L$', "dataset": "Corporate", "F1 Score": 0.28276904187048557},
+
+            {"embeddings": r'$sbert_S$', "dataset": "DBpedia (EN)", "F1 Score": 0.5506992821827018},
+            {"embeddings": r'$sbert_S$', "dataset": "DBpedia (EN)", "F1 Score": 0.5638360047242182},
+            {"embeddings": r'$sbert_S$', "dataset": "DBpedia (EN)", "F1 Score": 0.5516150178428872},
+
+            {"embeddings": r'$sbert_S$', "dataset": "DBpedia (ES)", "F1 Score": 0.40818119903175726},
+            {"embeddings": r'$sbert_S$', "dataset": "DBpedia (ES)", "F1 Score": 0.39554361501977503},
+            {"embeddings": r'$sbert_S$', "dataset": "DBpedia (ES)", "F1 Score": 0.3990106548757198},
+
+            {"embeddings": r'$sbert_S$', "dataset": "Corporate", "F1 Score": 0.28984049357968716},
+            {"embeddings": r'$sbert_S$', "dataset": "Corporate", "F1 Score": 0.28627894086205463},
+            {"embeddings": r'$sbert_S$', "dataset": "Corporate", "F1 Score": 0.30933552349510784},
+
+            {"embeddings": r'$sbert_M$', "dataset": "DBpedia (EN)", "F1 Score": 0.5687752461961733},
+            {"embeddings": r'$sbert_M$', "dataset": "DBpedia (EN)", "F1 Score": 0.5922204789182033},
+            {"embeddings": r'$sbert_M$', "dataset": "DBpedia (EN)", "F1 Score": 0.5704949816495726},
+
+            {"embeddings": r'$sbert_M$', "dataset": "DBpedia (ES)", "F1 Score": 0.5705790029500079},
+            {"embeddings": r'$sbert_M$', "dataset": "DBpedia (ES)", "F1 Score": 0.5723625811112105},
+            {"embeddings": r'$sbert_M$', "dataset": "DBpedia (ES)", "F1 Score": 0.589287526153517},
+
+            {"embeddings": r'$sbert_M$', "dataset": "Corporate", "F1 Score": 0.3066348402080552},
+            {"embeddings": r'$sbert_M$', "dataset": "Corporate", "F1 Score": 0.3013348198566775},
+            {"embeddings": r'$sbert_M$', "dataset": "Corporate", "F1 Score": 0.28722810388426323},
+
+            {"embeddings": r'$jinaai_L$', "dataset": "DBpedia (EN)", "F1 Score": 0.5073148043481993},
+            {"embeddings": r'$jinaai_L$', "dataset": "DBpedia (EN)", "F1 Score": 0.5189132669051709},
+            {"embeddings": r'$jinaai_L$', "dataset": "DBpedia (EN)", "F1 Score": 0.5117392355032914},
+
+            {"embeddings": r'$jinaai_L$', "dataset": "DBpedia (ES)", "F1 Score": 0.5754993738730411},
+            {"embeddings": r'$jinaai_L$', "dataset": "DBpedia (ES)", "F1 Score": 0.5608449975226917},
+            {"embeddings": r'$jinaai_L$', "dataset": "DBpedia (ES)", "F1 Score": 0.5408470938035168},
+
+            {"embeddings": r'$jinaai_L$', "dataset": "Corporate", "F1 Score": 0.2826639372040017},
+            {"embeddings": r'$jinaai_L$', "dataset": "Corporate", "F1 Score": 0.3030665812878233},
+            {"embeddings": r'$jinaai_L$', "dataset": "Corporate", "F1 Score": 0.3058849277278708},
+
+        ]
+    )
 
     examples_results = pd.DataFrame(
         [
@@ -152,20 +232,9 @@ if __name__ == "__main__":
             {"examples": 20, "dataset": "Corporate", "F1 Score": 0.44},
         ]
     )
-    # Calculate overall results as the mean of DBpedia (EN) and DBpedia (ES) and Corporate
-    overall_results = examples_results[examples_results['dataset'] == 'DBpedia (EN)'].copy()
-    overall_results.loc[:, 'dataset'] = 'Overall'
-    overall_f1_scores = np.array([
-                                    examples_results[examples_results['dataset'] == 'DBpedia (EN)']['F1 Score'].values,
-                                    examples_results[examples_results['dataset'] == 'DBpedia (ES)']['F1 Score'].values,
-                                    examples_results[examples_results['dataset'] == 'Corporate']['F1 Score'].values,
-                                ]
-                        )
-    overall_f1_scores = np.average(overall_f1_scores, axis=0, weights=[1, 1, 0.5])
-    overall_results.loc[:, 'F1 Score'] = overall_f1_scores
-    examples_results = pd.concat([examples_results, overall_results], axis=0).reset_index(drop=True)
 
     plot_hyperparameter_tuning_results(proportion_results=proportion_results,
+                                       embeddings_results=embeddings_results,
                                        examples_results=examples_results,
                                        save_plot=False,
                                     )
