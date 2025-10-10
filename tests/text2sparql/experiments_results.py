@@ -32,10 +32,10 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame, embeddi
     ax1.set_xlabel("Proportion of Provided Schema")
     ax1.set_ylabel("F1 Score")
     ax1.set_xlim(0, 1)
-    ax1.set_ylim(0.1, 0.7)
+    ax1.set_ylim(0, .7)
     ax1.get_legend().remove()
     ax1.set_xticks([.0, .25, .5, .75, 1.0], ["0%", '25%', "50%", '75%', "100%"])
-    ax1.set_yticks([.2, .3, .4, .5, .6, .7], [".2", ".3", ".4", ".5", ".6", ".7"])
+    ax1.set_yticks([.1, .2, .3, .4, .5, .6, .7], [".1", ".2", ".3", ".4", ".5", ".6", ".7"])
 
     # Second subplot - embeddings tuning
     sns.barplot(
@@ -73,6 +73,43 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame, embeddi
 
     if save_plot:
         plt.savefig(os.path.join("data", "benchmarks", f"{time.strftime('%Y%m%d_%H%M')}_hyperparameter_tuning.png"), bbox_inches="tight")
+    else:
+        plt.show()
+
+def plot_ablation_results(ablation_results: pd.DataFrame, baseline_results: pd.DataFrame, save_plot: bool = False) -> None:
+    """Plot the ablation study results for TEXT2SPARQL"""
+    
+    sns.set_theme(context="paper", style="white", color_codes=True, font_scale=3.5)
+    fig = plt.figure(figsize=(20, 10))
+    ax = plt.gca()
+    
+    # Plot baseline results as vertical lines
+    ax.axvline(baseline_results[baseline_results['dataset'] == 'DBpedia (EN)']['F1 Score'].mean(), color=sns.color_palette("Blues")[1], linestyle='--', linewidth=5)
+    ax.axvline(baseline_results[baseline_results['dataset'] == 'DBpedia (ES)']['F1 Score'].mean(), color=sns.color_palette("Blues")[4], linestyle='--', linewidth=5)
+    ax.axvline(baseline_results[baseline_results['dataset'] == 'Corporate']['F1 Score'].mean(), color=sns.color_palette("Oranges")[1], linestyle='--', linewidth=5)
+
+    # Plot ablation results
+    sns.barplot(
+        data=ablation_results,
+        x="F1 Score",
+        y="component",
+        hue="dataset",
+        orient="h", 
+        hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate"],
+        palette=sns.color_palette("Blues")[1:5:3] + sns.color_palette("Oranges")[1:2],
+        ax=ax,
+    )
+
+    ax.set_ylabel("")
+    ax.set_xlim(0, 0.7)
+    ax.set_xticks([.1, .2, .3, .4, .5, .6, .7], [".1", ".2", ".3", ".4", ".5", ".6", ".7"])
+    ax.get_legend().remove()
+
+    fig.legend(*ax.get_legend_handles_labels(), bbox_to_anchor=(0.5, 1.1), loc='upper center', ncol=4, title="TEXT2SPARQL Corpus")
+    sns.despine(top=True, right=True)
+
+    if save_plot:
+        plt.savefig(os.path.join("data", "benchmarks", f"{time.strftime('%Y%m%d_%H%M')}_ablation_study.png"), bbox_inches="tight")
     else:
         plt.show()
 
@@ -259,8 +296,112 @@ if __name__ == "__main__":
         ]
     )
 
+    ablation_results = pd.DataFrame(
+        [
+            {"component": "w/o Examples", "dataset": "DBpedia (EN)", "F1 Score": 0.2669183689242966},
+            {"component": "w/o Examples", "dataset": "DBpedia (EN)", "F1 Score": 0.2648311874783169},
+            {"component": "w/o Examples", "dataset": "DBpedia (EN)", "F1 Score": 0.25614395814988583},
+
+            {"component": "w/o Examples", "dataset": "DBpedia (ES)", "F1 Score": 0.23942766903879126},
+            {"component": "w/o Examples", "dataset": "DBpedia (ES)", "F1 Score": 0.22342740782734746},
+            {"component": "w/o Examples", "dataset": "DBpedia (ES)", "F1 Score": 0.24673908560233304},
+
+            {"component": "w/o Examples", "dataset": "Corporate", "F1 Score": 0.26983264166750176},
+            {"component": "w/o Examples", "dataset": "Corporate", "F1 Score": 0.2912720356068957},
+            {"component": "w/o Examples", "dataset": "Corporate", "F1 Score": 0.30635243887382946},
+
+
+            {"component": "w/o Full Schema", "dataset": "DBpedia (EN)", "F1 Score": 0.5586293994429258},
+            {"component": "w/o Full Schema", "dataset": "DBpedia (EN)", "F1 Score": 0.5674128215974444},
+            {"component": "w/o Full Schema", "dataset": "DBpedia (EN)", "F1 Score": 0.5577725555069302},
+
+            {"component": "w/o Full Schema", "dataset": "DBpedia (ES)", "F1 Score": 0.44942354366452286},
+            {"component": "w/o Full Schema", "dataset": "DBpedia (ES)", "F1 Score": 0.46589599979623997},
+            {"component": "w/o Full Schema", "dataset": "DBpedia (ES)", "F1 Score": 0.4499721506825501},
+
+            {"component": "w/o Full Schema", "dataset": "Corporate", "F1 Score": 0.19634836112425091},
+            {"component": "w/o Full Schema", "dataset": "Corporate", "F1 Score": 0.22619230376571678},
+            {"component": "w/o Full Schema", "dataset": "Corporate", "F1 Score": 0.24963302678538718},
+
+
+            {"component": "w/o Property Ranges", "dataset": "DBpedia (EN)", "F1 Score": 0.5906921625259051},
+            {"component": "w/o Property Ranges", "dataset": "DBpedia (EN)", "F1 Score": 0.5729729935425972},
+            {"component": "w/o Property Ranges", "dataset": "DBpedia (EN)", "F1 Score": 0.6142224484164015},
+
+            {"component": "w/o Property Ranges", "dataset": "DBpedia (ES)", "F1 Score": 0.5851865249984981},
+            {"component": "w/o Property Ranges", "dataset": "DBpedia (ES)", "F1 Score": 0.5528209608497341},
+            {"component": "w/o Property Ranges", "dataset": "DBpedia (ES)", "F1 Score": 0.569014812654553},
+
+            {"component": "w/o Property Ranges", "dataset": "Corporate", "F1 Score": 0.30838101384390915},
+            {"component": "w/o Property Ranges", "dataset": "Corporate", "F1 Score": 0.33423939199428354},
+            {"component": "w/o Property Ranges", "dataset": "Corporate", "F1 Score": 0.313871063595153},
+
+
+            {"component": "w/o Properties", "dataset": "DBpedia (EN)", "F1 Score": 0.568181389961076},
+            {"component": "w/o Properties", "dataset": "DBpedia (EN)", "F1 Score": 0.6014872209186768},
+            {"component": "w/o Properties", "dataset": "DBpedia (EN)", "F1 Score": 0.5987622338489511},
+
+            {"component": "w/o Properties", "dataset": "DBpedia (ES)", "F1 Score": 0.5983425449248978},
+            {"component": "w/o Properties", "dataset": "DBpedia (ES)", "F1 Score": 0.5582213460007434},
+            {"component": "w/o Properties", "dataset": "DBpedia (ES)", "F1 Score": 0.6132176856107568},
+
+            {"component": "w/o Properties", "dataset": "Corporate", "F1 Score": 0.33211091121276765},
+            {"component": "w/o Properties", "dataset": "Corporate", "F1 Score": 0.3275006543895829},
+            {"component": "w/o Properties", "dataset": "Corporate", "F1 Score": 0.3347648100153243},
+
+
+            {"component": "w/o Ordered Properties", "dataset": "DBpedia (EN)", "F1 Score": 0.6065900836905909},
+            {"component": "w/o Ordered Properties", "dataset": "DBpedia (EN)", "F1 Score": 0.5622403584999244},
+            {"component": "w/o Ordered Properties", "dataset": "DBpedia (EN)", "F1 Score": 0.6003009892571323},
+
+            {"component": "w/o Ordered Properties", "dataset": "DBpedia (ES)", "F1 Score": 0.6040960485987151},
+            {"component": "w/o Ordered Properties", "dataset": "DBpedia (ES)", "F1 Score": 0.5563590217561157},
+            {"component": "w/o Ordered Properties", "dataset": "DBpedia (ES)", "F1 Score": 0.5789829545878117},
+
+            {"component": "w/o Ordered Properties", "dataset": "Corporate", "F1 Score": 0.33383963736294997},
+            {"component": "w/o Ordered Properties", "dataset": "Corporate", "F1 Score": 0.3447317848854021},
+            {"component": "w/o Ordered Properties", "dataset": "Corporate", "F1 Score": 0.3542555944092116},
+
+
+            {"component": "w/o Validation", "dataset": "DBpedia (EN)", "F1 Score": 0},
+            {"component": "w/o Validation", "dataset": "DBpedia (EN)", "F1 Score": 0},
+            {"component": "w/o Validation", "dataset": "DBpedia (EN)", "F1 Score": 0},
+
+            {"component": "w/o Validation", "dataset": "DBpedia (ES)", "F1 Score": 0},
+            {"component": "w/o Validation", "dataset": "DBpedia (ES)", "F1 Score": 0},
+            {"component": "w/o Validation", "dataset": "DBpedia (ES)", "F1 Score": 0},
+
+            {"component": "w/o Validation", "dataset": "Corporate", "F1 Score": 0},
+            {"component": "w/o Validation", "dataset": "Corporate", "F1 Score": 0},
+            {"component": "w/o Validation", "dataset": "Corporate", "F1 Score": 0},
+
+        ]
+    )
+
+    baseline_results = pd.DataFrame(
+        [
+            {"dataset": "DBpedia (EN)", "F1 Score": 0.5767038192589087},
+            {"dataset": "DBpedia (EN)", "F1 Score": 0.60244374699482},
+            {"dataset": "DBpedia (EN)", "F1 Score": 0.5513844299343054},
+
+            {"dataset": "DBpedia (ES)", "F1 Score": 0.580612519948761},
+            {"dataset": "DBpedia (ES)", "F1 Score": 0.601802618694283},
+            {"dataset": "DBpedia (ES)", "F1 Score": 0.5774310902798893},
+
+            {"dataset": "Corporate", "F1 Score": 0.3371504832592741},
+            {"dataset": "Corporate", "F1 Score": 0.3347155497717091},
+            {"dataset": "Corporate", "F1 Score": 0.31489712258486086},
+        ]
+    )
+
+
     plot_hyperparameter_tuning_results(proportion_results=proportion_results,
                                        embeddings_results=embeddings_results,
                                        examples_results=examples_results,
                                        save_plot=False,
                                     )
+
+    plot_ablation_results(ablation_results=ablation_results,
+                          baseline_results=baseline_results,
+                          save_plot=False,
+                        )
