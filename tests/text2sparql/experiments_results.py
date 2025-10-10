@@ -7,10 +7,12 @@ import numpy as np
 import seaborn as sns
 
 """
-Hyperparameter Analysis of SPARQL-LLM
+Plot the experiment results for TEXT2SPARQL
 """
 
 def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame, embeddings_results: pd.DataFrame, examples_results: pd.DataFrame, save_plot: bool = False) -> None:
+    """Plot the hyperparameter tuning results for TEXT2SPARQL"""
+    
     sns.set_theme(context="paper", style="white", color_codes=True, font_scale=5.5)
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(50, 10), sharey=True)
     plt.subplots_adjust(wspace=.1)
