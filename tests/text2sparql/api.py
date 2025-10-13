@@ -151,12 +151,12 @@ async def get_answer(question: str, dataset: str):
                 else:
                     resp_msg += f"## SPARQL query returned error: {e}. Please provide an alternative query based on the provided information and try again.\n### Erroneous SPARQL query\n```sparql\n{generated_sparql}\n```\n"
 
-        # If no valid SPARQL query was generated, ask the model to fix it
         num_of_tries += 1
-        messages = [HumanMessage(content=question + resp_msg)]
-        response = client.invoke(messages)
-
         if num_of_tries == settings.default_max_try_fix_sparql:
             print(f"❌ Could not fix generate SPARQL query for question: {question} \n")
+
+        # If no valid SPARQL query was generated, ask the model to fix it
+        messages = [HumanMessage(content=question + resp_msg)]
+        response = client.invoke(messages)
 
     return {"dataset": dataset, "question": question, "query": generated_sparql}

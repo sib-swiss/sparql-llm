@@ -1,6 +1,7 @@
 import os
 import time
 
+from matplotlib.gridspec import GridSpec
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -10,12 +11,27 @@ import seaborn as sns
 Plot the experiment results for TEXT2SPARQL
 """
 
-def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame, embeddings_results: pd.DataFrame, examples_results: pd.DataFrame, save_plot: bool = False) -> None:
+def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
+                                       embeddings_results: pd.DataFrame,
+                                       examples_results: pd.DataFrame,
+                                       ablation_results: pd.DataFrame,
+                                       baseline_results: pd.DataFrame,
+                                       model_results: pd.DataFrame,
+                                       save_plot: bool = False) -> None:
     """Plot the hyperparameter tuning results for TEXT2SPARQL"""
     
-    sns.set_theme(context="paper", style="white", color_codes=True, font_scale=5.5)
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(50, 10), sharey=True)
-    plt.subplots_adjust(wspace=.1)
+    sns.set_theme(context="paper", style="white", color_codes=True, font_scale=3.5)
+    fig = plt.figure(figsize=(30, 15))
+    gs = GridSpec(2, 6, figure=fig)
+
+    ax = [fig.add_subplot(gs[0, 0:2]), 
+          fig.add_subplot(gs[0, 2:4]), 
+          fig.add_subplot(gs[0, 4:6]), 
+          fig.add_subplot(gs[1, 1:3]),
+          fig.add_subplot(gs[1, 3:5]),
+        ]
+
+    # plt.subplots_adjust(wspace=.1)
 
     # First subplot - proportion tuning
     sns.lineplot(
@@ -26,30 +42,35 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame, embeddi
         hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate"],
         linewidth=5,
         palette=sns.color_palette("Blues")[1:5:3] + sns.color_palette("Oranges")[1:2],
-        ax=ax1,
+        ax=ax[0],
     )
 
-    ax1.set_xlabel("Proportion of Provided Schema")
-    ax1.set_ylabel("F1 Score")
-    ax1.set_xlim(0, 1)
-    ax1.set_ylim(0, .7)
-    ax1.get_legend().remove()
-    ax1.set_xticks([.0, .25, .5, .75, 1.0], ["0%", '25%', "50%", '75%', "100%"])
-    ax1.set_yticks([.1, .2, .3, .4, .5, .6, .7], [".1", ".2", ".3", ".4", ".5", ".6", ".7"])
+    ax[0].set_title("(i) Proportion of Provided Schema", fontweight="bold")
+    ax[0].set_xlim(0, 1)
+    ax[0].set_xticks([.0, .25, .5, .75, 1.0], ["0%", '25%', "50%", '75%', "100%"])
+    ax[0].set_xlabel("")
+    ax[0].set_ylim(0, .75)
+    ax[0].set_yticks([.1, .2, .3, .4, .5, .6, .7], [".1", ".2", ".3", ".4", ".5", ".6", ".7"])
+    ax[0].get_legend().remove()
 
     # Second subplot - embeddings tuning
     sns.barplot(
         data=embeddings_results,
-        x="embeddings",
-        y="F1 Score",
+        x="F1 Score",
+        y="embeddings",
         hue="dataset",
+        orient="h",
         hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate"],
         palette=sns.color_palette("Blues")[1:5:3] + sns.color_palette("Oranges")[1:2],
-        ax=ax2,
+        ax=ax[1],
     )
+    
+    ax[1].set_title("(ii) Embeddings Model", fontweight="bold")
+    ax[1].set_xlim(0, .75)
+    ax[1].set_xticks([.1, .2, .3, .4, .5, .6, .7], [".1", ".2", ".3", ".4", ".5", ".6", ".7"])
+    ax[1].set_ylabel("")
+    ax[1].get_legend().remove()
 
-    ax2.set_xlabel("Embeddings Model")
-    ax2.get_legend().remove()
 
     # Third subplot - examples tuning
     sns.lineplot(
@@ -60,35 +81,36 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame, embeddi
         hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate"],
         linewidth=5,
         palette=sns.color_palette("Blues")[1:5:3] + sns.color_palette("Oranges")[1:2],
-        ax=ax3,
+        ax=ax[2],
     )
 
-    ax3.set_xlabel("Number of Provided Examples")
-    ax3.set_xlim(0, 20)
-    ax3.get_legend().remove()
-    ax3.set_xticks([0, 5, 10, 15, 20], ["0", "5", "10", "15", "20"])
+    ax[2].set_title("(iii) Number of Provided Examples", fontweight="bold")
+    ax[2].set_xlim(0, 20)
+    ax[2].set_xticks([0, 5, 10, 15, 20], ["0", "5", "10", "15", "20"])
+    ax[2].set_xlabel("")
+    ax[2].set_ylim(0, .75)
+    ax[2].set_yticks([.1, .2, .3, .4, .5, .6, .7], [".1", ".2", ".3", ".4", ".5", ".6", ".7"])    
+    ax[2].get_legend().remove()
 
-    fig.legend(*ax2.get_legend_handles_labels(), bbox_to_anchor=(0.5, 1.1), loc='upper center', ncol=4, title="TEXT2SPARQL Corpus")
-    sns.despine(top=True, right=True)
+    # Fourth subplot - model selection
+    sns.barplot(
+        data=model_results,
+        x="F1 Score",
+        y="model",
+        hue="dataset",
+        orient="h", 
+        hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate"],
+        palette=sns.color_palette("Blues")[1:5:3] + sns.color_palette("Oranges")[1:2],
+        ax=ax[3],
+    )
 
-    if save_plot:
-        plt.savefig(os.path.join("data", "benchmarks", f"{time.strftime('%Y%m%d_%H%M')}_hyperparameter_tuning.png"), bbox_inches="tight")
-    else:
-        plt.show()
-
-def plot_ablation_results(ablation_results: pd.DataFrame, baseline_results: pd.DataFrame, save_plot: bool = False) -> None:
-    """Plot the ablation study results for TEXT2SPARQL"""
+    ax[3].set_title("(iv) Large Language Model", fontweight="bold")
+    ax[3].set_xlim(0, .75)
+    ax[3].set_xticks([.1, .2, .3, .4, .5, .6, .7], [".1", ".2", ".3", ".4", ".5", ".6", ".7"])
+    ax[3].set_ylabel("")
+    ax[3].get_legend().remove()
     
-    sns.set_theme(context="paper", style="white", color_codes=True, font_scale=3.5)
-    fig = plt.figure(figsize=(20, 10))
-    ax = plt.gca()
-    
-    # Plot baseline results as vertical lines
-    ax.axvline(baseline_results[baseline_results['dataset'] == 'DBpedia (EN)']['F1 Score'].mean(), color=sns.color_palette("Blues")[1], linestyle='--', linewidth=5)
-    ax.axvline(baseline_results[baseline_results['dataset'] == 'DBpedia (ES)']['F1 Score'].mean(), color=sns.color_palette("Blues")[4], linestyle='--', linewidth=5)
-    ax.axvline(baseline_results[baseline_results['dataset'] == 'Corporate']['F1 Score'].mean(), color=sns.color_palette("Oranges")[1], linestyle='--', linewidth=5)
-
-    # Plot ablation results
+    # Fifth subplot - ablation study
     sns.barplot(
         data=ablation_results,
         x="F1 Score",
@@ -97,19 +119,26 @@ def plot_ablation_results(ablation_results: pd.DataFrame, baseline_results: pd.D
         orient="h", 
         hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate"],
         palette=sns.color_palette("Blues")[1:5:3] + sns.color_palette("Oranges")[1:2],
-        ax=ax,
+        ax=ax[4],
     )
 
-    ax.set_ylabel("")
-    ax.set_xlim(0, 0.7)
-    ax.set_xticks([.1, .2, .3, .4, .5, .6, .7], [".1", ".2", ".3", ".4", ".5", ".6", ".7"])
-    ax.get_legend().remove()
+    ax[4].axvline(baseline_results[baseline_results['dataset'] == 'DBpedia (EN)']['F1 Score'].mean(), color=sns.color_palette("Blues")[1], linestyle='--', linewidth=5)
+    ax[4].axvline(baseline_results[baseline_results['dataset'] == 'DBpedia (ES)']['F1 Score'].mean(), color=sns.color_palette("Blues")[4], linestyle='--', linewidth=5)
+    ax[4].axvline(baseline_results[baseline_results['dataset'] == 'Corporate']['F1 Score'].mean(), color=sns.color_palette("Oranges")[1], linestyle='--', linewidth=5)
 
-    fig.legend(*ax.get_legend_handles_labels(), bbox_to_anchor=(0.5, 1.1), loc='upper center', ncol=4, title="TEXT2SPARQL Corpus")
+    ax[4].set_title("(v) Ablation Study", fontweight="bold")
+    ax[4].set_xlim(0, .75)
+    ax[4].set_xticks([.1, .2, .3, .4, .5, .6, .7], [".1", ".2", ".3", ".4", ".5", ".6", ".7"])
+    ax[4].set_ylabel("")
+    ax[4].get_legend().remove()
+
+
+    fig.legend(*ax[1].get_legend_handles_labels(), bbox_to_anchor=(0.5, 1.1), loc='upper center', ncol=4, title="TEXT2SPARQL Corpus")
     sns.despine(top=True, right=True)
+    plt.tight_layout()
 
     if save_plot:
-        plt.savefig(os.path.join("data", "benchmarks", f"{time.strftime('%Y%m%d_%H%M')}_ablation_study.png"), bbox_inches="tight")
+        plt.savefig(os.path.join("data", "benchmarks", f"{time.strftime('%Y%m%d_%H%M')}_hyperparameter_tuning.png"), bbox_inches="tight")
     else:
         plt.show()
 
@@ -363,18 +392,17 @@ if __name__ == "__main__":
             {"component": "w/o Ordered Properties", "dataset": "Corporate", "F1 Score": 0.3542555944092116},
 
 
-            {"component": "w/o Validation", "dataset": "DBpedia (EN)", "F1 Score": 0},
-            {"component": "w/o Validation", "dataset": "DBpedia (EN)", "F1 Score": 0},
-            {"component": "w/o Validation", "dataset": "DBpedia (EN)", "F1 Score": 0},
+            {"component": "w/o Validation", "dataset": "DBpedia (EN)", "F1 Score": 0.533343045459905},
+            {"component": "w/o Validation", "dataset": "DBpedia (EN)", "F1 Score": 0.5658815976305689},
+            {"component": "w/o Validation", "dataset": "DBpedia (EN)", "F1 Score": 0.5745202086111378},
 
-            {"component": "w/o Validation", "dataset": "DBpedia (ES)", "F1 Score": 0},
-            {"component": "w/o Validation", "dataset": "DBpedia (ES)", "F1 Score": 0},
-            {"component": "w/o Validation", "dataset": "DBpedia (ES)", "F1 Score": 0},
+            {"component": "w/o Validation", "dataset": "DBpedia (ES)", "F1 Score": 0.5750723899672247},
+            {"component": "w/o Validation", "dataset": "DBpedia (ES)", "F1 Score": 0.5681937665580514},
+            {"component": "w/o Validation", "dataset": "DBpedia (ES)", "F1 Score": 0.555735045835838},
 
-            {"component": "w/o Validation", "dataset": "Corporate", "F1 Score": 0},
-            {"component": "w/o Validation", "dataset": "Corporate", "F1 Score": 0},
-            {"component": "w/o Validation", "dataset": "Corporate", "F1 Score": 0},
-
+            {"component": "w/o Validation", "dataset": "Corporate", "F1 Score": 0.2943066566442385},
+            {"component": "w/o Validation", "dataset": "Corporate", "F1 Score": 0.2876539538875469},
+            {"component": "w/o Validation", "dataset": "Corporate", "F1 Score": 0.2913847307301178},
         ]
     )
 
@@ -394,14 +422,79 @@ if __name__ == "__main__":
         ]
     )
 
+    model_results = pd.DataFrame(
+        [
+            {"model": "Gemini 1.5 Pro", "dataset": "DBpedia (EN)", "F1 Score": 0},
+            {"model": "Gemini 1.5 Pro", "dataset": "DBpedia (EN)", "F1 Score": 0},
+            {"model": "Gemini 1.5 Pro", "dataset": "DBpedia (EN)", "F1 Score": 0},
+
+            {"model": "Gemini 1.5 Pro", "dataset": "DBpedia (ES)", "F1 Score": 0},
+            {"model": "Gemini 1.5 Pro", "dataset": "DBpedia (ES)", "F1 Score": 0},
+            {"model": "Gemini 1.5 Pro", "dataset": "DBpedia (ES)", "F1 Score": 0},
+
+            {"model": "Gemini 1.5 Pro", "dataset": "Corporate", "F1 Score": 0},
+            {"model": "Gemini 1.5 Pro", "dataset": "Corporate", "F1 Score": 0},
+            {"model": "Gemini 1.5 Pro", "dataset": "Corporate", "F1 Score": 0},
+
+
+            {"model": "Mistral Large 2", "dataset": "DBpedia (EN)", "F1 Score": 0.637605319694327},
+            {"model": "Mistral Large 2", "dataset": "DBpedia (EN)", "F1 Score": 0.6047127951770502},
+            {"model": "Mistral Large 2", "dataset": "DBpedia (EN)", "F1 Score": 0.6249292195575908},
+
+            {"model": "Mistral Large 2", "dataset": "DBpedia (ES)", "F1 Score": 0.6446008219830448},
+            {"model": "Mistral Large 2", "dataset": "DBpedia (ES)", "F1 Score": 0.612939791184551},
+            {"model": "Mistral Large 2", "dataset": "DBpedia (ES)", "F1 Score": 0.6507461671408128},
+
+            {"model": "Mistral Large 2", "dataset": "Corporate", "F1 Score": 0.3397032907136823},
+            {"model": "Mistral Large 2", "dataset": "Corporate", "F1 Score": 0.34743064109986266},
+            {"model": "Mistral Large 2", "dataset": "Corporate", "F1 Score": 0.3212811489748454},
+
+
+            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (EN)", "F1 Score": 0},
+            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (EN)", "F1 Score": 0},
+            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (EN)", "F1 Score": 0},
+
+            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (ES)", "F1 Score": 0},
+            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (ES)", "F1 Score": 0},
+            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (ES)", "F1 Score": 0},
+
+            {"model": "Claude 3.5 Sonnet", "dataset": "Corporate", "F1 Score": 0},
+            {"model": "Claude 3.5 Sonnet", "dataset": "Corporate", "F1 Score": 0},
+            {"model": "Claude 3.5 Sonnet", "dataset": "Corporate", "F1 Score": 0},
+
+
+            {"model": "GPT-4.1", "dataset": "DBpedia (EN)", "F1 Score": 0},
+            {"model": "GPT-4.1", "dataset": "DBpedia (EN)", "F1 Score": 0},
+            {"model": "GPT-4.1", "dataset": "DBpedia (EN)", "F1 Score": 0},
+
+            {"model": "GPT-4.1", "dataset": "DBpedia (ES)", "F1 Score": 0},
+            {"model": "GPT-4.1", "dataset": "DBpedia (ES)", "F1 Score": 0},
+            {"model": "GPT-4.1", "dataset": "DBpedia (ES)", "F1 Score": 0},
+
+            {"model": "GPT-4.1", "dataset": "Corporate", "F1 Score": 0},
+            {"model": "GPT-4.1", "dataset": "Corporate", "F1 Score": 0},
+            {"model": "GPT-4.1", "dataset": "Corporate", "F1 Score": 0},
+
+
+            {"model": "GPT-4o", "dataset": "DBpedia (EN)", "F1 Score": 0},
+            {"model": "GPT-4o", "dataset": "DBpedia (EN)", "F1 Score": 0},
+            {"model": "GPT-4o", "dataset": "DBpedia (EN)", "F1 Score": 0},
+
+            {"model": "GPT-4o", "dataset": "DBpedia (ES)", "F1 Score": 0},
+            {"model": "GPT-4o", "dataset": "DBpedia (ES)", "F1 Score": 0},
+            {"model": "GPT-4o", "dataset": "DBpedia (ES)", "F1 Score": 0},
+
+            {"model": "GPT-4o", "dataset": "Corporate", "F1 Score": 0},
+            {"model": "GPT-4o", "dataset": "Corporate", "F1 Score": 0},
+            {"model": "GPT-4o", "dataset": "Corporate", "F1 Score": 0},
+        ]
+    )
 
     plot_hyperparameter_tuning_results(proportion_results=proportion_results,
                                        embeddings_results=embeddings_results,
                                        examples_results=examples_results,
+                                       ablation_results=ablation_results,
+                                       baseline_results=baseline_results,
+                                       model_results=model_results,
                                        save_plot=False,
                                     )
-
-    plot_ablation_results(ablation_results=ablation_results,
-                          baseline_results=baseline_results,
-                          save_plot=False,
-                        )
