@@ -162,3 +162,22 @@ Run the release script providing the type of version bump: `fix`, `minor`, or `m
 ```sh
 .github/release.sh fix
 ```
+
+### 🗞️ Update the MCP Registry entry
+
+Setup [MCP publisher](https://github.com/modelcontextprotocol/registry/blob/main/docs/guides/publishing/publish-server.md):
+
+```sh
+brew install mcp-publisher
+mcp-publisher login github
+```
+
+Update the 2 versions fields in the `server.json` file, then update MCP registry entry:
+
+```sh
+mcp-publisher publish
+```
+
+> [!NOTE]
+>
+> [Registry API docs](https://registry.modelcontextprotocol.io/docs)

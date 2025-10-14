@@ -357,3 +357,5 @@ If you reuse any part of this work, please cite [the arXiv paper](https://arxiv.
     url={https://arxiv.org/abs/2410.06062},
 }
 ```
+
+<!-- mcp-name: io.github.sib-swiss/sparql-llm -->
