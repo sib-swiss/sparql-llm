@@ -169,12 +169,12 @@ Setup [MCP publisher](https://github.com/modelcontextprotocol/registry/blob/main
 
 ```sh
 brew install mcp-publisher
-mcp-publisher login github
 ```
 
 Update the 2 versions fields in the `server.json` file, then update MCP registry entry:
 
 ```sh
+mcp-publisher login github
 mcp-publisher publish
 ```
 

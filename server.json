@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
-  "name": "io.github.sib-swiss/sparql-llm",
+  "name": "org.expasy.chat/sparql-mcp",
   "description": "Access SIB biomedical knowledge graph via SPARQL queries using natural language.",
   "repository": {
     "url": "https://github.com/sib-swiss/sparql-llm",
@@ -10,7 +10,7 @@
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https//chat.expasy.org/mcp"
+      "url": "https://chat.expasy.org/mcp"
     }
   ],
   "packages": [
