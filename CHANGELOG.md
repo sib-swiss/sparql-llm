@@ -1,6 +1,19 @@
-# 📜 Changelog
+# 🪵 Changelog
 
-All notable changes to this project will be documented in this file.
+## [0.1.2](https://github.com/sib-swiss/sparql-llm/compare/v0.1.1..v0.1.2) - 2025-10-14
+
+### ⚙️ Continuous Integration
+
+- Update actions versions - ([8a9b2c5](https://github.com/sib-swiss/sparql-llm/commit/8a9b2c58aebc5742327cfddd8ed457c718f7837b))
+
+### ⛰️ Features
+
+- Feat: use stdio by default when starting MCP server alone
+feat: enable to provide settings such as endpoints list through a custom JSON file when starting MCP server - ([ce1649e](https://github.com/sib-swiss/sparql-llm/commit/ce1649ebd28e4c38ecb106e7e493277b5ee80c35))
+
+### 🛠️ Miscellaneous Tasks
+
+- Add config for https://github.com/modelcontextprotocol/registry/ - ([967d21c](https://github.com/sib-swiss/sparql-llm/commit/967d21cb1e4415b1a25aadc507e8b3f8ef08bc9b))
 
 ## [0.1.1](https://github.com/sib-swiss/sparql-llm/compare/v0.1.0..v0.1.1) - 2025-10-07
 
