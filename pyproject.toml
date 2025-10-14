@@ -194,9 +194,9 @@ commit_parsers = [
     { message = "^feat", group = "⛰️ Features" },
     { message = "^fix", group = "🐛 Bug Fixes" },
     { message = "^doc", group = "📚 Documentation" },
-    { message = "^perf|DataOriented", group = "⚡ Performance" },
+    { message = "^perf", group = "⚡ Performance" },
     { message = "^refactor", group = "🚜 Refactor" },
-    { message = "^style|Formatting", group = "🎨 Styling" },
+    { message = "^style", group = "🎨 Styling" },
     { message = "^test", group = "🧪 Testing" },
     { message = "^ci", group = "⚙️ Continuous Integration" },
     { message = "^chore\\(release\\): prepare for", skip = true },
@@ -214,14 +214,12 @@ split_commits = false
 protect_breaking_commits = false
 filter_commits = false
 tag_pattern = "v?[0-9].*"
-# Sort the tags topologically
 topo_order = false
 sort_commits = "oldest"
 
 [tool.git-cliff.changelog]
 header = """
-# 📜 Changelog\n
-All notable changes to this project will be documented in this file.\n
+# 🪵 Changelog\n
 """
 # Template for the changelog: https://keats.github.io/tera/docs
 body = """
