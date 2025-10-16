@@ -141,6 +141,47 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
         plt.show()
 
 
+def plot_overall_results(overall_results: pd.DataFrame,
+                         sota_results: pd.DataFrame,
+                         save_plot: bool = False) -> None:
+    """Plot the overall results for TEXT2SPARQL"""
+    
+    sns.set_theme(context="paper", style="white", color_codes=True, font_scale=4.5)
+    fig = plt.figure(figsize=(20, 10))
+    ax = plt.gca()
+
+    # Overall results
+    sns.barplot(
+        data=overall_results,
+        x="F1 Score",
+        y="dataset",
+        hue="model",
+        orient="h",
+        # hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate"],
+        palette=sns.color_palette("Set1")[:3],
+        ax=ax,
+    )
+
+    #SOTA results
+    ax.axvline(sota_results[sota_results['dataset'] == 'DBpedia (EN)']['F1 Score'].iloc[0], ymin=.66, ymax=1, color=sns.color_palette("Set1")[3], linestyle='--', linewidth=9, label="TEXT2SPARQL Winners")
+    ax.axvline(sota_results[sota_results['dataset'] == 'DBpedia (ES)']['F1 Score'].iloc[0], ymin=.33, ymax=.66, color=sns.color_palette("Set1")[3], linestyle='--', linewidth=9)
+    ax.axvline(sota_results[sota_results['dataset'] == 'Corporate']['F1 Score'].iloc[0], ymin=0, ymax=.33, color=sns.color_palette("Set1")[3], linestyle='--', linewidth=9)
+
+    ax.set_xlim(0, .75)
+    ax.set_xticks([.1, .2, .3, .4, .5, .6, .7], [".1", ".2", ".3", ".4", ".5", ".6", ".7"])
+    ax.set_ylabel("")
+    ax.get_legend().remove()
+
+    fig.legend(*ax.get_legend_handles_labels(), bbox_to_anchor=(0.5, 1.2), loc='upper center', ncol=2, title="")
+    sns.despine(top=True, right=True)
+    plt.tight_layout()
+
+    if save_plot:
+        plt.savefig(os.path.join("data", "benchmarks", f"{time.strftime('%Y%m%d_%H%M')}_overall_results.png"), bbox_inches="tight")
+    else:
+        plt.show()
+
+
 if __name__ == "__main__":
     proportion_results = pd.DataFrame(
         [
@@ -492,6 +533,55 @@ if __name__ == "__main__":
         ]
     )
 
+    sota_results = pd.DataFrame(
+        [
+            {"dataset": "DBpedia (EN)", "F1 Score": 0.5457413082401525},
+            {"dataset": "DBpedia (ES)", "F1 Score": 0.536993561548598},
+            {"dataset": "Corporate", "F1 Score": 0.4360979995467166},
+        ]
+    )
+
+    overall_results = pd.DataFrame(
+        [
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "DBpedia (EN)", "F1 Score": 0.6690007929066105},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "DBpedia (EN)", "F1 Score": 0.6741166794466641},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "DBpedia (EN)", "F1 Score": 0.6952634191692368},
+
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "DBpedia (ES)", "F1 Score": 0.6542033975373135},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "DBpedia (ES)", "F1 Score": 0.6673643826702074},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "DBpedia (ES)", "F1 Score": 0.6547826165049525},
+
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Corporate", "F1 Score": 0.4403431543419664},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Corporate", "F1 Score": 0.4302794586250879},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Corporate", "F1 Score": 0.422015569736199},
+
+
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "DBpedia (EN)", "F1 Score": 0.5538934933746682},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "DBpedia (EN)", "F1 Score": 0.6219437568379328},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "DBpedia (EN)", "F1 Score": 0.5702833245723039},
+
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "DBpedia (ES)", "F1 Score": 0.5821023758373475},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "DBpedia (ES)", "F1 Score": 0.5695760289633164},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "DBpedia (ES)", "F1 Score": 0.5719686020657035},
+
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Corporate", "F1 Score": 0.30426983266657703},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Corporate", "F1 Score": 0.3209482793891293},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Corporate", "F1 Score": 0.2930558631633798},
+
+
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "DBpedia (EN)", "F1 Score": 0.5998776412277721},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "DBpedia (EN)", "F1 Score": 0.6022912865534492},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "DBpedia (EN)", "F1 Score": 0.6173177711620293},
+
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "DBpedia (ES)", "F1 Score": 0.6035723760980651},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "DBpedia (ES)", "F1 Score": 0.6073406666144291},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "DBpedia (ES)", "F1 Score": 0.6015790104623291},
+
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Corporate", "F1 Score": 0.42715717702918965},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Corporate", "F1 Score": 0.42474821066090257},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Corporate", "F1 Score": 0.4926209413214926},
+        ]
+    )
     plot_hyperparameter_tuning_results(proportion_results=proportion_results,
                                        embeddings_results=embeddings_results,
                                        examples_results=examples_results,
@@ -500,3 +590,8 @@ if __name__ == "__main__":
                                        model_results=model_results,
                                        save_plot=False,
                                     )
+
+    plot_overall_results(overall_results=overall_results,
+                         sota_results=sota_results,
+                         save_plot=False,
+                        )
