@@ -31,8 +31,6 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
           fig.add_subplot(gs[1, 3:5]),
         ]
 
-    # plt.subplots_adjust(wspace=.1)
-
     # First subplot - proportion tuning
     sns.lineplot(
         data=proportion_results,
@@ -41,7 +39,7 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
         hue="dataset",
         hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate"],
         linewidth=5,
-        palette=sns.color_palette("Blues")[1:5:3] + sns.color_palette("Oranges")[1:2],
+        palette=sns.color_palette("Set2")[:3],
         ax=ax[0],
     )
 
@@ -61,7 +59,7 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
         hue="dataset",
         orient="h",
         hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate"],
-        palette=sns.color_palette("Blues")[1:5:3] + sns.color_palette("Oranges")[1:2],
+        palette=sns.color_palette("Set2")[:3],
         ax=ax[1],
     )
     
@@ -80,7 +78,7 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
         hue="dataset",
         hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate"],
         linewidth=5,
-        palette=sns.color_palette("Blues")[1:5:3] + sns.color_palette("Oranges")[1:2],
+        palette=sns.color_palette("Set2")[:3],
         ax=ax[2],
     )
 
@@ -100,7 +98,7 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
         hue="dataset",
         orient="h", 
         hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate"],
-        palette=sns.color_palette("Blues")[1:5:3] + sns.color_palette("Oranges")[1:2],
+        palette=sns.color_palette("Set2")[:3],
         ax=ax[3],
     )
 
@@ -118,13 +116,13 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
         hue="dataset",
         orient="h", 
         hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate"],
-        palette=sns.color_palette("Blues")[1:5:3] + sns.color_palette("Oranges")[1:2],
+        palette=sns.color_palette("Set2")[:3],
         ax=ax[4],
     )
 
-    ax[4].axvline(baseline_results[baseline_results['dataset'] == 'DBpedia (EN)']['F1 Score'].mean(), color=sns.color_palette("Blues")[1], linestyle='--', linewidth=5)
-    ax[4].axvline(baseline_results[baseline_results['dataset'] == 'DBpedia (ES)']['F1 Score'].mean(), color=sns.color_palette("Blues")[4], linestyle='--', linewidth=5)
-    ax[4].axvline(baseline_results[baseline_results['dataset'] == 'Corporate']['F1 Score'].mean(), color=sns.color_palette("Oranges")[1], linestyle='--', linewidth=5)
+    ax[4].axvline(baseline_results[baseline_results['dataset'] == 'DBpedia (EN)']['F1 Score'].mean(), color=sns.color_palette("Set2")[0], linestyle='--', linewidth=5)
+    ax[4].axvline(baseline_results[baseline_results['dataset'] == 'DBpedia (ES)']['F1 Score'].mean(), color=sns.color_palette("Set2")[1], linestyle='--', linewidth=5)
+    ax[4].axvline(baseline_results[baseline_results['dataset'] == 'Corporate']['F1 Score'].mean(), color=sns.color_palette("Set2")[2], linestyle='--', linewidth=5)
 
     ax[4].set_title("(v) Ablation Study", fontweight="bold")
     ax[4].set_xlim(0, .75)
@@ -146,67 +144,71 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
 if __name__ == "__main__":
     proportion_results = pd.DataFrame(
         [
-            {"proportion": 0.00, "dataset": "DBpedia (EN)", "F1 Score": 0.5586293994429258},
-            {"proportion": 0.00, "dataset": "DBpedia (EN)", "F1 Score": 0.5674128215974444},
-            {"proportion": 0.00, "dataset": "DBpedia (EN)", "F1 Score": 0.5577725555069302},
-            {"proportion": 0.25, "dataset": "DBpedia (EN)", "F1 Score": 0.5007120278213574},
-            {"proportion": 0.25, "dataset": "DBpedia (EN)", "F1 Score": 0.5267660830673997},
-            {"proportion": 0.25, "dataset": "DBpedia (EN)", "F1 Score": 0.5346610817243259},
-            {"proportion": 0.50, "dataset": "DBpedia (EN)", "F1 Score": 0.6249156554756955},
-            {"proportion": 0.50, "dataset": "DBpedia (EN)", "F1 Score": 0.5647916605980592},
-            {"proportion": 0.50, "dataset": "DBpedia (EN)", "F1 Score": 0.5617943435850233},
-            {"proportion": 0.75, "dataset": "DBpedia (EN)", "F1 Score": 0.610549656229553},
-            {"proportion": 0.75, "dataset": "DBpedia (EN)", "F1 Score": 0.5953462769800143},
-            {"proportion": 0.75, "dataset": "DBpedia (EN)", "F1 Score": 0.5987760360118075},
-            {"proportion": 1.00, "dataset": "DBpedia (EN)", "F1 Score": 0.5570257999788799},
-            {"proportion": 1.00, "dataset": "DBpedia (EN)", "F1 Score": 0.5626547452618874},
-            {"proportion": 1.00, "dataset": "DBpedia (EN)", "F1 Score": 0.5676321864962138},
+            {"proportion": 0.00, "dataset": "DBpedia (EN)", "F1 Score": 0.6360229918901611},
+            {"proportion": 0.00, "dataset": "DBpedia (EN)", "F1 Score": 0.5718582242376377},
+            {"proportion": 0.00, "dataset": "DBpedia (EN)", "F1 Score": 0.5554370701081763},
 
-            {"proportion": 0.00, "dataset": "DBpedia (ES)", "F1 Score": 0.44942354366452286},
-            {"proportion": 0.00, "dataset": "DBpedia (ES)", "F1 Score": 0.46589599979623997},
-            {"proportion": 0.00, "dataset": "DBpedia (ES)", "F1 Score": 0.4499721506825501},
-            {"proportion": 0.25, "dataset": "DBpedia (ES)", "F1 Score": 0.48322421974123897},
-            {"proportion": 0.25, "dataset": "DBpedia (ES)", "F1 Score": 0.4754533381505741},
-            {"proportion": 0.25, "dataset": "DBpedia (ES)", "F1 Score": 0.4692675547194026},
-            {"proportion": 0.50, "dataset": "DBpedia (ES)", "F1 Score": 0.4272150033867241},
-            {"proportion": 0.50, "dataset": "DBpedia (ES)", "F1 Score": 0.45629056532984175},
-            {"proportion": 0.50, "dataset": "DBpedia (ES)", "F1 Score": 0.4870455208203278},
-            {"proportion": 0.75, "dataset": "DBpedia (ES)", "F1 Score": 0.45821566063040947},
-            {"proportion": 0.75, "dataset": "DBpedia (ES)", "F1 Score": 0.4281971067358794},
-            {"proportion": 0.75, "dataset": "DBpedia (ES)", "F1 Score": 0.44691214932689816},
-            {"proportion": 1.00, "dataset": "DBpedia (ES)", "F1 Score": 0.45023871583225045},
-            {"proportion": 1.00, "dataset": "DBpedia (ES)", "F1 Score": 0.4399706216187276},
-            {"proportion": 1.00, "dataset": "DBpedia (ES)", "F1 Score": 0.4239424397423014},
+            {"proportion": 0.00, "dataset": "DBpedia (ES)", "F1 Score": 0.5450238770948749},
+            {"proportion": 0.00, "dataset": "DBpedia (ES)", "F1 Score": 0.5837238113312996},
+            {"proportion": 0.00, "dataset": "DBpedia (ES)", "F1 Score": 0.598329013074588},
 
-            {"proportion": 0.00, "dataset": "Corporate", "F1 Score": 0.19634836112425091},
-            {"proportion": 0.00, "dataset": "Corporate", "F1 Score": 0.22619230376571678},
-            {"proportion": 0.00, "dataset": "Corporate", "F1 Score": 0.24963302678538718},
-            {"proportion": 0.25, "dataset": "Corporate", "F1 Score": 0.1565782833448236},
-            {"proportion": 0.25, "dataset": "Corporate", "F1 Score": 0.14550866715155986},
-            {"proportion": 0.25, "dataset": "Corporate", "F1 Score": 0.15889616460213127},
-            {"proportion": 0.50, "dataset": "Corporate", "F1 Score": 0.24795698419057718},
-            {"proportion": 0.50, "dataset": "Corporate", "F1 Score": 0.2831563128703653},
-            {"proportion": 0.50, "dataset": "Corporate", "F1 Score": 0.3097776133603328},
-            {"proportion": 0.75, "dataset": "Corporate", "F1 Score": 0.2919913094527303},
-            {"proportion": 0.75, "dataset": "Corporate", "F1 Score": 0.244902286195286},
-            {"proportion": 0.75, "dataset": "Corporate", "F1 Score": 0.29464500250890013},
-            {"proportion": 1.00, "dataset": "Corporate", "F1 Score": 0.3015879005635923},
-            {"proportion": 1.00, "dataset": "Corporate", "F1 Score": 0.3480555354382549},
-            {"proportion": 1.00, "dataset": "Corporate", "F1 Score": 0.2935839848627154},
+            {"proportion": 0.00, "dataset": "Corporate", "F1 Score": 0.2031790577448751},
+            {"proportion": 0.00, "dataset": "Corporate", "F1 Score": 0.24414868849773605},
+            {"proportion": 0.00, "dataset": "Corporate", "F1 Score": 0.24802115887574275},
+
+
+            {"proportion": 0.25, "dataset": "DBpedia (EN)", "F1 Score": 0.6302217769142227},
+            {"proportion": 0.25, "dataset": "DBpedia (EN)", "F1 Score": 0.6165165258327675},
+            {"proportion": 0.25, "dataset": "DBpedia (EN)", "F1 Score": 0.6152837403969743},
+
+            {"proportion": 0.25, "dataset": "DBpedia (ES)", "F1 Score": 0.6009851382878372},
+            {"proportion": 0.25, "dataset": "DBpedia (ES)", "F1 Score": 0.6120562795695946},
+            {"proportion": 0.25, "dataset": "DBpedia (ES)", "F1 Score": 0.5980699251812547},
+
+            {"proportion": 0.25, "dataset": "Corporate", "F1 Score": 0.18958407378647435},
+            {"proportion": 0.25, "dataset": "Corporate", "F1 Score": 0.20434082503986997},
+            {"proportion": 0.25, "dataset": "Corporate", "F1 Score": 0.20655927139301258},
+
+
+            {"proportion": 0.50, "dataset": "DBpedia (EN)", "F1 Score": 0.54930383335061},
+            {"proportion": 0.50, "dataset": "DBpedia (EN)", "F1 Score": 0.574743837707901},
+            {"proportion": 0.50, "dataset": "DBpedia (EN)", "F1 Score": 0.5824336953958507},
+
+            {"proportion": 0.50, "dataset": "DBpedia (ES)", "F1 Score": 0.5721117546925543},
+            {"proportion": 0.50, "dataset": "DBpedia (ES)", "F1 Score": 0.5941271118380055},
+            {"proportion": 0.50, "dataset": "DBpedia (ES)", "F1 Score": 0.5698079818519586},
+
+            {"proportion": 0.50, "dataset": "Corporate", "F1 Score": 0.287991639066309},
+            {"proportion": 0.50, "dataset": "Corporate", "F1 Score": 0.27100247168667335},
+            {"proportion": 0.50, "dataset": "Corporate", "F1 Score": 0.24748994220399465},
+
+
+            {"proportion": 0.75, "dataset": "DBpedia (EN)", "F1 Score": 0.5879848961871974},
+            {"proportion": 0.75, "dataset": "DBpedia (EN)", "F1 Score": 0.582223151283596},
+            {"proportion": 0.75, "dataset": "DBpedia (EN)", "F1 Score": 0.5777030831560765},
+
+            {"proportion": 0.75, "dataset": "DBpedia (ES)", "F1 Score": 0.5925861882869196},
+            {"proportion": 0.75, "dataset": "DBpedia (ES)", "F1 Score": 0.5470734514947754},
+            {"proportion": 0.75, "dataset": "DBpedia (ES)", "F1 Score": 0.5719511332591165},
+
+            {"proportion": 0.75, "dataset": "Corporate", "F1 Score": 0.3051135728013111},
+            {"proportion": 0.75, "dataset": "Corporate", "F1 Score": 0.3088665517369803},
+            {"proportion": 0.75, "dataset": "Corporate", "F1 Score": 0.32515303249061434},
+
+
+            {"proportion": 1.00, "dataset": "DBpedia (EN)", "F1 Score": 0.5538934933746682},
+            {"proportion": 1.00, "dataset": "DBpedia (EN)", "F1 Score": 0.6219437568379328},
+            {"proportion": 1.00, "dataset": "DBpedia (EN)", "F1 Score": 0.5702833245723039},
+
+            {"proportion": 1.00, "dataset": "DBpedia (ES)", "F1 Score": 0.5821023758373475},
+            {"proportion": 1.00, "dataset": "DBpedia (ES)", "F1 Score": 0.5695760289633164},
+            {"proportion": 1.00, "dataset": "DBpedia (ES)", "F1 Score": 0.5719686020657035},
+
+            {"proportion": 1.00, "dataset": "Corporate", "F1 Score": 0.30426983266657703},
+            {"proportion": 1.00, "dataset": "Corporate", "F1 Score": 0.3209482793891293},
+            {"proportion": 1.00, "dataset": "Corporate", "F1 Score": 0.2930558631633798},
         ]
     )
-    # # Calculate overall results as the mean of DBpedia (EN) and DBpedia (ES) and Corporate
-    # overall_results = proportion_results[proportion_results['dataset'] == 'DBpedia (EN)'].copy()
-    # overall_results.loc[:, 'dataset'] = 'Overall'
-    # overall_f1_scores = np.array([
-    #                                 proportion_results[proportion_results['dataset'] == 'DBpedia (EN)']['F1 Score'].values,
-    #                                 proportion_results[proportion_results['dataset'] == 'DBpedia (ES)']['F1 Score'].values,
-    #                                 proportion_results[proportion_results['dataset'] == 'Corporate']['F1 Score'].values,
-    #                             ]
-    #                     )
-    # overall_f1_scores = np.average(overall_f1_scores, axis=0, weights=[1, 1, 0.5])
-    # overall_results.loc[:, 'F1 Score'] = overall_f1_scores
-    # proportion_results = pd.concat([proportion_results, overall_results], axis=0).reset_index(drop=True)
 
     embeddings_results = pd.DataFrame(
         [
@@ -340,17 +342,17 @@ if __name__ == "__main__":
             {"component": "w/o Examples", "dataset": "Corporate", "F1 Score": 0.30635243887382946},
 
 
-            {"component": "w/o Full Schema", "dataset": "DBpedia (EN)", "F1 Score": 0.5586293994429258},
-            {"component": "w/o Full Schema", "dataset": "DBpedia (EN)", "F1 Score": 0.5674128215974444},
-            {"component": "w/o Full Schema", "dataset": "DBpedia (EN)", "F1 Score": 0.5577725555069302},
+            {"component": "w/o Full Schema", "dataset": "DBpedia (EN)", "F1 Score": 0.6360229918901611},
+            {"component": "w/o Full Schema", "dataset": "DBpedia (EN)", "F1 Score": 0.5718582242376377},
+            {"component": "w/o Full Schema", "dataset": "DBpedia (EN)", "F1 Score": 0.5554370701081763},
 
-            {"component": "w/o Full Schema", "dataset": "DBpedia (ES)", "F1 Score": 0.44942354366452286},
-            {"component": "w/o Full Schema", "dataset": "DBpedia (ES)", "F1 Score": 0.46589599979623997},
-            {"component": "w/o Full Schema", "dataset": "DBpedia (ES)", "F1 Score": 0.4499721506825501},
+            {"component": "w/o Full Schema", "dataset": "DBpedia (ES)", "F1 Score": 0.5450238770948749},
+            {"component": "w/o Full Schema", "dataset": "DBpedia (ES)", "F1 Score": 0.5837238113312996},
+            {"component": "w/o Full Schema", "dataset": "DBpedia (ES)", "F1 Score": 0.598329013074588},
 
-            {"component": "w/o Full Schema", "dataset": "Corporate", "F1 Score": 0.19634836112425091},
-            {"component": "w/o Full Schema", "dataset": "Corporate", "F1 Score": 0.22619230376571678},
-            {"component": "w/o Full Schema", "dataset": "Corporate", "F1 Score": 0.24963302678538718},
+            {"component": "w/o Full Schema", "dataset": "Corporate", "F1 Score": 0.2031790577448751},
+            {"component": "w/o Full Schema", "dataset": "Corporate", "F1 Score": 0.24414868849773605},
+            {"component": "w/o Full Schema", "dataset": "Corporate", "F1 Score": 0.24802115887574275},
 
 
             {"component": "w/o Property Ranges", "dataset": "DBpedia (EN)", "F1 Score": 0.5906921625259051},
