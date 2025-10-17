@@ -20,16 +20,18 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
                                        save_plot: bool = False) -> None:
     """Plot the hyperparameter tuning results for TEXT2SPARQL"""
     
-    sns.set_theme(context="paper", style="white", color_codes=True, font_scale=3.5)
-    fig = plt.figure(figsize=(30, 15))
-    gs = GridSpec(2, 6, figure=fig)
+    sns.set_theme(context="paper", style="white", color_codes=True, font_scale=3)
+    fig = plt.figure(figsize=(25, 10))
+    gs = GridSpec(2, 8, figure=fig)
 
     ax = [fig.add_subplot(gs[0, 0:2]), 
-          fig.add_subplot(gs[0, 2:4]), 
-          fig.add_subplot(gs[0, 4:6]), 
+          fig.add_subplot(gs[0, 3:5]), 
+          fig.add_subplot(gs[0, 6:8]), 
           fig.add_subplot(gs[1, 1:3]),
-          fig.add_subplot(gs[1, 3:5]),
+          fig.add_subplot(gs[1, 5:7]),
         ]
+
+    plt.subplots_adjust(hspace=0.3)
 
     # First subplot - proportion tuning
     sns.lineplot(
@@ -133,7 +135,6 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
 
     fig.legend(*ax[1].get_legend_handles_labels(), bbox_to_anchor=(0.5, 1.1), loc='upper center', ncol=4, title="TEXT2SPARQL Corpus")
     sns.despine(top=True, right=True)
-    plt.tight_layout()
 
     if save_plot:
         plt.savefig(os.path.join("data", "benchmarks", f"{time.strftime('%Y%m%d_%H%M')}_hyperparameter_tuning.png"), bbox_inches="tight")
