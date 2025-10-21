@@ -21,17 +21,17 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
     """Plot the hyperparameter tuning results for TEXT2SPARQL"""
     
     sns.set_theme(context="paper", style="white", color_codes=True, font_scale=3)
-    fig = plt.figure(figsize=(25, 10))
-    gs = GridSpec(2, 8, figure=fig)
+    fig = plt.figure(figsize=(20, 20))
+    gs = GridSpec(3, 4, figure=fig)
 
     ax = [fig.add_subplot(gs[0, 0:2]), 
-          fig.add_subplot(gs[0, 3:5]), 
-          fig.add_subplot(gs[0, 6:8]), 
-          fig.add_subplot(gs[1, 1:3]),
-          fig.add_subplot(gs[1, 5:7]),
+          fig.add_subplot(gs[0, 2:4]), 
+          fig.add_subplot(gs[1, 0:2]), 
+          fig.add_subplot(gs[1, 2:4]),
+          fig.add_subplot(gs[2, 1:3]),
         ]
 
-    plt.subplots_adjust(hspace=0.3)
+    plt.subplots_adjust(hspace=.5, wspace=3)
 
     # First subplot - proportion tuning
     sns.lineplot(
@@ -133,7 +133,7 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
     ax[4].get_legend().remove()
 
 
-    fig.legend(*ax[1].get_legend_handles_labels(), bbox_to_anchor=(0.5, 1.1), loc='upper center', ncol=4, title="TEXT2SPARQL Corpus")
+    fig.legend(*ax[1].get_legend_handles_labels(), bbox_to_anchor=(0.5, 1), loc='upper center', ncol=3, title="TEXT2SPARQL Corpus")
     sns.despine(top=True, right=True)
 
     if save_plot:
@@ -158,7 +158,6 @@ def plot_overall_results(overall_results: pd.DataFrame,
         y="dataset",
         hue="model",
         orient="h",
-        # hue_order=["DBpedia (EN)", "DBpedia (ES)", "Corporate"],
         palette=sns.color_palette("Set1")[:3],
         ax=ax,
     )
@@ -173,7 +172,7 @@ def plot_overall_results(overall_results: pd.DataFrame,
     ax.set_ylabel("")
     ax.get_legend().remove()
 
-    fig.legend(*ax.get_legend_handles_labels(), bbox_to_anchor=(0.5, 1.2), loc='upper center', ncol=2, title="")
+    fig.legend(*ax.get_legend_handles_labels(), bbox_to_anchor=(0.5, 1.3), loc='upper center', ncol=2, title="System")
     sns.despine(top=True, right=True)
     plt.tight_layout()
 
