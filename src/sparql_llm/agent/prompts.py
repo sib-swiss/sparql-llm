@@ -36,6 +36,7 @@ If answering with a query:
 - Briefly explain the query.
 """
 )
+
 # NOTE: add the next lines to the prompt when not using tools
 # Here is a list of documents (reference questions and query answers, classes schema or general endpoints information) relevant to the user question that will help you answer the user question accurately:
 # {retrieved_docs}

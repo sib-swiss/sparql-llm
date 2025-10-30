@@ -112,7 +112,7 @@ class State(InputState):
     structured_output: list[StructuredOutput] = field(default_factory=list)
 
 
-def add_to_list(original_list: list, new_items: list) -> list:
+def add_to_list(original_list: list[Any], new_items: list[Any]) -> list[Any]:
     """We need to do this copy workaround to avoid mutable side effects that comes with LangGraph state"""
     new = original_list.copy()
     new.extend(new_items)

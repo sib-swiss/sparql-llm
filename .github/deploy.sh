@@ -17,6 +17,8 @@
 ## Re-index
 # sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose exec api uv run src/expasy_agent/indexing/index_resources.py'
 
+# Check env variables
+# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; vim .env'
 
 # NOTE: if OOM error, check `dmesg` on server and search for `oom`
 # sudo -u podman bash -c 'dmesg'

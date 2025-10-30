@@ -2,9 +2,10 @@
 
 from collections.abc import Generator
 from contextlib import contextmanager
+from typing import Any
 
 from langchain_community.embeddings import FastEmbedEmbeddings
-from langchain_core.callbacks import CallbackManagerForRetrieverRun
+from langchain_core.callbacks import AsyncCallbackManagerForRetrieverRun
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.messages import FunctionMessage, HumanMessage
@@ -165,8 +166,13 @@ class ScoredRetriever(VectorStoreRetriever):
     """Custom retriever for different types of documents for context about SPARQL endpoints."""
 
     async def _aget_relevant_documents(
-        self, query: str, *, run_manager: CallbackManagerForRetrieverRun
+        self, query: str, *, run_manager: AsyncCallbackManagerForRetrieverRun, **kwargs: Any
     ) -> list[Document]:
+        docs, scores = zip(*self.vectorstore.similarity_search_with_score(query, **self.search_kwargs), strict=False)
+        for doc, score in zip(docs, scores, strict=False):
+            doc.metadata["score"] = score
+        return list(docs)
+
         # # query_embedding = await self.vectorstore._aembed_query(query)
         # query_em`bedding = await self.vectorstore.embeddings.aembed_query(query)
 
@@ -181,10 +187,6 @@ class ScoredRetriever(VectorStoreRetriever):
         #     **kwargs,
         # )
 
-        docs, scores = zip(*self.vectorstore.similarity_search_with_score(query, **self.search_kwargs), strict=False)
-        for doc, score in zip(docs, scores, strict=False):
-            doc.metadata["score"] = score
-        return list(docs)
         # # Search SPARQL query examples
         # example_queries_docs, scores = zip(
         #     *self.vectorstore.similarity_search_with_score(

@@ -23,10 +23,11 @@ SCHEMA = Namespace("http://schema.org/")
 def load_schemaorg_description(endpoint: SparqlEndpointLinks) -> list[Document]:
     """Extract datasets descriptions from the schema.org metadata in homepage of the endpoint"""
     docs = []
+    homepage_url = endpoint.get("homepage_url")
     try:
-        if endpoint.get("homepage_url"):
+        if homepage_url:
             resp = httpx.get(
-                endpoint.get("homepage_url"),
+                homepage_url,
                 headers={
                     # "User-Agent": "BgeeBot/1.0",
                     # Adding a user-agent to make it look like we are a google bot to trigger SSR on Bgee
@@ -53,7 +54,7 @@ def load_schemaorg_description(endpoint: SparqlEndpointLinks) -> list[Document]:
                     # TODO: error here now, even if JSON-LD is valid
                     g.parse(data=json_ld_content, format="json-ld")
                     # json_ld_content = json.loads(json_ld_content)
-                    question = f"What are the general metadata about {endpoint['label']} resource? (description, creators, maintainers, license, dates, version, etc)"
+                    question = f"What are the general metadata about {endpoint.get('label')} resource? (description, creators, maintainers, license, dates, version, etc)"
                     docs.append(
                         Document(
                             page_content=question,
@@ -61,7 +62,7 @@ def load_schemaorg_description(endpoint: SparqlEndpointLinks) -> list[Document]:
                                 "question": question,
                                 "answer": json_ld_content,
                                 # "answer": f"```json\n{json_ld_content}\n```",
-                                "iri": endpoint["homepage_url"],
+                                "iri": homepage_url,
                                 "endpoint_url": endpoint["endpoint_url"],
                                 "doc_type": DOC_TYPE,
                             },
@@ -78,7 +79,7 @@ def load_schemaorg_description(endpoint: SparqlEndpointLinks) -> list[Document]:
 
             if len(descs) == 0:
                 raise Exception("No schema:description found in the JSON-LD script tag")
-            question = f"What is the SIB resource {endpoint['label']} about?"
+            question = f"What is the SIB resource {endpoint.get('label')} about?"
             docs.append(
                 Document(
                     page_content=question,
@@ -86,14 +87,14 @@ def load_schemaorg_description(endpoint: SparqlEndpointLinks) -> list[Document]:
                         "question": question,
                         "answer": "\n".join(descs),
                         "endpoint_url": endpoint["endpoint_url"],
-                        "iri": endpoint["homepage_url"],
+                        "iri": homepage_url,
                         "doc_type": DOC_TYPE,
                     },
                 )
             )
             # print("\n".join(descs))
     except Exception as e:
-        print(f"Error while fetching schema.org metadata from {endpoint['label']}: {e}")
+        print(f"Error while fetching schema.org metadata from {endpoint.get('label')}: {e}")
     return docs
 
 
@@ -162,7 +163,7 @@ def init_vectordb() -> None:
 
     # Gets documents from the SPARQL endpoints
     for endpoint in settings.endpoints:
-        print(f"\n  🔎 Getting metadata for {endpoint['label']} at {endpoint['endpoint_url']}")
+        print(f"\n  🔎 Getting metadata for {endpoint.get('label')} at {endpoint['endpoint_url']}")
         docs += SparqlExamplesLoader(
             endpoint["endpoint_url"],
             examples_file=endpoint.get("examples_file"),

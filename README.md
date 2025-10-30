@@ -334,6 +334,13 @@ There are a few benchmarks available for the system:
 
 - Follow [these instructions](tests/text2sparql/README.md) to run the `Text2SPARQL Benchmark`.
 
+- For biodata benchmark:
+
+  ```sh
+  docker compose -f compose.dev.yml up -d
+  VECTORDB_URL=http://localhost:6334 uv run tests/benchmark_biodata.py
+  ```
+
 ## 🧑‍🏫 Tutorial
 
 There is a step by step tutorial to show how a LLM-based chat system for generating SPARQL queries can be easily built here: https://sib-swiss.github.io/sparql-llm

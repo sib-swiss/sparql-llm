@@ -3,6 +3,7 @@
 from typing import Any
 
 from langchain_community.embeddings import FastEmbedEmbeddings
+from langchain_core.documents import Document
 from langchain_core.runnables import RunnableConfig
 from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
 
@@ -72,7 +73,7 @@ async def resolve_entities(state: State, config: RunnableConfig) -> dict[str, li
             k=results_count,
             # score_threshold=score_threshold,
         )
-        matchs = []
+        matchs: list[Document] = []
         for doc, score in query_hits:
             # print(f"* [SIM={score:.3f}] {doc.page_content} [{doc.metadata}]")
             # Check if this URI + endpoint combination already exists in matches

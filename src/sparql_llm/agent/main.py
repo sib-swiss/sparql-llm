@@ -6,6 +6,7 @@ import logging
 import os
 import pathlib
 import re
+from collections.abc import AsyncGenerator
 from datetime import datetime
 from typing import Any
 
@@ -78,12 +79,13 @@ class Message(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     messages: list[Message]
-    model: str | None = settings.default_llm_model
-    max_tokens: int | None = settings.default_max_tokens
-    temperature: float | None = settings.default_temperature
-    stream: bool | None = False
-    validate_output: bool | None = True
-    headers: dict[str, str] | None = {}
+    model: str = settings.default_llm_model
+    max_tokens: int = settings.default_max_tokens
+    temperature: float = settings.default_temperature
+    stream: bool = False
+    validate_output: bool = True
+    enable_sparql_execution: bool = True
+    headers: dict[str, str] = {}
 
 
 def convert_chunk_to_dict(obj: Any) -> Any:
@@ -102,16 +104,19 @@ def convert_chunk_to_dict(obj: Any) -> Any:
     elif isinstance(obj, dict):
         return {k: convert_chunk_to_dict(v) for k, v in obj.items()}
     elif hasattr(obj, "model_dump"):
-        return obj.model_dump()
+        return obj.model_dump()  # type: ignore
     elif hasattr(obj, "dict"):
-        return obj.dict()
+        return obj.dict()  # type: ignore
     elif hasattr(obj, "__dict__"):
         return obj.__dict__
+    # elif hasattr(obj, "__dict__") and not isinstance(obj, type):
+    #     # Convert dataclass or other objects to dict, but skip type objects
+    #     return {k: convert_chunk_to_dict(v) for k, v in obj.__dict__.items()}
     else:
         return obj
 
 
-async def stream_response(inputs: dict[str, list], config: RunnableConfig):
+async def stream_response(inputs: Any, config: RunnableConfig) -> AsyncGenerator[str, Any]:
     """Stream the response from the assistant."""
     async for event, chunk in graph.astream(inputs, stream_mode=["messages", "updates"], config=config):
         chunk_dict = convert_chunk_to_dict(
@@ -127,7 +132,7 @@ async def stream_response(inputs: dict[str, list], config: RunnableConfig):
     yield "data: [DONE]"
 
 
-async def chat_handler(request: Request):
+async def chat_handler(request: Request) -> StreamingResponse | JSONResponse:
     """Chat with the assistant main endpoint."""
     auth_header = request.headers.get("Authorization", "")
     if settings.chat_api_key and (not auth_header or not auth_header.startswith("Bearer ")):
@@ -149,9 +154,10 @@ async def chat_handler(request: Request):
         configurable={
             "model": chat_request.model,
             "validate_output": chat_request.validate_output,
+            "enable_sparql_execution": chat_request.enable_sparql_execution,
         },
         recursion_limit=25,
-        callbacks=langfuse_handler,
+        callbacks=langfuse_handler,  # type: ignore
     )
     inputs: Any = {
         "messages": [(msg.role, msg.content) for msg in chat_request.messages],
@@ -166,8 +172,9 @@ async def chat_handler(request: Request):
         )
 
     response = await graph.ainvoke(inputs, config=config)
-    # print(response)
-    return JSONResponse(content=response)
+    # Convert LangChain message objects to dicts for JSON serialization
+    response_dict = convert_chunk_to_dict(response)
+    return JSONResponse(content=response_dict)
 
 
 # Add chat routes directly to the MCP app
@@ -196,7 +203,7 @@ def log_msg(filename: str, messages: list[LogMessage]) -> None:
         f.write(json.dumps(feedback_data) + "\n")
 
 
-async def feedback_handler(request: Request):
+async def feedback_handler(request: Request) -> JSONResponse:
     """Save the user feedback in the logs files."""
     feedback_request = FeedbackRequest(**await request.json())
     filename = (
@@ -210,7 +217,7 @@ class LogsRequest(BaseModel):
     api_key: str
 
 
-async def logs_handler(request: Request):
+async def logs_handler(request: Request) -> JSONResponse:
     """Get the list of user questions from the logs file."""
     logs_request = LogsRequest(**await request.json())
     if settings.logs_api_key and logs_request.api_key != settings.logs_api_key:

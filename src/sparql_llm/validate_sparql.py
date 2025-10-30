@@ -21,7 +21,7 @@ queries_pattern = re.compile(r"```sparql(.*?)```", re.DOTALL)
 endpoint_pattern = re.compile(r"#\+ endpoint:\s*(https?://\S+)", re.MULTILINE)
 
 
-def extract_sparql_queries(md_resp: str) -> list[dict[str, str]]:
+def extract_sparql_queries(md_resp: str) -> list[dict[str, str | None]]:
     """Extract SPARQL queries and endpoint URL from a markdown response."""
     extracted_queries = []
     queries = queries_pattern.findall(md_resp)
@@ -69,7 +69,7 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> EndpointsSc
     query_dict: EndpointsSchemaDict = defaultdict(SchemaDict)
     path_var_count = 1
 
-    def handle_path(endpoint: str, subj: str, pred: str | Path, obj: str):
+    def handle_path(endpoint: str, subj: str, pred: str | Path, obj: str) -> None:
         """
         Recursively handle a Path object in a SPARQL query.
         Check here to understand why we need this: https://github.com/sib-swiss/sparql-examples/blob/master/examples/UniProt/26_component_HLA_class_I_histocompatibility_domain.ttl
@@ -101,7 +101,7 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> EndpointsSc
         """We don't want to return a str because pred might be a Path object"""
         return f"?{var}" if isinstance(var, Variable) else var
 
-    def extract_triples(node: Any, endpoint: str):
+    def extract_triples(node: Any, endpoint: str) -> None:
         """Recursively go down the nodes of a SPARQL query to find triples."""
         nonlocal path_var_count
         if isinstance(node, dict):
@@ -127,7 +127,7 @@ def sparql_query_to_dict(sparql_query: str, sparql_endpoint: str) -> EndpointsSc
                 # Handle SERVICE clauses
                 # NOTE: recursion issue when nested SERVICE clauses: https://github.com/RDFLib/rdflib/issues/2136
                 elif key == "graph" and hasattr(node, "term"):
-                    extract_triples(value, node.term)
+                    extract_triples(value, node.term)  # type: ignore
                 else:
                     extract_triples(value, endpoint)
         elif isinstance(node, list):
@@ -215,11 +215,12 @@ def validate_sparql_with_void(
                                         obj, subj_dict, void_dict, endpoint, issues, potential_type, pred, recursion + 1
                                     )
                         break
-                if missing_pred is not None:
-                    # print(f"Subject {subj} {parent_type} {parent_pred} is not a valid {potential_types} !")
-                    issues.add(
-                        f"Subject {subj} in endpoint {endpoint} does not support the predicate `{prefix_converter.compress(missing_pred)}`. Correct predicate might be one of the following: `{'`, `'.join(compress_list(prefix_converter, list(potential_preds)))}` (we inferred this variable might be of the type `{prefix_converter.compress(potential_type)}`)"
-                    )
+                    elif missing_pred is not None:
+                        # print(f"Subject {subj} {parent_type} {parent_pred} is not a valid {potential_types} !")
+                        issues.add(
+                            f"Subject {subj} in endpoint {endpoint} does not support the predicate `{prefix_converter.compress(missing_pred)}`. Correct predicate might be one of the following: `{'`, `'.join(compress_list(prefix_converter, list(potential_preds)))}` (we inferred this variable might be of the type `{prefix_converter.compress(potential_type)}`)"
+                        )
+                        break
 
         # TODO: when no type and no parent but more than 1 predicate is used, we could try to infer the type from the predicates
         # If too many potential type we give up, otherwise we infer

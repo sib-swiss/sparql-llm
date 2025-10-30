@@ -1,5 +1,6 @@
 import argparse
 import time
+from typing import Any
 
 from langchain_core.documents import Document
 from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
@@ -17,7 +18,7 @@ from sparql_llm.utils import query_sparql
 # nohup VECTORDB_URL=http://localhost:6334 uv run --extra gpu src/sparql_llm.agent/indexing/index_entities.py --gpu &
 
 
-def retrieve_index_data(entity: dict, docs: list[Document], pagination: (int, int) = None):
+def retrieve_index_data(entity: dict, docs: list[Document], pagination: (int, int) = None) -> Any:  # type: ignore
     query = f"{entity['query']} LIMIT {pagination[0]} OFFSET {pagination[1]}" if pagination else entity["query"]
     try:
         entities_res = query_sparql(query, entity["endpoint"])["results"]["bindings"]
@@ -271,9 +272,8 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
     )
 
     vectordb = QdrantVectorStore(
-        # client=qdrant_client,
-        url=settings.vectordb_url,
-        prefer_grpc=True,
+        client=qdrant_client,
+        # url=settings.vectordb_url,
         collection_name=settings.entities_collection_name,
         embedding=make_dense_encoder(settings.embedding_model, gpu),
         sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),

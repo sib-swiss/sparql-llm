@@ -128,7 +128,8 @@ It provides a unified, searchable framework that connects chemical profiles of p
     entities_collection_name: str = "entities"
 
     # Default settings for the agent that can be changed at runtime
-    default_llm_model: str = "openai/gpt-4o"
+    default_llm_model: str = "openrouter/openai/gpt-4o"
+    # default_llm_model: str = "openai/gpt-4o"
     # TODO: default_llm_model_cheap: str = "openai/gpt-4o-mini"
 
     default_number_of_retrieved_docs: int = 10

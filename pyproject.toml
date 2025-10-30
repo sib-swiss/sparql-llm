@@ -87,6 +87,8 @@ dev = [
     "mypy >=1.15.0",
     "pre-commit >=4.1.0",
     "mcp[cli]",
+    "scikit-learn",
+    "pytrec-eval",
     # "ipykernel >=6.29.5",
 ]
 
@@ -135,7 +137,7 @@ ignore_missing_imports = true
 pretty = true
 show_column_numbers = true
 warn_no_return = true
-warn_unused_ignores = true
+warn_unused_ignores = false
 warn_redundant_casts = true
 disallow_untyped_defs = true
 disallow_any_generics = true

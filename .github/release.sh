@@ -13,7 +13,7 @@ uvx hatch version $BUMP_TYPE
 VERSION=$(uvx hatch version)
 
 uvx git-cliff -o CHANGELOG.md --tag v$VERSION
-git add CHANGELOG.md src/sparql_llm/__init__.py
+git add CHANGELOG.md src/*/__init__.py
 git commit -m "Bump to v$VERSION"
 git tag -a "v$VERSION" -m "Release v$VERSION"
 git push origin "v$VERSION"

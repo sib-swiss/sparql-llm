@@ -5,7 +5,6 @@ Works with a chat model with tool calling support.
 
 from typing import Literal
 
-from langchain_core.messages import AIMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
@@ -33,7 +32,9 @@ class StructuredQuestion(BaseModel):
     )
 
 
-async def extract_user_question(state: State, config: RunnableConfig) -> dict[str, list[AIMessage]]:
+async def extract_user_question(
+    state: State, config: RunnableConfig
+) -> dict[str, StructuredQuestion | list[StepOutput]]:
     """Call the LLM powering our "agent".
 
     This function prepares the prompt, initializes the model, and processes the response.
@@ -64,8 +65,8 @@ async def extract_user_question(state: State, config: RunnableConfig) -> dict[st
 
     # print(message_value)
     # print(message_value.messages[0].content)
-    structured_question: StructuredQuestion = await model.ainvoke(
-        message_value, {**config, "configurable": {"stream": False}}
+    structured_question = StructuredQuestion.model_validate(
+        await model.ainvoke(message_value, {**config, "configurable": {"stream": False}})
     )
     # print(structured_question)
     steps_label = (
