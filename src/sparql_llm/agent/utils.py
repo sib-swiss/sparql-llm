@@ -3,8 +3,8 @@
 import os
 
 from langchain.chat_models import init_chat_model
+from langchain.messages import AnyMessage
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import BaseMessage
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
@@ -96,7 +96,7 @@ def load_chat_model(configuration: Configuration) -> BaseChatModel:
     )
 
 
-def get_msg_text(msg: BaseMessage) -> str:
+def get_msg_text(msg: AnyMessage) -> str:
     """Get the text content of a chat message."""
     content = msg.content
     if isinstance(content, str):

@@ -22,6 +22,12 @@ git clone https://github.com/sib-swiss/sparql-llm
 cd sparql-llm
 ```
 
+Install dev dependencies:
+
+```sh
+uv sync --extra agent --group bench
+```
+
 Install pre-commit hooks:
 
 ```sh

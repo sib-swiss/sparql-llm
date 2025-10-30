@@ -5,8 +5,7 @@ Works with a chat model with tool calling support.
 
 from typing import Any
 
-from langchain_core.messages import AIMessage
-from langchain_core.messages.base import BaseMessage
+from langchain.messages import AIMessage, AnyMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -20,7 +19,7 @@ from sparql_llm.agent.utils import load_chat_model
 # from sparql_llm.agent.nodes.retrieval_entities import format_extracted_entities
 
 
-async def call_model(state: State, config: RunnableConfig) -> dict[str, list[BaseMessage] | bool]:
+async def call_model(state: State, config: RunnableConfig) -> dict[str, list[AnyMessage] | bool]:
     """Call the LLM powering our "agent".
 
     This function prepares the prompt, initializes the model, and processes the response.

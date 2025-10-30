@@ -6,8 +6,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Annotated, Any, Literal
 
+from langchain.messages import AnyMessage
 from langchain_core.documents import Document
-from langchain_core.messages import AnyMessage
 from langgraph.graph import add_messages
 from langgraph.managed import IsLastStep
 from pydantic import BaseModel, Field

@@ -9,7 +9,7 @@ Works    max_tries_message = AIMessage(
 
 from typing import Literal
 
-from langchain_core.messages import AIMessage
+from langchain.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph
 

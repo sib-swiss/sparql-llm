@@ -34,13 +34,13 @@ dependencies = [
     "SPARQLWrapper >=2.0.0",
     "beautifulsoup4 >=4.13.0",
     "curies >=0.11.0",
-    "langchain-core >=0.3.34",
+    "langchain-core >=1.0.2",
     "mcp >=1.16.0",
     "qdrant-client >=1.15.1",
     "fastembed >=0.7.3",
-    "langgraph >=0.2.61",
-    "langchain-qdrant >=0.2.1",
-    "langchain-community >=0.3.17",
+    "langgraph >=1.0.2",
+    "langchain-qdrant >=1.1.0",
+    "langchain-community >=0.4.1",
     "markdownify >=1.1.0",
     "pandas >=2.2.3",
 ]
@@ -48,14 +48,14 @@ dependencies = [
 [project.optional-dependencies]
 agent = [
     # LangGraph dependencies
-    "langchain >=0.3.14",
-    "langchain-openai >=0.1.22",
-    "langchain-azure-ai >=0.1.0",
-    "langchain-groq >=0.2.4",
-    "langchain-together >=0.3.0",
+    "langchain >=1.0.3",
+    "langchain-openai >=1.0.1",
+    # "langchain-azure-ai >=0.1.0",
+    # "langchain-groq >=0.2.4",
+    # "langchain-together >=0.3.0",
     "langchain-mcp-adapters >=0.1.10",
     # "langchain-qdrant @ git+https://github.com/langchain-ai/langchain.git#subdirectory=libs/partners/qdrant",
-    "langfuse >=3.0.8",
+    "langfuse >=3.8.1",
     # "langchain-huggingface", # This will install torch and many heavy nvidia dependencies
     # "langchain-deepseek >=0.1.1",
     # "langchain-anthropic >=0.1.23",
@@ -88,8 +88,11 @@ dev = [
     "pre-commit >=4.1.0",
     "mcp[cli]",
     "scikit-learn",
-    "pytrec-eval",
+    # "pytrec-eval",
     # "ipykernel >=6.29.5",
+]
+bench = [
+    "pytrec-eval",
 ]
 
 # # Required for onnxruntime-gpu on CUDA 12

@@ -4,7 +4,7 @@ import json
 import re
 from typing import Any
 
-from langchain_core.messages import FunctionMessage, HumanMessage
+from langchain.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 
 from sparql_llm.agent.config import Configuration, settings
@@ -30,7 +30,7 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
     # Remove the thought process <think> tags from the last message
     last_msg = re.sub(r"<think>.*?</think>", "", str(state.messages[-1].content), flags=re.DOTALL)
     validation_steps: list[StepOutput] = []
-    recall_messages: list[HumanMessage | FunctionMessage] = []
+    recall_messages: list[HumanMessage] = []
 
     validation_outputs = validate_sparql_in_msg(last_msg, prefixes_map, endpoints_void_dict)
     for validation_output in validation_outputs:

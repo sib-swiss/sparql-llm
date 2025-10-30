@@ -4,11 +4,11 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any
 
+from langchain.messages import HumanMessage
 from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_core.callbacks import AsyncCallbackManagerForRetrieverRun
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
-from langchain_core.messages import FunctionMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.vectorstores import VectorStoreRetriever
 from langchain_qdrant import QdrantVectorStore
@@ -22,9 +22,7 @@ from sparql_llm.agent.utils import get_msg_text
 # Which tools can I use for enrichment analysis?
 
 
-async def retrieve(
-    state: State, config: RunnableConfig
-) -> dict[str, list[StepOutput | FunctionMessage | HumanMessage]]:
+async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[StepOutput | HumanMessage]]:
     """Retrieve documents based on the latest message in the state.
 
     This function takes the current state and configuration, uses the latest query
@@ -55,8 +53,14 @@ async def retrieve(
         )
         # For general information, we can use a larger k to get more results
         configuration.search_kwargs["k"] = configuration.search_kwargs["k"] * 2
-        with make_qdrant_retriever(configuration) as retriever:
-            docs += await retriever.ainvoke(user_question, config)
+        try:
+            with make_qdrant_retriever(configuration) as retriever:
+                docs += await retriever.ainvoke(user_question, config)
+        except Exception as _e:
+            # If error, probably due to no results, so retry without filter
+            configuration.search_kwargs["filter"] = Filter()
+            with make_qdrant_retriever(configuration) as retriever:
+                docs += await retriever.ainvoke(user_question, config)
     else:
         # Handles when user asks for access to resources
         configuration.search_kwargs["filter"] = Filter(

@@ -1,6 +1,6 @@
 """Custom MCP tool node for handling async tool calls."""
 
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
