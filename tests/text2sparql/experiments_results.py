@@ -559,69 +559,57 @@ if __name__ == "__main__":
 
     model_results = pd.DataFrame(
         [
-            {"model": "Gemini 1.5 Pro", "dataset": "DBpedia (EN)", "F1 Score": 0},
-            {"model": "Gemini 1.5 Pro", "dataset": "DBpedia (EN)", "F1 Score": 0},
-            {"model": "Gemini 1.5 Pro", "dataset": "DBpedia (EN)", "F1 Score": 0},
+            {"model": "GPT-4o", "dataset": "DBpedia (EN)", "F1 Score": 0.6690007929066105},
+            {"model": "GPT-4o", "dataset": "DBpedia (EN)", "F1 Score": 0.6741166794466641},
+            {"model": "GPT-4o", "dataset": "DBpedia (EN)", "F1 Score": 0.6952634191692368},
 
-            {"model": "Gemini 1.5 Pro", "dataset": "DBpedia (ES)", "F1 Score": 0},
-            {"model": "Gemini 1.5 Pro", "dataset": "DBpedia (ES)", "F1 Score": 0},
-            {"model": "Gemini 1.5 Pro", "dataset": "DBpedia (ES)", "F1 Score": 0},
+            {"model": "GPT-4o", "dataset": "DBpedia (ES)", "F1 Score": 0.6542033975373135},
+            {"model": "GPT-4o", "dataset": "DBpedia (ES)", "F1 Score": 0.6673643826702074},
+            {"model": "GPT-4o", "dataset": "DBpedia (ES)", "F1 Score": 0.6547826165049525},
 
-            {"model": "Gemini 1.5 Pro", "dataset": "Corporate", "F1 Score": 0},
-            {"model": "Gemini 1.5 Pro", "dataset": "Corporate", "F1 Score": 0},
-            {"model": "Gemini 1.5 Pro", "dataset": "Corporate", "F1 Score": 0},
-
-
-            {"model": "Mistral Large 2", "dataset": "DBpedia (EN)", "F1 Score": 0.637605319694327},
-            {"model": "Mistral Large 2", "dataset": "DBpedia (EN)", "F1 Score": 0.6047127951770502},
-            {"model": "Mistral Large 2", "dataset": "DBpedia (EN)", "F1 Score": 0.6249292195575908},
-
-            {"model": "Mistral Large 2", "dataset": "DBpedia (ES)", "F1 Score": 0.6446008219830448},
-            {"model": "Mistral Large 2", "dataset": "DBpedia (ES)", "F1 Score": 0.612939791184551},
-            {"model": "Mistral Large 2", "dataset": "DBpedia (ES)", "F1 Score": 0.6507461671408128},
-
-            {"model": "Mistral Large 2", "dataset": "Corporate", "F1 Score": 0.3397032907136823},
-            {"model": "Mistral Large 2", "dataset": "Corporate", "F1 Score": 0.34743064109986266},
-            {"model": "Mistral Large 2", "dataset": "Corporate", "F1 Score": 0.3212811489748454},
+            {"model": "GPT-4o", "dataset": "Corporate", "F1 Score": 0.4403431543419664},
+            {"model": "GPT-4o", "dataset": "Corporate", "F1 Score": 0.4302794586250879},
+            {"model": "GPT-4o", "dataset": "Corporate", "F1 Score": 0.422015569736199},
 
 
-            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (EN)", "F1 Score": 0},
-            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (EN)", "F1 Score": 0},
-            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (EN)", "F1 Score": 0},
+            {"model": "Mistral Large 2", "dataset": "DBpedia (EN)", "F1 Score": 0.6158133022707935},
+            {"model": "Mistral Large 2", "dataset": "DBpedia (EN)", "F1 Score": 0.6378097240848767},
+            {"model": "Mistral Large 2", "dataset": "DBpedia (EN)", "F1 Score": 0.639661724438893},
 
-            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (ES)", "F1 Score": 0},
-            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (ES)", "F1 Score": 0},
-            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (ES)", "F1 Score": 0},
+            {"model": "Mistral Large 2", "dataset": "DBpedia (ES)", "F1 Score": 0.6173390843710245},
+            {"model": "Mistral Large 2", "dataset": "DBpedia (ES)", "F1 Score": 0.6385462028291864},
+            {"model": "Mistral Large 2", "dataset": "DBpedia (ES)", "F1 Score": 0.5954783065195792},
 
-            {"model": "Claude 3.5 Sonnet", "dataset": "Corporate", "F1 Score": 0},
-            {"model": "Claude 3.5 Sonnet", "dataset": "Corporate", "F1 Score": 0},
-            {"model": "Claude 3.5 Sonnet", "dataset": "Corporate", "F1 Score": 0},
-
-
-            {"model": "GPT-4.1", "dataset": "DBpedia (EN)", "F1 Score": 0},
-            {"model": "GPT-4.1", "dataset": "DBpedia (EN)", "F1 Score": 0},
-            {"model": "GPT-4.1", "dataset": "DBpedia (EN)", "F1 Score": 0},
-
-            {"model": "GPT-4.1", "dataset": "DBpedia (ES)", "F1 Score": 0},
-            {"model": "GPT-4.1", "dataset": "DBpedia (ES)", "F1 Score": 0},
-            {"model": "GPT-4.1", "dataset": "DBpedia (ES)", "F1 Score": 0},
-
-            {"model": "GPT-4.1", "dataset": "Corporate", "F1 Score": 0},
-            {"model": "GPT-4.1", "dataset": "Corporate", "F1 Score": 0},
-            {"model": "GPT-4.1", "dataset": "Corporate", "F1 Score": 0},
+            {"model": "Mistral Large 2", "dataset": "Corporate", "F1 Score": 0.3519455883649196},
+            {"model": "Mistral Large 2", "dataset": "Corporate", "F1 Score": 0.3937408005317151},
+            {"model": "Mistral Large 2", "dataset": "Corporate", "F1 Score": 0.37801075055609973},
 
 
-            {"model": "GPT-4o", "dataset": "DBpedia (EN)", "F1 Score": 0},
-            {"model": "GPT-4o", "dataset": "DBpedia (EN)", "F1 Score": 0},
-            {"model": "GPT-4o", "dataset": "DBpedia (EN)", "F1 Score": 0},
+            {"model": "Qwen 2.5", "dataset": "DBpedia (EN)", "F1 Score": 0.6547218955648587},
+            {"model": "Qwen 2.5", "dataset": "DBpedia (EN)", "F1 Score": 0.6281601327082715},
+            {"model": "Qwen 2.5", "dataset": "DBpedia (EN)", "F1 Score": 0.639456669887195},
 
-            {"model": "GPT-4o", "dataset": "DBpedia (ES)", "F1 Score": 0},
-            {"model": "GPT-4o", "dataset": "DBpedia (ES)", "F1 Score": 0},
-            {"model": "GPT-4o", "dataset": "DBpedia (ES)", "F1 Score": 0},
+            {"model": "Qwen 2.5", "dataset": "DBpedia (ES)", "F1 Score": 0.657979863784743},
+            {"model": "Qwen 2.5", "dataset": "DBpedia (ES)", "F1 Score": 0.6065074932377659},
+            {"model": "Qwen 2.5", "dataset": "DBpedia (ES)", "F1 Score": 0.6715895763806423},
 
-            {"model": "GPT-4o", "dataset": "Corporate", "F1 Score": 0},
-            {"model": "GPT-4o", "dataset": "Corporate", "F1 Score": 0},
-            {"model": "GPT-4o", "dataset": "Corporate", "F1 Score": 0},
+            {"model": "Qwen 2.5", "dataset": "Corporate", "F1 Score": 0.36899632381966513},
+            {"model": "Qwen 2.5", "dataset": "Corporate", "F1 Score": 0.4051732408777085},
+            {"model": "Qwen 2.5", "dataset": "Corporate", "F1 Score": 0.40369778490671704},
+
+
+            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (EN)", "F1 Score": 0.6386270211114444},
+            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (EN)", "F1 Score": 0.63303831649836},
+            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (EN)", "F1 Score": 0.6268120605933296},
+
+            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (ES)", "F1 Score": 0.6127242079833665},
+            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (ES)", "F1 Score": 0.6112838696518457},
+            {"model": "Claude 3.5 Sonnet", "dataset": "DBpedia (ES)", "F1 Score": 0.605261842929127},
+
+            {"model": "Claude 3.5 Sonnet", "dataset": "Corporate", "F1 Score": 0.42633112866753614},
+            {"model": "Claude 3.5 Sonnet", "dataset": "Corporate", "F1 Score": 0.41622769688085254},
+            {"model": "Claude 3.5 Sonnet", "dataset": "Corporate", "F1 Score": 0.39020052153339546},
+
         ]
     )
 
