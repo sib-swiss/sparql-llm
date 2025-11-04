@@ -65,54 +65,83 @@ def plot_result_length(queries: pd.DataFrame):
     else:
         plt.show()
 
-
 def plot_triple_patterns(queries: pd.DataFrame):
     queries = queries.copy()
-    queries["triple patterns"] = queries["triple patterns"].apply(lambda x: 6 if x > 6 else x)
     queries["dataset"] = queries["dataset"].map(
         lambda d: {
-            "Generated-CK": "LLM-Generated (Corporate)",
-            "Text2SPARQL-db": "TEXT2SPARQL (DBpedia)",
-            "Text2SPARQL-ck": "TEXT2SPARQL (Corporate)",
-            "LC-QuAD": "LC-QuAD (DBpedia)",
-            "QALD-9+": "QALD-9+ (DBpedia)",
+            "Generated-CK": "Corporate (LLM-Generated)",
+            "Text2SPARQL-db": "DBpedia (EN) & DBpedia (ES)",
+            "Text2SPARQL-ck": "Corporate",
+            "LC-QuAD": "LC-QuAD",
+            "QALD-9+": "QALD-9+",
         }.get(d, d)
     )
-    queries = queries.groupby(["dataset", "triple patterns"]).size().reset_index(name="count")
 
     sns.set_theme(context="paper", style="white", color_codes=True, font_scale=2.5)
 
-    ax = sns.lineplot(
+    ax = sns.kdeplot(
         data=queries,
         x="triple patterns",
-        y="count",
         hue="dataset",
         hue_order=[
-            "LC-QuAD (DBpedia)",
-            "QALD-9+ (DBpedia)",
-            "TEXT2SPARQL (DBpedia)",
-            "LLM-Generated (Corporate)",
-            "TEXT2SPARQL (Corporate)",
+            "LC-QuAD",
+            "QALD-9+",
+            "DBpedia (EN) & DBpedia (ES)",
+            "Corporate (LLM-Generated)",
+            "Corporate",
         ],
         linewidth=3,
+        common_norm=False,
+        clip=(0, 6),
         palette=sns.color_palette("Blues")[1::2] + sns.color_palette("Oranges")[1:4:2],
     )
 
     ax.lines[2].set_linestyle("dashed")
-    ax.lines[4].set_linestyle("dashed")
+    ax.lines[0].set_linestyle("dashed")
     ax.set_xlabel("Triple Patterns")
-    ax.set_ylabel("Queries")
-    ax.set_yscale("log")
-    ax.set_ylim(0.5, 10000)
     ax.legend_.set_title("KGQA Corpus")
     ax.legend_.get_lines()[2].set_linestyle("dashed")
     ax.legend_.get_lines()[4].set_linestyle("dashed")
     ax.legend_.set_bbox_to_anchor((1, 1))
-    ax.set_xticks([1, 2, 3, 4, 5, 6], ["1", "2", "3", "4", "5", "[6-8]"])
     sns.despine(top=True, right=True)
 
     if SAVE_PLOTS:
         plt.savefig(os.path.join(bench_folder, f"{file_time_prefix}_triple_patterns.png"), bbox_inches="tight")
+    else:
+        plt.show()
+
+
+def plot_bio_triple_patterns(queries: pd.DataFrame):
+    queries = queries.copy()
+    queries['dataset'] = queries.apply(lambda q: q['dataset'] + ' (Federated)' if q['federated'] else q['dataset'], axis=1)
+
+    sns.set_theme(context="paper", style="white", color_codes=True, font_scale=2.5)
+
+    ax = sns.kdeplot(
+        data=queries,
+        x="triple patterns",
+        hue="dataset",
+        hue_order=[
+            "Uniprot",
+            "Uniprot (Federated)",
+            "Cellosaurus",
+            "Cellosaurus (Federated)",
+            "Bgee",
+            "Bgee (Federated)",
+        ],
+        linewidth=3,
+        common_norm=False,
+        clip=(0, 32),
+        palette=sns.color_palette("Paired")[:6],
+    )
+
+    ax.set_xlabel("Triple Patterns")
+    ax.legend_.set_title("BioKGQA Corpus")
+    ax.legend_.set_bbox_to_anchor((1, 1))
+    sns.despine(top=True, right=True)
+
+    if SAVE_PLOTS:
+        plt.savefig(os.path.join(bench_folder, f"{file_time_prefix}_bio_triple_patterns.png"), bbox_inches="tight")
     else:
         plt.show()
 
@@ -131,4 +160,5 @@ if __name__ == "__main__":
     plot_queries_by_dataset(queries)
     plot_result_length(queries)
     plot_triple_patterns(queries)
+    plot_bio_triple_patterns(queries)
     print_error_histogram()
