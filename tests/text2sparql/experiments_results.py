@@ -45,7 +45,7 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
         ax=ax[0],
     )
 
-    ax[0].set_title("(i) Proportion of Provided Schema", fontweight="bold")
+    ax[0].set_title("(i) Fraction of Provided Schema", fontweight="bold", y=1.05)
     ax[0].set_xlim(0, 1)
     ax[0].set_xticks([.0, .25, .5, .75, 1.0], ["0%", '25%', "50%", '75%', "100%"])
     ax[0].set_xlabel("")
@@ -65,9 +65,9 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
         ax=ax[1],
     )
     
-    ax[1].set_title("(ii) Embeddings Model", fontweight="bold")
-    ax[1].set_xlim(0, .75)
-    ax[1].set_xticks([.1, .2, .3, .4, .5, .6, .7], [".1", ".2", ".3", ".4", ".5", ".6", ".7"])
+    ax[1].set_title("(ii) Embeddings Model", fontweight="bold", y=1.05)
+    ax[1].set_xlim(.2, .7)
+    ax[1].set_xticks([.2, .3, .4, .5, .6, .7], [".2", ".3", ".4", ".5", ".6", ".7"])
     ax[1].set_ylabel("")
     ax[1].get_legend().remove()
 
@@ -84,7 +84,7 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
         ax=ax[2],
     )
 
-    ax[2].set_title("(iii) Number of Provided Examples", fontweight="bold")
+    ax[2].set_title("(iii) Number of Provided Examples", fontweight="bold", y=1.05)
     ax[2].set_xlim(0, 20)
     ax[2].set_xticks([0, 5, 10, 15, 20], ["0", "5", "10", "15", "20"])
     ax[2].set_xlabel("")
@@ -104,9 +104,9 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
         ax=ax[3],
     )
 
-    ax[3].set_title("(iv) Large Language Model", fontweight="bold")
-    ax[3].set_xlim(0, .75)
-    ax[3].set_xticks([.1, .2, .3, .4, .5, .6, .7], [".1", ".2", ".3", ".4", ".5", ".6", ".7"])
+    ax[3].set_title("(iv) Large Language Model", fontweight="bold", y=1.05)
+    ax[3].set_xlim(.2, .7)
+    ax[3].set_xticks([.2, .3, .4, .5, .6, .7], [".2", ".3", ".4", ".5", ".6", ".7"])
     ax[3].set_ylabel("")
     ax[3].get_legend().remove()
     
@@ -126,9 +126,9 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
     ax[4].axvline(baseline_results[baseline_results['dataset'] == 'DBpedia (ES)']['F1 Score'].mean(), color=sns.color_palette("Set2")[1], linestyle='--', linewidth=5)
     ax[4].axvline(baseline_results[baseline_results['dataset'] == 'Corporate']['F1 Score'].mean(), color=sns.color_palette("Set2")[2], linestyle='--', linewidth=5)
 
-    ax[4].set_title("(v) Ablation Study", fontweight="bold")
-    ax[4].set_xlim(0, .75)
-    ax[4].set_xticks([.1, .2, .3, .4, .5, .6, .7], [".1", ".2", ".3", ".4", ".5", ".6", ".7"])
+    ax[4].set_title("(v) Ablation Study", fontweight="bold", y=1.05)
+    ax[4].set_xlim(.2, .7)
+    ax[4].set_xticks([.2, .3, .4, .5, .6, .7], [".2", ".3", ".4", ".5", ".6", ".7"])
     ax[4].set_ylabel("")
     ax[4].get_legend().remove()
 
@@ -167,8 +167,8 @@ def plot_overall_results(overall_results: pd.DataFrame,
     ax.axvline(sota_results[sota_results['dataset'] == 'DBpedia (ES)']['F1 Score'].iloc[0], ymin=.33, ymax=.66, color=sns.color_palette("Set1")[3], linestyle='--', linewidth=9)
     ax.axvline(sota_results[sota_results['dataset'] == 'Corporate']['F1 Score'].iloc[0], ymin=0, ymax=.33, color=sns.color_palette("Set1")[3], linestyle='--', linewidth=9)
 
-    ax.set_xlim(0, .75)
-    ax.set_xticks([.1, .2, .3, .4, .5, .6, .7], [".1", ".2", ".3", ".4", ".5", ".6", ".7"])
+    ax.set_xlim(.2, .7)
+    ax.set_xticks([.2, .3, .4, .5, .6, .7], [".2", ".3", ".4", ".5", ".6", ".7"])
     ax.set_ylabel("")
     ax.get_legend().remove()
 
@@ -273,6 +273,40 @@ def plot_cost_analysis_results(cost_results: pd.DataFrame,
         plt.savefig(os.path.join("data", "benchmarks", f"{time.strftime('%Y%m%d_%H%M')}_cost_results.png"), bbox_inches="tight")
     else:
         plt.show()
+
+def plot_bio_results(bio_results: pd.DataFrame,
+                         save_plot: bool = False) -> None:
+    """Plot the bio results for TEXT2SPARQL"""
+    
+    sns.set_theme(context="paper", style="white", color_codes=True, font_scale=4.5)
+    fig = plt.figure(figsize=(20, 10))
+    ax = plt.gca()
+
+    # Bio results
+    sns.barplot(
+        data=bio_results,
+        x="F1 Score",
+        y="dataset",
+        hue="model",
+        orient="h",
+        palette=sns.color_palette("Set1")[:3],
+        ax=ax,
+    )
+
+    ax.set_xlim(0, .5)
+    ax.set_xticks([0, .1, .2, .3, .4, .5], ["0", ".1", ".2", ".3", ".4", ".5"])
+    ax.set_ylabel("")
+    ax.get_legend().remove()
+
+    fig.legend(*ax.get_legend_handles_labels(), bbox_to_anchor=(0.5, 1.2), loc='upper center', ncol=3, title="System")
+    sns.despine(top=True, right=True)
+    plt.tight_layout()
+
+    if save_plot:
+        plt.savefig(os.path.join("data", "benchmarks", f"{time.strftime('%Y%m%d_%H%M')}_bio_results.png"), bbox_inches="tight")
+    else:
+        plt.show()
+
 
 if __name__ == "__main__":
     proportion_results = pd.DataFrame(
@@ -671,6 +705,47 @@ if __name__ == "__main__":
         ]
     )
 
+    bio_results = pd.DataFrame(
+        [
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Uniprot", "F1 Score": 0.17127975017339814},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Uniprot", "F1 Score": 0.1286590679492278},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Uniprot", "F1 Score": 0.38586225085137904},
+
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Cellosaurus", "F1 Score": 0.2533862753857133},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Cellosaurus", "F1 Score": 0.24239724439918156},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Cellosaurus", "F1 Score": 0.18820183406084834},
+
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Bgee", "F1 Score": 0.1983473592406111},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Bgee", "F1 Score": 0.2644283062939245},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Bgee", "F1 Score": 0.4847645659730885},
+
+
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Uniprot", "F1 Score": 0},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Uniprot", "F1 Score": 0},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Uniprot", "F1 Score": 0},
+
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Cellosaurus", "F1 Score": 0},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Cellosaurus", "F1 Score": 0},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Cellosaurus", "F1 Score": 0},
+
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Bgee", "F1 Score": 0},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Bgee", "F1 Score": 0},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Bgee", "F1 Score": 0},
+
+
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Uniprot", "F1 Score": 0},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Uniprot", "F1 Score": 0},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Uniprot", "F1 Score": 0},
+
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Cellosaurus", "F1 Score": 0},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Cellosaurus", "F1 Score": 0},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Cellosaurus", "F1 Score": 0},
+
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Bgee", "F1 Score": 0},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Bgee", "F1 Score": 0},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Bgee", "F1 Score": 0},
+        ]
+    )
 
     plot_hyperparameter_tuning_results(proportion_results=proportion_results,
                                        embeddings_results=embeddings_results,
@@ -689,3 +764,7 @@ if __name__ == "__main__":
     plot_cost_analysis_results(cost_results=cost_results,
                                save_plot=False,
                             )
+
+    plot_bio_results(bio_results=bio_results,
+                     save_plot=False,
+                    )
