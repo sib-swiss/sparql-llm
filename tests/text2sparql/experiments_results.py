@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import time
 
 from matplotlib.gridspec import GridSpec
@@ -183,6 +184,7 @@ def plot_overall_results(overall_results: pd.DataFrame,
 
 
 def plot_cost_analysis_results(cost_results: pd.DataFrame,
+                               sota_time_results: pd.DataFrame,
                                save_plot: bool = False) -> None:
     """Plot the cost analysis results for TEXT2SPARQL"""
 
@@ -221,7 +223,11 @@ def plot_cost_analysis_results(cost_results: pd.DataFrame,
         ax=ax[0],
     )
 
-    ax[0].set_title("(i) Runtime (seconds)", fontweight="bold")
+    #SOTA results
+    ax[0].axvline(sota_time_results[sota_time_results['dataset'] == 'DBpedia (EN)']['time'].iloc[0], ymin=.66, ymax=1, color=sns.color_palette("Set1")[3], linestyle='--', linewidth=9, label="TEXT2SPARQL Winners")
+    ax[0].axvline(sota_time_results[sota_time_results['dataset'] == 'Corporate']['time'].iloc[0], ymin=0, ymax=.33, color=sns.color_palette("Set1")[3], linestyle='--', linewidth=9)
+
+    ax[0].set_title("(i) Runtime (seconds)", fontweight="bold", y=1.05)
     ax[0].set_xlabel("")
     ax[0].set_xscale('log')
     ax[0].set_ylabel("")
@@ -238,7 +244,7 @@ def plot_cost_analysis_results(cost_results: pd.DataFrame,
         ax=ax[1],
     )
 
-    ax[1].set_title("(ii) Input Tokens", fontweight="bold")
+    ax[1].set_title("(ii) Input Tokens", fontweight="bold", y=1.05)
     ax[1].set_xlabel("")
     ax[1].set_xlim(100, 10000)
     ax[1].set_xscale('log')
@@ -258,7 +264,7 @@ def plot_cost_analysis_results(cost_results: pd.DataFrame,
         ax=ax[2],
     )
 
-    ax[2].set_title("(iii) Output Tokens", fontweight="bold")
+    ax[2].set_title("(iii) Output Tokens", fontweight="bold", y=1.05)
     ax[2].set_xlabel("")
     ax[2].set_xlim(10, 10000)
     ax[2].set_xscale('log')
@@ -266,7 +272,7 @@ def plot_cost_analysis_results(cost_results: pd.DataFrame,
     ax[2].set_yticklabels("")
     ax[2].get_legend().remove()
 
-    fig.legend(*ax[0].get_legend_handles_labels(), bbox_to_anchor=(0.5, 1.2), loc='upper center', ncol=3, title="System")
+    fig.legend(*ax[0].get_legend_handles_labels(), bbox_to_anchor=(0.5, 1.3), loc='upper center', ncol=2, title="System")
     sns.despine(top=True, right=True)
 
     if save_plot:
@@ -705,6 +711,13 @@ if __name__ == "__main__":
         ]
     )
 
+    sota_time_results = pd.DataFrame(
+        [
+            {"dataset": "DBpedia (EN)", "time": pd.read_sql_query("SELECT * from responses", sqlite3.connect(os.path.join("data", "benchmarks", "TEXT2SPARQL", "queries", "infai_db25_responses.db"))).iloc[::2]['time'].apply(lambda x: pd.to_datetime(x)).diff().dt.total_seconds().median()},
+            {"dataset": "Corporate", "time": pd.read_sql_query("SELECT * from responses", sqlite3.connect(os.path.join("data", "benchmarks", "TEXT2SPARQL", "queries", "infai_ck25_responses.db")))['time'].apply(lambda x: pd.to_datetime(x)).diff().dt.total_seconds().median()},
+        ]
+    )
+
     bio_results = pd.DataFrame(
         [
             {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Uniprot", "F1 Score": 0.17127975017339814},
@@ -762,6 +775,7 @@ if __name__ == "__main__":
                         )
     
     plot_cost_analysis_results(cost_results=cost_results,
+                               sota_time_results=sota_time_results,
                                save_plot=False,
                             )
 
