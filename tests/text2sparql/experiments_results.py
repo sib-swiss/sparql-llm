@@ -67,8 +67,8 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
     )
     
     ax[1].set_title("(ii) Embeddings Model", fontweight="bold", y=1.05)
-    ax[1].set_xlim(.2, .7)
-    ax[1].set_xticks([.2, .3, .4, .5, .6, .7], [".2", ".3", ".4", ".5", ".6", ".7"])
+    ax[1].set_xlim(0, .7)
+    ax[1].set_xticks([0, .1, .2, .3, .4, .5, .6, .7], ["0", ".1", ".2", ".3", ".4", ".5", ".6", ".7"])
     ax[1].set_ylabel("")
     ax[1].get_legend().remove()
 
@@ -106,8 +106,8 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
     )
 
     ax[3].set_title("(iv) Large Language Model", fontweight="bold", y=1.05)
-    ax[3].set_xlim(.2, .7)
-    ax[3].set_xticks([.2, .3, .4, .5, .6, .7], [".2", ".3", ".4", ".5", ".6", ".7"])
+    ax[3].set_xlim(0, .7)
+    ax[3].set_xticks([0, .1, .2, .3, .4, .5, .6, .7], ["0", ".1", ".2", ".3", ".4", ".5", ".6", ".7"])
     ax[3].set_ylabel("")
     ax[3].get_legend().remove()
     
@@ -128,8 +128,8 @@ def plot_hyperparameter_tuning_results(proportion_results: pd.DataFrame,
     ax[4].axvline(baseline_results[baseline_results['dataset'] == 'Corporate']['F1 Score'].mean(), color=sns.color_palette("Set2")[2], linestyle='--', linewidth=5)
 
     ax[4].set_title("(v) Ablation Study", fontweight="bold", y=1.05)
-    ax[4].set_xlim(.2, .7)
-    ax[4].set_xticks([.2, .3, .4, .5, .6, .7], [".2", ".3", ".4", ".5", ".6", ".7"])
+    ax[4].set_xlim(0, .7)
+    ax[4].set_xticks([0, .1, .2, .3, .4, .5, .6, .7], ["0", ".1", ".2", ".3", ".4", ".5", ".6", ".7"])
     ax[4].set_ylabel("")
     ax[4].get_legend().remove()
 
@@ -168,8 +168,8 @@ def plot_overall_results(overall_results: pd.DataFrame,
     ax.axvline(sota_results[sota_results['dataset'] == 'DBpedia (ES)']['F1 Score'].iloc[0], ymin=.33, ymax=.66, color=sns.color_palette("Set1")[3], linestyle='--', linewidth=9)
     ax.axvline(sota_results[sota_results['dataset'] == 'Corporate']['F1 Score'].iloc[0], ymin=0, ymax=.33, color=sns.color_palette("Set1")[3], linestyle='--', linewidth=9)
 
-    ax.set_xlim(.2, .7)
-    ax.set_xticks([.2, .3, .4, .5, .6, .7], [".2", ".3", ".4", ".5", ".6", ".7"])
+    ax.set_xlim(0, .7)
+    ax.set_xticks([0, .1, .2, .3, .4, .5, .6, .7], ["0", ".1", ".2", ".3", ".4", ".5", ".6", ".7"])
     ax.set_ylabel("")
     ax.get_legend().remove()
 
@@ -299,8 +299,8 @@ def plot_bio_results(bio_results: pd.DataFrame,
         ax=ax,
     )
 
-    ax.set_xlim(0, .5)
-    ax.set_xticks([0, .1, .2, .3, .4, .5], ["0", ".1", ".2", ".3", ".4", ".5"])
+    ax.set_xlim(0, .7)
+    ax.set_xticks([0, .1, .2, .3, .4, .5, .6, .7], ["0", ".1", ".2", ".3", ".4", ".5", ".6", ".7"])
     ax.set_ylabel("")
     ax.get_legend().remove()
 
@@ -720,43 +720,43 @@ if __name__ == "__main__":
 
     bio_results = pd.DataFrame(
         [
-            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Uniprot", "F1 Score": 0.17127975017339814},
-            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Uniprot", "F1 Score": 0.1286590679492278},
-            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Uniprot", "F1 Score": 0.38586225085137904},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Uniprot", "F1 Score": 0.5046329201631791},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Uniprot", "F1 Score": 0.20724562165291652},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Uniprot", "F1 Score": 0.5288815526210484},
 
-            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Cellosaurus", "F1 Score": 0.2533862753857133},
-            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Cellosaurus", "F1 Score": 0.24239724439918156},
-            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Cellosaurus", "F1 Score": 0.18820183406084834},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Cellosaurus", "F1 Score": 0.416005291005291},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Cellosaurus", "F1 Score": 0.6583108413466117},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Cellosaurus", "F1 Score": 0.26593791722296395},
 
-            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Bgee", "F1 Score": 0.1983473592406111},
-            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Bgee", "F1 Score": 0.2644283062939245},
-            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Bgee", "F1 Score": 0.4847645659730885},
-
-
-            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Uniprot", "F1 Score": 0},
-            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Uniprot", "F1 Score": 0},
-            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Uniprot", "F1 Score": 0},
-
-            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Cellosaurus", "F1 Score": 0},
-            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Cellosaurus", "F1 Score": 0},
-            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Cellosaurus", "F1 Score": 0},
-
-            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Bgee", "F1 Score": 0},
-            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Bgee", "F1 Score": 0},
-            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Bgee", "F1 Score": 0},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Bgee", "F1 Score": 0.6449450109027868},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Bgee", "F1 Score": 0.5799191959664763},
+            {"model": r'$SPARQL-LLM_{lg}$', "dataset": "Bgee", "F1 Score": 0.6700231481481482},
 
 
-            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Uniprot", "F1 Score": 0},
-            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Uniprot", "F1 Score": 0},
-            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Uniprot", "F1 Score": 0},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Uniprot", "F1 Score": 0.22087355701705125},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Uniprot", "F1 Score": 0.1678154406827896},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Uniprot", "F1 Score": 0.24755357189955668},
 
-            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Cellosaurus", "F1 Score": 0},
-            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Cellosaurus", "F1 Score": 0},
-            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Cellosaurus", "F1 Score": 0},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Cellosaurus", "F1 Score": 0.13789690263794535},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Cellosaurus", "F1 Score": 0.2298300138639789},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Cellosaurus", "F1 Score": 0.18089079859227641},
 
-            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Bgee", "F1 Score": 0},
-            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Bgee", "F1 Score": 0},
-            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Bgee", "F1 Score": 0},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Bgee", "F1 Score": 0.30666666666666664},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Bgee", "F1 Score": 0.5522089008509367},
+            {"model": r'$SPARQL-LLM_{sm}$', "dataset": "Bgee", "F1 Score": 0.21011904761904762},
+
+
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Uniprot", "F1 Score": 0.22900697394733113},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Uniprot", "F1 Score": 0.16666666666666666},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Uniprot", "F1 Score": 0.2543672014260249},
+
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Cellosaurus", "F1 Score": 0.42693432229968886},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Cellosaurus", "F1 Score": 0.21873586906089693},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Cellosaurus", "F1 Score": 0.4882152273822735},
+
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Bgee", "F1 Score": 0.31666666666666665},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Bgee", "F1 Score": 0.2647058823529412},
+            {"model": r'$SPARQL-LLM_{os}$', "dataset": "Bgee", "F1 Score": 0.2647058823529412},
         ]
     )
 
