@@ -361,7 +361,9 @@ customElement(
               <button
                 type="submit"
                 title={loading() ? "Stop generation" : "Send question"}
-                class="absolute right-2 bottom-1.5 w-8 h-8 flex items-center justify-center rounded-full text-slate-500 bg-slate-100 dark:text-slate-400 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shadow-sm"
+                class={`absolute right-2 bottom-1.5 w-8 h-8 flex items-center justify-center rounded-full text-slate-500 bg-slate-100 dark:text-slate-400 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shadow-sm ${
+                  loading() ? "loading-spark" : ""
+                }`}
                 aria-label={loading() ? "Stop generation" : "Send question"}
               >
                 {loading() ? (
