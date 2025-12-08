@@ -25,14 +25,14 @@ Store the downloaded files in the following directory structure:
 data/benchmarks/Text2SPARQL/dumps/<dataset>/
 ```
 
-Replace `<dataset>` with either `dbpedia` or `corporate`.
+> **Note:** Replace `<dataset>` with either `dbpedia` or `corporate`
 
-## 2. Set Up Virtuoso Using Docker
+## 2. Set Up Virtuoso and TEXT2SPARQL API Using Docker
 
-Use the provided file in the repository to start Virtuoso:
+Use the provided docker compose file:
 
 ```bash
-docker compose -f src/expasy-agent/tests/text2sparql/compose.virtuoso.yml up -d
+docker compose -f compose.text2sparql.yml up -d
 ```
 
 ## 3. Store the Data
@@ -40,7 +40,7 @@ docker compose -f src/expasy-agent/tests/text2sparql/compose.virtuoso.yml up -d
 Run the following script:
 
 ```bash
-src/expasy-agent/tests/text2sparql/data_store.sh
+tests/text2sparql/data_store.sh
 ```
 
 > **Note:** If the files are not stored properly in the dockerized Virtuoso instance, consider loading them into a native Virtuoso installation first, and then moving the resulting `virtuoso.db` file into `data/benchmarks/Text2SPARQL/virtuosodb/`.
@@ -77,24 +77,30 @@ Download the following files and store them in `data/benchmarks/Text2SPARQL/quer
 ## 6. Transform Queries
 
 ```bash
-uv run --env-file .env src/expasy-agent/tests/text2sparql/query_transform.py
+uv run tests/text2sparql/query_transform.py
 ```
-> **Note:** This will create a `queries.csv` file.
+> **Note:** This will create a `queries.csv` file
 
 ## 7. Analyze Queries
 
 ```bash
-uv run --env-file .env src/expasy-agent/tests/text2sparql/query_analysis.py
+uv run tests/text2sparql/query_analysis.py
 ```
 
 ## 8. Index Queries
 
 ```bash
-uv run --env-file .env src/expasy-agent/tests/text2sparql/index.py
+uv run tests/text2sparql/index.py
 ```
 
-## 9. Run Benchmark
+## 9. Run TEXT2SPARQL Benchmark
 
 ```bash
-uv run --env-file .env src/expasy-agent/tests/text2sparql/benchmark.py
+uv run tests/text2sparql/evaluate.sh [db|ck]
+```
+> **Note:** Use *db* for the *DBpedia* subtask and *ck* for the *Corporate* subtask of the TEXT2SPARQL benchmark
+
+## 10. Plot Final Results
+```bash
+uv run tests/text2sparql/experiments_results.py 
 ```
