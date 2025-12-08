@@ -6,6 +6,8 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 
 from sparql_llm.agent.state import State
 
+# NOTE: experimental, not actually used by the chat agent
+
 
 async def mcp_tools_node(state: State, config: RunnableConfig) -> dict[str, list[ToolMessage]]:
     """Handle MCP tool calls asynchronously.

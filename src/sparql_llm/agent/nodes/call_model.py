@@ -36,7 +36,7 @@ async def call_model(state: State, config: RunnableConfig) -> dict[str, list[Any
     # model = load_chat_model(configuration).bind_tools(TOOLS)
 
     tools = None
-    # Set up MCP client
+    # Set up MCP client (experimental, not used in production)
     if settings.use_tools:
         client = MultiServerMCPClient(
             {
