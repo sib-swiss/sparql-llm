@@ -357,11 +357,11 @@ customElement(
                 onInput={() => fixInputHeight()}
               />
 
-              {/* send button positioned inside the input, anchored to the textarea bottom */}
+              {/* send button positioned inside the input, vertically centered with first line */}
               <button
                 type="submit"
                 title={loading() ? "Stop generation" : "Send question"}
-                class={`absolute right-2 bottom-1.5 w-8 h-8 flex items-center justify-center rounded-full text-slate-500 bg-slate-100 dark:text-slate-400 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shadow-sm ${
+                class={`absolute right-2 top-1 w-8 h-8 flex items-center justify-center rounded-full text-slate-500 bg-slate-100 dark:text-slate-400 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shadow-sm ${
                   loading() ? "loading-spark" : ""
                 }`}
                 aria-label={loading() ? "Stop generation" : "Send question"}
@@ -374,8 +374,8 @@ customElement(
               </button>
             </div>
 
-            {/* Start new conversation button moved outside the growing textarea area and aligned to textarea bottom */}
-            <div class="flex-shrink-0 self-end mb-1.5">
+            {/* Start new conversation button aligned to match submit button position */}
+            <div class="flex-shrink-0 self-start mt-1">
               <button
                 title="Start a new conversation"
                 class="w-8 h-8 flex items-center justify-center rounded-full text-slate-500 bg-slate-100 dark:text-slate-400 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shadow-sm"
