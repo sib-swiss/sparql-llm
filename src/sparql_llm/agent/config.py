@@ -94,6 +94,13 @@ It provides a unified, searchable framework that connects chemical profiles of p
             "endpoint_url": "https://rdf.metanetx.org/sparql/",
             "homepage_url": "https://www.metanetx.org/",
         },
+        {
+            "label": "SIBiLS",
+            "endpoint_url": "https://sparql.sibils.org/sparql",
+            "description": """SIBiLS (Swiss Institute of Bioinformatics Literature Services) provide personalized Information Retrieval in the biological literature.
+It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC supplementary files.""",
+            # "homepage_url": "https://sibils.org/",
+        },
         # Error querying NExtProt
         # {
         #     "label": "NextProt",
