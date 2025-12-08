@@ -5,16 +5,20 @@
 # expasychat is connecting to the server with your user
 # expasychatpodman is connecting to the server with the podman user (used to run the containers)
 
-# NOTE: right now issue with sudo password so we need to manually connect with ssh, and run commands from the server directly
+# NOTE: right now issue with sudo password so we need to manually connect with ssh, and then run commands from the server directly
 # ssh expasychat
 ## Just restart:
-# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose up --force-recreate -d'
+# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml up --force-recreate -d'
 ## Pull and restart:
-# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; git pull ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose up --force-recreate -d'
+# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; git pull ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml up --force-recreate -d'
 ## Show logs:
-# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose logs'
+# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml logs'
 
-## Re-index
+## Delete the vector database to re-index from scratch:
+# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; rm -rf data/qdrant/ data/endpoints_metadata.json'
+
+
+## Re-index without restarting
 # sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose exec api uv run src/expasy_agent/indexing/index_resources.py'
 
 # Check env variables
@@ -27,6 +31,7 @@
 # sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; tail -f data/logs/expasygpt_podman.log'
 
 
+# ssh -t expasychat "sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 $1'"
 
 ssh_cmd() {
     ssh -t expasychat "sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 $1'"
@@ -39,11 +44,11 @@ if [ "$1" = "build" ]; then
     # cd ..
     # ssh_cmd "git pull ; rm -rf src/expasy-agent/src/expasy_agent/webapp"
     # scp -r ./src/expasy-agent/src/expasy_agent/webapp expasychatpodman:/var/containers/podman/sparql-llm/src/expasy-agent/src/expasy_agent/
-    ssh_cmd "git pull ; podman-compose up --force-recreate --build -d"
+    ssh_cmd "git pull ; podman-compose -f compose.prod.yml up --force-recreate --build -d"
 
 elif [ "$1" = "clean" ]; then
     echo "🧹 Cleaning up the vector database"
-    ssh_cmd "git pull ; rm -rf data/qdrant ; podman-compose up --force-recreate -d"
+    ssh_cmd "git pull ; rm -rf data/qdrant ; podman-compose -f compose.prod.yml up --force-recreate -d"
 
 elif [ "$1" = "logs" ]; then
     ssh_cmd "podman-compose logs api"
@@ -67,7 +72,7 @@ elif [ "$1" = "likes" ]; then
     scp expasychat:/var/containers/podman/sparql-llm/data/logs/user_questions.log ./data/prod/
 
 else
-    ssh_cmd "git pull ; podman-compose up --force-recreate -d"
+    ssh_cmd "git pull ; podman-compose -f compose.prod.yml up --force-recreate -d"
 fi
 
 # Fix connectivities issues between api and vectordb (which happens sometimes with podman compose)

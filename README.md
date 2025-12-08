@@ -286,17 +286,17 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 4. **Start** the vector database and web server locally for development, with code from the `src` folder mounted in the container and automatic API reload on changes to the code:
 
    ```bash
-   docker compose -f compose.dev.yml up
+   docker compose up
    ```
 
    * Chat web UI available at http://localhost:8000
    * OpenAPI Swagger UI available at http://localhost:8000/docs
    * Vector database dashboard UI available at http://localhost:6333/dashboard
 
-   In production, you will need to make some changes to the `compose.yml` file to adapt it to your server/proxy setup:
+   In production, you will need to make some changes to the `compose.prod.yml` file to adapt it to your server/proxy setup:
 
    ```bash
-   docker compose up
+   docker compose -f compose.prod.yml up
    ```
 
    > All data from the containers are stored persistently in the `data` folder (e.g. vectordb indexes)
@@ -314,7 +314,7 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 > **Experimental entities indexing**: it can take a lot of time to generate embeddings for millions of entities. So we recommend to run the script to generate embeddings on a machine with GPU (does not need to be a powerful one, but at least with a GPU, checkout [fastembed GPU docs](https://qdrant.github.io/fastembed/examples/FastEmbed_GPU/) to install the GPU drivers and dependencies)
 >
 > ```sh
-> docker compose -f compose.dev.yml up vectordb -d
+> docker compose up vectordb -d
 > VECTORDB_URL=http://localhost:6334 nohup uv run --extra gpu src/sparql_llm/agent/indexing/index_entities.py --gpu &
 > ```
 >
@@ -337,7 +337,7 @@ There are a few benchmarks available for the system:
 - For biodata benchmark:
 
   ```sh
-  docker compose -f compose.dev.yml up -d
+  docker compose up -d
   VECTORDB_URL=http://localhost:6334 uv run tests/benchmark_biodata.py
   ```
 

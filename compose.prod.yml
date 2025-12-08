@@ -1,0 +1,44 @@
+services:
+
+  vectordb:
+    extends:
+      file: compose.yml
+      service: vectordb
+
+  api:
+    extends:
+      file: compose.yml
+      service: api
+    # Required for podman-compose to resolve DNS properly
+    dns:
+      - 10.0.16.2
+      - 10.0.16.3
+      - 8.8.8.8
+      - 1.1.1.1
+    ports:
+      - 80:80
+    # environment:
+    #   - VECTORDB_URL=http://vectordb:6334/
+      # NOTE: dirty hack to fix a bug with podman internal network on prod server
+      # - VECTORDB_URL=http://10.89.1.2:6334/
+      # - DEFAULT_LLM_MODEL=openai/gpt-5
+      # - FORCE_REINDEX=true
+      # - DEFAULT_LLM_MODEL=openrouter/openai/gpt-5
+      # - DEFAULT_LLM_MODEL=openrouter/mistralai/mistral-large
+      # - DEFAULT_LLM_MODEL=openrouter/anthropic/claude-sonnet-4.5
+      # - DEFAULT_LLM_MODEL=groq/deepseek-r1-distill-llama-70b
+      # - DEFAULT_LLM_MODEL=groq/llama-3.3-70b-versatile
+      # - DEFAULT_LLM_MODEL=deepseek/deepseek-reasoner
+      # - DEFAULT_LLM_MODEL=deepseek/deepseek-chat
+      # - DEFAULT_LLM_MODEL=azure/Mistral-Large-2411
+      # - DEFAULT_LLM_MODEL=azure/DeepSeek-R1
+      # - DEFAULT_LLM_MODEL=together/meta-llama/Llama-3-70b-chat-hf
+      # - DEFAULT_LLM_MODEL=openai/o3-mini
+      # - DEFAULT_LLM_MODEL=openai/gpt-4o-mini
+    # entrypoint: ["uv", "run", "uvicorn", "src.sparql_llm.agent.main:app", "--host", "0.0.0.0", "--port", "80", "--reload", "--log-config", "logging.yml"]
+
+# NOTE: some podman commands for debugging issues with podman compose networking
+# podman-compose down && podman network prune -f
+# podman exec -it sparql-llm_api_1 bash -c "apt-get update && apt-get install -y telnet && telnet vectordb 6334"
+# < /dev/tcp/vectordb/6334
+# podman exec -it api bash -c "< /dev/tcp/vectordb/6334"
