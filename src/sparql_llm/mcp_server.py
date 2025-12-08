@@ -21,7 +21,8 @@ mcp = FastMCP(
     dependencies=["mcp", "qdrant_client", "fastembed", "sparql-llm"],
     instructions="Provide tools that helps users to access biological data resources from the Swiss Institute of Bioinformatics (SIB) through the SPARQL query language.",
     json_response=True,
-    # stateless_http=True,
+    stateless_http=True,
+    streamable_http_path="/",
 )
 
 embedding_model = TextEmbedding(

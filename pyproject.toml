@@ -61,7 +61,7 @@ agent = [
     # "langchain-anthropic >=0.1.23",
     # "langchain-fireworks >=0.1.7",
     # Dependencies to deploy the API
-    "starlette >=0.48.0",
+    "fastapi >=0.123.0",
     "uvicorn[standard] >=0.34.0",
     "pydantic >=2.10.0",
     "pydantic-settings >=2.7.0",
