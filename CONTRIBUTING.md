@@ -22,6 +22,12 @@ git clone https://github.com/sib-swiss/sparql-llm
 cd sparql-llm
 ```
 
+Install dev dependencies:
+
+```sh
+uv sync --extra agent --group bench
+```
+
 Install pre-commit hooks:
 
 ```sh
@@ -71,6 +77,49 @@ You can run the server with uvicorn:
 uv run --extra agent --env-file .env uvicorn src.sparql_llm.agent.main:app --host 0.0.0.0 --port 8000 --log-config logging.yml --reload
 ```
 
+Run the MCP server only, with STDIO transport:
+
+```sh
+uv run sparql-llm
+```
+
+With streamable HTTP transport:
+
+```sh
+uv run sparql-llm --http
+```
+
+🫆 Start the MCP inspector:
+
+```sh
+uv run mcp dev src/sparql_llm/mcp_server.py
+```
+
+🔌 Connect a client to the MCP server (cf. `README.md` for more details), the VSCode `mcp.json` should look like below, you will need to change the `cwd` field to provide the path to this repository on your machine:
+
+```json
+{
+   "servers": {
+      "sparql-mcp": {
+         "type": "stdio",
+         "cwd": "~/dev/sparql-llm",
+         "env": {
+      	   "SETTINGS_FILEPATH": "sparql-mcp.json"
+         },
+         "command": "uv",
+         "args": [
+           "run",
+           "sparql-llm"
+         ]
+      },
+      "sparql-mcp-http": {
+         "url": "http://localhost:8888/mcp",
+         "type": "http"
+      },
+   }
+}
+```
+
 > [!NOTE]
 >
 > Checkout the `README.md` for instructions to run the server in development with docker.
@@ -117,5 +166,24 @@ Get a PyPI API token at [pypi.org/manage/account](https://pypi.org/manage/accoun
 Run the release script providing the type of version bump: `fix`, `minor`, or `major`
 
 ```sh
-./release.sh fix
+.github/release.sh fix
 ```
+
+### 🗞️ Update the MCP Registry entry
+
+Setup [MCP publisher](https://github.com/modelcontextprotocol/registry/blob/main/docs/guides/publishing/publish-server.md):
+
+```sh
+brew install mcp-publisher
+```
+
+Update the 2 versions fields in the `server.json` file, then update MCP registry entry:
+
+```sh
+mcp-publisher login github
+mcp-publisher publish
+```
+
+> [!NOTE]
+>
+> [Registry API docs](https://registry.modelcontextprotocol.io/docs)

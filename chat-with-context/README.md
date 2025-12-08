@@ -111,7 +111,7 @@ Build package:
 npm run build
 ```
 
-Build demo website (used by the python API):
+Build demo website (used by the python API), running this will update the webapp served by the python API in `../src/sparql_llm/agent/webapp`:
 
 ```sh
 npm run build:demo

@@ -34,33 +34,34 @@ dependencies = [
     "SPARQLWrapper >=2.0.0",
     "beautifulsoup4 >=4.13.0",
     "curies >=0.11.0",
-    "langchain-core >=0.3.34",
-    "mcp >=1.16.0",
+    "langchain-core >=1.0.2",
+    "mcp >=1.23.1",
     "qdrant-client >=1.15.1",
     "fastembed >=0.7.3",
-    "langgraph >=0.2.61",
-    "langchain-qdrant >=0.2.1",
-    "langchain-community >=0.3.17",
+    "langgraph >=1.0.2",
+    "langchain-qdrant >=1.1.0",
+    "langchain-community >=0.4.1",
     "markdownify >=1.1.0",
+    "pandas >=2.2.3",
 ]
 
 [project.optional-dependencies]
 agent = [
     # LangGraph dependencies
-    "langchain >=0.3.14",
-    "langchain-openai >=0.1.22",
-    "langchain-azure-ai >=0.1.0",
-    "langchain-groq >=0.2.4",
-    "langchain-together >=0.3.0",
+    "langchain >=1.0.3",
+    "langchain-openai >=1.0.1",
+    # "langchain-azure-ai >=0.1.0",
+    # "langchain-groq >=0.2.4",
+    # "langchain-together >=0.3.0",
     "langchain-mcp-adapters >=0.1.10",
     # "langchain-qdrant @ git+https://github.com/langchain-ai/langchain.git#subdirectory=libs/partners/qdrant",
-    "langfuse >=3.0.8",
+    "langfuse >=3.8.1",
     # "langchain-huggingface", # This will install torch and many heavy nvidia dependencies
     # "langchain-deepseek >=0.1.1",
     # "langchain-anthropic >=0.1.23",
     # "langchain-fireworks >=0.1.7",
     # Dependencies to deploy the API
-    "starlette >=0.48.0",
+    "fastapi >=0.123.0",
     "uvicorn[standard] >=0.34.0",
     "pydantic >=2.10.0",
     "pydantic-settings >=2.7.0",
@@ -69,7 +70,6 @@ agent = [
     # Extract potential entities from text without LLM
     # "scispacy >=0.5.5",
     # "en_core_sci_md @ https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_md-0.5.4.tar.gz",
-    "pandas >=2.2.3",
     "matplotlib >=3.10.3",
     "seaborn >=0.13.2",
     "joblib >=1.5.2",
@@ -86,8 +86,13 @@ dev = [
     "pytest-cov >=6.0.0",
     "mypy >=1.15.0",
     "pre-commit >=4.1.0",
-    "pandas >=2.2.3",
+    "mcp[cli]",
+    "scikit-learn",
+    # "pytrec-eval",
     # "ipykernel >=6.29.5",
+]
+bench = [
+    "pytrec-eval",
 ]
 
 # # Required for onnxruntime-gpu on CUDA 12
@@ -125,6 +130,22 @@ addopts = [
     "--color=yes",
     "--cov-report=term-missing",
 ]
+
+[tool.mypy]
+files = ["src/"]
+strict = false
+implicit_reexport = true
+follow_imports = "normal"
+ignore_missing_imports = true
+pretty = true
+show_column_numbers = true
+warn_no_return = true
+warn_unused_ignores = false
+warn_redundant_casts = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+disallow_untyped_calls = false # needed due to _eval() not being typed in rdflib
+
 
 [tool.ruff]
 target-version = "py310"
@@ -178,9 +199,9 @@ commit_parsers = [
     { message = "^feat", group = "⛰️ Features" },
     { message = "^fix", group = "🐛 Bug Fixes" },
     { message = "^doc", group = "📚 Documentation" },
-    { message = "^perf|DataOriented", group = "⚡ Performance" },
+    { message = "^perf", group = "⚡ Performance" },
     { message = "^refactor", group = "🚜 Refactor" },
-    { message = "^style|Formatting", group = "🎨 Styling" },
+    { message = "^style", group = "🎨 Styling" },
     { message = "^test", group = "🧪 Testing" },
     { message = "^ci", group = "⚙️ Continuous Integration" },
     { message = "^chore\\(release\\): prepare for", skip = true },
@@ -198,14 +219,12 @@ split_commits = false
 protect_breaking_commits = false
 filter_commits = false
 tag_pattern = "v?[0-9].*"
-# Sort the tags topologically
 topo_order = false
 sort_commits = "oldest"
 
 [tool.git-cliff.changelog]
 header = """
-# 📜 Changelog\n
-All notable changes to this project will be documented in this file.\n
+# 🪵 Changelog\n
 """
 # Template for the changelog: https://keats.github.io/tera/docs
 body = """

@@ -26,7 +26,7 @@ class EndpointSchema:
     }}
     GROUP BY ?class ?predicate
     """
-    
+
     _RANGE_QUERY = """
     SELECT ?range
     FROM <{graph}>
@@ -77,44 +77,60 @@ class EndpointSchema:
     def _save_schema_dict(self) -> None:
         """Fetch class and predicate information from the SPARQL endpoint and save to JSON file."""
         # Fetch counts information
-        logger.info(f'Fetching class-predicate frequency information from {self._endpoint_url}...')
-        schema = query_sparql(self._CLASS_PREDICATE_QUERY.format(graph=self._graph), endpoint_url=self._endpoint_url, check_service_desc=False)['results']['bindings']
-        schema = pd.DataFrame(schema).map(lambda x: x['value']).assign(count=lambda df: df['count'].astype(int))
-        schema = schema.sort_values(by='count', ascending=False)
+        logger.info(f"Fetching class-predicate frequency information from {self._endpoint_url}...")
+        schema = query_sparql(
+            self._CLASS_PREDICATE_QUERY.format(graph=self._graph),
+            endpoint_url=self._endpoint_url,
+            check_service_desc=False,
+        )["results"]["bindings"]
+        schema = pd.DataFrame(schema).map(lambda x: x["value"]).assign(count=lambda df: df["count"].astype(int))
+        schema = schema.sort_values(by="count", ascending=False)
 
         # Exclude unwanted classes
-        num_classes = len(schema['class'].unique())
-        schema = schema[schema['class'].apply(lambda c: not bool(re.search(self._EXCLUDE_CLASS_PATTERN, c)))]
+        num_classes = len(schema["class"].unique())
+        schema = schema[schema["class"].apply(lambda c: not bool(re.search(self._EXCLUDE_CLASS_PATTERN, c)))]
 
         # Transform to wide format
-        schema_wide = schema.pivot_table(index='class', columns='predicate', values='count', fill_value=0)
-        schema_wide = schema_wide.reindex(index=schema['class'].unique(), columns=schema['predicate'].unique())
+        schema_wide = schema.pivot_table(index="class", columns="predicate", values="count", fill_value=0)
+        schema_wide = schema_wide.reindex(index=schema["class"].unique(), columns=schema["predicate"].unique())
 
         # Apply limits to the number of classes and predicates
-        schema_wide = schema_wide.iloc[:int((1 - self._limit_schema['top_classes_percentile']) * len(schema_wide.index)), 
-                                       :int((1 - self._limit_schema['top_classes_percentile']) * len(schema_wide.columns))]
+        schema_wide = schema_wide.iloc[
+            : int((1 - self._limit_schema["top_classes_percentile"]) * len(schema_wide.index)),
+            : int((1 - self._limit_schema["top_classes_percentile"]) * len(schema_wide.columns)),
+        ]
 
-        #Transform back to long format
-        schema = schema_wide.reset_index().melt(id_vars='class', var_name='predicate', value_name='count')
-        schema = schema[schema['count'] > 0].reset_index(drop=True)    
-        logger.info(f'Keeping {len(schema['class'].unique())}/{num_classes} most frequent classes.')
+        # Transform back to long format
+        schema = schema_wide.reset_index().melt(id_vars="class", var_name="predicate", value_name="count")
+        schema = schema[schema["count"] > 0].reset_index(drop=True)
+        logger.info(f"Keeping {len(schema['class'].unique())}/{num_classes} most frequent classes.")
 
         # keep top predicates for each class
-        schema = schema.groupby('class')[['predicate', 'count']].apply(lambda df: df.nlargest(self._limit_schema['top_n_predicates'], 'count')).reset_index()
+        schema = (
+            schema.groupby("class")[["predicate", "count"]]
+            .apply(lambda df: df.nlargest(self._limit_schema["top_n_predicates"], "count"))
+            .reset_index()
+        )
 
         # Fetch range information
-        logger.info(f'Fetching range information from {self._endpoint_url}...')
-        schema['range'] = Parallel(n_jobs=self._max_workers)(
-            delayed(self._retrieve_predicate_information)(class_name=c, predicate_name=p) for _, (c, p) in tqdm(schema[['class', 'predicate']].iterrows(), total=len(schema))
+        logger.info(f"Fetching range information from {self._endpoint_url}...")
+        schema["range"] = Parallel(n_jobs=self._max_workers)(
+            delayed(self._retrieve_predicate_information)(class_name=c, predicate_name=p)
+            for _, (c, p) in tqdm(schema[["class", "predicate"]].iterrows(), total=len(schema))
         )
         # schema = schema[schema['range'].apply(lambda r: len(r) > 0)]
-        schema = schema.groupby('class')[['predicate', 'range']].apply(lambda df: df.set_index('predicate')['range'].to_dict()).reset_index().rename(columns={0:'predicates'})
+        schema = (
+            schema.groupby("class")[["predicate", "range"]]
+            .apply(lambda df: df.set_index("predicate")["range"].to_dict())
+            .reset_index()
+            .rename(columns={0: "predicates"})
+        )
 
-        #Save schema to JSON file
-        logger.info(f'Saving schema information from {self._endpoint_url}...')
-        schema_dict = SchemaDict({i['class']:i['predicates'] for i in schema.to_dict(orient='records')})
-        endpoint_schema_dict = EndpointsSchemaDict({self._endpoint_url:schema_dict})
-        with open(self._schema_path, 'w') as f:
+        # Save schema to JSON file
+        logger.info(f"Saving schema information from {self._endpoint_url}...")
+        schema_dict = SchemaDict({i["class"]: i["predicates"] for i in schema.to_dict(orient="records")})
+        endpoint_schema_dict = EndpointsSchemaDict({self._endpoint_url: schema_dict})
+        with open(self._schema_path, "w") as f:
             json.dump(endpoint_schema_dict, f, indent=2)
 
     def _retrieve_predicate_information(self, class_name: str, predicate_name: str) -> list[str]:
@@ -185,8 +201,10 @@ class EndpointSchema:
 
         # Apply limits to the number of classes and predicates
         if apply_limit:
-            heatmap = heatmap.iloc[:int((1 - self._limit_schema['top_classes_percentile']) * len(heatmap.index)), 
-                                   :int((1 - self._limit_schema['top_classes_percentile']) * len(heatmap.columns))]
+            heatmap = heatmap.iloc[
+                : int((1 - self._limit_schema["top_classes_percentile"]) * len(heatmap.index)),
+                : int((1 - self._limit_schema["top_classes_percentile"]) * len(heatmap.columns)),
+            ]
 
         # Plot heatmap
         sns.set_theme(context="paper", style="white", color_codes=True, font_scale=2.5)
@@ -200,7 +218,7 @@ class EndpointSchema:
             f"{self._schema_path.split('/')[-1].split('_')[0].capitalize()} Co-Occurrence Heatmap", fontsize=20
         )
         sns.despine(top=True, right=True)
-        plt.savefig(f"{self._schema_path.split('.')[0] + ('' if apply_limit else '_full')}.png", bbox_inches='tight')
+        plt.savefig(f"{self._schema_path.split('.')[0] + ('' if apply_limit else '_full')}.png", bbox_inches="tight")
 
 
 if __name__ == "__main__":

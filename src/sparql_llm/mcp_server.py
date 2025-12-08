@@ -20,15 +20,15 @@ mcp = FastMCP(
     debug=True,
     dependencies=["mcp", "qdrant_client", "fastembed", "sparql-llm"],
     instructions="Provide tools that helps users to access biological data resources from the Swiss Institute of Bioinformatics (SIB) through the SPARQL query language.",
-    stateless_http=True,
     json_response=True,
+    stateless_http=True,
+    streamable_http_path="/",
 )
 
 embedding_model = TextEmbedding(
     settings.embedding_model,
     # providers=["CUDAExecutionProvider"], # Replace the fastembed dependency with fastembed-gpu to use your GPUs
 )
-
 
 # Check if the docs collection exists and has data, initialize if not
 try:
@@ -52,8 +52,8 @@ except Exception as e:
 # TODO: tool get_classes_schema
 # potential_entities: Potential entities and instances of classes
 @mcp.tool()
-async def access_sib_biodata_sparql(question: str, potential_classes: list[str], steps: list[str]) -> str:
-    """Assist users in writing SPARQL queries to access SIB biodata resources by retrieving relevant examples and docs.
+async def search_sparql_docs(question: str, potential_classes: list[str], steps: list[str]) -> str:
+    """Assist users in writing SPARQL queries to access SIB biodata resources by retrieving relevant examples and classes schema.
     Covers topics such as genes, proteins, lipids, chemical reactions, and metabolomics data.
 
     Args:
@@ -268,7 +268,7 @@ and check them one by one."""
 @mcp.resource("examples://{question}")
 def get_examples(question: str) -> str:
     """Get relevant SPARQL query examples and other documents to help the user write a SPARQL query."""
-    return access_sib_biodata_sparql(question, [], [])
+    return search_sparql_docs(question, [], [])
 
 
 # @mcp.resource("schema://{endpoint}/cls/{uri}")
@@ -307,14 +307,18 @@ def cli() -> None:
     parser = argparse.ArgumentParser(
         description="A Model Context Protocol (MCP) server for BioData resources at the SIB."
     )
-    parser.add_argument("--stdio", action="store_true", help="Use STDIO transport")
+    parser.add_argument("--http", action="store_true", help="Use Streamable HTTP transport")
     parser.add_argument("--port", type=int, default=8888, help="Port to run the server on")
+    # parser.add_argument("settings_filepath", type=str, nargs="?", default="sparql-mcp.json", help="Path to settings file")
     args = parser.parse_args()
-    if args.stdio:
+    # settings = Settings.from_file(args.settings_filepath)
+    if args.http:
         mcp.run()
-    else:
         mcp.settings.port = args.port
+        mcp.settings.log_level = "INFO"
         mcp.run(transport="streamable-http")
+    else:
+        mcp.run()
 
 
 # if __name__ == "__main__":

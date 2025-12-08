@@ -1,13 +1,15 @@
 """Custom MCP tool node for handling async tool calls."""
 
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 from sparql_llm.agent.state import State
 
+# NOTE: experimental, not actually used by the chat agent
 
-async def mcp_tools_node(state: State, config: RunnableConfig) -> dict[str, list[ToolMessage | AIMessage]]:
+
+async def mcp_tools_node(state: State, config: RunnableConfig) -> dict[str, list[ToolMessage]]:
     """Handle MCP tool calls asynchronously.
 
     Args:
@@ -41,7 +43,7 @@ async def mcp_tools_node(state: State, config: RunnableConfig) -> dict[str, list
         try:
             # Execute the tool via MCP client
             # The langchain-mcp-adapters should handle the tool name mapping
-            result = await client.call_tool(tool_call["name"], tool_call.get("args", {}))
+            result = await client.call_tool(tool_call["name"], tool_call.get("args", {}))  # type: ignore
 
             # Create tool message with the result
             # The result from MCP client should have content accessible

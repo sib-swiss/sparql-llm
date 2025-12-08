@@ -9,7 +9,7 @@ Works    max_tries_message = AIMessage(
 
 from typing import Literal
 
-from langchain_core.messages import AIMessage
+from langchain.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph
 
@@ -64,7 +64,7 @@ def route_model_output(
     return "__end__"
 
 
-def max_tries_reached(state: State, config: RunnableConfig) -> dict:
+def max_tries_reached(state: State, config: RunnableConfig) -> dict[str, list[AIMessage]]:
     """Node that handles the case when maximum tries are reached.
 
     Args:
@@ -85,7 +85,10 @@ def max_tries_reached(state: State, config: RunnableConfig) -> dict:
 
 # Define the nodes we will cycle between
 # https://github.com/langchain-ai/react-agent/blob/main/src/react_agent/graph.py
-builder = StateGraph(State, input=InputState, config_schema=Configuration)
+builder: StateGraph[State, Configuration, InputState, State] = StateGraph(
+    State, context_schema=Configuration, input_schema=InputState
+)
+# builder = StateGraph(State, input=InputState, config_schema=Configuration)
 builder.add_node(extract_user_question)
 builder.add_node(retrieve)
 builder.add_node(call_model)

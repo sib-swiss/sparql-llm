@@ -29,3 +29,5 @@ node_modules/
 tutorial/public/logo_*.png
 tutorial/.chainlit/translations/*
 !tutorial/.chainlit/translations/en-US.json
+
+.mcpregistry_*

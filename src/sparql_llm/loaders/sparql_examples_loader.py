@@ -1,4 +1,3 @@
-import re
 import warnings
 from typing import Any
 
@@ -56,11 +55,11 @@ class SparqlExamplesLoader(BaseLoader):
         comment = self._remove_a_tags(row["comment"]["value"])
         query = row["query"]["value"]
         # Add prefixes to query if not already present
-        # TODO: we might be able to remove this now that prefixes are included
-        for prefix, namespace in prefix_map.items():
-            prefix_str = f"PREFIX {prefix}: <{namespace}>"
-            if not re.search(prefix_str, query) and re.search(f"[(| |\u00a0|/]{prefix}:", query):
-                query = f"{prefix_str}\n{query}"
+        # NOTE: legacy, was adding prefixes that were missing
+        # for prefix, namespace in prefix_map.items():
+        #     prefix_str = f"PREFIX {prefix}: <{namespace}>"
+        #     if not re.search(prefix_str, query) and re.search(f"[(| |\u00a0|/]{prefix}:", query):
+        #         query = f"{prefix_str}\n{query}"
         query_type = None
         try:
             query_type = prepareQuery(query).algebra.name

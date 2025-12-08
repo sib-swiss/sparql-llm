@@ -1,0 +1,37 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "name": "org.expasy.chat/sparql-mcp",
+  "description": "Access SIB biomedical knowledge graph via SPARQL queries using natural language.",
+  "repository": {
+    "url": "https://github.com/sib-swiss/sparql-llm",
+    "source": "github"
+  },
+  "version": "0.1.2",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://chat.expasy.org/mcp"
+    }
+  ],
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "sparql-llm",
+      "version": "0.1.2",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "description": "Port number for the server to listen on",
+          "isRequired": false,
+          "format": "number",
+          "defaultValue": 8000,
+          "name": "--port"
+        }
+      ]
+    }
+  ]
+}

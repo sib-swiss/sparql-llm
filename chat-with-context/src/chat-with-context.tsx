@@ -7,12 +7,12 @@ import "highlight.js/styles/default.min.css";
 
 import {style} from "./utils";
 import {hljsDefineSparql, hljsDefineTurtle} from "./highlight";
-import sendLogo from "./assets/send.svg";
-import xLogo from "./assets/x.svg";
-import editLogo from "./assets/edit.svg";
-import squareLogo from "./assets/square.svg";
-import thumbsDownLogo from "./assets/thumbs-down.svg";
-import thumbsUpLogo from "./assets/thumbs-up.svg";
+import arrowUpIcon from "./assets/arrow-up.svg";
+import xIcon from "./assets/x.svg";
+import editIcon from "./assets/edit.svg";
+import squareIcon from "./assets/square.svg";
+import thumbsDownIcon from "./assets/thumbs-down.svg";
+import thumbsUpIcon from "./assets/thumbs-up.svg";
 import "./style.css";
 import {streamResponse, ChatState} from "./providers";
 // import json from "highlight.js/lib/languages/json";
@@ -56,7 +56,8 @@ customElement(
       state.apiUrl = props.chatEndpoint;
       state.apiKey = props.apiKey;
       state.model = props.model;
-      state.scrollToInput = () => inputTextEl.scrollIntoView({behavior: "smooth"});
+      // Prevent automatic scrolling when typing — keep the window where it is.
+      state.scrollToInput = () => {};
       state.onMessageUpdate = () => highlightAll();
       setExamples(props.examples.split(",").map(value => value.trim()));
       setFeedbackEndpoint(props.feedbackEndpoint);
@@ -142,8 +143,14 @@ customElement(
 
     // Fix input height to fit content
     function fixInputHeight() {
+      // Preserve window scroll position to avoid jumping when the textarea grows.
+      const scrollX = window.scrollX || window.pageXOffset;
+      const scrollY = window.scrollY || window.pageYOffset;
       inputTextEl.style.height = "auto";
       inputTextEl.style.height = inputTextEl.scrollHeight + "px";
+      // Restore scroll position (do it twice to be robust against layout changes)
+      window.scrollTo(scrollX, scrollY);
+      setTimeout(() => window.scrollTo(scrollX, scrollY), 0);
     }
 
     return (
@@ -184,7 +191,7 @@ customElement(
                                 title="Close documents details"
                                 onClick={() => closeDialog()}
                               >
-                                <img src={xLogo} alt="Close the dialog" class="iconBtn" />
+                                <img src={xIcon} alt="Close the dialog" class="iconBtn" />
                               </button>
                               <article class="prose max-w-full p-3">
                                 <div class="flex space-x-2 mb-4">
@@ -244,7 +251,7 @@ customElement(
                                 title="Close step details"
                                 onClick={() => closeDialog()}
                               >
-                                <img src={xLogo} alt="Close the dialog" class="iconBtn" />
+                                <img src={xIcon} alt="Close the dialog" class="iconBtn" />
                               </button>
                               <article
                                 class="prose max-w-full p-6"
@@ -293,14 +300,14 @@ customElement(
                           title="Report a good response"
                           onClick={() => sendFeedback(true)}
                         >
-                          <img src={thumbsUpLogo} alt="Thumbs up" height="20px" width="20px" class="iconBtn" />
+                          <img src={thumbsUpIcon} alt="Thumbs up" height="20px" width="20px" class="iconBtn" />
                         </button>
                         <button
                           class="my-3 px-3 py-1 text-sm hover:bg-gray-300 dark:hover:bg-gray-800 rounded-3xl align-middle"
                           title="Report a bad response"
                           onClick={() => sendFeedback(false)}
                         >
-                          <img src={thumbsDownLogo} alt="Thumbs down" height="20px" width="20px" class="iconBtn" />
+                          <img src={thumbsDownIcon} alt="Thumbs down" height="20px" width="20px" class="iconBtn" />
                         </button>
                       </>
                     )}
@@ -331,40 +338,54 @@ customElement(
             submitInput(inputTextEl.value);
           }}
         >
-          <div class="container flex mx-auto max-w-5xl">
-            <textarea
-              ref={inputTextEl}
-              autofocus
-              class="flex-grow px-4 py-2 h-auto border border-slate-400 bg-slate-200 dark:bg-slate-700 dark:border-slate-500 rounded-3xl focus:outline-none focus:ring focus:ring-blue-200 dark:focus:ring-blue-400 overflow-y-hidden resize-none"
-              placeholder="Ask your question"
-              rows="1"
-              onKeyDown={event => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  submitInput(inputTextEl.value);
-                }
-              }}
-              onInput={() => fixInputHeight()}
-            />
-            <button
-              type="submit"
-              title={loading() ? "Stop generation" : "Send question"}
-              class="ml-2 px-4 py-2 rounded-3xl text-slate-500 bg-slate-200 dark:text-slate-400 dark:bg-slate-700"
-            >
-              {loading() ? (
-                <img src={squareLogo} alt="Stop generation" class="iconBtn" />
-              ) : (
-                <img src={sendLogo} alt="Send question" class="iconBtn" />
-              )}
-              {/* <img src={loaderLogo} alt="Loading" class="iconBtn animate-spin" /> */}
-            </button>
-            <button
-              title="Start a new conversation"
-              class="ml-2 px-4 py-2 rounded-3xl text-slate-500 bg-slate-200 dark:text-slate-400 dark:bg-slate-700"
-              onClick={() => state.setMessages([])}
-            >
-              <img src={editLogo} alt="Start a new conversation" class="iconBtn" />
-            </button>
+          <div class="container flex mx-auto max-w-5xl items-start space-x-2">
+            {/* input wrapper: relative so we can absolutely position the send button inside */}
+            <div class="relative flex-grow">
+              <textarea
+                ref={inputTextEl}
+                autofocus
+                class="w-full px-4 pr-14 py-2 h-auto border border-slate-400 bg-slate-200 dark:bg-slate-700 dark:border-slate-500 rounded-3xl focus:outline-none focus:ring focus:ring-blue-200 dark:focus:ring-blue-400 overflow-y-hidden resize-none"
+                style={{"overflow-anchor": "none"}}
+                placeholder="Ask your question"
+                rows="1"
+                onKeyDown={event => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    submitInput(inputTextEl.value);
+                  }
+                }}
+                onInput={() => fixInputHeight()}
+              />
+
+              {/* send button positioned inside the input, vertically centered with first line */}
+              <button
+                type="submit"
+                title={loading() ? "Stop generation" : "Send question"}
+                class={`absolute right-2 top-1 w-8 h-8 flex items-center justify-center rounded-full text-slate-500 bg-slate-100 dark:text-slate-400 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shadow-sm ${
+                  loading() ? "loading-spark" : ""
+                }`}
+                aria-label={loading() ? "Stop generation" : "Send question"}
+              >
+                {loading() ? (
+                  <img src={squareIcon} alt="Stop generation" class="iconBtn w-4 h-4" />
+                ) : (
+                  <img src={arrowUpIcon} alt="Send question" class="iconBtn w-4 h-4" />
+                )}
+              </button>
+            </div>
+
+            {/* Start new conversation button aligned to match submit button position */}
+            <div class="flex-shrink-0 self-start mt-1">
+              <button
+                title="Start a new conversation"
+                class="w-8 h-8 flex items-center justify-center rounded-full text-slate-500 bg-slate-100 dark:text-slate-400 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shadow-sm"
+                onClick={() => state.setMessages([])}
+                type="button"
+                aria-label="Start a new conversation"
+              >
+                <img src={editIcon} alt="Start a new conversation" class="iconBtn w-4 h-4" />
+              </button>
+            </div>
           </div>
         </form>
 

@@ -14,7 +14,7 @@ EXTRACTION_PROMPT = (
     INTRODUCTION_PROMPT
     + """Given a user question extracts the following:
 
-- The intent of the question: either "access_resources" (query available resources to answer biomedical questions), or "general_informations" (tools available, infos about the resources)
+- The intent of the question: either "access_resources" (query available resources to answer biomedical questions), or "general_informations" (available resources, infos about the resources)
 - High level concepts and potential classes that could be found in the SPARQL endpoints and used to answer the question
 - Potential entities and instances of classes that could be found in the SPARQL endpoints and used to answer the question
 - Split the question in standalone smaller parts that will be used for finding relevant examples using semantic search (if the question is already 1 step, leave empty)
@@ -26,7 +26,7 @@ EXTRACTION_PROMPT = (
 RESOLUTION_PROMPT = (
     INTRODUCTION_PROMPT
     + """Depending on the user request and provided context, you may provide general information about the resources available at the SIB,
-help the user to formulate a query to run on a SPARQL endpoint, or execute a previously formulated SPARQL query and communicates its results.
+help the user to formulate a query to run on a SPARQL endpoint.
 
 Always derive your answer from the context provided, do not use informations that is not in the context.
 If answering with a query:
@@ -36,7 +36,11 @@ If answering with a query:
 - Briefly explain the query.
 """
 )
-# NOTE: add the next lines to the prompt when not using tools
+
+# If using tool calls:
+# help the user to formulate a query to run on a SPARQL endpoint, or execute a previously formulated SPARQL query and communicates its results.
+
+# NOTE: add the next lines to the prompt when not using using prompt template for context (now we add a message with the context separately)
 # Here is a list of documents (reference questions and query answers, classes schema or general endpoints information) relevant to the user question that will help you answer the user question accurately:
 # {retrieved_docs}
 

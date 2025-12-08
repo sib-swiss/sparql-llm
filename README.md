@@ -11,8 +11,8 @@
 This project provides tools to enhance the capabilities of Large Language Models (LLMs) in generating [SPARQL](https://www.w3.org/TR/sparql11-overview/) queries for specific endpoints:
 
 - a complete **chat web service** available at **[expasy.org/chat](https://expasy.org/chat)**
-- a **MCP server** exposing tools at **https://chat.expasy.org/mcp**
-- **reusable components** published as the [`sparql-llm`](https://pypi.org/project/sparql-llm/) pip package
+- a **MCP server** exposing tools at **[chat.expasy.org/mcp](https://chat.expasy.org/mcp)**
+- **reusable components** published as the **[`sparql-llm`](https://pypi.org/project/sparql-llm/)** pip package
 
 The system integrates Retrieval-Augmented Generation (RAG) and SPARQL query validation through endpoint schemas, to ensure more accurate and relevant query generation on large scale knowledge graphs.
 
@@ -34,7 +34,7 @@ The components are designed to work either independently or as part of a full ch
 
 The server exposes a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) endpoint to access [biodata resources](https://www.expasy.org/) at the [SIB](https://www.sib.swiss/), through their [SPARQL](https://www.w3.org/TR/sparql12-query/) endpoints, such as UniProt, Bgee, OMA, SwissLipids, Cellosaurus at **[chat.expasy.org/mcp](https://chat.expasy.org/mcp)**
 
-Available tools are:
+### 🛠️ Available tools
 
 - **📝 Retrieve relevant documents** (query examples and classes schema) to help writing SPARQL queries to access SIB biodata resources
   - Arguments:
@@ -49,7 +49,7 @@ Available tools are:
     - `query` (string): a valid SPARQL query string
     - `endpoint` (string): the SPARQL endpoint URL to execute the query against
 
-### 🐙 Connect client to MCP
+### ⚡️ Connect client to MCP server
 
 Follow the instructions of your client, and use the URL of the public server: **https://chat.expasy.org/mcp**
 
@@ -58,35 +58,57 @@ For example, for GitHub Copilot in VSCode, to add a new MCP server through the V
 - [x] Open side panel chat (`ctrl+shift+i` or `cmd+shift+i`), and make sure the mode is set to `Agent` in the bottom right
 - [x] Open command palette (`ctrl+shift+p` or `cmd+shift+p`), and search for `MCP: Open User Configuration`, this will open a `mcp.json` file
 
-In VSCode `mcp.json` you should have the following:
+#### 📡 Use streamable HTTP server
+
+Connect to a running streamable HTTP MCP server, such as the publicly available [chat.expasy.org/mcp](https://chat.expasy.org/mcp).
+
+In your VSCode `mcp.json` you should have the following:
 
 ```sh
 {
 	"servers": {
-		"expasy-mcp-server": {
+		"expasy-mcp-http": {
 			"url": "https://chat.expasy.org/mcp",
 			"type": "http"
 		}
-	},
-	"inputs": []
+	}
+}
+```
+
+#### ⌨️ Use stdio transport
+
+```sh
+uvx sparql-llm
+```
+
+Your VSCode `mcp.json` file you should have, optionally you can provide the path to a custom settings file:
+
+```json
+{
+  "servers": {
+    "expasy-mcp": {
+      "type": "stdio",
+      "command": "uvx",
+      "env": {
+				"SETTINGS_FILEPATH": "~/dev/sparql-llm/sparql-mcp.json"
+			},
+      "args": [
+        "sparql-llm"
+      ]
+    }
+  }
 }
 ```
 
 > [!IMPORTANT]
 >
-> Click on `Start` just on top of `"expasy-mcp-server"` to start the connection to the MCP server.
+> Click on `Start` just on top of `"openroute-mcp"` to start the connection to the MCP server.
 >
-> You can click the wrench and screwdriver button 🛠️ (`Select Tools...`) to enable/disable specific tools
+> You can click the wrench and screwdriver button 🛠️ (`Configure Tools...`) to enable/disable specific tools
 
 > [!NOTE]
 >
-> Find more details in the [official docs](https://code.visualstudio.com/docs/copilot/chat/mcp-servers).
-
-Alternatively you can use it with stdio transport:
-
-```sh
-uvx sparql-llm --stdio
-```
+> More details available in [the VSCode MCP official docs](https://code.visualstudio.com/docs/copilot/chat/mcp-servers).
 
 ## 📦️ Reusable components
 
@@ -264,17 +286,17 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 4. **Start** the vector database and web server locally for development, with code from the `src` folder mounted in the container and automatic API reload on changes to the code:
 
    ```bash
-   docker compose -f compose.dev.yml up
+   docker compose up
    ```
 
    * Chat web UI available at http://localhost:8000
    * OpenAPI Swagger UI available at http://localhost:8000/docs
    * Vector database dashboard UI available at http://localhost:6333/dashboard
 
-   In production, you will need to make some changes to the `compose.yml` file to adapt it to your server/proxy setup:
+   In production, you will need to make some changes to the `compose.prod.yml` file to adapt it to your server/proxy setup:
 
    ```bash
-   docker compose up
+   docker compose -f compose.prod.yml up
    ```
 
    > All data from the containers are stored persistently in the `data` folder (e.g. vectordb indexes)
@@ -292,7 +314,7 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 > **Experimental entities indexing**: it can take a lot of time to generate embeddings for millions of entities. So we recommend to run the script to generate embeddings on a machine with GPU (does not need to be a powerful one, but at least with a GPU, checkout [fastembed GPU docs](https://qdrant.github.io/fastembed/examples/FastEmbed_GPU/) to install the GPU drivers and dependencies)
 >
 > ```sh
-> docker compose -f compose.dev.yml up vectordb -d
+> docker compose up vectordb -d
 > VECTORDB_URL=http://localhost:6334 nohup uv run --extra gpu src/sparql_llm/agent/indexing/index_entities.py --gpu &
 > ```
 >
@@ -311,6 +333,13 @@ There are a few benchmarks available for the system:
   > It takes time to run and will log the output and results in `data/benchmarks`
 
 - Follow [these instructions](tests/text2sparql/README.md) to run the `Text2SPARQL Benchmark`.
+
+- For biodata benchmark:
+
+  ```sh
+  docker compose up -d
+  VECTORDB_URL=http://localhost:6334 uv run tests/benchmark_biodata.py
+  ```
 
 ## 🧑‍🏫 Tutorial
 
@@ -335,3 +364,5 @@ If you reuse any part of this work, please cite [the arXiv paper](https://arxiv.
     url={https://arxiv.org/abs/2410.06062},
 }
 ```
+
+<!-- mcp-name: io.github.sib-swiss/sparql-llm -->

@@ -1,22 +1,25 @@
 """API to deploy the Expasy Agent service from LangGraph."""
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
 import pathlib
 import re
+from collections.abc import AsyncGenerator, AsyncIterator
 from datetime import datetime
 from typing import Any
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.requests import Request
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from langchain_core.runnables import RunnableConfig
 from langfuse.langchain import CallbackHandler
 from pydantic import BaseModel
-from starlette.middleware.cors import CORSMiddleware
-from starlette.requests import Request
-from starlette.responses import HTMLResponse, JSONResponse, StreamingResponse
-from starlette.staticfiles import StaticFiles
-from starlette.templating import Jinja2Templates
 
 from sparql_llm.agent.config import settings
 from sparql_llm.agent.graph import graph
@@ -34,12 +37,28 @@ if settings.sentry_url:
         traces_sample_rate=0.0,
     )
 
+
 # Initialize Langfuse logs tracing CallbackHandler for Langchain https://langfuse.com/docs/integrations/langchain/example-python-langgraph
 langfuse_handler = [CallbackHandler()] if os.getenv("LANGFUSE_SECRET_KEY") else []
 
 
-# Get the MCP Starlette app and mount routes to it
-app = mcp.streamable_http_app()
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """FastAPI lifespan that initializes the MCP session manager."""
+    async with mcp.session_manager.run():
+        yield
+
+
+app = FastAPI(
+    title=settings.app_name,
+    description="""This service helps users to use resources from the Swiss Institute of Bioinformatics,
+such as SPARQL endpoints, to get information about proteins, genes, and other biological entities.""",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+app.mount("/mcp", mcp.streamable_http_app(), name="mcp")
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -66,9 +85,10 @@ uvicorn_logger = logging.getLogger("uvicorn")
 uvicorn_logger.setLevel(logging.WARNING)
 
 api_url = "http://localhost:8000"
-logger.info(f"""⚡️ Streamable HTTP MCP server started on {api_url}/mcp
-  💬 Chat UI at {api_url}
-  🔎 Using similarity search service on {settings.vectordb_url}""")
+logger.info(f"""💬 Chat UI at {api_url}
+  ⚡️ Streamable HTTP MCP server started on {api_url}/mcp
+  🔎 Using similarity search service on {settings.vectordb_url}
+""")
 
 
 class Message(BaseModel):
@@ -78,12 +98,13 @@ class Message(BaseModel):
 
 class ChatCompletionRequest(BaseModel):
     messages: list[Message]
-    model: str | None = settings.default_llm_model
-    max_tokens: int | None = settings.default_max_tokens
-    temperature: float | None = settings.default_temperature
-    stream: bool | None = False
-    validate_output: bool | None = True
-    headers: dict[str, str] | None = {}
+    model: str = settings.default_llm_model
+    max_tokens: int = settings.default_max_tokens
+    temperature: float = settings.default_temperature
+    stream: bool = False
+    validate_output: bool = True
+    enable_sparql_execution: bool = True
+    headers: dict[str, str] = {}
 
 
 def convert_chunk_to_dict(obj: Any) -> Any:
@@ -102,16 +123,19 @@ def convert_chunk_to_dict(obj: Any) -> Any:
     elif isinstance(obj, dict):
         return {k: convert_chunk_to_dict(v) for k, v in obj.items()}
     elif hasattr(obj, "model_dump"):
-        return obj.model_dump()
+        return obj.model_dump()  # type: ignore
     elif hasattr(obj, "dict"):
-        return obj.dict()
+        return obj.dict()  # type: ignore
     elif hasattr(obj, "__dict__"):
         return obj.__dict__
+    # elif hasattr(obj, "__dict__") and not isinstance(obj, type):
+    #     # Convert dataclass or other objects to dict, but skip type objects
+    #     return {k: convert_chunk_to_dict(v) for k, v in obj.__dict__.items()}
     else:
         return obj
 
 
-async def stream_response(inputs: dict[str, list], config: RunnableConfig):
+async def stream_response(inputs: Any, config: RunnableConfig) -> AsyncGenerator[str, Any]:
     """Stream the response from the assistant."""
     async for event, chunk in graph.astream(inputs, stream_mode=["messages", "updates"], config=config):
         chunk_dict = convert_chunk_to_dict(
@@ -127,7 +151,10 @@ async def stream_response(inputs: dict[str, list], config: RunnableConfig):
     yield "data: [DONE]"
 
 
-async def chat_handler(request: Request):
+# FastAPI does not support Union in response model (even if it says otherwise in docs)
+# so we need to disable response_model for this endpoint
+@app.post("/chat", response_model=None)
+async def chat(request: Request) -> StreamingResponse | JSONResponse:
     """Chat with the assistant main endpoint."""
     auth_header = request.headers.get("Authorization", "")
     if settings.chat_api_key and (not auth_header or not auth_header.startswith("Bearer ")):
@@ -149,9 +176,10 @@ async def chat_handler(request: Request):
         configurable={
             "model": chat_request.model,
             "validate_output": chat_request.validate_output,
+            "enable_sparql_execution": chat_request.enable_sparql_execution,
         },
         recursion_limit=25,
-        callbacks=langfuse_handler,
+        callbacks=langfuse_handler,  # type: ignore
     )
     inputs: Any = {
         "messages": [(msg.role, msg.content) for msg in chat_request.messages],
@@ -166,12 +194,9 @@ async def chat_handler(request: Request):
         )
 
     response = await graph.ainvoke(inputs, config=config)
-    # print(response)
-    return JSONResponse(content=response)
-
-
-# Add chat routes directly to the MCP app
-app.router.add_route("/chat", chat_handler, methods=["POST"])
+    # Convert LangChain message objects to dicts for JSON serialization
+    response_dict = convert_chunk_to_dict(response)
+    return JSONResponse(content=response_dict)
 
 
 class LogMessage(Message):
@@ -196,9 +221,9 @@ def log_msg(filename: str, messages: list[LogMessage]) -> None:
         f.write(json.dumps(feedback_data) + "\n")
 
 
-async def feedback_handler(request: Request):
-    """Save the user feedback in the logs files."""
-    feedback_request = FeedbackRequest(**await request.json())
+@app.post("/feedback")
+async def post_feedback(feedback_request: FeedbackRequest) -> JSONResponse:
+    """Save a user feedback in the logs files."""
     filename = (
         f"{settings.logs_folder}/likes.jsonl" if feedback_request.like else f"{settings.logs_folder}/dislikes.jsonl"
     )
@@ -210,9 +235,9 @@ class LogsRequest(BaseModel):
     api_key: str
 
 
-async def logs_handler(request: Request):
+@app.post("/logs", response_model=list[str])
+async def get_user_logs(logs_request: LogsRequest) -> JSONResponse:
     """Get the list of user questions from the logs file."""
-    logs_request = LogsRequest(**await request.json())
     if settings.logs_api_key and logs_request.api_key != settings.logs_api_key:
         raise ValueError("Invalid API key")
     questions = set()
@@ -237,7 +262,8 @@ app.mount(
 )
 
 
-async def ui_handler(request: Request) -> HTMLResponse:
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+async def chat_ui(request: Request) -> HTMLResponse:
     """Render the chat UI using jinja2 + HTML."""
     return templates.TemplateResponse(
         "index.html",
@@ -249,12 +275,6 @@ async def ui_handler(request: Request) -> HTMLResponse:
             "examples": ",".join(settings.example_questions),
         },
     )
-
-
-# Add routes directly to the MCP app
-app.router.add_route("/", ui_handler, methods=["GET"])
-app.router.add_route("/feedback", feedback_handler, methods=["POST"])
-app.router.add_route("/logs", logs_handler, methods=["POST"])
 
 
 # from ag_ui.core.types import RunAgentInput

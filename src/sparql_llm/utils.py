@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, TypedDict
+from typing import Any, Required, TypedDict
 
 import curies
 import httpx
@@ -21,7 +21,7 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 class SparqlEndpointLinks(TypedDict, total=False):
     """A dictionary to store links and filepaths about a SPARQL endpoint."""
 
-    endpoint_url: str
+    endpoint_url: Required[str]
     void_file: str | None
     examples_file: str | None
     homepage_url: str | None
@@ -205,12 +205,13 @@ def query_sparql(
     check_service_desc: bool = False,
 ) -> Any:
     """Execute a SPARQL query on a SPARQL endpoint or its service description using httpx or a RDF turtle file using rdflib."""
+    query_resp: dict[str, Any] = {"results": {"bindings": []}}
     if use_file:
         g = rdflib.Graph()
         g.parse(use_file, format="turtle")
         results = g.query(query)
-        return {
-            "results": {"bindings": [{str(k): {"value": str(v)} for k, v in row.asdict().items()} for row in results]}
+        query_resp = {
+            "results": {"bindings": [{str(k): {"value": str(v)} for k, v in row.asdict().items()} for row in results]}  # type: ignore
         }
     else:
         should_close = False
@@ -231,11 +232,14 @@ def query_sparql(
                     params={"query": query},
                 )
             resp.raise_for_status()
-            resp_json = resp.json()
+            query_resp = resp.json()
+            # query_resp = resp_json
             # Handle ASK queries
-            if resp_json.get("boolean") is not None:
-                return {"results": {"bindings": [{"ask-variable": {"value": str(resp_json["boolean"]).lower()}}]}}
-            if check_service_desc and not resp_json.get("results", {}).get("bindings", []):
+            if query_resp.get("boolean") is not None:
+                query_resp = {
+                    "results": {"bindings": [{"ask-variable": {"value": str(query_resp["boolean"]).lower()}}]}
+                }
+            elif check_service_desc and not query_resp.get("results", {}).get("bindings", []):
                 # If no results found directly in the endpoint we check in its service description
                 logger.debug(f"No results found, checking service description for {endpoint_url}...")
                 resp = client.get(
@@ -249,14 +253,14 @@ def query_sparql(
                 bindings = []
                 for row in results:
                     if hasattr(row, "asdict"):
-                        bindings.append({str(k): {"value": str(v)} for k, v in row.asdict().items()})
+                        bindings.append({str(k): {"value": str(v)} for k, v in row.asdict().items()})  # type: ignore
                     else:
                         # Handle tuple results
                         bindings.append(
-                            {str(var): {"value": str(val)} for var, val in zip(results.vars, row, strict=False)}
+                            {str(var): {"value": str(val)} for var, val in zip(results.vars, row, strict=False)}  # type: ignore
                         )
-                return {"results": {"bindings": bindings}}
-            return resp_json
+                query_resp = {"results": {"bindings": bindings}}
         finally:
             if should_close:
                 client.close()
+    return query_resp

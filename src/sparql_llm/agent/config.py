@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import dataclass, field, fields
+from pathlib import Path
 from typing import Annotated, Any, TypeVar
 
 from langchain_core.runnables import RunnableConfig, ensure_config
@@ -91,6 +94,13 @@ It provides a unified, searchable framework that connects chemical profiles of p
             "endpoint_url": "https://rdf.metanetx.org/sparql/",
             "homepage_url": "https://www.metanetx.org/",
         },
+        {
+            "label": "SIBiLS",
+            "endpoint_url": "https://sparql.sibils.org/sparql",
+            "description": """SIBiLS (Swiss Institute of Bioinformatics Literature Services) provide personalized Information Retrieval in the biological literature.
+It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC supplementary files.""",
+            # "homepage_url": "https://sibils.org/",
+        },
         # Error querying NExtProt
         # {
         #     "label": "NextProt",
@@ -125,7 +135,8 @@ It provides a unified, searchable framework that connects chemical profiles of p
     entities_collection_name: str = "entities"
 
     # Default settings for the agent that can be changed at runtime
-    default_llm_model: str = "openai/gpt-4o"
+    default_llm_model: str = "openrouter/openai/gpt-4o"
+    # default_llm_model: str = "openai/gpt-4o"
     # TODO: default_llm_model_cheap: str = "openai/gpt-4o-mini"
 
     default_number_of_retrieved_docs: int = 10
@@ -166,8 +177,25 @@ It provides a unified, searchable framework that connects chemical profiles of p
         extra="allow",
     )
 
+    @classmethod
+    def from_file(cls, filepath: str) -> Settings:
+        """Create a Settings instance from a file.
 
-settings = Settings()
+        Args:
+            filepath: The path to the file.
+        """
+        path = Path(filepath)  # your JSON file path
+        if not path.exists():
+            return Settings()
+        with path.open("r") as f:
+            return Settings(**json.load(f))
+
+
+settings_filepath = os.getenv("SETTINGS_FILEPATH")
+settings = Settings.from_file(settings_filepath) if settings_filepath else Settings()
+# logger.info(f"📂 Using SETTINGS file: {settings_filepath}")
+
+# settings = Settings()
 
 # TODO: Getting `TypeError: cannot pickle '_thread.RLock' object` when doing `QdrantVectorStore.from_existing_collection(client=qdrant_client)`
 qdrant_client = (

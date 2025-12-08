@@ -5,8 +5,7 @@ Works with a chat model with tool calling support.
 
 from typing import Any
 
-from langchain_core.messages import AIMessage
-from langchain_core.messages.base import BaseMessage
+from langchain.messages import AIMessage, AnyMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -20,7 +19,7 @@ from sparql_llm.agent.utils import load_chat_model
 # from sparql_llm.agent.nodes.retrieval_entities import format_extracted_entities
 
 
-async def call_model(state: State, config: RunnableConfig) -> dict[str, list[BaseMessage] | bool]:
+async def call_model(state: State, config: RunnableConfig) -> dict[str, list[AnyMessage] | bool]:
     """Call the LLM powering our "agent".
 
     This function prepares the prompt, initializes the model, and processes the response.
@@ -36,7 +35,8 @@ async def call_model(state: State, config: RunnableConfig) -> dict[str, list[Bas
     # Initialize the model with tool binding
     # model = load_chat_model(configuration).bind_tools(TOOLS)
 
-    # Set up MCP client
+    tools = None
+    # Set up MCP client (experimental, not used in production)
     if settings.use_tools:
         client = MultiServerMCPClient(
             {
@@ -52,7 +52,7 @@ async def call_model(state: State, config: RunnableConfig) -> dict[str, list[Bas
     # # Bind tools to model
     # model_with_tools = model.bind_tools(tools)
 
-    model = load_chat_model(configuration).bind_tools(tools) if settings.use_tools else load_chat_model(configuration)
+    model = load_chat_model(configuration).bind_tools(tools) if tools else load_chat_model(configuration)
 
     structured_prompt: dict[str, Any] = {
         "messages": state.messages,
@@ -76,7 +76,8 @@ async def call_model(state: State, config: RunnableConfig) -> dict[str, list[Bas
     # print(f"Model response: {response_msg.content}")
 
     # Check if the current response contains tool calls that should be processed
-    if response_msg.tool_calls and not state.is_last_step:
+    has_tool_calls = bool(getattr(response_msg, "tool_calls", None))
+    if has_tool_calls and not state.is_last_step:
         return {"messages": [response_msg], "passed_validation": False}
 
     # TODO: improve the tool use with a supervizor node that check if tool calls are needed or stop
@@ -88,7 +89,7 @@ async def call_model(state: State, config: RunnableConfig) -> dict[str, list[Bas
     #     return {"messages": [response_msg], "passed_validation": False}
 
     # Handle the case when it's the last step and the model still wants to use a tool
-    if state.is_last_step and response_msg.tool_calls:
+    if state.is_last_step and has_tool_calls:
         return {
             "messages": [
                 AIMessage(
