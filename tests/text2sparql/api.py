@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 
 import fastapi
 from fastembed import TextEmbedding
@@ -18,7 +19,7 @@ app = fastapi.FastAPI(title="TEXT2SPARQL API")
 
 KNOWN_DATASETS = ["https://text2sparql.aksw.org/2025/dbpedia/", "https://text2sparql.aksw.org/2025/corporate/"]
 
-MODEL = "openrouter/openai/gpt-4o"
+MODEL = "openrouter/openai/gpt-oss-120b"
 DOCKER_ENDPOINT_URL = "http://text2sparql-virtuoso:8890/sparql/"
 DOCKER_VECTORDB_URL = "http://vectordb:6334"
 ENDPOINT_URL = "http://localhost:8890/sparql/"
@@ -62,6 +63,22 @@ Your response must follow these rules:
 embedding_model = TextEmbedding(settings.embedding_model)
 vectordb = QdrantClient(url=DOCKER_VECTORDB_URL, prefer_grpc=True)
 
+#Statistics
+question_num = 0
+statistics = {
+    "DBpedia (EN)": {"llm_time": [],
+                   "input_tokens": [],
+                   "output_tokens": [],
+                },
+    "DBpedia (ES)": {"llm_time": [],
+                   "input_tokens": [],
+                   "output_tokens": [],
+                },
+    "Corporate": {"llm_time": [],
+                   "input_tokens": [],
+                   "output_tokens": [],
+                },
+}
 
 @app.get("/")
 async def get_answer(question: str, dataset: str):
@@ -111,7 +128,11 @@ async def get_answer(question: str, dataset: str):
         HumanMessage(content=question),
     ]
 
+    client_time = time.perf_counter()
     response = client.invoke(messages)
+    total_client_time = time.perf_counter() - client_time
+    total_input_tokens = response.model_dump()["response_metadata"]["token_usage"]["prompt_tokens"]
+    total_output_tokens = response.model_dump()["response_metadata"]["token_usage"]["completion_tokens"]
 
     # Validation and fixing of the generated SPARQL query
     num_of_tries = 0
@@ -151,12 +172,37 @@ async def get_answer(question: str, dataset: str):
                 else:
                     resp_msg += f"## SPARQL query returned error: {e}. Please provide an alternative query based on the provided information and try again.\n### Erroneous SPARQL query\n```sparql\n{generated_sparql}\n```\n"
 
-        # If no valid SPARQL query was generated, ask the model to fix it
         num_of_tries += 1
-        messages = [HumanMessage(content=question + resp_msg)]
-        response = client.invoke(messages)
-
         if num_of_tries == settings.default_max_try_fix_sparql:
             print(f"❌ Could not fix generate SPARQL query for question: {question} \n")
 
+        # If no valid SPARQL query was generated, ask the model to fix it
+        messages = [HumanMessage(content=question + resp_msg)]
+    
+        client_time = time.perf_counter()
+        response = client.invoke(messages)
+        total_client_time += time.perf_counter() - client_time
+        total_input_tokens = response.model_dump()["response_metadata"]["token_usage"]["prompt_tokens"]
+        total_output_tokens = response.model_dump()["response_metadata"]["token_usage"]["completion_tokens"]
+
+    #Statistics
+    global question_num
+    if dataset == "https://text2sparql.aksw.org/2025/dbpedia/" and question_num % 2 == 0:
+        statistics["DBpedia (EN)"]["llm_time"].append(total_client_time)
+        statistics["DBpedia (EN)"]["input_tokens"].append(total_input_tokens)
+        statistics["DBpedia (EN)"]["output_tokens"].append(total_output_tokens)
+    elif dataset == "https://text2sparql.aksw.org/2025/dbpedia/" and question_num % 2 == 1:
+        statistics["DBpedia (ES)"]["llm_time"].append(total_client_time)
+        statistics["DBpedia (ES)"]["input_tokens"].append(total_input_tokens)
+        statistics["DBpedia (ES)"]["output_tokens"].append(total_output_tokens)
+    elif dataset == "https://text2sparql.aksw.org/2025/corporate/":
+        statistics["Corporate"]["llm_time"].append(total_client_time)
+        statistics["Corporate"]["input_tokens"].append(total_input_tokens)
+        statistics["Corporate"]["output_tokens"].append(total_output_tokens)
+    question_num += 1
+
     return {"dataset": dataset, "question": question, "query": generated_sparql}
+
+@app.get("/stats")
+async def get_stats():
+    return statistics

@@ -119,7 +119,7 @@ if __name__ == "__main__":
         endpoint_url="http://localhost:8890/sparql/",
         graph="https://text2sparql.aksw.org/2025/dbpedia/",
         limit_schema={
-            "top_classes_percentile": 0.90,
+            "top_classes_percentile": 0,
             "top_n_predicates": 20,
             "top_n_ranges": 1,
         },

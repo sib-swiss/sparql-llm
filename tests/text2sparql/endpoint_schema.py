@@ -135,31 +135,34 @@ class EndpointSchema:
 
     def _retrieve_predicate_information(self, class_name: str, predicate_name: str) -> list[str]:
         """Fetch ranges for a given predicate of a class"""
-
-        range = (
-            query_sparql(
-                self._RANGE_QUERY.format(
-                    graph=self._graph,
-                    class_name=class_name,
-                    predicate_name=predicate_name,
-                    limit=self._limit_schema["top_n_ranges"],
-                ),
-                endpoint_url=self._endpoint_url,
-            )["results"]["bindings"]
-            or []
-        )
-
-        # Filter out unwanted ranges
-        range = [
-            r["range"]["value"]
-            for r in range
-            if (
-                ("range" in r)
-                and ("value" in r["range"])
-                and (not bool(re.search(self._EXCLUDE_CLASS_PATTERN, r["range"]["value"])))
+        try:
+            range = (
+                query_sparql(
+                    self._RANGE_QUERY.format(
+                        graph=self._graph,
+                        class_name=class_name,
+                        predicate_name=predicate_name,
+                        limit=self._limit_schema["top_n_ranges"],
+                        check_service_desc=False,
+                    ),
+                    endpoint_url=self._endpoint_url,
+                )["results"]["bindings"]
+                or []
             )
-        ]
 
+            # Filter out unwanted ranges
+            range = [
+                r["range"]["value"]
+                for r in range
+                if (
+                    ("range" in r)
+                    and ("value" in r["range"])
+                    and (not bool(re.search(self._EXCLUDE_CLASS_PATTERN, r["range"]["value"])))
+                )
+            ]
+        except Exception as e:
+            logger.warning(f"Error retrieving range for {class_name} - {predicate_name}: {e}")
+            range = []
         return range
 
     def get_schema(self) -> pd.DataFrame:

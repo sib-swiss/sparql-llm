@@ -18,6 +18,9 @@ QUALD_9_PLUS_QUERIES_FILE = os.path.join(RAW_QUERIES_FOLDER, "qald_9_plus_dbpedi
 QUALD_9_PLUS_ENDPOINT = "https://dbpedia.org/sparql"
 LC_QuAD_QUERIES_FILE = os.path.join(RAW_QUERIES_FOLDER, "LC-QuAD_v1.json")
 LC_QuAD_ENDPOINT = "https://dbpedia.org/sparql"
+UNIPROT_QUERIES_FILE = os.path.join(RAW_QUERIES_FOLDER, "uniprot_questions.csv")
+CELLOSAURUS_QUERIES_FILE = os.path.join(RAW_QUERIES_FOLDER, "cellosaurus_questions.csv")
+BGEE_QUERIES_FILE = os.path.join(RAW_QUERIES_FOLDER, "bgee_questions.csv")
 OUTPUT_QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), "queries.csv")
 
 
@@ -40,8 +43,9 @@ def count_triple_patterns(query: str) -> int:
         else:
             return 0
 
-    # Remove aggregate expressions from the query (not parsed by rdflib)
+    # Remove aggregate expressions and federations from the query (not parsed by rdflib)
     query = re.sub(r"(COUNT|SUM)\s*\(\s*(?:DISTINCT\s*)?([^\(\)]*|\([^\)]*\))\s*\)", "?x", query, flags=re.IGNORECASE)
+    query = re.sub(r"SERVICE\b.*?\{", "{", query, flags=re.IGNORECASE | re.DOTALL)
     try:
         expr = translateQuery(parseQuery(query)).algebra
         count = _count_triples(expr)
@@ -187,6 +191,34 @@ def transform_Generated_CK_queries(input_file: str, endpoint_url: str) -> pd.Dat
 
     return queries
 
+def transform_bioqueries(uniprot_file: str, cellosaurus_file: str, bgee_file: str) -> pd.DataFrame:
+    """
+    Transforms bioqueries from CSV files into a DataFrame.
+    CSV files dowloaded from https://sib-swiss.github.io/sparql-editor using the query for queries: https://github.com/sib-swiss/sparql-examples.
+
+    Args:
+        uniprot_file (str): Path to the CSV file containing Uniprot queries.
+        cellosaurus_file (str): Path to the CSV file containing Cellosaurus queries.
+        bgee_file (str): Path to the CSV file containing Bgee queries.
+
+    Returns:
+        pd.DataFrame: DataFrame containing the transformed queries.
+    """
+
+    uniprot = pd.read_csv(uniprot_file)
+    uniprot["dataset"] = "Uniprot"
+    cellosaurus = pd.read_csv(cellosaurus_file)
+    cellosaurus["dataset"] = "Cellosaurus"
+    bgee = pd.read_csv(bgee_file)
+    bgee["dataset"] = "Bgee"
+
+    queries = pd.concat([uniprot, cellosaurus, bgee], ignore_index=True)
+    queries["triple patterns"] = queries["query"].apply(count_triple_patterns)
+    queries["query type"] = queries["query"].apply(lambda q: "ASK" if "ASK WHERE" in q.upper() else "SELECT")
+    queries["federated"] = queries["query"].apply(lambda q: True if "SERVICE" in q.upper() else False)
+    queries = queries[queries['triple patterns'] != 0]
+
+    return queries
 
 if __name__ == "__main__":
     queries = []
@@ -198,5 +230,6 @@ if __name__ == "__main__":
         queries.append(transform_qald_9_plus_queries(QUALD_9_PLUS_QUERIES_FILE, QUALD_9_PLUS_ENDPOINT))
         queries.append(transform_LC_QuAD_queries(LC_QuAD_QUERIES_FILE, LC_QuAD_ENDPOINT))
         queries.append(transform_Generated_CK_queries(GENERATED_CK_QUERIES_FILE, TEXT2SPARQL_ENDPOINT))
+        queries.append(transform_bioqueries(UNIPROT_QUERIES_FILE, CELLOSAURUS_QUERIES_FILE, BGEE_QUERIES_FILE))
     queries = pd.concat(queries, ignore_index=True)
     queries.to_csv(OUTPUT_QUERIES_FILE, index=False)
