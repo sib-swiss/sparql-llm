@@ -10,11 +10,12 @@ from sparql_llm.utils import get_prefixes_for_endpoint, logger, query_sparql
 
 GET_SPARQL_EXAMPLES_QUERY = """PREFIX sh: <http://www.w3.org/ns/shacl#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-SELECT DISTINCT ?comment ?query
+PREFIX spex: <https://purl.expasy.org/sparql-examples/ontology#>
+SELECT DISTINCT ?sq ?comment ?query
 WHERE {
     ?sq a sh:SPARQLExecutable ;
         rdfs:comment ?comment ;
-        sh:select|sh:ask|sh:construct|sh:describe ?query .
+        sh:select|sh:ask|sh:construct|spex:describe ?query .
 } ORDER BY ?sq"""
 
 
