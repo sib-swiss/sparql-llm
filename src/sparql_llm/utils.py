@@ -18,6 +18,7 @@ logger.setLevel(logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
+# Total=False to make all fields optional except those marked as Required
 class SparqlEndpointLinks(TypedDict, total=False):
     """A dictionary to store links and filepaths about a SPARQL endpoint."""
 
