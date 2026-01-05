@@ -250,9 +250,8 @@ print("\n".join(issues))
 
 > [!WARNING]
 >
-> To deploy the complete chat system right now you will need to fork/clone this repository, change the configuration in `src/expasy-agent/src/expasy_agent/config.py` and `compose.yml`, then deploy with docker/podman compose.
+> To deploy the complete chat system right now you will need to fork/clone this repository, change the configuration in `src/expasy-agent/src/expasy_agent/config.py` and `compose.yml`, then deploy with docker/podman compose. It can easily be adapted to use any LLM served through an OpenAI-compatible API.
 >
-> It can easily be adapted to use any LLM served through an OpenAI-compatible API. We plan to make configuration and deployment of complete SPARQL LLM chat system easier in the future, let us know if you are interested in the GitHub issues!
 
 Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](https://docs.astral.sh/uv/getting-started/installation/) if you want to run scripts outside of docker.
 

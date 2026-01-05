@@ -34,11 +34,11 @@ dependencies = [
     "SPARQLWrapper >=2.0.0",
     "beautifulsoup4 >=4.13.0",
     "curies >=0.11.0",
-    "langchain-core >=1.0.2",
-    "mcp >=1.23.1",
-    "qdrant-client >=1.15.1",
-    "fastembed >=0.7.3",
-    "langgraph >=1.0.2",
+    "langchain-core >=1.2.6",
+    "mcp >=1.25.0",
+    "qdrant-client >=1.16.2",
+    "fastembed >=0.7.4",
+    "langgraph >=1.0.5",
     "langchain-qdrant >=1.1.0",
     "langchain-community >=0.4.1",
     "markdownify >=1.1.0",
@@ -48,12 +48,12 @@ dependencies = [
 [project.optional-dependencies]
 agent = [
     # LangGraph dependencies
-    "langchain >=1.0.3",
-    "langchain-openai >=1.0.1",
+    "langchain >=1.2.0",
+    "langchain-openai >=1.1.6",
     # "langchain-azure-ai >=0.1.0",
     # "langchain-groq >=0.2.4",
     # "langchain-together >=0.3.0",
-    "langchain-mcp-adapters >=0.1.10",
+    "langchain-mcp-adapters >=0.2.1",
     # "langchain-qdrant @ git+https://github.com/langchain-ai/langchain.git#subdirectory=libs/partners/qdrant",
     "langfuse >=3.8.1",
     # "langchain-huggingface", # This will install torch and many heavy nvidia dependencies
@@ -76,9 +76,9 @@ agent = [
     # "ag-ui-protocol >=0.1.9",
     # "ag-ui-langgraph >=0.0.15",
 ]
-gpu = [
-    "fastembed-gpu >=0.5.1",
-]
+# gpu = [
+#     "fastembed-gpu >=0.5.1",
+# ]
 
 [dependency-groups]
 dev = [
