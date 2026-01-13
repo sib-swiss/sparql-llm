@@ -7,13 +7,13 @@ date-released: 2025-10-14
 doi: 10.48550/arXiv.2512.14277
 license: MIT
 authors:
-  - given-names: Panayiotis
-    family-names: Smeros
-    orcid: https://orcid.org/0009-0004-5814-5824,
-    affiliation: SIB Swiss Institute of Bioinformatics
   - given-names: Vincent
     family-names: Emonet
     orcid: https://orcid.org/0000-0002-1501-1082
+    affiliation: SIB Swiss Institute of Bioinformatics
+  - given-names: Panayiotis
+    family-names: Smeros
+    orcid: https://orcid.org/0009-0004-5814-5824,
     affiliation: SIB Swiss Institute of Bioinformatics
   - given-names: Ruijie
     family-names: Wang
