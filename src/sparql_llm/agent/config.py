@@ -127,6 +127,8 @@ It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_dimensions: int = 384
     force_index: bool = False
+    # Automatically initialize the vector store client, should be False when deploying in prod with multiple workers
+    auto_init: bool = True
 
     # Sparse embeddings are only used for the entities resolution
     sparse_embedding_model: str = "Qdrant/bm25"

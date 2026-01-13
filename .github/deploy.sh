@@ -9,20 +9,20 @@
 # ssh expasychat
 ## Just restart:
 # sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml up --force-recreate -d'
+
 ## Pull and restart:
 # sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; git pull ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml up --force-recreate -d'
+
+## Pull, build and restart:
+# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; git pull ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml up --force-recreate --build -d'
+
+## Re-index the endpoints in running deployment:
+# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml exec api uv run src/sparql_llm/agent/indexing/index_resources.py'
+
 ## Show logs:
 # sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml logs'
 
-## Delete the vector database to re-index from scratch:
-# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; rm -rf data/qdrant/ data/endpoints_metadata.json'
-# Careful as you will need to first run it without compose.prod.yml to regenerate the index, the multiple workers in prod will conflict when re-indexing from scratch
-
-
-## Re-index without restarting
-# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose exec api uv run src/expasy_agent/indexing/index_resources.py'
-
-# Check env variables
+## Check env variables
 # sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; vim .env'
 
 # NOTE: if OOM error, check `dmesg` on server and search for `oom`

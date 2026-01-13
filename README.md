@@ -263,8 +263,8 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
    CHAT_API_KEY=NOT_SO_SECRET_API_KEY_USED_BY_FRONTEND_TO_AVOID_SPAM_FROM_CRAWLERS
    LOGS_API_KEY=SECRET_PASSWORD_TO_EASILY_ACCESS_LOGS_THROUGH_THE_API
 
-   OPENAI_API_KEY=sk-proj-YYY
    OPENROUTER_API_KEY=sk-YYY
+   OPENAI_API_KEY=sk-proj-YYY
 
    LANGFUSE_HOST=https://cloud.langfuse.com
    LANGFUSE_PUBLIC_KEY=
@@ -292,13 +292,19 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
    * OpenAPI Swagger UI available at http://localhost:8000/docs
    * Vector database dashboard UI available at http://localhost:6333/dashboard
 
-   In production, you will need to make some changes to the `compose.prod.yml` file to adapt it to your server/proxy setup:
+   **In production**, you will need to make some changes to the `compose.prod.yml` file to adapt it to your server/proxy setup:
 
    ```bash
    docker compose -f compose.prod.yml up
    ```
 
-   > All data from the containers are stored persistently in the `data` folder (e.g. vectordb indexes)
+   Then run the indexing script manually from within the container to index the SPARQL endpoints (need to do it once):
+
+   ```sh
+   docker compose -f compose.prod.yml exec api uv run src/sparql_llm/agent/indexing/index_resources.py
+   ```
+
+   > All data from the containers are stored persistently in the `data` folder (e.g. vectordb indexes and endpoints metadata)
 
 > [!NOTE]
 >

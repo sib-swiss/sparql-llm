@@ -31,15 +31,21 @@ embedding_model = TextEmbedding(
 )
 
 # Check if the docs collection exists and has data, initialize if not
+# In prod with multiple workers, auto_init should be set to False to avoid race conditions
 try:
-    collection_exists = qdrant_client.collection_exists(settings.docs_collection_name)
-    if (
+    collection_needs_init = (
         settings.force_index
         or not qdrant_client.collection_exists(settings.docs_collection_name)
         or not qdrant_client.get_collection(settings.docs_collection_name).points_count
-    ):
+    )
+    if settings.auto_init and collection_needs_init:
         logger.info("📊 Initializing vectordb...")
         init_vectordb()
+    elif not settings.auto_init and collection_needs_init:
+        logger.warning(
+            f"⚠️ Collection '{settings.docs_collection_name}' does not exist or is empty. Run the following command to initialize it:\n"
+            "docker compose -f compose.prod.yml exec api uv run src/sparql_llm/agent/indexing/index_resources.py"
+        )
     else:
         logger.info(
             f"✅ Collection '{settings.docs_collection_name}' exists with {qdrant_client.get_collection(settings.docs_collection_name).points_count} points. Skipping initialization."

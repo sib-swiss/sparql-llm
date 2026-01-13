@@ -72,6 +72,7 @@ def get_prefixes_and_schema_for_endpoints(
         )
         logger.info(f"Fetching {endpoint['endpoint_url']} metadata...")
         prefixes_map = get_prefixes_for_endpoint(endpoint["endpoint_url"], endpoint.get("examples_file"), prefixes_map)
+    # Cache the metadata in a JSON file
     with open(ENDPOINTS_METADATA_FILE, "w") as f:
         json.dump({"prefixes_map": prefixes_map, "classes_schema": endpoints_void_dict}, f, indent=2)
     return prefixes_map, endpoints_void_dict

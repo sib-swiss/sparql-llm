@@ -157,8 +157,6 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
 def init_vectordb() -> None:
     """Initialize the vectordb with example queries and ontology descriptions from the SPARQL endpoints"""
     docs: list[Document] = []
-
-    # endpoints_urls = [endpoint["endpoint_url"] for endpoint in settings.endpoints]
     prefix_map, _void_schema = get_prefixes_and_schema_for_endpoints(settings.endpoints)
 
     # Gets documents from the SPARQL endpoints
