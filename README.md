@@ -356,17 +356,31 @@ Checkout the [`CONTRIBUTING.md`](https://github.com/sib-swiss/sparql-llm/blob/ma
 
 ## 🪶 How to cite this work
 
-If you reuse any part of this work, please cite [the arXiv paper](https://arxiv.org/abs/2410.06062):
+If you reuse any part of this work, please cite at least one of our articles below:
 
+- [SPARQL-LLM: Real-Time SPARQL Query Generation from Natural Language Questions](https://arxiv.org/abs/2512.14277)
 ```bibtex
-@misc{emonet2024llmbasedsparqlquerygeneration,
+@misc{smeros2025sparqlllmrealtimesparqlquery,
+      title={SPARQL-LLM: Real-Time SPARQL Query Generation from Natural Language Questions}, 
+      author={Panayiotis Smeros and Vincent Emonet and Ruijie Wang and Ana-Claudia Sima and Tarcisio Mendes de Farias},
+      year={2025},
+      eprint={2512.14277},
+      archivePrefix={arXiv},
+      primaryClass={cs.IR},
+      url={https://arxiv.org/abs/2512.14277}, 
+}
+```
+
+- [LLM-based SPARQL Query Generation from Natural Language over Federated Knowledge Graphs](https://ceur-ws.org/Vol-3953/355.pdf)
+```bibtex
+@conference{emonet2025llm,
     title={LLM-based SPARQL Query Generation from Natural Language over Federated Knowledge Graphs},
-    author={Vincent Emonet and Jerven Bolleman and Severine Duvaud and Tarcisio Mendes de Farias and Ana Claudia Sima},
-    year={2024},
-    eprint={2410.06062},
-    archivePrefix={arXiv},
-    primaryClass={cs.DB},
-    url={https://arxiv.org/abs/2410.06062},
+    author={Emonet, Vincent and Bolleman, Jerven and Duvaud, Severine and Mendes de Farias, Tarcisio and Sima, Ana Claudia},
+    year = 2025,
+    note={CEUR-WS.org, online \url{https://ceur-ws.org/Vol-3953/355.pdf}},
+    booktitle = {ISWC 2024 Special Session on Harmonising Generative AI and Semantic Web Technologies, November 13, 2024, Baltimore, Maryland},
+    volume = 3953,
+    series = {CEUR Workshop Proceedings},
 }
 ```
 
