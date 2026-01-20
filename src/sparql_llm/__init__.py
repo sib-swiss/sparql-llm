@@ -1,6 +1,6 @@
 """Utilities to improve LLMs capabilities when working with SPARQL and RDF."""
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 from .utils import SparqlEndpointLinks, query_sparql
 from .validate_sparql import validate_sparql, validate_sparql_in_msg, validate_sparql_with_void

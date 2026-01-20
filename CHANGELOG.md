@@ -1,5 +1,45 @@
 # 🪵 Changelog
 
+## [0.1.3](https://github.com/sib-swiss/sparql-llm/compare/v0.1.2..v0.1.3) - 2026-01-20
+
+### ⚙️ Continuous Integration
+
+- Improve the compose setup to enable deploying dev with a simple `docker compose up` and prod with `podman compose -f compose.prod.yml up` - ([e4c74fa](https://github.com/sib-swiss/sparql-llm/commit/e4c74fa7f3a18f9158f7a5e48ff5607f1c133078))
+- Remove py 3.10, add 3.14 from test workflow - ([b7cbf77](https://github.com/sib-swiss/sparql-llm/commit/b7cbf77cfb7ac550b6ed2678ca5fb503a80bc701))
+
+### ⛰️ Features
+
+- Improve UI for large messages and update icon for sending messages, fixes https://github.com/sib-swiss/sparql-llm/issues/7 - ([a03347c](https://github.com/sib-swiss/sparql-llm/commit/a03347c1b896b0bea0b5cf58239e37755a711c1a))
+- Add loading spark around the stop button when loading a response - ([21ca03a](https://github.com/sib-swiss/sparql-llm/commit/21ca03ad941508d924e52caf014525c4e5248a35))
+- Use FastAPI instead of Starlette for defining the API - ([53a7295](https://github.com/sib-swiss/sparql-llm/commit/53a7295f0667ec0bf07f3aa04b64c7427b077167))
+
+### 🐛 Bug Fixes
+
+- Fix base `Dockerfile` - ([f178f49](https://github.com/sib-swiss/sparql-llm/commit/f178f4911f6144167752cffbfdf5b6d58e4fe4b8))
+- Fix issues related to types, update default model to use openrouter - ([f54eea7](https://github.com/sib-swiss/sparql-llm/commit/f54eea7ab260235bbf0e7c528383ad6314d0457a))
+- Fix the SPARQL query to get examples - ([3303324](https://github.com/sib-swiss/sparql-llm/commit/3303324678a9943ac76a2ecdac46a203b1e6bf27))
+
+### 🚜 Refactor
+
+- Directly use qdrant_client instead of langchain vectorstore wrapper - ([4ace320](https://github.com/sib-swiss/sparql-llm/commit/4ace32042b457af9bd525026f73df76cdf3e15d6))
+
+### 🛠️ Miscellaneous Tasks
+
+- Update version in `mcp.json` - ([3c6ae77](https://github.com/sib-swiss/sparql-llm/commit/3c6ae77398d984e8d300d6d38e0a13a69c565a34))
+- Update `server.json` MCP config - ([9dc8c5a](https://github.com/sib-swiss/sparql-llm/commit/9dc8c5a37d5040520a496b42750d88ef2caa64cb))
+- Bump npm pkg to v0.0.18 - ([1cf9bf3](https://github.com/sib-swiss/sparql-llm/commit/1cf9bf30a4bd6c757e93147187834f31a3504244))
+- Upgrade langchain dependencies to v1+, and update the compiled webapp - ([fbec7fa](https://github.com/sib-swiss/sparql-llm/commit/fbec7faf47fdb78fb21d89acb5e503496aa30491))
+- Add sibils endpoint to list of endpoints - ([6caa847](https://github.com/sib-swiss/sparql-llm/commit/6caa8470307bb282abeff29b28113ab46467e3cd))
+- Fix send question buttons alignment on chrome and safari - ([0172917](https://github.com/sib-swiss/sparql-llm/commit/01729179ab6b69b2cbca8c004be2ae67d7b94bfa))
+- Fmt js component - ([1bc016b](https://github.com/sib-swiss/sparql-llm/commit/1bc016b1d03b7467f1d1753f99afe80a81fd72f8))
+- Bump npm package to v0.0.19 - ([1ecb333](https://github.com/sib-swiss/sparql-llm/commit/1ecb333bbb251863cd27f8a7c2a691f722196ab1))
+- Upgrade langchain dependencies - ([36d48ff](https://github.com/sib-swiss/sparql-llm/commit/36d48fffb73c827fdd481263997d40c0a82e052c))
+- Fix indexing in prod when using multiple worker - ([586e54d](https://github.com/sib-swiss/sparql-llm/commit/586e54dc24d1fb54811a0d1a884846bb3651ff5e))
+
+### 🧪 Testing
+
+- Add benchmark script for biodata endpoints - ([4ae9765](https://github.com/sib-swiss/sparql-llm/commit/4ae97656f67cb0f9dd0c79563819a0f1af0a65e6))
+
 ## [0.1.2](https://github.com/sib-swiss/sparql-llm/compare/v0.1.1..v0.1.2) - 2025-10-14
 
 ### ⚙️ Continuous Integration
