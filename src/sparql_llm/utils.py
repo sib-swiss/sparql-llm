@@ -1,5 +1,6 @@
 import json
 import logging
+from pathlib import Path
 from typing import Any, Required, TypedDict
 
 import curies
@@ -41,7 +42,7 @@ WHERE {
         sh:prefix ?prefix .
 } ORDER BY ?prefix"""
 
-ENDPOINTS_METADATA_FILE = "data/endpoints_metadata.json"
+ENDPOINTS_METADATA_FILE = Path("data") / "endpoints_metadata.json"
 
 
 def load_endpoints_metadata_file() -> tuple[dict[str, str], "EndpointsSchemaDict"]:
@@ -50,7 +51,7 @@ def load_endpoints_metadata_file() -> tuple[dict[str, str], "EndpointsSchemaDict
         with open(ENDPOINTS_METADATA_FILE) as f:
             data = json.load(f)
             logger.info(
-                f"💾 Loaded endpoints metadata from {ENDPOINTS_METADATA_FILE} for {len(data.get('classes_schema', {}))} endpoints"
+                f"💾 Loaded endpoints metadata from {ENDPOINTS_METADATA_FILE.resolve()} for {len(data.get('classes_schema', {}))} endpoints"
             )
             return data.get("prefixes_map", {}), data.get("classes_schema", {})
     except Exception as e:

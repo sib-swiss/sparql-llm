@@ -3,7 +3,7 @@ from langchain_core.documents import Document
 
 from sparql_llm.utils import SparqlEndpointLinks, logger
 
-DOC_TYPE = "General information"
+GENERAL_INFO_DOC_TYPE = "General information"
 
 
 class SparqlInfoLoader(BaseLoader):
@@ -46,7 +46,7 @@ class SparqlInfoLoader(BaseLoader):
                     for endpoint in self.endpoints
                 ]
             ),
-            "doc_type": DOC_TYPE,
+            "doc_type": GENERAL_INFO_DOC_TYPE,
         }
         if self.source_iri:
             metadata["iri"] = self.source_iri

@@ -9,17 +9,17 @@ Works    max_tries_message = AIMessage(
 
 from typing import Literal
 
-from langchain.messages import AIMessage
+from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph
 
-from sparql_llm.agent.config import Configuration, settings
 from sparql_llm.agent.nodes.call_model import call_model
 from sparql_llm.agent.nodes.llm_extraction import extract_user_question
 from sparql_llm.agent.nodes.mcp_tools import mcp_tools_node
 from sparql_llm.agent.nodes.retrieval_docs import retrieve
 from sparql_llm.agent.nodes.validation import validate_output
 from sparql_llm.agent.state import InputState, State
+from sparql_llm.config import Configuration, settings
 
 # from sparql_llm.agent.nodes.tools import TOOLS
 

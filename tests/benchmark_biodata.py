@@ -16,14 +16,13 @@ from typing import Any
 import httpx
 import pytrec_eval
 from langchain_core.documents import Document
-from langchain_qdrant import QdrantVectorStore
+from qdrant_client import models as qdrant_models
 from qdrant_client.http.models import Distance, VectorParams
 from sklearn.model_selection import KFold
 
 # from sklearn.model_selection import KFold
 from sparql_llm import SparqlExamplesLoader, SparqlVoidShapesLoader
-from sparql_llm.agent.config import qdrant_client, settings
-from sparql_llm.agent.nodes.retrieval_docs import make_dense_encoder
+from sparql_llm.config import embedding_model, qdrant_client, settings
 from sparql_llm.utils import get_prefixes_and_schema_for_endpoints, query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries
 
@@ -277,9 +276,6 @@ def main() -> None:
         logger.info(f"⚠️ Could not load reference results cache from {ref_res_cache_path}: {e}")
         ref_results = {}
 
-    # Initialize encoder once to avoid reloading model multiple times (which might cause resource leaks)
-    encoder = make_dense_encoder(settings.embedding_model)
-
     for i, endpoint_url in enumerate(endpoints):
         # Print the endpoint URL in bold blue for terminals that support ANSI escape sequences
         print(f"\n\n===== Benchmarking {BOLD}{BLUE}{endpoint_url}{RESET} =====\n")
@@ -310,12 +306,18 @@ def main() -> None:
                 collection_name=vector_collection,
                 vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
             )
-            vectorstore = QdrantVectorStore(
-                client=qdrant_client,
+
+            # Generate embeddings and add documents to vectordb
+            docs_to_index = examples_fold[0] + docs_classes
+            embeddings = list(embedding_model.embed([d.page_content for d in docs_to_index]))
+            qdrant_client.upsert(
                 collection_name=vector_collection,
-                embedding=encoder,
+                points=qdrant_models.Batch(
+                    ids=list(range(1, len(docs_to_index) + 1)),
+                    vectors=[emb.tolist() for emb in embeddings],
+                    payloads=[doc.metadata for doc in docs_to_index],
+                ),
             )
-            vectorstore.add_documents(examples_fold[0] + docs_classes)
 
             test_examples = examples_fold[1]
             if LIMIT_FOR_DEV:

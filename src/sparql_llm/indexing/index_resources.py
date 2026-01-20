@@ -4,15 +4,14 @@ import httpx
 import pandas as pd
 from bs4 import BeautifulSoup
 from langchain_core.documents import Document
-from langchain_qdrant import QdrantVectorStore
 from markdownify import markdownify
+from qdrant_client import models
 from qdrant_client.http.models import Distance, VectorParams
 from rdflib import RDF, Dataset, Namespace
 
 from sparql_llm import SparqlExamplesLoader, SparqlInfoLoader, SparqlVoidShapesLoader
-from sparql_llm.agent.config import qdrant_client, settings
-from sparql_llm.agent.nodes.retrieval_docs import make_dense_encoder
-from sparql_llm.loaders.sparql_info_loader import DOC_TYPE
+from sparql_llm.config import embedding_model, qdrant_client, settings
+from sparql_llm.loaders.sparql_info_loader import GENERAL_INFO_DOC_TYPE
 from sparql_llm.utils import SparqlEndpointLinks, get_prefixes_and_schema_for_endpoints
 
 SCHEMA = Namespace("http://schema.org/")
@@ -64,7 +63,7 @@ def load_schemaorg_description(endpoint: SparqlEndpointLinks) -> list[Document]:
                                 # "answer": f"```json\n{json_ld_content}\n```",
                                 "iri": homepage_url,
                                 "endpoint_url": endpoint["endpoint_url"],
-                                "doc_type": DOC_TYPE,
+                                "doc_type": GENERAL_INFO_DOC_TYPE,
                             },
                         )
                     )
@@ -88,7 +87,7 @@ def load_schemaorg_description(endpoint: SparqlEndpointLinks) -> list[Document]:
                         "answer": "\n".join(descs),
                         "endpoint_url": endpoint["endpoint_url"],
                         "iri": homepage_url,
-                        "doc_type": DOC_TYPE,
+                        "doc_type": GENERAL_INFO_DOC_TYPE,
                     },
                 )
             )
@@ -101,7 +100,7 @@ def load_schemaorg_description(endpoint: SparqlEndpointLinks) -> list[Document]:
 # Which tools can I use for enrichment analysis?
 
 
-def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document]:
+def load_expasy_resources_infos(file: str = "expasy_resources_metadata.csv") -> list[Document]:
     """Get documents for all SIB expasy resources defined in expasy_resources_metadata.csv"""
     df = pd.read_csv(file)
     docs: list[Document] = []
@@ -111,7 +110,7 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
             page_content=f"[{row['title']}]({row['url']}) ({row['category']}): {row['description']}",
             metadata={
                 "iri": row["url"],
-                "doc_type": DOC_TYPE,
+                "doc_type": GENERAL_INFO_DOC_TYPE,
             },
         )
         docs.append(doc)
@@ -122,7 +121,7 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
                 page_content=f"[{row['title']}]({row['url']}) ({row['category']}): {row['short_description']}.\n\n{row['ontology_terms']}",
                 metadata={
                     "iri": row["url"],
-                    "doc_type": DOC_TYPE,
+                    "doc_type": GENERAL_INFO_DOC_TYPE,
                 },
             )
             docs.append(doc)
@@ -133,7 +132,7 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
                 page_content=f"[{row['title']}]({row['url']}): {markdownify(row['group_info'])} License: {row.get('license', 'not specified')}",
                 metadata={
                     "iri": row["url"],
-                    "doc_type": DOC_TYPE,
+                    "doc_type": GENERAL_INFO_DOC_TYPE,
                 },
             )
             docs.append(detail_doc)
@@ -145,7 +144,7 @@ def load_resources(file: str = "expasy_resources_metadata.csv") -> list[Document
             metadata={
                 # "iri": row["url"],
                 "answer": str(len(df)),
-                "doc_type": DOC_TYPE,
+                "doc_type": GENERAL_INFO_DOC_TYPE,
             },
         )
     )
@@ -178,24 +177,15 @@ def init_vectordb() -> None:
         # NOTE: we dont use the ontology for now, schema from shex is better
         # docs += load_ontology(endpoint)
 
-    # Add some documents for general information about the resources
-    docs += SparqlInfoLoader(
-        settings.endpoints,
-        source_iri="https://www.expasy.org/",
-        service_label="ExpasyGPT",
-        org_label="from the Swiss Institute of Bioinformatics (SIB)",
-    ).load()
-
-    docs += load_resources()
-
-    # NOTE: Manually add infos for UniProt since we cant retrieve it for now. Taken from https://www.uniprot.org/help/about
-    uniprot_description_question = "What is the SIB resource UniProt about?"
-    docs.append(
-        Document(
-            page_content=uniprot_description_question,
-            metadata={
-                "question": uniprot_description_question,
-                "answer": """The Universal Protein Resource (UniProt) is a comprehensive resource for protein sequence and annotation data. The UniProt databases are the UniProt Knowledgebase (UniProtKB), the UniProt Reference Clusters (UniRef), and the UniProt Archive (UniParc). The UniProt consortium and host institutions EMBL-EBI, SIB and PIR are committed to the long-term preservation of the UniProt databases.
+        # NOTE: Manually add infos for UniProt since we cant retrieve it for now. Taken from https://www.uniprot.org/help/about
+        if "sparql.uniprot.org" in endpoint["endpoint_url"]:
+            uniprot_description_question = "What is the SIB resource UniProt about?"
+            docs.append(
+                Document(
+                    page_content=uniprot_description_question,
+                    metadata={
+                        "question": uniprot_description_question,
+                        "answer": """The Universal Protein Resource (UniProt) is a comprehensive resource for protein sequence and annotation data. The UniProt databases are the UniProt Knowledgebase (UniProtKB), the UniProt Reference Clusters (UniRef), and the UniProt Archive (UniParc). The UniProt consortium and host institutions EMBL-EBI, SIB and PIR are committed to the long-term preservation of the UniProt databases.
 
 UniProt is a collaboration between the European Bioinformatics Institute (EMBL-EBI), the SIB Swiss Institute of Bioinformatics and the Protein Information Resource (PIR). Across the three institutes more than 100 people are involved through different tasks such as database curation, software development and support.
 
@@ -203,12 +193,25 @@ EMBL-EBI and SIB together used to produce Swiss-Prot and TrEMBL, while PIR produ
 
 The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supported by key staff, and receives valuable input from an independent Scientific Advisory Board.
 """,
-                "endpoint_url": "https://sparql.uniprot.org/sparql/",
-                "iri": "http://www.uniprot.org/help/about",
-                "doc_type": DOC_TYPE,
-            },
-        )
-    )
+                        "endpoint_url": endpoint["endpoint_url"],
+                        "iri": "http://www.uniprot.org/help/about",
+                        "doc_type": GENERAL_INFO_DOC_TYPE,
+                    },
+                )
+            )
+
+    # Add some documents for general information about the resources
+    docs += SparqlInfoLoader(
+        settings.endpoints,
+        source_iri="https://www.expasy.org/",
+        service_label=settings.app_name,
+        org_label="from the Swiss Institute of Bioinformatics (SIB)",
+    ).load()
+
+    try:
+        docs += load_expasy_resources_infos()
+    except Exception as _e:
+        print("Skipping loading Expasy resources metadata")
 
     print(f"Generating embeddings for {len(docs)} documents")
     start_time = time.time()
@@ -221,16 +224,29 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
         vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
     )
 
-    # Initialize the vector store
-    vectorstore = QdrantVectorStore(
-        client=qdrant_client,
+    # Generate embeddings with the fastembed `TextEmbedding` instance and upload directly to Qdrant
+    # https://qdrant.tech/documentation/fastembed/fastembed-rerankers/
+    embeddings = list(embedding_model.embed([d.page_content for d in docs]))
+    qdrant_client.upsert(
         collection_name=settings.docs_collection_name,
-        embedding=make_dense_encoder(settings.embedding_model),
-        # sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
-        # retrieval_mode=RetrievalMode.HYBRID,
+        points=models.Batch(
+            ids=list(range(1, len(docs) + 1)),
+            vectors=[emb.tolist() for emb in embeddings],
+            payloads=[doc.metadata for doc in docs],
+        ),
     )
-    vectorstore.add_documents(docs)
     print(f"Done generating and indexing {len(docs)} documents into the vectordb in {time.time() - start_time} seconds")
+
+    # Using langchain vectorstore wrapper
+    # from langchain_qdrant import QdrantVectorStore
+    # vectorstore = QdrantVectorStore(
+    #     client=qdrant_client,
+    #     collection_name=settings.docs_collection_name,
+    #     embedding=make_dense_encoder(settings.embedding_model),
+    #     # sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
+    #     # retrieval_mode=RetrievalMode.HYBRID,
+    # )
+    # vectorstore.add_documents(docs)
 
 
 if __name__ == "__main__":

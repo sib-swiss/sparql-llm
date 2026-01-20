@@ -10,8 +10,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
-from sparql_llm.agent.config import Configuration, settings
 from sparql_llm.agent.utils import load_chat_model
+from sparql_llm.config import Configuration, settings
 from sparql_llm.utils import query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries, validate_sparql
 
@@ -63,22 +63,26 @@ Your response must follow these rules:
 embedding_model = TextEmbedding(settings.embedding_model)
 vectordb = QdrantClient(url=DOCKER_VECTORDB_URL, prefer_grpc=True)
 
-#Statistics
+# Statistics
 question_num = 0
 statistics = {
-    "DBpedia (EN)": {"llm_time": [],
-                   "input_tokens": [],
-                   "output_tokens": [],
-                },
-    "DBpedia (ES)": {"llm_time": [],
-                   "input_tokens": [],
-                   "output_tokens": [],
-                },
-    "Corporate": {"llm_time": [],
-                   "input_tokens": [],
-                   "output_tokens": [],
-                },
+    "DBpedia (EN)": {
+        "llm_time": [],
+        "input_tokens": [],
+        "output_tokens": [],
+    },
+    "DBpedia (ES)": {
+        "llm_time": [],
+        "input_tokens": [],
+        "output_tokens": [],
+    },
+    "Corporate": {
+        "llm_time": [],
+        "input_tokens": [],
+        "output_tokens": [],
+    },
 }
+
 
 @app.get("/")
 async def get_answer(question: str, dataset: str):
@@ -178,14 +182,14 @@ async def get_answer(question: str, dataset: str):
 
         # If no valid SPARQL query was generated, ask the model to fix it
         messages = [HumanMessage(content=question + resp_msg)]
-    
+
         client_time = time.perf_counter()
         response = client.invoke(messages)
         total_client_time += time.perf_counter() - client_time
         total_input_tokens = response.model_dump()["response_metadata"]["token_usage"]["prompt_tokens"]
         total_output_tokens = response.model_dump()["response_metadata"]["token_usage"]["completion_tokens"]
 
-    #Statistics
+    # Statistics
     global question_num
     if dataset == "https://text2sparql.aksw.org/2025/dbpedia/" and question_num % 2 == 0:
         statistics["DBpedia (EN)"]["llm_time"].append(total_client_time)
@@ -202,6 +206,7 @@ async def get_answer(question: str, dataset: str):
     question_num += 1
 
     return {"dataset": dataset, "question": question, "query": generated_sparql}
+
 
 @app.get("/stats")
 async def get_stats():

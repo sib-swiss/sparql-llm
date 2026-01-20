@@ -21,8 +21,8 @@ from langchain_core.runnables import RunnableConfig
 from langfuse.langchain import CallbackHandler
 from pydantic import BaseModel
 
-from sparql_llm.agent.config import settings
 from sparql_llm.agent.graph import graph
+from sparql_llm.config import settings
 from sparql_llm.mcp_server import mcp
 from sparql_llm.utils import logger
 
@@ -277,8 +277,10 @@ async def chat_ui(request: Request) -> HTMLResponse:
     )
 
 
+# NOTE: experimental AG-UI endpoint
 # from ag_ui.core.types import RunAgentInput
 # from ag_ui.encoder import EventEncoder
+# @app.post("/agent", response_model=list[str])
 # async def langgraph_agent_endpoint(request: Request):
 #     """Handle LangGraph agent requests with SSE streaming."""
 #     # Parse the request body
@@ -287,14 +289,18 @@ async def chat_ui(request: Request) -> HTMLResponse:
 #     accept_header = request.headers.get("accept")
 #     # Create an event encoder to properly format SSE events
 #     encoder = EventEncoder(accept=accept_header)
-
 #     async def event_generator():
 #         async for event in graph.run(input_data):
 #             yield encoder.encode(event)
-
 #     return StreamingResponse(
 #         event_generator(),
 #         media_type=encoder.get_content_type()
 #     )
 
-# app.router.add_route("/agent", langgraph_agent_endpoint, methods=["POST"])
+# Test it:
+# curl -X POST http://localhost:8000/agent -H "Content-Type: application/json" -H "Accept: text/event-stream" -d '{
+#  "messages": [
+#  	 {"id": "msg_1", "role": "user", "content": "What is the HGNC symbol for the P68871 protein?"}
+#  ],
+#  "threadId": "t1", "runId": "r1", "tools": [], "context": [], "state": {}, "forwardedProps" : {}
+# }'

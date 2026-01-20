@@ -17,7 +17,7 @@
 # sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; git pull ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml up --force-recreate --build -d'
 
 ## Re-index the endpoints in running deployment:
-# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml exec api uv run src/sparql_llm/agent/indexing/index_resources.py'
+# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml exec api uv run src/sparql_llm/indexing/index_resources.py'
 
 ## Show logs:
 # sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml logs'
@@ -56,7 +56,7 @@ elif [ "$1" = "logs" ]; then
 
 elif [ "$1" = "index" ]; then
     echo "🔎 Indexing endpoints in the vector database"
-    ssh_cmd "podman-compose exec api uv run src/sparql_llm/agent/indexing/index_resources.py"
+    ssh_cmd "podman-compose exec api uv run src/sparql_llm/indexing/index_resources.py"
 
 elif [ "$1" = "import-entities-index" ]; then
     echo "Import entities embeddings from adsicore which has GPU to generate them"

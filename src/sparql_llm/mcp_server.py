@@ -1,13 +1,12 @@
 import argparse
 import json
 
-from fastembed import TextEmbedding
 from mcp.server.fastmcp import FastMCP
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 
-from sparql_llm.agent.config import qdrant_client, settings
-from sparql_llm.agent.indexing.index_resources import init_vectordb
 from sparql_llm.agent.nodes.validation import endpoints_void_dict, prefixes_map
+from sparql_llm.config import embedding_model, qdrant_client, settings
+from sparql_llm.indexing.index_resources import init_vectordb
 from sparql_llm.utils import logger, query_sparql
 from sparql_llm.validate_sparql import validate_sparql
 
@@ -25,11 +24,6 @@ mcp = FastMCP(
     streamable_http_path="/",
 )
 
-embedding_model = TextEmbedding(
-    settings.embedding_model,
-    # providers=["CUDAExecutionProvider"], # Replace the fastembed dependency with fastembed-gpu to use your GPUs
-)
-
 # Check if the docs collection exists and has data, initialize if not
 # In prod with multiple workers, auto_init should be set to False to avoid race conditions
 try:
@@ -44,7 +38,7 @@ try:
     elif not settings.auto_init and collection_needs_init:
         logger.warning(
             f"⚠️ Collection '{settings.docs_collection_name}' does not exist or is empty. Run the following command to initialize it:\n"
-            "docker compose -f compose.prod.yml exec api uv run src/sparql_llm/agent/indexing/index_resources.py"
+            "docker compose -f compose.prod.yml exec api uv run src/sparql_llm/indexing/index_resources.py"
         )
     else:
         logger.info(
@@ -82,7 +76,7 @@ async def search_sparql_docs(question: str, potential_classes: list[str], steps:
                 query_filter=Filter(
                     must=[
                         FieldCondition(
-                            key="metadata.doc_type",
+                            key="doc_type",
                             match=MatchValue(value="SPARQL endpoints query examples"),
                         )
                     ]
@@ -90,10 +84,9 @@ async def search_sparql_docs(question: str, potential_classes: list[str], steps:
             ).points
             # Make sure we don't add duplicate docs
             if doc.payload
-            and doc.payload.get("metadata", {}).get("answer")
+            and doc.payload.get("answer")
             not in {
-                existing_doc.payload.get("metadata", {}).get("answer") if existing_doc.payload else None
-                for existing_doc in relevant_docs
+                existing_doc.payload.get("answer") if existing_doc.payload else None for existing_doc in relevant_docs
             }
         )
         # Get other relevant documentation (classes schemas, general information)
@@ -106,17 +99,16 @@ async def search_sparql_docs(question: str, potential_classes: list[str], steps:
                 query_filter=Filter(
                     must_not=[
                         FieldCondition(
-                            key="metadata.doc_type",
+                            key="doc_type",
                             match=MatchValue(value="SPARQL endpoints query examples"),
                         )
                     ]
                 ),
             ).points
             if doc.payload
-            and doc.payload.get("metadata", {}).get("answer")
+            and doc.payload.get("answer")
             not in {
-                existing_doc.payload.get("metadata", {}).get("answer") if existing_doc.payload else None
-                for existing_doc in relevant_docs
+                existing_doc.payload.get("answer") if existing_doc.payload else None for existing_doc in relevant_docs
             }
         )
     # await ctx.info(f"Using {len(relevant_docs)} documents to answer the question")
@@ -170,17 +162,16 @@ async def get_classes_schema(classes: list[str]) -> str:
                 query_filter=Filter(
                     must_not=[
                         FieldCondition(
-                            key="metadata.doc_type",
+                            key="doc_type",
                             match=MatchValue(value="SPARQL endpoints query examples"),
                         )
                     ]
                 ),
             ).points
             if doc.payload
-            and doc.payload.get("metadata", {}).get("answer")
+            and doc.payload.get("answer")
             not in {
-                existing_doc.payload.get("metadata", {}).get("answer") if existing_doc.payload else None
-                for existing_doc in relevant_docs
+                existing_doc.payload.get("answer") if existing_doc.payload else None for existing_doc in relevant_docs
             }
         )
     return f"""Here is a list of {len(relevant_docs)} classes schema relevant to the request:
@@ -189,7 +180,7 @@ async def get_classes_schema(classes: list[str]) -> str:
 
 @mcp.tool()
 def get_resources_info(question: str) -> str:
-    """Get information about the service and resources available at the SIB Swiss Institute of Bioinformatics.
+    """Get information about the services and resources available at the SIB Swiss Institute of Bioinformatics and indexed by this MCP server.
 
     Args:
         question: The user question.
@@ -205,7 +196,7 @@ def get_resources_info(question: str) -> str:
         query_filter=Filter(
             must=[
                 FieldCondition(
-                    key="metadata.doc_type",
+                    key="doc_type",
                     match=MatchValue(value="General information"),
                 )
             ]
@@ -292,17 +283,16 @@ def _format_doc(doc: ScoredPoint) -> str:
     """Format a single document, with special formatting based on doc type (sparql, schema)."""
     if not doc.payload:
         return ""
-    doc_meta: dict[str, str] = doc.payload.get("metadata", {})
-    if doc_meta.get("answer"):
+    if doc.payload.get("answer"):
         doc_lang = ""
-        doc_type = str(doc_meta.get("doc_type", "")).lower()
+        doc_type = str(doc.payload.get("doc_type", "")).lower()
         if "query" in doc_type:
-            doc_lang = f"sparql\n#+ endpoint: {doc_meta.get('endpoint_url', 'undefined')}"
+            doc_lang = f"sparql\n#+ endpoint: {doc.payload.get('endpoint_url', 'undefined')}"
         elif "schema" in doc_type:
             doc_lang = "shex"
-        return f"{doc.payload['page_content']}:\n\n```{doc_lang}\n{doc_meta.get('answer')}\n```"
+        return f"{doc.payload['question']}:\n\n```{doc_lang}\n{doc.payload.get('answer')}\n```"
     # Generic formatting:
-    meta = "".join(f" {k}={v!r}" for k, v in doc_meta.items())
+    meta = "".join(f" {k}={v!r}" for k, v in doc.payload.items())
     if meta:
         meta = f" {meta}"
     return f"{meta}\n{doc.payload['page_content']}\n"

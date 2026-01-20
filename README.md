@@ -81,7 +81,9 @@ In your VSCode `mcp.json` you should have the following:
 uvx sparql-llm
 ```
 
-Your VSCode `mcp.json` file you should have, optionally you can provide the path to a custom settings file:
+Optionally you can provide the path to a custom settings JSON file to configure the server (e.g. the list of endpoints that will be indexed and available through the server), see the [`Settings` class](https://github.com/sib-swiss/sparql-llm/blob/main/src/sparql_llm/config.py) for detailed available settings.
+
+Example VSCode `mcp.json` file:
 
 ```json
 {
@@ -90,7 +92,7 @@ Your VSCode `mcp.json` file you should have, optionally you can provide the path
       "type": "stdio",
       "command": "uvx",
       "env": {
-				"SETTINGS_FILEPATH": "~/dev/sparql-llm/sparql-mcp.json"
+				"SETTINGS_FILEPATH": "~/dev/sparql-mcp.json"
 			},
       "args": [
         "sparql-llm"
@@ -250,12 +252,12 @@ print("\n".join(issues))
 
 > [!WARNING]
 >
-> To deploy the complete chat system right now you will need to fork/clone this repository, change the configuration in `src/expasy-agent/src/expasy_agent/config.py` and `compose.yml`, then deploy with docker/podman compose. It can easily be adapted to use any LLM served through an OpenAI-compatible API.
+> To deploy the complete chat system right now you will need to fork/clone this repository, change the configuration in `src/sparql-llm/config.py` and `compose.yml`, then deploy with docker/podman compose. It can easily be adapted to use any LLM served through an OpenAI-compatible API.
 >
 
 Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](https://docs.astral.sh/uv/getting-started/installation/) if you want to run scripts outside of docker.
 
-1. Explore and change the system configuration in `src/expasy-agent/src/expasy_agent/config.py`
+1. Explore and change the system configuration in `src/sparql-llm/config.py`
 
 2. Create a `.env` file at the root of the repository to provide secrets and API keys:
 
@@ -301,7 +303,7 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
    Then run the indexing script manually from within the container to index the SPARQL endpoints (need to do it once):
 
    ```sh
-   docker compose -f compose.prod.yml exec api uv run src/sparql_llm/agent/indexing/index_resources.py
+   docker compose -f compose.prod.yml exec api uv run src/sparql_llm/indexing/index_resources.py
    ```
 
    > All data from the containers are stored persistently in the `data` folder (e.g. vectordb indexes and endpoints metadata)
@@ -320,7 +322,7 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 >
 > ```sh
 > docker compose up vectordb -d
-> VECTORDB_URL=http://localhost:6334 nohup uv run --extra gpu src/sparql_llm/agent/indexing/index_entities.py --gpu &
+> VECTORDB_URL=http://localhost:6334 nohup uv run --extra gpu src/sparql_llm/indexing/index_entities.py --gpu &
 > ```
 >
 >Then move the entities collection containing the embeddings in `data/qdrant/collections/entities` before starting the stack
@@ -361,13 +363,13 @@ If you reuse any part of this work, please cite at least one of our articles bel
 - [SPARQL-LLM: Real-Time SPARQL Query Generation from Natural Language Questions](https://arxiv.org/abs/2512.14277)
 ```bibtex
 @misc{smeros2025sparqlllmrealtimesparqlquery,
-      title={SPARQL-LLM: Real-Time SPARQL Query Generation from Natural Language Questions}, 
+      title={SPARQL-LLM: Real-Time SPARQL Query Generation from Natural Language Questions},
       author={Panayiotis Smeros and Vincent Emonet and Ruijie Wang and Ana-Claudia Sima and Tarcisio Mendes de Farias},
       year={2025},
       eprint={2512.14277},
       archivePrefix={arXiv},
       primaryClass={cs.IR},
-      url={https://arxiv.org/abs/2512.14277}, 
+      url={https://arxiv.org/abs/2512.14277},
 }
 ```
 

@@ -8,7 +8,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
-from sparql_llm.agent.config import Configuration
+from sparql_llm.config import Configuration
 
 
 def load_chat_model(configuration: Configuration) -> BaseChatModel:

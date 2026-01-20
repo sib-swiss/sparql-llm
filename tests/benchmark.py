@@ -8,9 +8,9 @@ import httpx
 import pandas as pd
 from langchain_core.messages import HumanMessage, SystemMessage
 
-from sparql_llm.agent.config import Configuration, settings
 from sparql_llm.agent.prompts import RESOLUTION_PROMPT
 from sparql_llm.agent.utils import load_chat_model
+from sparql_llm.config import Configuration, settings
 from sparql_llm.utils import query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries
 

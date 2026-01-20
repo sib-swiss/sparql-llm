@@ -10,9 +10,9 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
-from sparql_llm.agent.config import Configuration, settings
 from sparql_llm.agent.state import State
 from sparql_llm.agent.utils import load_chat_model
+from sparql_llm.config import Configuration, settings
 
 # from sparql_llm.agent.nodes.tools import TOOLS
 # from sparql_llm.agent.nodes.retrieval_docs import format_docs

@@ -9,10 +9,10 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
 
-from sparql_llm.agent.config import Configuration
 from sparql_llm.agent.prompts import EXTRACTION_PROMPT
 from sparql_llm.agent.state import State, StepOutput
 from sparql_llm.agent.utils import load_chat_model
+from sparql_llm.config import Configuration
 
 # TODO: remove, not used anymore, replaced by tools functions
 

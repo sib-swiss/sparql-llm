@@ -8,6 +8,7 @@ from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Annotated, Any, TypeVar
 
+from fastembed import TextEmbedding
 from langchain_core.runnables import RunnableConfig, ensure_config
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from qdrant_client import QdrantClient
@@ -158,7 +159,7 @@ It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC
     ]
 
     # The name of the application used for display
-    app_name: str = "Expasy GPT"
+    app_name: str = "ExpasyGPT"
     # Public API key used by the frontend to access the chatbot and prevent abuse from bots
     chat_api_key: str = ""
     # Secret API key used by admins to access log file easily from the API
@@ -204,6 +205,11 @@ qdrant_client = (
     QdrantClient(url=settings.vectordb_url, prefer_grpc=True, timeout=600)
     if settings.vectordb_url.startswith(("http", "https"))
     else QdrantClient(path=settings.vectordb_url)
+)
+
+embedding_model = TextEmbedding(
+    settings.embedding_model,
+    # providers=["CUDAExecutionProvider"], # Replace the fastembed dependency with fastembed-gpu to use your GPUs
 )
 
 

@@ -4,10 +4,9 @@ import time
 import pandas as pd
 from endpoint_schema import EndpointSchema
 from langchain_core.documents import Document
-from langchain_qdrant import QdrantVectorStore
+from qdrant_client import models
 
-from sparql_llm.agent.config import settings
-from sparql_llm.agent.nodes.retrieval_docs import make_dense_encoder
+from sparql_llm.config import embedding_model, qdrant_client
 
 QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), "queries.csv")
 VECTORDB_URL = "http://localhost:6334"
@@ -85,16 +84,14 @@ def init_vectordb(
     print(f"Generating embeddings for {len(docs)} documents")
     start_time = time.time()
 
-    QdrantVectorStore.from_documents(
-        docs,
-        # client=qdrant_client,
-        url=VECTORDB_URL,
-        prefer_grpc=True,
+    embeddings = list(embedding_model.embed([d.page_content for d in docs]))
+    qdrant_client.upsert(
         collection_name=f"text2sparql-{graph.split('/')[-2]}",
-        force_recreate=True,
-        embedding=make_dense_encoder(settings.embedding_model),
-        # sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
-        # retrieval_mode=RetrievalMode.HYBRID,
+        points=models.Batch(
+            ids=list(range(1, len(docs) + 1)),
+            vectors=[emb.tolist() for emb in embeddings],
+            payloads=[doc.metadata for doc in docs],
+        ),
     )
 
     print(f"Done generating and indexing {len(docs)} documents into the vectordb in {time.time() - start_time} seconds")

@@ -7,11 +7,13 @@ from typing import Any
 from langchain.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 
-from sparql_llm.agent.config import Configuration, settings
 from sparql_llm.agent.prompts import FIX_QUERY_PROMPT
 from sparql_llm.agent.state import State, StepOutput
+from sparql_llm.config import Configuration, settings
 from sparql_llm.utils import get_prefixes_and_schema_for_endpoints, query_sparql
 from sparql_llm.validate_sparql import validate_sparql_in_msg
+
+prefixes_map, endpoints_void_dict = get_prefixes_and_schema_for_endpoints(settings.endpoints)
 
 
 async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any]:
@@ -129,6 +131,3 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
                 )
                 response["steps"] = validation_steps
     return response
-
-
-prefixes_map, endpoints_void_dict = get_prefixes_and_schema_for_endpoints(settings.endpoints)
