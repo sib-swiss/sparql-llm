@@ -1,5 +1,18 @@
 # 🪵 Changelog
 
+## [0.1.4](https://github.com/sib-swiss/sparql-llm/compare/v0.1.3..v0.1.4) - 2026-01-21
+
+### 🚜 Refactor
+
+- Fix MCP deployment dependencies, make the experimental agent flow that uses MCP tools work - ([9435c64](https://github.com/sib-swiss/sparql-llm/commit/9435c64516abdd3180bfd0018d808c67e655829d))
+- Improve handling of endpoints metadata to lazy load them - ([560a5d9](https://github.com/sib-swiss/sparql-llm/commit/560a5d948ad33e646479b07f6ba62dee3c90c709))
+- Refactor: improve handling of endpoints metadata to lazy load them
+chore: fix metadata init - ([225bdc0](https://github.com/sib-swiss/sparql-llm/commit/225bdc0e04dfbbaf79b44b5336f9869caf0bc485))
+
+### 🛠️ Miscellaneous Tasks
+
+- Fix typedDict import - ([d9ff7ac](https://github.com/sib-swiss/sparql-llm/commit/d9ff7aca425a247d10d5a69eee333a70b83967b1))
+
 ## [0.1.3](https://github.com/sib-swiss/sparql-llm/compare/v0.1.2..v0.1.3) - 2026-01-20
 
 ### ⚙️ Continuous Integration
