@@ -39,7 +39,10 @@ def get_shex_dict_from_void(
     shex_dict = {}
 
     for subject_cls, predicates in void_dict.items():
-        if ignore_namespaces(namespaces_to_ignore, subject_cls):
+        if ignore_namespaces(namespaces_to_ignore, subject_cls) and subject_cls not in [
+            "http://www.w3.org/2002/07/owl#Class",
+            "http://www.w3.org/2000/01/rdf-schema#Class",
+        ]:
             continue
         try:
             subj = prefix_converter.compress(subject_cls, passthrough=True)

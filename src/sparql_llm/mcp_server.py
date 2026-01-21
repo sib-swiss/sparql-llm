@@ -4,10 +4,9 @@ import json
 from mcp.server.fastmcp import FastMCP
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 
-from sparql_llm.agent.nodes.validation import endpoints_void_dict, prefixes_map
 from sparql_llm.config import embedding_model, qdrant_client, settings
 from sparql_llm.indexing.index_resources import init_vectordb
-from sparql_llm.utils import logger, query_sparql
+from sparql_llm.utils import endpoints_metadata, logger, query_sparql
 from sparql_llm.validate_sparql import validate_sparql
 
 # What are the rat orthologs of the human TP53?
@@ -222,7 +221,9 @@ def execute_sparql_query(sparql_query: str, endpoint_url: str) -> str:
     """
     resp_msg = ""
     # First check if query valid based on classes schema and known prefixes
-    validation_output = validate_sparql(sparql_query, endpoint_url, prefixes_map, endpoints_void_dict)
+    validation_output = validate_sparql(
+        sparql_query, endpoint_url, endpoints_metadata.prefixes_map, endpoints_metadata.void_dict
+    )
     if validation_output["fixed_query"]:
         # Pass the fixed query to the client
         resp_msg += f"Fixed the prefixes of the generated SPARQL query automatically:\n```sparql\n{validation_output['fixed_query']}\n```\n"
@@ -255,8 +256,6 @@ def execute_sparql_query(sparql_query: str, endpoint_url: str) -> str:
         resp_msg += f"SPARQL query returned error: {e}. {FIX_QUERY_PROMPT}\n```sparql\n{sparql_query}\n```"
     return resp_msg
 
-
-# prefixes_map, endpoints_void_dict = get_prefixes_and_schema_for_endpoints(settings.endpoints)
 
 FIX_QUERY_PROMPT = """Please fix the query, and try again.
 We suggest you to make the query less restricted, e.g. use a broader regex for string matching instead of exact match,

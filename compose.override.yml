@@ -8,8 +8,8 @@ services:
   api:
     ports:
       - 8000:8000
-    # environment:
-    #   - DEFAULT_LLM_MODEL=openrouter/openai/gpt-5.1
+    environment:
+      - DEFAULT_LLM_MODEL=openrouter/openai/gpt-5.1
       # - USE_TOOLS=true
       # - FORCE_REINDEX=true
       # - DEFAULT_LLM_MODEL=openrouter/openai/gpt-5.2

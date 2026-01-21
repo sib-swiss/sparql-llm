@@ -1,11 +1,13 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any, Required, TypedDict
+from typing import Any
 
 import curies
 import httpx
 import rdflib
+
+from sparql_llm.config import SparqlEndpointLinks, settings
 
 # Disable logger in your code with logging.getLogger("sparql_llm").setLevel(logging.WARNING)
 logger = logging.getLogger("sparql_llm")
@@ -19,19 +21,6 @@ logger.setLevel(logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
-# Total=False to make all fields optional except those marked as Required
-class SparqlEndpointLinks(TypedDict, total=False):
-    """A dictionary to store links and filepaths about a SPARQL endpoint."""
-
-    endpoint_url: Required[str]
-    void_file: str | None
-    examples_file: str | None
-    homepage_url: str | None
-    label: str | None
-    description: str | None
-    # ontology_url: Optional[str]
-
-
 # Prefixes utilities
 
 GET_PREFIXES_QUERY = """PREFIX sh: <http://www.w3.org/ns/shacl#>
@@ -43,40 +32,6 @@ WHERE {
 } ORDER BY ?prefix"""
 
 ENDPOINTS_METADATA_FILE = Path("data") / "endpoints_metadata.json"
-
-
-def load_endpoints_metadata_file() -> tuple[dict[str, str], "EndpointsSchemaDict"]:
-    """Load prefixes and schema from the cached metadata file."""
-    try:
-        with open(ENDPOINTS_METADATA_FILE) as f:
-            data = json.load(f)
-            logger.info(
-                f"💾 Loaded endpoints metadata from {ENDPOINTS_METADATA_FILE.resolve()} for {len(data.get('classes_schema', {}))} endpoints"
-            )
-            return data.get("prefixes_map", {}), data.get("classes_schema", {})
-    except Exception as e:
-        logger.warning(f"Could not load metadata from {ENDPOINTS_METADATA_FILE}: {e}")
-        return {}, {}
-
-
-def get_prefixes_and_schema_for_endpoints(
-    endpoints: list[SparqlEndpointLinks],
-) -> tuple[dict[str, str], "EndpointsSchemaDict"]:
-    """Return a dictionary of prefixes and a dictionary of VoID classes schema for the given endpoints."""
-    prefixes_map, endpoints_void_dict = load_endpoints_metadata_file()
-    if prefixes_map and endpoints_void_dict:
-        return prefixes_map, endpoints_void_dict
-    logger.info(f"Fetching metadata for {len(endpoints)} endpoints...")
-    for endpoint in endpoints:
-        endpoints_void_dict[endpoint["endpoint_url"]] = get_schema_for_endpoint(
-            endpoint["endpoint_url"], endpoint.get("void_file")
-        )
-        logger.info(f"Fetching {endpoint['endpoint_url']} metadata...")
-        prefixes_map = get_prefixes_for_endpoint(endpoint["endpoint_url"], endpoint.get("examples_file"), prefixes_map)
-    # Cache the metadata in a JSON file
-    with open(ENDPOINTS_METADATA_FILE, "w") as f:
-        json.dump({"prefixes_map": prefixes_map, "classes_schema": endpoints_void_dict}, f, indent=2)
-    return prefixes_map, endpoints_void_dict
 
 
 def get_prefixes_for_endpoint(
@@ -143,33 +98,6 @@ def get_schema_for_endpoint(endpoint_url: str, void_file: str | None = None) -> 
     Formatted as: dict[subject_cls][predicate] = list[object_cls/datatype]"""
     void_dict: SchemaDict = {}
     try:
-        # if void_file:
-        #     g = rdflib.Graph()
-        #     if void_file.startswith(("http://", "https://")):
-        #         # Handle URL case
-        #         with httpx.Client() as client:
-        #             for attempt in range(10):
-        #                 # Retry a few times in case of HTTP errors, e.g. https://sparql.uniprot.org/.well-known/void/
-        #                 try:
-        #                     resp = client.get(void_file, headers={"Accept": "text/turtle"}, follow_redirects=True)
-        #                     resp.raise_for_status()
-        #                     if resp.text.strip() == "":
-        #                         raise ValueError(f"Empty response for VoID description from {void_file}")
-        #                     g.parse(data=resp.text, format="turtle")
-        #                     break
-        #                 except Exception as e:
-        #                     if attempt == 3:
-        #                         raise e
-        #                     time.sleep(1)
-        #                     continue
-        #     else:
-        #         # Handle local file case
-        #         g.parse(void_file, format="turtle")
-        #     results = g.query(GET_VOID_DESC)
-        #     bindings = [{str(k): {"value": str(v)} for k, v in row.asdict().items()} for row in results]
-        # else:
-        #     bindings = query_sparql(GET_VOID_DESC, endpoint_url)["results"]["bindings"]
-
         for void_triple in query_sparql(GET_VOID_DESC, endpoint_url, use_file=void_file, check_service_desc=True)[
             "results"
         ]["bindings"]:
@@ -192,12 +120,7 @@ def get_schema_for_endpoint(endpoint_url: str, void_file: str | None = None) -> 
     return void_dict
 
 
-# TODO: use SPARQLWrapper
-# sparqlw = SPARQLWrapper(endpoint)
-# sparqlw.setReturnFormat(JSON)
-# sparqlw.setOnlyConneg(True)
-# sparqlw.setQuery(query)
-# res = sparqlw.query().convert()
+# Use https://github.com/lu-pl/sparqlx ?
 def query_sparql(
     query: str,
     endpoint_url: str,
@@ -267,3 +190,70 @@ def query_sparql(
             if should_close:
                 client.close()
     return query_resp
+
+
+class EndpointsMetadataManager:
+    """Lazy-loading manager for endpoints metadata."""
+
+    def __init__(self, endpoints: list[SparqlEndpointLinks], auto_init: bool = True) -> None:
+        self._endpoints = endpoints
+        self._prefixes_map: dict[str, str] = {}
+        self._void_dict: EndpointsSchemaDict = {}
+        self._initialized = False
+        if auto_init:
+            self._ensure_loaded()
+
+    def _ensure_loaded(self) -> None:
+        """Load metadata if not already loaded."""
+        if self._initialized:
+            return
+        # Try loading from file first
+        try:
+            with open(ENDPOINTS_METADATA_FILE) as f:
+                data = json.load(f)
+                self._prefixes_map = data.get("prefixes_map", {})
+                self._void_dict = data.get("classes_schema", {})
+                if self._prefixes_map and self._void_dict:
+                    logger.info(
+                        f"💾 Loaded endpoints metadata from {ENDPOINTS_METADATA_FILE.resolve()} "
+                        f"for {len(self._void_dict)} endpoints"
+                    )
+                    return
+        except Exception as e:
+            logger.debug(f"Could not load metadata from {ENDPOINTS_METADATA_FILE}: {e}")
+
+        logger.info(f"Fetching metadata for {len(self._endpoints)} endpoints...")
+        for endpoint in self._endpoints:
+            self._void_dict[endpoint["endpoint_url"]] = get_schema_for_endpoint(
+                endpoint["endpoint_url"], endpoint.get("void_file")
+            )
+            logger.info(f"Fetching {endpoint['endpoint_url']} metadata...")
+            self._prefixes_map = get_prefixes_for_endpoint(
+                endpoint["endpoint_url"], endpoint.get("examples_file"), self._prefixes_map
+            )
+        # Cache to JSON file
+        with open(ENDPOINTS_METADATA_FILE, "w") as f:
+            json.dump({"prefixes_map": self._prefixes_map, "classes_schema": self._void_dict}, f, indent=2)
+        self._initialized = True
+        logger.info(f"💾 Cached endpoints metadata to {ENDPOINTS_METADATA_FILE.resolve()}")
+
+    @property
+    def prefixes_map(self) -> dict[str, str]:
+        """Get prefixes map, loading lazily if needed."""
+        self._ensure_loaded()
+        return self._prefixes_map or {}
+
+    @property
+    def void_dict(self) -> "EndpointsSchemaDict":
+        """Get endpoints VoID schema dict, loading lazily if needed."""
+        self._ensure_loaded()
+        return self._void_dict or {}
+
+    # def reset(self) -> None:
+    #     """Reset cached metadata (useful for re-initialization after init_vectordb)."""
+    #     self._prefixes_map = {}
+    #     self._void_dict = {}
+
+
+# Global instance, metadata loads lazily on first property access
+endpoints_metadata = EndpointsMetadataManager(settings.endpoints, settings.auto_init)

@@ -6,7 +6,7 @@ import json
 import os
 from dataclasses import dataclass, field, fields
 from pathlib import Path
-from typing import Annotated, Any, TypeVar
+from typing import Annotated, Any, Required, TypedDict, TypeVar
 
 from fastembed import TextEmbedding
 from langchain_core.runnables import RunnableConfig, ensure_config
@@ -14,7 +14,19 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from qdrant_client import QdrantClient
 
 from sparql_llm.agent import prompts
-from sparql_llm.utils import SparqlEndpointLinks
+
+
+# Total=False to make all fields optional except those marked as Required
+class SparqlEndpointLinks(TypedDict, total=False):
+    """A dictionary to store links and filepaths about a SPARQL endpoint."""
+
+    endpoint_url: Required[str]
+    void_file: str | None
+    examples_file: str | None
+    homepage_url: str | None
+    label: str | None
+    description: str | None
+    # ontology_url: Optional[str]
 
 
 class Settings(BaseSettings):

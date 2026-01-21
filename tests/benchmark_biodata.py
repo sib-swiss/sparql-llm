@@ -23,7 +23,7 @@ from sklearn.model_selection import KFold
 # from sklearn.model_selection import KFold
 from sparql_llm import SparqlExamplesLoader, SparqlVoidShapesLoader
 from sparql_llm.config import embedding_model, qdrant_client, settings
-from sparql_llm.utils import get_prefixes_and_schema_for_endpoints, query_sparql
+from sparql_llm.utils import EndpointsMetadataManager, query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries
 
 file_time_prefix = time.strftime("%Y%m%d_%H%M")
@@ -281,7 +281,8 @@ def main() -> None:
         print(f"\n\n===== Benchmarking {BOLD}{BLUE}{endpoint_url}{RESET} =====\n")
         avg_results[endpoint_url] = {}
 
-        prefix_map, _void_schema = get_prefixes_and_schema_for_endpoints([{"endpoint_url": endpoint_url}])
+        endpoints_metadata = EndpointsMetadataManager([{"endpoint_url": endpoint_url}])
+        prefix_map = endpoints_metadata.prefixes_map
         docs_examples = SparqlExamplesLoader(endpoint_url, examples_file=f"tests/data/examples_{files[i]}.ttl").load()
 
         # Use special void file for UniProt endpoint

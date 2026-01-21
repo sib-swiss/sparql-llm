@@ -2,11 +2,10 @@ from fastembed import TextEmbedding
 from langchain_core.documents import Document
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
-from sparql_llm import SparqlExamplesLoader, SparqlInfoLoader, SparqlVoidShapesLoader
+from sparql_llm import SparqlEndpointLinks, SparqlExamplesLoader, SparqlInfoLoader, SparqlVoidShapesLoader
 
 # List of endpoints that will be used
-# endpoints: list[SparqlEndpointLinks] = [
-endpoints: list[dict[str, str]] = [
+endpoints: list[SparqlEndpointLinks] = [
     {
         # The URL of the SPARQL endpoint from which most informations will be extracted
         "endpoint_url": "https://sparql.uniprot.org/sparql/",
@@ -33,7 +32,7 @@ vectordb = QdrantClient(host="localhost", prefer_grpc=True)
 collection_name = "sparql-docs"
 
 
-def index_endpoints():
+def index_endpoints() -> None:
     # Get documents from the SPARQL endpoints
     docs: list[Document] = []
     for endpoint in endpoints:

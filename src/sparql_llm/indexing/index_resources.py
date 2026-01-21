@@ -10,9 +10,9 @@ from qdrant_client.http.models import Distance, VectorParams
 from rdflib import RDF, Dataset, Namespace
 
 from sparql_llm import SparqlExamplesLoader, SparqlInfoLoader, SparqlVoidShapesLoader
-from sparql_llm.config import embedding_model, qdrant_client, settings
+from sparql_llm.config import SparqlEndpointLinks, embedding_model, qdrant_client, settings
 from sparql_llm.loaders.sparql_info_loader import GENERAL_INFO_DOC_TYPE
-from sparql_llm.utils import SparqlEndpointLinks, get_prefixes_and_schema_for_endpoints
+from sparql_llm.utils import endpoints_metadata
 
 SCHEMA = Namespace("http://schema.org/")
 
@@ -160,9 +160,9 @@ def load_expasy_resources_infos(file: str = "expasy_resources_metadata.csv") -> 
 
 
 def init_vectordb() -> None:
-    """Initialize the vectordb with example queries and ontology descriptions from the SPARQL endpoints"""
+    """Initialize the vectordb with example queries and ontology descriptions from the SPARQL endpoints."""
     docs: list[Document] = []
-    prefix_map, _void_schema = get_prefixes_and_schema_for_endpoints(settings.endpoints)
+    endpoints_metadata._ensure_loaded()
 
     # Gets documents from the SPARQL endpoints
     for endpoint in settings.endpoints:
@@ -174,7 +174,7 @@ def init_vectordb() -> None:
 
         docs += SparqlVoidShapesLoader(
             endpoint["endpoint_url"],
-            prefix_map=prefix_map,
+            prefix_map=endpoints_metadata.prefixes_map,
             void_file=endpoint.get("void_file"),
             examples_file=endpoint.get("examples_file"),
         ).load()

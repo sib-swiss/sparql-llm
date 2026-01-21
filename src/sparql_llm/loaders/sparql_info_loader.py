@@ -1,7 +1,8 @@
 from langchain_core.document_loaders.base import BaseLoader
 from langchain_core.documents import Document
 
-from sparql_llm.utils import SparqlEndpointLinks, logger
+from sparql_llm.config import SparqlEndpointLinks
+from sparql_llm.utils import logger
 
 GENERAL_INFO_DOC_TYPE = "General information"
 

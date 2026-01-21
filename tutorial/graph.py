@@ -146,14 +146,13 @@ def call_model(state: AgentState):
 
 import logging
 
-from sparql_llm.utils import get_prefixes_and_schema_for_endpoints
+from sparql_llm.utils import EndpointsMetadataManager
 
 from index import endpoints
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.info("Initializing endpoints metadata...")
-# Retrieve the prefixes map and initialize VoID schema dictionary from the indexed endpoints
-prefixes_map, endpoints_void_dict = get_prefixes_and_schema_for_endpoints(endpoints)
+endpoints_metadata = EndpointsMetadataManager(endpoints)
 
 
 from langchain_core.messages import AIMessage
@@ -169,7 +168,11 @@ async def validate_output(
     last_msg = next(msg.content for msg in reversed(state["messages"]) if isinstance(msg, AIMessage) and msg.content)
     # print(last_msg)
     # last_msg = state["messages"][-1].content
-    validation_outputs = validate_sparql_in_msg(last_msg, prefixes_map, endpoints_void_dict)
+    validation_outputs = validate_sparql_in_msg(
+        last_msg,
+        endpoints_metadata.prefixes_map,
+        endpoints_metadata.void_dict,
+    )
     for validation_output in validation_outputs:
         if validation_output["fixed_query"]:
             async with cl.Step(name="missing prefixes correction ✅") as step:

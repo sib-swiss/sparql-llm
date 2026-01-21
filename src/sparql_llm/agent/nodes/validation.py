@@ -10,10 +10,8 @@ from langchain_core.runnables import RunnableConfig
 from sparql_llm.agent.prompts import FIX_QUERY_PROMPT
 from sparql_llm.agent.state import State, StepOutput
 from sparql_llm.config import Configuration, settings
-from sparql_llm.utils import get_prefixes_and_schema_for_endpoints, query_sparql
+from sparql_llm.utils import endpoints_metadata, query_sparql
 from sparql_llm.validate_sparql import validate_sparql_in_msg
-
-prefixes_map, endpoints_void_dict = get_prefixes_and_schema_for_endpoints(settings.endpoints)
 
 
 async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any]:
@@ -34,7 +32,7 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
     validation_steps: list[StepOutput] = []
     recall_messages: list[HumanMessage] = []
 
-    validation_outputs = validate_sparql_in_msg(last_msg, prefixes_map, endpoints_void_dict)
+    validation_outputs = validate_sparql_in_msg(last_msg, endpoints_metadata.prefixes_map, endpoints_metadata.void_dict)
     for validation_output in validation_outputs:
         if validation_output["fixed_query"]:
             # Pass the fixed msg to the client
