@@ -218,6 +218,7 @@ class EndpointsMetadataManager:
                         f"💾 Loaded endpoints metadata from {ENDPOINTS_METADATA_FILE.resolve()} "
                         f"for {len(self._void_dict)} endpoints"
                     )
+                    self._initialized = True
                     return
         except Exception as e:
             logger.debug(f"Could not load metadata from {ENDPOINTS_METADATA_FILE}: {e}")

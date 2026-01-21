@@ -2,6 +2,8 @@ name: Publish tutorial to GitHub Pages
 on:
   push:
     branches: ["main"]
+    paths:
+      - 'tutorial/**'
   workflow_dispatch:
 
 permissions:
