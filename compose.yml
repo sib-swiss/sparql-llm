@@ -18,9 +18,6 @@ services:
     restart: unless-stopped
     depends_on:
       - vectordb
-    ports:
-      - 80:80
-      # - 443:80
     environment:
       - VECTORDB_URL=http://vectordb:6334/
     volumes:

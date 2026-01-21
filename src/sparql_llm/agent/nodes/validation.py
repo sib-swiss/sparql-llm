@@ -4,7 +4,7 @@ import json
 import re
 from typing import Any
 
-from langchain.messages import HumanMessage
+from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 
 from sparql_llm.agent.prompts import FIX_QUERY_PROMPT

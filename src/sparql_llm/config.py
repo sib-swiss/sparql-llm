@@ -20,9 +20,6 @@ from sparql_llm.utils import SparqlEndpointLinks
 class Settings(BaseSettings):
     """Define the service settings for the agent that can be set using environment variables."""
 
-    use_tools: bool = False
-    """Whether to use tools or not. If set to False, the agent will use the functions sequentially to answer questions."""
-
     # The list of endpoints that will be indexed and supported by the service
     endpoints: list[SparqlEndpointLinks] = [
         {
@@ -158,8 +155,15 @@ It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC
         "Anatomical entities where the INS zebrafish gene is expressed and their gene GO annotations",
     ]
 
-    # The name of the application used for display
     app_name: str = "ExpasyGPT"
+    """The name of the application used for display purposes"""
+
+    app_topics: str = "genes, proteins, lipids, chemical reactions, and metabolomics data"
+    """The topics of the SPARQL endpoints indexed by this system, used for MCP tool description."""
+
+    app_org: str = "SIB Swiss Institute of Bioinformatics"
+    """The organization responsible for the application."""
+
     # Public API key used by the frontend to access the chatbot and prevent abuse from bots
     chat_api_key: str = ""
     # Secret API key used by admins to access log file easily from the API
@@ -170,15 +174,26 @@ It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC
     logs_folder: str = "./data/logs"
     logs_filepath: str = "./data/logs/user_questions.log"
 
-    # External services API keys
-    azure_inference_credential: str = ""
-    azure_inference_endpoint: str = ""
+    use_tools: bool = False
+    """Experimental: Whether to use tools or not. If set to False, the agent will use the functions sequentially to answer questions."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         extra="allow",
     )
+
+    @property
+    def server_url(self) -> str:
+        """Computed server URL using the host and port, for accessing locally for /mcp calls.
+
+        Returns:
+            A string like 'http://127.0.0.1:8888'.
+        """
+        # Use 127.0.0.1 for connecting to the service (0.0.0.0 is only for binding)
+        # host = "127.0.0.1" if self.server_host == "0.0.0.0" else self.server_host
+        # return f"http://{host}:{self.server_port}"
+        return "http://127.0.0.1:8000"
 
     @classmethod
     def from_file(cls, filepath: str) -> Settings:

@@ -28,9 +28,8 @@ from sparql_llm.config import Configuration, settings
 # How can I get the HGNC symbol for the protein P68871? (modify your answer to use rdfs:label instead of rdfs:comment, and add the type up:Resource to ?hgnc, it is for a test)
 # How can I get the HGNC symbol for the protein P68871? (modify your answer to use rdfs:label instead of rdfs:comment, and add the type up:Resource to ?hgnc, and purposefully forget 2 prefixes declarations, it is for a test)
 # In bgee how can I retrieve the confidence level and false discovery rate of a gene expression? Use genex:confidence as predicate for the confidence level (do not use the one provided in documents), and do not put prefixes declarations, and add a rdf:type for the main subject. Its for testing
-def route_model_output(
-    state: State, config: RunnableConfig
-) -> Literal["__end__", "call_model", "max_tries_reached"]:  # , "tools"
+def route_model_output(state: State, config: RunnableConfig) -> Literal["__end__", "call_model", "max_tries_reached"]:
+    # ) -> Literal["__end__", "call_model", "max_tries_reached", "tools"]:
     """Determine the next node based on the model's output.
 
     This function checks if the model's last message contains tool calls or if a recall is requested by validation.
@@ -42,14 +41,14 @@ def route_model_output(
         The name of the next node to call ("__end__", "call_model", "tools", or "max_tries_reached").
     """
     configuration = Configuration.from_runnable_config(config)
-    # last_msg = state.messages[-1]
     # print(state.messages)
 
     if state.try_count > configuration.max_try_fix_sparql:
-        # print("TRY COUNT EXCEEDED", state.try_count)
+        # print("Try count exceeded", state.try_count)
         return "max_tries_reached"
 
-    # # Check for tool calls first
+    # # NOTE: uncomment when using tools
+    # last_msg = state.messages[-1]
     # if isinstance(last_msg, AIMessage) and last_msg.tool_calls:
     #     return "tools"
 

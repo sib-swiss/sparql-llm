@@ -72,18 +72,10 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[StepO
                     if doc.payload
                 )
     else:
-        # Handles when user asks for access to resources
-        # Prepare search queries: user question + extracted steps + extracted classes
-        search_queries = [
-            user_question,
-            *state.structured_question.question_steps,
-            *state.structured_question.extracted_classes,
-        ]
         limit = configuration.search_kwargs.get("k", settings.default_number_of_retrieved_docs)
 
-        # Generate embeddings for all queries at once and perform searches
-        for search_embedding in embedding_model.embed(search_queries):
-            # Get SPARQL example queries
+        # Get relevant query examples
+        for search_embedding in embedding_model.embed([user_question, *state.structured_question.question_steps]):
             docs.extend(
                 doc
                 for doc in qdrant_client.query_points(
@@ -105,7 +97,8 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[StepO
                 not in {existing_doc.payload.get("answer") if existing_doc.payload else None for existing_doc in docs}
             )
 
-            # Get other relevant documentation (classes schemas, general information)
+        # Get other relevant documentation (classes schemas, general information)
+        for search_embedding in embedding_model.embed(state.structured_question.extracted_classes):
             docs.extend(
                 doc
                 for doc in qdrant_client.query_points(

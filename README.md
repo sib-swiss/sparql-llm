@@ -83,7 +83,29 @@ uvx sparql-llm
 
 Optionally you can provide the path to a custom settings JSON file to configure the server (e.g. the list of endpoints that will be indexed and available through the server), see the [`Settings` class](https://github.com/sib-swiss/sparql-llm/blob/main/src/sparql_llm/config.py) for detailed available settings.
 
-Example VSCode `mcp.json` file:
+Example settings file for your MCP server deployment:
+
+```json
+{
+    "app_org": "Your organization",
+    "app_topics": "genes, proteins, lipids, chemical reactions, and metabolomics data",
+    "endpoints" : [
+        {
+            "label": "UniProt",
+            "endpoint_url": "https://sparql.uniprot.org/sparql/",
+            "description": "UniProt is a comprehensive resource for protein sequence and annotation data."
+        },
+        {
+            "label": "Bgee",
+            "description": "Bgee is a database for retrieval and comparison of gene expression patterns across multiple animal species.",
+            "endpoint_url": "https://www.bgee.org/sparql/",
+            "homepage_url": "https://www.bgee.org/"
+        }
+    ]
+}
+```
+
+Example `mcp.json` file to add and configure the MCP server in a client (e.g. VSCode):
 
 ```json
 {
@@ -92,7 +114,7 @@ Example VSCode `mcp.json` file:
       "type": "stdio",
       "command": "uvx",
       "env": {
-				"SETTINGS_FILEPATH": "~/dev/sparql-mcp.json"
+				"SETTINGS_FILEPATH": "/Users/you/sparql-mcp.json"
 			},
       "args": [
         "sparql-llm"

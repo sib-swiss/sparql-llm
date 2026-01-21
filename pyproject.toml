@@ -38,6 +38,7 @@ dependencies = [
     "qdrant-client >=1.16.2",
     "fastembed >=0.7.4",
     "langchain-core >=1.2.6",
+    "langgraph >=1.0.5",
     "markdownify >=1.1.0",
     "pandas >=2.2.3",
 ]
@@ -45,7 +46,6 @@ dependencies = [
 [project.optional-dependencies]
 agent = [
     # LangGraph dependencies
-    "langgraph >=1.0.5",
     "langchain >=1.2.0",
     "langchain-openai >=1.1.6",
     # "langchain-azure-ai >=0.1.0",

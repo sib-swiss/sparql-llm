@@ -5,7 +5,7 @@ Works with a chat model with tool calling support.
 
 from typing import Any
 
-from langchain.messages import AIMessage, AnyMessage
+from langchain_core.messages import AIMessage, AnyMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -14,7 +14,6 @@ from sparql_llm.agent.state import State
 from sparql_llm.agent.utils import load_chat_model
 from sparql_llm.config import Configuration, settings
 
-# from sparql_llm.agent.nodes.tools import TOOLS
 # from sparql_llm.agent.nodes.retrieval_docs import format_docs
 # from sparql_llm.agent.nodes.retrieval_entities import format_extracted_entities
 
@@ -32,25 +31,19 @@ async def call_model(state: State, config: RunnableConfig) -> dict[str, list[Any
         dict: A dictionary containing the model's response message.
     """
     configuration = Configuration.from_runnable_config(config)
-    # Initialize the model with tool binding
-    # model = load_chat_model(configuration).bind_tools(TOOLS)
-
     tools = None
+
     # Set up MCP client (experimental, not used in production)
     if settings.use_tools:
-        client = MultiServerMCPClient(
+        mcp_client = MultiServerMCPClient(
             {
-                "sparql": {
-                    # "url": "http://0.0.0.0:80/mcp/",
-                    "url": "/mcp/",
+                "expasy-mcp": {
+                    "url": f"{settings.server_url}/mcp",
                     "transport": "streamable_http",
                 }
             }
         )
-        tools = await client.get_tools()
-
-    # # Bind tools to model
-    # model_with_tools = model.bind_tools(tools)
+        tools = await mcp_client.get_tools()
 
     model = load_chat_model(configuration).bind_tools(tools) if tools else load_chat_model(configuration)
 
@@ -71,6 +64,7 @@ async def call_model(state: State, config: RunnableConfig) -> dict[str, list[Any
     )
     message_value = prompt_template.invoke(structured_prompt, config)
     # print(message_value.messages[0].content)
+    # print(message_value)
     response_msg = model.invoke(message_value, config)
 
     # print(f"Model response: {response_msg.content}")

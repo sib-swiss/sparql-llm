@@ -16,8 +16,6 @@ from sparql_llm.utils import SparqlEndpointLinks, get_prefixes_and_schema_for_en
 
 SCHEMA = Namespace("http://schema.org/")
 
-# DOC_TYPE = "General information"
-
 
 def load_schemaorg_description(endpoint: SparqlEndpointLinks) -> list[Document]:
     """Extract datasets descriptions from the schema.org metadata in homepage of the endpoint"""
@@ -78,7 +76,7 @@ def load_schemaorg_description(endpoint: SparqlEndpointLinks) -> list[Document]:
 
             if len(descs) == 0:
                 raise Exception("No schema:description found in the JSON-LD script tag")
-            question = f"What is the SIB resource {endpoint.get('label')} about?"
+            question = f"What is the resource {endpoint.get('label')} about?"
             docs.append(
                 Document(
                     page_content=question,
@@ -106,9 +104,11 @@ def load_expasy_resources_infos(file: str = "expasy_resources_metadata.csv") -> 
     docs: list[Document] = []
     for _, row in df.iterrows():
         # Long description of the resource
+        q = f"[{row['title']}]({row['url']}) ({row['category']}): {row['description']}"
         doc = Document(
-            page_content=f"[{row['title']}]({row['url']}) ({row['category']}): {row['description']}",
+            page_content=q,
             metadata={
+                "question": q,
                 "iri": row["url"],
                 "doc_type": GENERAL_INFO_DOC_TYPE,
             },
@@ -117,9 +117,11 @@ def load_expasy_resources_infos(file: str = "expasy_resources_metadata.csv") -> 
 
         # Short description and ontology terms
         if isinstance(row.get("ontology_terms"), str):
+            q = f"[{row['title']}]({row['url']}) ({row['category']}): {row['short_description']}.\n\n{row['ontology_terms']}"
             doc = Document(
-                page_content=f"[{row['title']}]({row['url']}) ({row['category']}): {row['short_description']}.\n\n{row['ontology_terms']}",
+                page_content=q,
                 metadata={
+                    "question": q,
                     "iri": row["url"],
                     "doc_type": GENERAL_INFO_DOC_TYPE,
                 },
@@ -128,21 +130,25 @@ def load_expasy_resources_infos(file: str = "expasy_resources_metadata.csv") -> 
 
         # Info about the resource maintainers
         if isinstance(row.get("group_info"), str):
+            q = f"[{row['title']}]({row['url']}): {markdownify(row['group_info'])} License: {row.get('license', 'not specified')}"
             detail_doc = Document(
-                page_content=f"[{row['title']}]({row['url']}): {markdownify(row['group_info'])} License: {row.get('license', 'not specified')}",
+                page_content=q,
                 metadata={
+                    "question": q,
                     "iri": row["url"],
                     "doc_type": GENERAL_INFO_DOC_TYPE,
                 },
             )
             docs.append(detail_doc)
 
+    q = "How many resources are there in the Expasy catalog?"
     docs.append(
         Document(
-            page_content="How many resources are there in the Expasy catalog?",
+            page_content=q,
             # page_content=f"There are {len(df)} resources in the Expasy catalog",
             metadata={
                 # "iri": row["url"],
+                "question": q,
                 "answer": str(len(df)),
                 "doc_type": GENERAL_INFO_DOC_TYPE,
             },
@@ -205,7 +211,7 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
         settings.endpoints,
         source_iri="https://www.expasy.org/",
         service_label=settings.app_name,
-        org_label="from the Swiss Institute of Bioinformatics (SIB)",
+        org_label=f"from the {settings.app_org}",
     ).load()
 
     try:

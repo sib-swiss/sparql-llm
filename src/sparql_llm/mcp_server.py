@@ -15,7 +15,7 @@ from sparql_llm.validate_sparql import validate_sparql
 
 # Create MCP server https://github.com/modelcontextprotocol/python-sdk
 mcp = FastMCP(
-    name="SIB BioData MCP",
+    name=f"{settings.app_org} MCP",
     debug=True,
     dependencies=["mcp", "qdrant_client", "fastembed", "sparql-llm"],
     instructions="Provide tools that helps users to access biological data resources from the Swiss Institute of Bioinformatics (SIB) through the SPARQL query language.",
@@ -49,21 +49,22 @@ except Exception as e:
     # Continue without initialization to avoid blocking the app startup
 
 
-# TODO: tool get_classes_schema
 # potential_entities: Potential entities and instances of classes
-@mcp.tool()
+
+SEARCH_SPARQL_DOCS_TOOL_DESC = f"""Retrieve relevant SPARQL query examples and classes schema to write queries to answer user questions related to {settings.app_topics}
+
+Args:
+    question: The question to be answered with a SPARQL query
+    potential_classes: High level concepts and potential classes that could be found in the SPARQL endpoints
+    steps: Split the question in standalone smaller parts if relevant (if the question is already 1 step, leave empty)
+
+Returns:
+    Relevant documents (examples, classes schemas)
+"""
+
+
+@mcp.tool(description=SEARCH_SPARQL_DOCS_TOOL_DESC)
 async def search_sparql_docs(question: str, potential_classes: list[str], steps: list[str]) -> str:
-    """Assist users in writing SPARQL queries to access SIB biodata resources by retrieving relevant examples and classes schema.
-    Covers topics such as genes, proteins, lipids, chemical reactions, and metabolomics data.
-
-    Args:
-        question: The question to be answered with a SPARQL query
-        potential_classes: High level concepts and potential classes that could be found in the SPARQL endpoints
-        steps: Split the question in standalone smaller parts if relevant (if the question is already 1 step, leave empty)
-
-    Returns:
-        Relevant documents (examples, classes schemas)
-    """
     relevant_docs: list[ScoredPoint] = []
     for search_embeddings in embedding_model.embed([question, *steps, *potential_classes]):
         # Get SPARQL example queries
@@ -120,7 +121,7 @@ PROMPT_TOOL_SPARQL = """Formulate a precise SPARQL query to access specific biol
 ## SPARQL Query Guidelines
 - **Always include the endpoint URL** as a comment at the start: `#+ endpoint: http://example.org/sparql`
 - **Use only ONE endpoint** per query
-- **Base your query on the provided context** - never create generic or unsupported queries
+- **Base your query on the provided context**, never create generic or unsupported queries
 - **Use appropriate prefixes** and class names from the schema documentation
 
 ## Knowledge Base
@@ -148,7 +149,7 @@ async def get_classes_schema(classes: list[str]) -> str:
         classes: High level concepts and potential classes that could be found in the SPARQL endpoints
 
     Returns:
-        Relevant classes schemas
+        Relevant classes schemas in ShEx format
     """
     relevant_docs: list[ScoredPoint] = []
     for search_embeddings in embedding_model.embed(classes):
@@ -180,7 +181,9 @@ async def get_classes_schema(classes: list[str]) -> str:
 
 @mcp.tool()
 def get_resources_info(question: str) -> str:
-    """Get information about the services and resources available at the SIB Swiss Institute of Bioinformatics and indexed by this MCP server.
+    """Get information about the SPARQL endpoints indexed by this MCP server.
+
+    Only call this tool when the user explicitly asks for information about the resources themselves.
 
     Args:
         question: The user question.
@@ -292,10 +295,10 @@ def _format_doc(doc: ScoredPoint) -> str:
             doc_lang = "shex"
         return f"{doc.payload['question']}:\n\n```{doc_lang}\n{doc.payload.get('answer')}\n```"
     # Generic formatting:
-    meta = "".join(f" {k}={v!r}" for k, v in doc.payload.items())
-    if meta:
-        meta = f" {meta}"
-    return f"{meta}\n{doc.payload['page_content']}\n"
+    # meta = "".join(f" {k}={v!r}" for k, v in doc.payload.items())
+    # if meta:
+    #     meta = f" {meta}"
+    return "".join(f" {k}={v!r}" for k, v in doc.payload.items())
 
 
 def cli() -> None:

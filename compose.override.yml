@@ -7,20 +7,12 @@ services:
 
   api:
     ports:
-      - 8000:80
+      - 8000:8000
     # environment:
-      # - DEFAULT_LLM_MODEL=openai/gpt-5
+    #   - DEFAULT_LLM_MODEL=openrouter/openai/gpt-5.1
+      # - USE_TOOLS=true
       # - FORCE_REINDEX=true
-      # - DEFAULT_LLM_MODEL=openrouter/openai/gpt-5
+      # - DEFAULT_LLM_MODEL=openrouter/openai/gpt-5.2
       # - DEFAULT_LLM_MODEL=openrouter/mistralai/mistral-large
       # - DEFAULT_LLM_MODEL=openrouter/anthropic/claude-sonnet-4.5
-      # - DEFAULT_LLM_MODEL=groq/deepseek-r1-distill-llama-70b
-      # - DEFAULT_LLM_MODEL=groq/llama-3.3-70b-versatile
-      # - DEFAULT_LLM_MODEL=deepseek/deepseek-reasoner
-      # - DEFAULT_LLM_MODEL=deepseek/deepseek-chat
-      # - DEFAULT_LLM_MODEL=azure/Mistral-Large-2411
-      # - DEFAULT_LLM_MODEL=azure/DeepSeek-R1
-      # - DEFAULT_LLM_MODEL=together/meta-llama/Llama-3-70b-chat-hf
-      # - DEFAULT_LLM_MODEL=openai/o3-mini
-      # - DEFAULT_LLM_MODEL=openai/gpt-4o-mini
-    entrypoint: ["uv", "run", "uvicorn", "src.sparql_llm.agent.main:app", "--host", "0.0.0.0", "--port", "80", "--reload", "--log-config", "logging.yml"]
+    entrypoint: ["uv", "run", "uvicorn", "src.sparql_llm.agent.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--log-config", "logging.yml"]
