@@ -1,11 +1,12 @@
 import re
 from collections import defaultdict
-from typing import Any, TypedDict
+from typing import Any
 
 import curies
 from rdflib import Namespace, Variable
 from rdflib.paths import AlternativePath, MulPath, Path, SequencePath
 from rdflib.plugins.sparql import prepareQuery
+from typing_extensions import TypedDict
 
 from sparql_llm.utils import (
     EndpointsSchemaDict,

@@ -6,12 +6,13 @@ import json
 import os
 from dataclasses import dataclass, field, fields
 from pathlib import Path
-from typing import Annotated, Any, Required, TypedDict, TypeVar
+from typing import Annotated, Any, Required, TypeVar
 
 from fastembed import TextEmbedding
 from langchain_core.runnables import RunnableConfig, ensure_config
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from qdrant_client import QdrantClient
+from typing_extensions import TypedDict
 
 from sparql_llm.agent import prompts
 
