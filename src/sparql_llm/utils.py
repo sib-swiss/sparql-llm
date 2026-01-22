@@ -201,6 +201,7 @@ class EndpointsMetadataManager:
         self._void_dict: EndpointsSchemaDict = {}
         self._initialized = False
         if auto_init:
+            logger.info("Auto-initializing endpoints metadata...")
             self._ensure_loaded()
 
     def _ensure_loaded(self) -> None:

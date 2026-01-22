@@ -131,8 +131,10 @@ It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC
     # vectordb_url: str = "http://vectordb:6334/"
     vectordb_url: str = "data/vectordb"
     # https://qdrant.github.io/fastembed/examples/Supported_Models/#supported-text-embedding-models
-    embedding_model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
-    embedding_dimensions: int = 768
+    # embedding_model: str = "BAAI/bge-small-en-v1.5"
+    # embedding_model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    embedding_model: str = "intfloat/multilingual-e5-large"
+
     force_index: bool = False
     # Automatically initialize the vector store client, should be False when deploying in prod with multiple workers
     auto_init: bool = True

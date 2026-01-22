@@ -26,7 +26,6 @@ embedding_model = TextEmbedding(
     "BAAI/bge-small-en-v1.5",
     # providers=["CUDAExecutionProvider"], # Replace the fastembed dependency with fastembed-gpu to use your GPUs
 )
-embedding_dimensions = 384
 
 vectordb = QdrantClient(host="localhost", prefer_grpc=True)
 collection_name = "sparql-docs"
@@ -53,7 +52,7 @@ def index_endpoints() -> None:
         vectordb.delete_collection(collection_name)
     vectordb.create_collection(
         collection_name=collection_name,
-        vectors_config=VectorParams(size=embedding_dimensions, distance=Distance.COSINE),
+        vectors_config=VectorParams(size=embedding_model.embedding_size, distance=Distance.COSINE),
     )
 
     embeddings = embedding_model.embed([q.page_content for q in docs])

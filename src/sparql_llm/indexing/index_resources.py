@@ -162,7 +162,6 @@ def load_expasy_resources_infos(file: str = "expasy_resources_metadata.csv") -> 
 def init_vectordb() -> None:
     """Initialize the vectordb with example queries and ontology descriptions from the SPARQL endpoints."""
     docs: list[Document] = []
-    endpoints_metadata._ensure_loaded()
 
     # Gets documents from the SPARQL endpoints
     for endpoint in settings.endpoints:
@@ -227,7 +226,7 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
         qdrant_client.delete_collection(settings.docs_collection_name)
     qdrant_client.create_collection(
         collection_name=settings.docs_collection_name,
-        vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
+        vectors_config=VectorParams(size=embedding_model.embedding_size, distance=Distance.COSINE),
     )
 
     # Generate embeddings with the fastembed `TextEmbedding` instance and upload directly to Qdrant

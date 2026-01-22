@@ -257,22 +257,22 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
     if qdrant_client.collection_exists(settings.entities_collection_name):
         qdrant_client.delete_collection(settings.entities_collection_name)
 
+    # Process documents in batches to handle millions of entities efficiently
+    embedding_model = TextEmbedding(settings.embedding_model, providers=["CUDAExecutionProvider"] if gpu else None)
+    sparse_embedding_model = SparseTextEmbedding(settings.sparse_embedding_model)
+
     # Initialize collection in Qdrant vectordb with hybrid retrieval mode (dense and sparse vectors)
     # With indexes loaded on disk to avoid OOM errors when indexing large collections
     qdrant_client.create_collection(
         collection_name=settings.entities_collection_name,
         vectors_config=models.VectorParams(
-            size=settings.embedding_dimensions,
+            size=embedding_model.embedding_size,
             distance=models.Distance.COSINE,
             on_disk=True,
         ),
         hnsw_config=models.HnswConfigDiff(on_disk=True),
         sparse_vectors_config={"sparse": models.SparseVectorParams()},
     )
-
-    # Process documents in batches to handle millions of entities efficiently
-    embedding_model = TextEmbedding(settings.embedding_model, providers=["CUDAExecutionProvider"] if gpu else None)
-    sparse_embedding_model = SparseTextEmbedding(settings.sparse_embedding_model)
 
     batch_size = 1000  # Adjust based on your GPU memory and document size
     total_docs = len(docs)

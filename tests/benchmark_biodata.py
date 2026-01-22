@@ -305,7 +305,7 @@ def main() -> None:
                 qdrant_client.delete_collection(vector_collection)
             qdrant_client.create_collection(
                 collection_name=vector_collection,
-                vectors_config=VectorParams(size=settings.embedding_dimensions, distance=Distance.COSINE),
+                vectors_config=VectorParams(size=embedding_model.embedding_size, distance=Distance.COSINE),
             )
 
             # Generate embeddings and add documents to vectordb

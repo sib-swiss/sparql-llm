@@ -259,7 +259,6 @@ from qdrant_client import QdrantClient
 
 ## 2. Set up vector database for document retrieval
 embedding_model = TextEmbedding("BAAI/bge-small-en-v1.5")
-embedding_dimensions = 384
 collection_name = "sparql-docs"
 vectordb = QdrantClient(path="data/vectordb")
 ```
@@ -306,7 +305,7 @@ def index_endpoints():
         vectordb.delete_collection(collection_name)
     vectordb.create_collection(
         collection_name=collection_name,
-        vectors_config=VectorParams(size=embedding_dimensions, distance=Distance.COSINE),
+        vectors_config=VectorParams(size=embedding_model.embedding_size, distance=Distance.COSINE),
     )
     embeddings = embedding_model.embed([q.page_content for q in docs])
     vectordb.upload_collection(

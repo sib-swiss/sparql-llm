@@ -9,6 +9,7 @@ from sparql_llm.indexing.index_resources import init_vectordb
 from sparql_llm.utils import endpoints_metadata, logger, query_sparql
 from sparql_llm.validate_sparql import validate_sparql
 
+logger
 # What are the rat orthologs of the human TP53?
 # TODO: MCP integrated https://github.com/modelcontextprotocol/python-sdk/pull/1007
 

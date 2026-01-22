@@ -31,7 +31,6 @@ async def validate_output(state: State, config: RunnableConfig) -> dict[str, Any
     last_msg = re.sub(r"<think>.*?</think>", "", str(state.messages[-1].content), flags=re.DOTALL)
     validation_steps: list[StepOutput] = []
     recall_messages: list[HumanMessage] = []
-
     validation_outputs = validate_sparql_in_msg(last_msg, endpoints_metadata.prefixes_map, endpoints_metadata.void_dict)
     for validation_output in validation_outputs:
         if validation_output["fixed_query"]:

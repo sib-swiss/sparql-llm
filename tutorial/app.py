@@ -97,7 +97,6 @@ embedding_model = TextEmbedding(
     "BAAI/bge-small-en-v1.5",
     # providers=["CUDAExecutionProvider"], # Replace the fastembed dependency with fastembed-gpu to use your GPUs
 )
-embedding_dimensions = 384
 
 collection_name = "sparql-docs"
 vectordb = QdrantClient(path="data/vectordb")
@@ -105,7 +104,7 @@ vectordb = QdrantClient(path="data/vectordb")
 # vectordb = QdrantClient(host="localhost", prefer_grpc=True)
 
 
-def index_endpoints():
+def index_endpoints() -> None:
     """Index SPARQL endpoints metadata in the vector database."""
     docs: list[Document] = []
     for endpoint in endpoints:
@@ -124,7 +123,7 @@ def index_endpoints():
         vectordb.delete_collection(collection_name)
     vectordb.create_collection(
         collection_name=collection_name,
-        vectors_config=VectorParams(size=embedding_dimensions, distance=Distance.COSINE),
+        vectors_config=VectorParams(size=embedding_model.embedding_size, distance=Distance.COSINE),
     )
 
     embeddings = embedding_model.embed([q.page_content for q in docs])
@@ -223,7 +222,7 @@ max_try_count = 3
 
 
 @cl.on_message
-async def on_message(msg: cl.Message):
+async def on_message(msg: cl.Message) -> None:
     """Main function to handle when user send a message to the assistant."""
     retrieved_docs = retrieve_docs(msg.content)
     formatted_docs = "\n".join(format_doc(doc) for doc in retrieved_docs)
@@ -292,7 +291,7 @@ async def set_starters():
 # uv run --env-file .env app.py
 
 
-async def main():
+async def main() -> None:
     question = "What are the rat orthologs of human TP53?"
 
     logging.info("\n\n###### 🙉 Without context retrieval ########\n\n")

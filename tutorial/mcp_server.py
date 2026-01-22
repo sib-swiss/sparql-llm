@@ -13,7 +13,6 @@ from sparql_llm.utils import query_sparql
 @dataclass
 class ServerConfig:
     embedding_name: str = "BAAI/bge-small-en-v1.5"
-    embedding_dimensions: int = 384
     retrieved_docs_count: int = 5
     collection_name: str = "sparql-docs"
     vectordb_host: str = os.getenv("VECTORDB_HOST", "localhost")
@@ -113,12 +112,14 @@ def format_docs(docs: list[ScoredPoint]) -> str:
 
 def _format_doc(doc: ScoredPoint) -> str:
     """Format a question/answer document to be provided as context to the model."""
+    if not doc.payload:
+        return ""
     doc_lang = (
         f"sparql\n#+ endpoint: {doc.payload.get('endpoint_url', 'not provided')}"
         if "query" in doc.payload.get("doc_type", "")
         else ""
     )
-    return f"\n{doc.payload['question']} ({doc.payload.get('endpoint_url', '')}):\n\n```{doc_lang}\n{doc.payload.get('answer')}\n```\n\n"
+    return f"\n{doc.payload.get('question', '')} ({doc.payload.get('endpoint_url', '')}):\n\n```{doc_lang}\n{doc.payload.get('answer')}\n```\n\n"
 
 
 PROMPT_TOOL_SPARQL = """Depending on the user request and provided context, you may provide general information about
