@@ -225,10 +225,10 @@ class EndpointsMetadataManager:
 
         logger.info(f"Fetching metadata for {len(self._endpoints)} endpoints...")
         for endpoint in self._endpoints:
+            logger.info(f"Fetching {endpoint['endpoint_url']} metadata...")
             self._void_dict[endpoint["endpoint_url"]] = get_schema_for_endpoint(
                 endpoint["endpoint_url"], endpoint.get("void_file")
             )
-            logger.info(f"Fetching {endpoint['endpoint_url']} metadata...")
             self._prefixes_map = get_prefixes_for_endpoint(
                 endpoint["endpoint_url"], endpoint.get("examples_file"), self._prefixes_map
             )

@@ -131,12 +131,8 @@ It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC
     # vectordb_url: str = "http://vectordb:6334/"
     vectordb_url: str = "data/vectordb"
     # https://qdrant.github.io/fastembed/examples/Supported_Models/#supported-text-embedding-models
-    # embedding_model: str = "BAAI/bge-large-en-v1.5"
-    # embedding_dimensions: int = 1024
-    # embedding_model: str = "BAAI/bge-base-en-v1.5"
-    # embedding_dimensions: int = 768
-    embedding_model: str = "BAAI/bge-small-en-v1.5"
-    embedding_dimensions: int = 384
+    embedding_model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    embedding_dimensions: int = 768
     force_index: bool = False
     # Automatically initialize the vector store client, should be False when deploying in prod with multiple workers
     auto_init: bool = True
@@ -148,7 +144,7 @@ It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC
     entities_collection_name: str = "entities"
 
     # Default settings for the agent that can be changed at runtime
-    default_llm_model: str = "openrouter/openai/gpt-4o"
+    default_llm_model: str = "openrouter/openai/gpt-5.1"
     # default_llm_model: str = "openai/gpt-4o"
     # TODO: default_llm_model_cheap: str = "openai/gpt-4o-mini"
 
