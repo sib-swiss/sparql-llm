@@ -229,18 +229,28 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
         vectors_config=VectorParams(size=embedding_model.embedding_size, distance=Distance.COSINE),
     )
 
-    # Generate embeddings with the fastembed `TextEmbedding` instance and upload directly to Qdrant
+    # Generate embeddings with the fastembed `TextEmbedding` instance and upload directly to Qdrant in batches
     # https://qdrant.tech/documentation/fastembed/fastembed-rerankers/
-    embeddings = list(embedding_model.embed([d.page_content for d in docs]))
-    qdrant_client.upsert(
-        collection_name=settings.docs_collection_name,
-        points=models.Batch(
-            ids=list(range(1, len(docs) + 1)),
-            vectors=[emb.tolist() for emb in embeddings],
-            payloads=[doc.metadata for doc in docs],
-        ),
+    batch_size = 500
+    total_docs = len(docs)
+    for batch_start in range(0, total_docs, batch_size):
+        batch_end = min(batch_start + batch_size, total_docs)
+        batch_docs = docs[batch_start:batch_end]
+        # Generate embeddings for this batch
+        embeddings = embedding_model.embed([doc.page_content for doc in batch_docs])
+        qdrant_client.upsert(
+            collection_name=settings.docs_collection_name,
+            points=models.Batch(
+                ids=list(range(batch_start + 1, batch_end + 1)),
+                vectors=[emb.tolist() for emb in embeddings],
+                payloads=[doc.metadata for doc in batch_docs],
+            ),
+        )
+        print(f"Indexed documents {batch_start + 1}-{batch_end}")
+
+    print(
+        f"Done generating and indexing {total_docs} documents into the vectordb in {time.time() - start_time} seconds"
     )
-    print(f"Done generating and indexing {len(docs)} documents into the vectordb in {time.time() - start_time} seconds")
 
     # Using langchain vectorstore wrapper
     # from langchain_qdrant import QdrantVectorStore
