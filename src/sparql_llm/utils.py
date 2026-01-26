@@ -7,7 +7,7 @@ import curies
 import httpx
 import rdflib
 
-from sparql_llm.config import SparqlEndpointLinks, settings
+from sparql_llm.config import SparqlEndpointLinks
 
 # Disable logger in your code with logging.getLogger("sparql_llm").setLevel(logging.WARNING)
 logger = logging.getLogger("sparql_llm")
@@ -255,7 +255,3 @@ class EndpointsMetadataManager:
     #     """Reset cached metadata (useful for re-initialization after init_vectordb)."""
     #     self._prefixes_map = {}
     #     self._void_dict = {}
-
-
-# Global instance, metadata loads lazily on first property access
-endpoints_metadata = EndpointsMetadataManager(settings.endpoints, settings.auto_init)

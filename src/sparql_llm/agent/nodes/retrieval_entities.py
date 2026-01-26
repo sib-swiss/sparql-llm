@@ -7,7 +7,8 @@ from langchain_core.runnables import RunnableConfig
 from qdrant_client import models
 
 from sparql_llm.agent.state import State, StepOutput
-from sparql_llm.config import Configuration, embedding_model, qdrant_client, settings
+from sparql_llm.config import Configuration, settings
+from sparql_llm.indexing.index_resources import embedding_model, qdrant_client
 
 # NOTE: experimental, not used in production
 

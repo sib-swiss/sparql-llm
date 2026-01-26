@@ -6,7 +6,8 @@ from fastembed import SparseTextEmbedding, TextEmbedding
 from langchain_core.documents import Document
 from qdrant_client import models
 
-from sparql_llm.config import qdrant_client, settings
+from sparql_llm.config import settings
+from sparql_llm.indexing.index_resources import qdrant_client
 from sparql_llm.utils import query_sparql
 
 # NOTE: Run the script to extract entities from endpoints and generate embeddings for them (long):

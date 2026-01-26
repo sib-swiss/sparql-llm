@@ -4,12 +4,11 @@ import json
 from mcp.server.fastmcp import FastMCP
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 
-from sparql_llm.config import embedding_model, qdrant_client, settings
-from sparql_llm.indexing.index_resources import init_vectordb
-from sparql_llm.utils import endpoints_metadata, logger, query_sparql
+from sparql_llm.config import settings
+from sparql_llm.indexing.index_resources import embedding_model, endpoints_metadata, init_vectordb, qdrant_client
+from sparql_llm.utils import logger, query_sparql
 from sparql_llm.validate_sparql import validate_sparql
 
-logger
 # What are the rat orthologs of the human TP53?
 # TODO: MCP integrated https://github.com/modelcontextprotocol/python-sdk/pull/1007
 

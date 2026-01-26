@@ -3,18 +3,35 @@ import time
 import httpx
 import pandas as pd
 from bs4 import BeautifulSoup
+from fastembed import TextEmbedding
 from langchain_core.documents import Document
 from markdownify import markdownify
-from qdrant_client import models
+from qdrant_client import QdrantClient, models
 from qdrant_client.http.models import Distance, VectorParams
 from rdflib import RDF, Dataset, Namespace
 
 from sparql_llm import SparqlExamplesLoader, SparqlInfoLoader, SparqlVoidShapesLoader
-from sparql_llm.config import SparqlEndpointLinks, embedding_model, qdrant_client, settings
+from sparql_llm.config import SparqlEndpointLinks, settings
 from sparql_llm.loaders.sparql_info_loader import GENERAL_INFO_DOC_TYPE
-from sparql_llm.utils import endpoints_metadata
+from sparql_llm.utils import EndpointsMetadataManager
 
 SCHEMA = Namespace("http://schema.org/")
+
+
+# Global instance, metadata loads lazily on first property access
+endpoints_metadata = EndpointsMetadataManager(settings.endpoints, settings.auto_init)
+
+# TODO: Getting `TypeError: cannot pickle '_thread.RLock' object` when doing `QdrantVectorStore.from_existing_collection(client=qdrant_client)`
+qdrant_client = (
+    QdrantClient(url=settings.vectordb_url, prefer_grpc=True, timeout=600)
+    if settings.vectordb_url.startswith(("http", "https"))
+    else QdrantClient(path=settings.vectordb_url)
+)
+
+embedding_model = TextEmbedding(
+    settings.embedding_model,
+    # providers=["CUDAExecutionProvider"], # Replace the fastembed dependency with fastembed-gpu to use your GPUs
+)
 
 
 def load_schemaorg_description(endpoint: SparqlEndpointLinks) -> list[Document]:

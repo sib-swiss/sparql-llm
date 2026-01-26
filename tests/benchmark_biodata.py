@@ -22,7 +22,8 @@ from sklearn.model_selection import KFold
 
 # from sklearn.model_selection import KFold
 from sparql_llm import SparqlExamplesLoader, SparqlVoidShapesLoader
-from sparql_llm.config import embedding_model, qdrant_client, settings
+from sparql_llm.config import settings
+from sparql_llm.indexing.index_resources import embedding_model, qdrant_client
 from sparql_llm.utils import EndpointsMetadataManager, query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries
 

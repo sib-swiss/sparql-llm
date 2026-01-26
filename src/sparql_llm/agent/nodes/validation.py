@@ -10,7 +10,8 @@ from langchain_core.runnables import RunnableConfig
 from sparql_llm.agent.prompts import FIX_QUERY_PROMPT
 from sparql_llm.agent.state import State, StepOutput
 from sparql_llm.config import Configuration, settings
-from sparql_llm.utils import endpoints_metadata, query_sparql
+from sparql_llm.indexing.index_resources import endpoints_metadata
+from sparql_llm.utils import query_sparql
 from sparql_llm.validate_sparql import validate_sparql_in_msg
 
 

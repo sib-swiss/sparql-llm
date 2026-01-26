@@ -8,10 +8,8 @@ from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Annotated, Any, Required, TypeVar
 
-from fastembed import TextEmbedding
 from langchain_core.runnables import RunnableConfig, ensure_config
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from qdrant_client import QdrantClient
 from typing_extensions import TypedDict
 
 from sparql_llm.agent import prompts
@@ -223,20 +221,6 @@ It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC
 settings_filepath = os.getenv("SETTINGS_FILEPATH")
 settings = Settings.from_file(settings_filepath) if settings_filepath else Settings()
 # logger.info(f"📂 Using SETTINGS file: {settings_filepath}")
-
-# settings = Settings()
-
-# TODO: Getting `TypeError: cannot pickle '_thread.RLock' object` when doing `QdrantVectorStore.from_existing_collection(client=qdrant_client)`
-qdrant_client = (
-    QdrantClient(url=settings.vectordb_url, prefer_grpc=True, timeout=600)
-    if settings.vectordb_url.startswith(("http", "https"))
-    else QdrantClient(path=settings.vectordb_url)
-)
-
-embedding_model = TextEmbedding(
-    settings.embedding_model,
-    # providers=["CUDAExecutionProvider"], # Replace the fastembed dependency with fastembed-gpu to use your GPUs
-)
 
 
 # Configuration defined at runtime
