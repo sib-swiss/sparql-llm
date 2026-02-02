@@ -39,7 +39,7 @@ if settings.sentry_url:
 
 
 # Initialize Langfuse logs tracing CallbackHandler for Langchain https://langfuse.com/docs/integrations/langchain/example-python-langgraph
-langfuse_handler = [CallbackHandler()] if os.getenv("LANGFUSE_SECRET_KEY") else []
+langfuse_handler = [CallbackHandler(update_trace=True)] if os.getenv("LANGFUSE_SECRET_KEY") else []
 
 
 @contextlib.asynccontextmanager
@@ -105,6 +105,7 @@ class ChatCompletionRequest(BaseModel):
     validate_output: bool = True
     enable_sparql_execution: bool = True
     headers: dict[str, str] = {}
+    session_id: str | None = None
 
 
 def convert_chunk_to_dict(obj: Any) -> Any:
@@ -172,12 +173,19 @@ async def chat(request: Request) -> StreamingResponse | JSONResponse:
         raise ValueError("No question provided")
 
     # print(request.model)
+    # Pass session_id via metadata for Langfuse to properly group multi-turn conversations
+    # https://langfuse.com/docs/integrations/langchain/tracing#trace-attributes
+    langfuse_metadata = {}
+    if chat_request.session_id:
+        langfuse_metadata["langfuse_session_id"] = chat_request.session_id
+
     config = RunnableConfig(
         configurable={
             "model": chat_request.model,
             "validate_output": chat_request.validate_output,
             "enable_sparql_execution": chat_request.enable_sparql_execution,
         },
+        metadata=langfuse_metadata,
         recursion_limit=25,
         callbacks=langfuse_handler,  # type: ignore
     )

@@ -29,6 +29,7 @@ export class ChatState {
   apiUrl: string;
   apiKey: string;
   model: string;
+  sessionId: string;
   messages: Accessor<Message[]>;
   setMessages: Setter<Message[]>;
   abortController: AbortController;
@@ -38,6 +39,8 @@ export class ChatState {
     this.apiUrl = apiUrl;
     this.apiKey = apiKey;
     this.model = model;
+    // Generate a unique session ID for this conversation (used by Langfuse to group multi-turn conversations)
+    this.sessionId = crypto.randomUUID();
 
     const [messages, setMessages] = createSignal<Message[]>([]);
     this.messages = messages;
@@ -49,6 +52,11 @@ export class ChatState {
   abortRequest = () => {
     this.abortController.abort();
     this.abortController = new AbortController();
+  };
+
+  resetSession = () => {
+    this.sessionId = crypto.randomUUID();
+    this.setMessages([]);
   };
 
   lastMsg = () => this.messages()[this.messages().length - 1];
@@ -186,6 +194,7 @@ async function streamCustomLangGraph(state: ChatState) {
     body: JSON.stringify({
       messages: state.messages().map(({content, role}) => ({content: content(), role})),
       stream: true,
+      session_id: state.sessionId,
       ...(state.model ? {model: state.model} : {}),
     }),
   });

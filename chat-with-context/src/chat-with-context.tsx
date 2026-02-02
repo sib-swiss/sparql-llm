@@ -379,7 +379,7 @@ customElement(
               <button
                 title="Start a new conversation"
                 class="w-8 h-8 flex items-center justify-center rounded-full text-slate-500 bg-slate-100 dark:text-slate-400 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 shadow-sm"
-                onClick={() => state.setMessages([])}
+                onClick={() => state.resetSession()}
                 type="button"
                 aria-label="Start a new conversation"
               >
