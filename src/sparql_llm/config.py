@@ -173,6 +173,9 @@ It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC
     app_org: str = "SIB Swiss Institute of Bioinformatics"
     """The organization responsible for the application."""
 
+    app_public_host: str = "chat.expasy.org"
+    """The public host name where the application is deployed, used for MCP transport security settings."""
+
     # Public API key used by the frontend to access the chatbot and prevent abuse from bots
     chat_api_key: str = ""
     # Secret API key used by admins to access log file easily from the API

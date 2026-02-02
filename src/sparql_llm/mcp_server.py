@@ -2,6 +2,7 @@ import argparse
 import json
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 
 from sparql_llm.config import settings
@@ -12,6 +13,16 @@ from sparql_llm.validate_sparql import validate_sparql
 # What are the rat orthologs of the human TP53?
 # TODO: MCP integrated https://github.com/modelcontextprotocol/python-sdk/pull/1007
 
+transport_security = (
+    TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=["localhost:*", "127.0.0.1:*", settings.app_public_host],
+        allowed_origins=["http://localhost:*", f"https://{settings.app_public_host}"],
+    )
+    if settings.app_public_host
+    else None
+)
+
 # Create MCP server https://github.com/modelcontextprotocol/python-sdk
 mcp = FastMCP(
     name=f"{settings.app_org} MCP",
@@ -21,6 +32,8 @@ mcp = FastMCP(
     json_response=True,
     stateless_http=True,
     streamable_http_path="/",
+    # https://github.com/modelcontextprotocol/python-sdk/issues/1798
+    transport_security=transport_security,
 )
 
 # Check if the docs collection exists and has data, initialize if not
