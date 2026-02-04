@@ -1,6 +1,6 @@
 {
   "name": "@sib-swiss/chat-with-context",
-  "version": "0.0.19",
+  "version": "0.0.20",
   "description": "A web component to easily deploy a chat with context.",
   "license": "MIT",
   "author": {

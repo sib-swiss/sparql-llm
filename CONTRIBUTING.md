@@ -113,7 +113,7 @@ uv run mcp dev src/sparql_llm/mcp_server.py
          ]
       },
       "sparql-mcp-http": {
-         "url": "http://localhost:8888/mcp",
+         "url": "http://localhost:8888/mcp/",
          "type": "http"
       },
    }

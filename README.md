@@ -68,7 +68,7 @@ In your VSCode `mcp.json` you should have the following:
 {
 	"servers": {
 		"expasy-mcp-http": {
-			"url": "https://chat.expasy.org/mcp",
+			"url": "https://chat.expasy.org/mcp/",
 			"type": "http"
 		}
 	}
