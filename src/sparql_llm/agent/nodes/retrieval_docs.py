@@ -46,7 +46,7 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[StepO
                 )
             ]
         )
-        limit = configuration.search_kwargs.get("k", settings.default_number_of_retrieved_docs) * 2
+        limit = configuration.search_kwargs.get("k", settings.default_number_of_retrieved_docs)
 
         # Generate embeddings for all queries at once
         for search_embedding in embedding_model.embed(search_queries):
@@ -74,6 +74,9 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[StepO
                 )
     else:
         limit = configuration.search_kwargs.get("k", settings.default_number_of_retrieved_docs)
+        if len(state.structured_question.question_steps) > 3:
+            # If there are many steps, we reduce the number of retrieved docs per step to avoid too many docs
+            limit = max(1, limit // 2)
 
         # Get relevant query examples
         for search_embedding in embedding_model.embed([user_question, *state.structured_question.question_steps]):
@@ -98,6 +101,9 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[StepO
                 not in {existing_doc.payload.get("answer") if existing_doc.payload else None for existing_doc in docs}
             )
 
+        limit = configuration.search_kwargs.get("k", settings.default_number_of_retrieved_docs)
+        if len(state.structured_question.extracted_classes) > 3:
+            limit = max(1, limit // 2)
         # Get other relevant documentation (classes schemas, general information)
         for search_embedding in embedding_model.embed(state.structured_question.extracted_classes):
             docs.extend(

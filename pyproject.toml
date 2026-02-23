@@ -145,6 +145,9 @@ disallow_untyped_defs = true
 disallow_any_generics = true
 disallow_untyped_calls = false # needed due to _eval() not being typed in rdflib
 
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
 
 [tool.ruff]
 target-version = "py310"

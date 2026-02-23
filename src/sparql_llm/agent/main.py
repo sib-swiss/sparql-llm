@@ -190,7 +190,7 @@ async def chat(request: Request) -> StreamingResponse | JSONResponse:
         callbacks=langfuse_handler,  # type: ignore
     )
     inputs: Any = {
-        "messages": [(msg.role, msg.content) for msg in chat_request.messages],
+        "messages": [(msg.role, msg.content) for msg in chat_request.messages[-10:]],
     }
 
     # request.stream = False

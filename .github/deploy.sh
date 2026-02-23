@@ -3,24 +3,14 @@
 # Script to help deploy the system on the server
 # SSH connections:
 # expasychat is connecting to the server with your user
-# expasychatpodman is connecting to the server with the podman user (used to run the containers)
 
-# NOTE: right now issue with sudo password so we need to manually connect with ssh, and then run commands from the server directly
+# NOTE: sudo password is stored in macOS Keychain under service "expasychat-sudo".
+# To store it: security add-generic-password -a "$USER" -s "expasychat-sudo" -w
+# To update it: security add-generic-password -U -a "$USER" -s "expasychat-sudo" -w
+
+
+# Alternatively, connect manually:
 # ssh expasychat
-## Just restart:
-# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml up --force-recreate -d'
-
-## Pull and restart:
-# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; git pull ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml up --force-recreate -d'
-
-## Pull, build and restart:
-# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; git pull ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml up --force-recreate --build -d'
-
-## Re-index the endpoints in running deployment:
-# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml exec api uv run src/sparql_llm/indexing/index_resources.py'
-
-## Show logs:
-# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 podman-compose -f compose.prod.yml logs'
 
 ## Check env variables
 # sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; vim .env'
@@ -29,34 +19,36 @@
 # sudo -u podman bash -c 'dmesg'
 # sudo -u podman bash -c 'journalctl -k '
 
-# sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; tail -f data/logs/expasygpt_podman.log'
-
-
-# ssh -t expasychat "sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 $1'"
+# Get sudo password from macOS Keychain, or prompt if not stored
+_get_sudo_pass() {
+    if command -v security &>/dev/null; then
+        security find-generic-password -a "$USER" -s "expasychat-sudo" -w 2>/dev/null && return
+    fi
+    read -rs -p "sudo password for expasychat: " _PASS
+    echo ""
+    printf '%s' "$_PASS"
+}
 
 ssh_cmd() {
-    ssh -t expasychat "sudo -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 $1'"
+    local sudo_pass
+    sudo_pass=$(_get_sudo_pass)
+    ssh expasychat "echo '${sudo_pass}' | sudo -S -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 $1'"
 }
 
 if [ "$1" = "build" ]; then
     echo "📦️ Re-building"
-    # cd chat-with-context
-    # npm run build:demo
-    # cd ..
-    # ssh_cmd "git pull ; rm -rf src/expasy-agent/src/expasy_agent/webapp"
-    # scp -r ./src/expasy-agent/src/expasy_agent/webapp expasychatpodman:/var/containers/podman/sparql-llm/src/expasy-agent/src/expasy_agent/
     ssh_cmd "git pull ; podman-compose -f compose.prod.yml up --force-recreate --build -d"
 
 elif [ "$1" = "clean" ]; then
     echo "🧹 Cleaning up the vector database"
-    ssh_cmd "git pull ; rm -rf data/qdrant ; podman-compose -f compose.prod.yml up --force-recreate -d"
+    ssh_cmd "git pull ; rm -rf data/qdrant data/endpoints_metadata.json ; podman-compose -f compose.prod.yml up --force-recreate -d"
 
 elif [ "$1" = "logs" ]; then
-    ssh_cmd "podman-compose logs api"
+    ssh_cmd "podman-compose -f compose.prod.yml logs api"
 
 elif [ "$1" = "index" ]; then
     echo "🔎 Indexing endpoints in the vector database"
-    ssh_cmd "podman-compose exec api uv run src/sparql_llm/indexing/index_resources.py"
+    ssh_cmd "podman-compose -f compose.prod.yml exec api uv run src/sparql_llm/indexing/index_resources.py"
 
 elif [ "$1" = "import-entities-index" ]; then
     echo "Import entities embeddings from adsicore which has GPU to generate them"

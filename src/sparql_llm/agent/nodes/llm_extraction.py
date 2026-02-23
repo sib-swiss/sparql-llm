@@ -66,7 +66,9 @@ async def extract_user_question(
     # print(message_value)
     # print(message_value.messages[0].content)
     structured_question = StructuredQuestion.model_validate(
-        await model.ainvoke(message_value, {**config, "configurable": {"stream": False}})
+        await model.ainvoke(
+            message_value, {**config, "configurable": {**config.get("configurable", {}), "stream": False}}
+        )
     )
     # print(structured_question)
     steps_label = (

@@ -182,7 +182,7 @@ def validate_sparql_with_void(
                         # NOTE: we use compress_list for single values also because it has passthrough enabled by default for when there is no match in the converter
                         # print(subj_type, pred, list(void_dict.get(subj_type, {}).keys()), void_dict.get(subj_type, {}))
                         issues.add(
-                            f"Subject {subj} with type `{prefix_converter.compress(subj_type)}` in endpoint {endpoint} does not support the predicate `{compress_list(prefix_converter, [pred])[0]}`. It can have the following predicates: `{'`, `'.join(compress_list(prefix_converter, list(void_dict.get(subj_type, {}).keys())))}`"
+                            f"Subject {subj} with type `{prefix_converter.compress(subj_type, passthrough=True)}` in endpoint {endpoint} does not support the predicate `{prefix_converter.compress(pred, passthrough=True)}`. It can have the following predicates: `{'`, `'.join(compress_list(prefix_converter, list(void_dict.get(subj_type, {}).keys())))}`"
                         )
                     for obj in pred_dict[pred]:
                         # Recursively validates objects that are variables
@@ -219,7 +219,7 @@ def validate_sparql_with_void(
                     elif missing_pred is not None:
                         # print(f"Subject {subj} {parent_type} {parent_pred} is not a valid {potential_types} !")
                         issues.add(
-                            f"Subject {subj} in endpoint {endpoint} does not support the predicate `{prefix_converter.compress(missing_pred)}`. Correct predicate might be one of the following: `{'`, `'.join(compress_list(prefix_converter, list(potential_preds)))}` (we inferred this variable might be of the type `{prefix_converter.compress(potential_type)}`)"
+                            f"Subject {subj} in endpoint {endpoint} does not support the predicate `{prefix_converter.compress(missing_pred, passthrough=True)}`. Correct predicate might be one of the following: `{'`, `'.join(compress_list(prefix_converter, list(potential_preds)))}` (we inferred this variable might be of the type `{prefix_converter.compress(potential_type, passthrough=True)}`)"
                         )
                         break
 

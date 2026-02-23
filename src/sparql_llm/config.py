@@ -144,9 +144,8 @@ It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC
     entities_collection_name: str = "entities"
 
     # Default settings for the agent that can be changed at runtime
-    default_llm_model: str = "openrouter/openai/gpt-5.1"
-    # default_llm_model: str = "openai/gpt-4o"
-    # TODO: default_llm_model_cheap: str = "openai/gpt-4o-mini"
+    default_llm_model: str = "openrouter/openai/gpt-5.2"
+    # default_llm_model_cheap: str = "openrouter/openai/gpt-5-mini"
 
     default_number_of_retrieved_docs: int = 10
     default_max_try_fix_sparql: int = 3
