@@ -92,7 +92,7 @@ def transform_text2sparql_queries(input_file: str, endpoint_url: str) -> pd.Data
     queries["result"] = queries.apply(lambda q: safe_query_sparql(q["query"], q["endpoint"]), axis=1)
     queries["result length"] = queries["result"].apply(lambda r: len(r["results"]["bindings"]) if "results" in r else 1)
     queries["query type"] = queries["query"].apply(lambda q: "ASK" if "ASK WHERE" in q.upper() else "SELECT")
-    queries["dataset"] = "Text2SPARQL-" + input_file.split("25.")[-2].split("_")[-1]
+    queries["dataset"] = "Text2SPARQL-" + input_file.split("25.")[-2].rsplit("_", maxsplit=1)[-1]
     return queries
 
 
@@ -125,7 +125,7 @@ def transform_qald_9_plus_queries(input_file: str, endpoint_url: str) -> pd.Data
     return queries
 
 
-def transform_LC_QuAD_queries(input_file: str, endpoint_url: str) -> pd.DataFrame:
+def transform_lc_quad_queries(input_file: str, endpoint_url: str) -> pd.DataFrame:
     """Transforms LC-QuAD queries from a JSON file into a DataFrame.
     Args:
         input_file (str): Path to the JSON file containing QALD-9+ queries.
@@ -154,7 +154,7 @@ def transform_LC_QuAD_queries(input_file: str, endpoint_url: str) -> pd.DataFram
     return queries
 
 
-def transform_Generated_CK_queries(input_file: str, endpoint_url: str) -> pd.DataFrame:
+def transform_generated_ck_queries(input_file: str, endpoint_url: str) -> pd.DataFrame:
     """Transforms generated CK queries from a JSON file into a DataFrame.
     Args:
         input_file (str): Path to the JSON file containing generated CK queries.
@@ -191,6 +191,7 @@ def transform_Generated_CK_queries(input_file: str, endpoint_url: str) -> pd.Dat
 
     return queries
 
+
 def transform_bioqueries(uniprot_file: str, cellosaurus_file: str, bgee_file: str) -> pd.DataFrame:
     """
     Transforms bioqueries from CSV files into a DataFrame.
@@ -215,10 +216,11 @@ def transform_bioqueries(uniprot_file: str, cellosaurus_file: str, bgee_file: st
     queries = pd.concat([uniprot, cellosaurus, bgee], ignore_index=True)
     queries["triple patterns"] = queries["query"].apply(count_triple_patterns)
     queries["query type"] = queries["query"].apply(lambda q: "ASK" if "ASK WHERE" in q.upper() else "SELECT")
-    queries["federated"] = queries["query"].apply(lambda q: True if "SERVICE" in q.upper() else False)
-    queries = queries[queries['triple patterns'] != 0]
+    queries["federated"] = queries["query"].apply(lambda q: "SERVICE" in q.upper())
+    queries = queries[queries["triple patterns"] != 0]
 
     return queries
+
 
 if __name__ == "__main__":
     queries = []
@@ -228,8 +230,8 @@ if __name__ == "__main__":
         queries.append(transform_text2sparql_queries(TEXT2SPARQL_DB_QUERIES_FILE, TEXT2SPARQL_ENDPOINT))
         queries.append(transform_text2sparql_queries(TEXT2SPARQL_CK_QUERIES_FILE, TEXT2SPARQL_ENDPOINT))
         queries.append(transform_qald_9_plus_queries(QUALD_9_PLUS_QUERIES_FILE, QUALD_9_PLUS_ENDPOINT))
-        queries.append(transform_LC_QuAD_queries(LC_QuAD_QUERIES_FILE, LC_QuAD_ENDPOINT))
-        queries.append(transform_Generated_CK_queries(GENERATED_CK_QUERIES_FILE, TEXT2SPARQL_ENDPOINT))
+        queries.append(transform_lc_quad_queries(LC_QuAD_QUERIES_FILE, LC_QuAD_ENDPOINT))
+        queries.append(transform_generated_ck_queries(GENERATED_CK_QUERIES_FILE, TEXT2SPARQL_ENDPOINT))
         queries.append(transform_bioqueries(UNIPROT_QUERIES_FILE, CELLOSAURUS_QUERIES_FILE, BGEE_QUERIES_FILE))
     queries = pd.concat(queries, ignore_index=True)
     queries.to_csv(OUTPUT_QUERIES_FILE, index=False)

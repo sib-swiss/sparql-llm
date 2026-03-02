@@ -65,6 +65,7 @@ def plot_result_length(queries: pd.DataFrame):
     else:
         plt.show()
 
+
 def plot_triple_patterns(queries: pd.DataFrame):
     queries = queries.copy()
     queries["dataset"] = queries["dataset"].map(
@@ -113,7 +114,9 @@ def plot_triple_patterns(queries: pd.DataFrame):
 
 def plot_bio_triple_patterns(queries: pd.DataFrame):
     queries = queries.copy()
-    queries['dataset'] = queries.apply(lambda q: q['dataset'] + ' (Federated)' if q['federated'] else q['dataset'], axis=1)
+    queries["dataset"] = queries.apply(
+        lambda q: q["dataset"] + " (Federated)" if q["federated"] else q["dataset"], axis=1
+    )
 
     sns.set_theme(context="paper", style="white", color_codes=True, font_scale=2.5)
 

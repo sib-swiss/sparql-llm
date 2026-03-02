@@ -23,7 +23,7 @@ from pydantic import BaseModel
 
 from sparql_llm.agent.graph import graph
 from sparql_llm.config import settings
-from sparql_llm.mcp_server import mcp
+from sparql_llm.mcp_server import get_mcp_app
 from sparql_llm.utils import logger
 
 if settings.sentry_url:
@@ -40,6 +40,8 @@ if settings.sentry_url:
 
 # Initialize Langfuse logs tracing CallbackHandler for Langchain https://langfuse.com/docs/integrations/langchain/example-python-langgraph
 langfuse_handler = [CallbackHandler(update_trace=True)] if os.getenv("LANGFUSE_SECRET_KEY") else []
+
+mcp = get_mcp_app()
 
 
 @contextlib.asynccontextmanager

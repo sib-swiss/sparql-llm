@@ -17,19 +17,18 @@ logger.setLevel(logging.INFO)
 
 
 class EndpointSchema:
+    # FROM <{graph}>
     _CLASS_PREDICATE_QUERY = """
     SELECT ?class ?predicate COUNT(*) AS ?count
-    FROM <{graph}>
-    WHERE {{
+    WHERE {
         ?s a ?class ;
             ?predicate ?o .
-    }}
+    }
     GROUP BY ?class ?predicate
     """
 
     _RANGE_QUERY = """
     SELECT ?range
-    FROM <{graph}>
     WHERE {{
         ?s a <{class_name}> ;
             <{predicate_name}> ?o .
@@ -49,7 +48,7 @@ class EndpointSchema:
     def __init__(
         self,
         endpoint_url: str,
-        graph: str,
+        # graph: str,
         limit_schema: dict[str, float],
         max_workers: int,
         force_recompute: bool,
@@ -59,7 +58,6 @@ class EndpointSchema:
         Fetch class and predicate information from the SPARQL endpoint.
         Args:
             endpoint_url (str): The URL of the SPARQL endpoint to connect to.
-            graph (str): The graph URI to query within the endpoint.
             limit_queries (dict[str, float]): A dictionary specifying query limits.
             max_workers (int): The maximum number of worker threads to use for concurrent operations.
         Funtions:
@@ -68,7 +66,7 @@ class EndpointSchema:
         """
 
         self._endpoint_url = endpoint_url
-        self._graph = graph
+        # self._graph = graph
         self._limit_schema = limit_schema
         self._max_workers = max_workers
         self._force_recompute = force_recompute
@@ -79,7 +77,7 @@ class EndpointSchema:
         # Fetch counts information
         logger.info(f"Fetching class-predicate frequency information from {self._endpoint_url}...")
         schema = query_sparql(
-            self._CLASS_PREDICATE_QUERY.format(graph=self._graph),
+            self._CLASS_PREDICATE_QUERY,
             endpoint_url=self._endpoint_url,
             check_service_desc=False,
         )["results"]["bindings"]
@@ -136,10 +134,9 @@ class EndpointSchema:
     def _retrieve_predicate_information(self, class_name: str, predicate_name: str) -> list[str]:
         """Fetch ranges for a given predicate of a class"""
         try:
-            range = (
+            pred_range = (
                 query_sparql(
                     self._RANGE_QUERY.format(
-                        graph=self._graph,
                         class_name=class_name,
                         predicate_name=predicate_name,
                         limit=self._limit_schema["top_n_ranges"],
@@ -151,9 +148,9 @@ class EndpointSchema:
             )
 
             # Filter out unwanted ranges
-            range = [
+            pred_range = [
                 r["range"]["value"]
-                for r in range
+                for r in pred_range
                 if (
                     ("range" in r)
                     and ("value" in r["range"])
@@ -162,8 +159,8 @@ class EndpointSchema:
             ]
         except Exception as e:
             logger.warning(f"Error retrieving range for {class_name} - {predicate_name}: {e}")
-            range = []
-        return range
+            pred_range = []
+        return pred_range
 
     def get_schema(self) -> pd.DataFrame:
         """Load schema information from a JSON file."""
@@ -186,9 +183,7 @@ class EndpointSchema:
     def plot_heatmap(self, apply_limit: bool = True) -> None:
         # Fetch counts information
         logger.info(f"Fetching counts information from {self._endpoint_url}...")
-        counts = query_sparql(self._CLASS_PREDICATE_QUERY.format(graph=self._graph), endpoint_url=self._endpoint_url)[
-            "results"
-        ]["bindings"]
+        counts = query_sparql(self._CLASS_PREDICATE_QUERY, endpoint_url=self._endpoint_url)["results"]["bindings"]
         counts = pd.DataFrame(counts).map(lambda x: x["value"]).assign(count=lambda df: df["count"].astype(int))
         counts = counts.sort_values(by="count", ascending=False)
 
@@ -223,22 +218,21 @@ class EndpointSchema:
 
 if __name__ == "__main__":
     start_time = time.time()
-    schema = EndpointSchema(
-        endpoint_url="http://localhost:8890/sparql/",
-        graph="https://text2sparql.aksw.org/2025/corporate/",
-        limit_schema={
-            "top_classes_percentile": 0,
-            "top_n_predicates": 20,
-            "top_n_ranges": 1,
-        },
-        max_workers=4,
-        force_recompute=True,
-        schema_path=os.path.join("data", "benchmarks", "Text2SPARQL", "schemas", "corporate_schema.json"),
-    )
+    # schema = EndpointSchema(
+    #     endpoint_url="http://localhost:8890/sparql/",
+    #     graph="https://text2sparql.aksw.org/2025/corporate/",
+    #     limit_schema={
+    #         "top_classes_percentile": 0,
+    #         "top_n_predicates": 20,
+    #         "top_n_ranges": 1,
+    #     },
+    #     max_workers=4,
+    #     force_recompute=True,
+    #     schema_path=os.path.join("data", "benchmarks", "Text2SPARQL", "schemas", "corporate_schema.json"),
+    # )
 
     schema = EndpointSchema(
         endpoint_url="http://localhost:8890/sparql/",
-        graph="https://text2sparql.aksw.org/2025/dbpedia/",
         limit_schema={
             "top_classes_percentile": 0.90,
             "top_n_predicates": 20,
@@ -246,7 +240,7 @@ if __name__ == "__main__":
         },
         max_workers=4,
         force_recompute=True,
-        schema_path=os.path.join("data", "benchmarks", "Text2SPARQL", "schemas", "dbpedia_schema.json"),
+        schema_path=os.path.join("data", "dbpedia_schema.json"),
     )
 
     # Debugging examples

@@ -141,11 +141,11 @@ async def get_answer(question: str, dataset: str):
     # Validation and fixing of the generated SPARQL query
     num_of_tries = 0
     resp_msg = "\n\n# Make sure you will not repeat the mistakes below: \n"
+    generated_sparql = ""
     while num_of_tries < settings.default_max_try_fix_sparql:
+        generated_sparql = ""
         try:
-            generated_sparql = ""
             chat_resp_md = response.model_dump()["content"]
-
             generated_sparqls = extract_sparql_queries(chat_resp_md)
             generated_sparql = generated_sparqls[-1]["query"].strip()
             generated_sparql = generated_sparql.replace(ENDPOINT_URL, DOCKER_ENDPOINT_URL)

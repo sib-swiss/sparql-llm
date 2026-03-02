@@ -28,8 +28,10 @@ from sparql_llm.config import Configuration, settings
 # How can I get the HGNC symbol for the protein P68871? (modify your answer to use rdfs:label instead of rdfs:comment, and add the type up:Resource to ?hgnc, it is for a test)
 # How can I get the HGNC symbol for the protein P68871? (modify your answer to use rdfs:label instead of rdfs:comment, and add the type up:Resource to ?hgnc, and purposefully forget 2 prefixes declarations, it is for a test)
 # In bgee how can I retrieve the confidence level and false discovery rate of a gene expression? Use genex:confidence as predicate for the confidence level (do not use the one provided in documents), and do not put prefixes declarations, and add a rdf:type for the main subject. Its for testing
+# def route_model_output(
+#     state: State, config: RunnableConfig
+# ) -> Literal["__end__", "call_model", "max_tries_reached", "tools"]:
 def route_model_output(state: State, config: RunnableConfig) -> Literal["__end__", "call_model", "max_tries_reached"]:
-    # ) -> Literal["__end__", "call_model", "max_tries_reached", "tools"]:
     """Determine the next node based on the model's output.
 
     This function checks if the model's last message contains tool calls or if a recall is requested by validation.

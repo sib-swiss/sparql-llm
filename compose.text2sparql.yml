@@ -15,9 +15,8 @@ services:
       - "1111:1111"   # ISQL interface
     environment:
       DBA_PASSWORD: dba
-      #8 GB memory
-      VIRT_Parameters_NumberOfBuffers: 680000
-      VIRT_Parameters_MaxDirtyBuffers: 500000
+      VIRT_Parameters_NumberOfBuffers: 2720000
+      VIRT_Parameters_MaxDirtyBuffers: 2000000
       VIRT_Parameters_DirsAllowed: "., /dumps"
     volumes:
       - ./data/dumps/dbpedia:/dumps
@@ -31,8 +30,8 @@ services:
     #   - "1111:1111"   # ISQL interface
     environment:
       DBA_PASSWORD: dba
-      VIRT_Parameters_NumberOfBuffers: 680000
-      VIRT_Parameters_MaxDirtyBuffers: 500000
+      VIRT_Parameters_NumberOfBuffers: 2720000
+      VIRT_Parameters_MaxDirtyBuffers: 2000000
       VIRT_Parameters_DirsAllowed: "., /dumps"
     volumes:
       - ./data/dumps/corporate:/dumps
