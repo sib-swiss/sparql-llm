@@ -32,7 +32,7 @@ _get_sudo_pass() {
 ssh_cmd() {
     local sudo_pass
     sudo_pass=$(_get_sudo_pass)
-    ssh expasychat "echo '${sudo_pass}' | sudo -S -u podman bash -c 'cd /var/containers/podman/sparql-llm ; XDG_RUNTIME_DIR=/run/user/1001 $1'"
+    ssh expasychat "echo '${sudo_pass}' | sudo -S -u podman bash -c 'export XDG_RUNTIME_DIR=/run/user/1001 ; cd /var/containers/podman/sparql-llm ; $1'"
 }
 
 if [ "$1" = "build" ]; then
