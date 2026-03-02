@@ -3,11 +3,11 @@ services:
     extends:
       file: compose.yml
       service: vectordb
-    ports:
-      - 6333:6333
-      - 6334:6334
+    # ports:
+    #   - 6333:6333
+    #   - 6334:6334
 
-  text2sparql-virtuoso:
+  virtuoso-dbpedia:
     image: openlink/virtuoso-opensource-7:latest
     restart: unless-stopped
     ports:
@@ -20,14 +20,29 @@ services:
       VIRT_Parameters_MaxDirtyBuffers: 500000
       VIRT_Parameters_DirsAllowed: "., /dumps"
     volumes:
-      - ./data/benchmarks/Text2SPARQL/virtuosodb:/database
-      - ./data/benchmarks/Text2SPARQL/dumps:/dumps
+      - ./data/dumps/dbpedia:/dumps
+      - ./data/virtuoso/dbpedia:/database
+
+  virtuoso-corporate:
+    image: openlink/virtuoso-opensource-7:latest
+    restart: unless-stopped
+    # ports:
+    #   - "8890:8890"   # HTTP SPARQL endpoint
+    #   - "1111:1111"   # ISQL interface
+    environment:
+      DBA_PASSWORD: dba
+      VIRT_Parameters_NumberOfBuffers: 680000
+      VIRT_Parameters_MaxDirtyBuffers: 500000
+      VIRT_Parameters_DirsAllowed: "., /dumps"
+    volumes:
+      - ./data/dumps/corporate:/dumps
+      - ./data/virtuoso/corporate:/database
 
   text2sparql-api:
     build: .
     restart: unless-stopped
     ports:
-      - 8765:8765
+      - 8081:8765
     volumes:
       - ./src:/app/src
       - ./tests:/app/tests
