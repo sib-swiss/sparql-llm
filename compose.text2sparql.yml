@@ -7,6 +7,32 @@ services:
     #   - 6333:6333
     #   - 6334:6334
 
+  # https://docs.tentris.io/running_with_docker.html
+  tentris-dbpedia:
+    image: ghcr.io/tentris/tentris:latest
+    restart: unless-stopped
+    ports:
+      - "9080:9080"
+    volumes:
+      - ./data/tentris/dbpedia:/data
+      - ./data/dumps/dbpedia:/dumps
+      - ./data/tentris/tentris-license.toml:/config/tentris-license.toml:ro
+    # environment:
+    #   TENTRIS_DEFAULT_GRAPH_MODE: union
+    #   # TENTRIS_RDF_FILE: /dumps/*
+
+  # docker compose -f compose.text2sparql.yml run --rm --entrypoint sh tentris-dbpedia -c "cat /dumps/* | tentris --config /config/tentris-server-config.toml --license /config/tentris-license.toml load"
+
+  # tentris-corporate:
+  #   image: ghcr.io/tentris/tentris:latest
+  #   restart: unless-stopped
+  #   ports:
+  #     - "9080:9080"
+  #   volumes:
+  #     - ./data/tentris/corporate:/data
+  #     - ./data/tentris/corporate-dumps:/dumps
+  #     - ./data/tentris/tentris-license.toml:/config/tentris-license.toml:ro
+
   virtuoso-dbpedia:
     image: openlink/virtuoso-opensource-7:latest
     restart: unless-stopped
@@ -22,20 +48,20 @@ services:
       - ./data/dumps/dbpedia:/dumps
       - ./data/virtuoso/dbpedia:/database
 
-  virtuoso-corporate:
-    image: openlink/virtuoso-opensource-7:latest
-    restart: unless-stopped
-    # ports:
-    #   - "8890:8890"   # HTTP SPARQL endpoint
-    #   - "1111:1111"   # ISQL interface
-    environment:
-      DBA_PASSWORD: dba
-      VIRT_Parameters_NumberOfBuffers: 2720000
-      VIRT_Parameters_MaxDirtyBuffers: 2000000
-      VIRT_Parameters_DirsAllowed: "., /dumps"
-    volumes:
-      - ./data/dumps/corporate:/dumps
-      - ./data/virtuoso/corporate:/database
+  # virtuoso-corporate:
+  #   image: openlink/virtuoso-opensource-7:latest
+  #   restart: unless-stopped
+  #   # ports:
+  #   #   - "8890:8890"   # HTTP SPARQL endpoint
+  #   #   - "1111:1111"   # ISQL interface
+  #   environment:
+  #     DBA_PASSWORD: dba
+  #     VIRT_Parameters_NumberOfBuffers: 2720000
+  #     VIRT_Parameters_MaxDirtyBuffers: 2000000
+  #     VIRT_Parameters_DirsAllowed: "., /dumps"
+  #   volumes:
+  #     - ./data/dumps/corporate:/dumps
+  #     - ./data/virtuoso/corporate:/database
 
   text2sparql-api:
     build: .

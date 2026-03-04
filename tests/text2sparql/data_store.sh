@@ -5,13 +5,20 @@
 # - Expects data files in data/dumps/<dataset>.
 # - Loads files into named graphs at https://text2sparql.aksw.org/2025/<dataset>/.
 
-docker compose exec virtuoso-dbpedia isql -U dba -P dba exec="ld_dir_all('/dumps', '*', ''); rdf_loader_run();"
+# docker compose exec virtuoso-dbpedia isql -U dba -P dba exec="ld_dir_all('/dumps', '*', ''); rdf_loader_run(); checkpoint;"
 
-# Check number of triples (2501 is default virtuoso init)
-docker compose exec virtuoso-dbpedia isql -U dba -P dba exec="SPARQL SELECT COUNT(*) WHERE { ?s ?p ?o };"
+# # Check number of triples (2501 is default virtuoso init)
+# docker compose exec virtuoso-dbpedia isql -U dba -P dba exec="SPARQL SELECT COUNT(*) WHERE { ?s ?p ?o };"
 
-# Check load status
-docker compose exec virtuoso-dbpedia isql -U dba -P dba exec="SELECT ll_file, ll_graph, ll_state, ll_error FROM DB.DBA.LOAD_LIST;"
+# # Check load status
+# docker compose exec virtuoso-dbpedia isql -U dba -P dba exec="SELECT ll_file, ll_graph, ll_state, ll_error FROM DB.DBA.LOAD_LIST;"
+
+docker compose -f compose.text2sparql.yml run --rm --entrypoint sh tentris-dbpedia -c "cat /dumps/* | tentris --config /config/tentris-server-config.toml --license /config/tentris-license.toml load"
+
+
+# Generate schema:
+# uv run tests/text2sparql/endpoint_schema.py
+# uv run tests/text2sparql/index.py
 
 
 # MAX_RETRIES=5
