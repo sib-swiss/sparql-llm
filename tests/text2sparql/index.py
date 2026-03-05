@@ -5,6 +5,7 @@ import pandas as pd
 from endpoint_schema import EndpointSchema
 from langchain_core.documents import Document
 from qdrant_client import models
+from qdrant_client.http.models import Distance, VectorParams
 
 from sparql_llm.indexing.index_resources import embedding_model, qdrant_client
 
@@ -82,8 +83,17 @@ def init_vectordb(
     start_time = time.time()
 
     embeddings = list(embedding_model.embed([d.page_content for d in docs]))
+
+    collection_name = f"text2sparql-{graph.split('/')[-2]}"
+    # Ensure collection exists before upserting
+    if not qdrant_client.collection_exists(collection_name):
+        qdrant_client.create_collection(
+            collection_name=collection_name,
+            vectors_config=VectorParams(size=embedding_model.embedding_size, distance=Distance.COSINE),
+        )
+
     qdrant_client.upsert(
-        collection_name=f"text2sparql-{graph.split('/')[-2]}",
+        collection_name=collection_name,
         points=models.Batch(
             ids=list(range(1, len(docs) + 1)),
             vectors=[emb.tolist() for emb in embeddings],
