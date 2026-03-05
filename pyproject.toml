@@ -69,9 +69,6 @@ agent = [
     # Extract potential entities from text without LLM
     # "scispacy >=0.5.5",
     # "en_core_sci_md @ https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.4/en_core_sci_md-0.5.4.tar.gz",
-    "matplotlib >=3.10.3",
-    "seaborn >=0.13.2",
-    "joblib >=1.5.2",
     # "ag-ui-protocol >=0.1.9",
     # "ag-ui-langgraph >=0.0.15",
 ]
@@ -87,6 +84,9 @@ dev = [
     "pre-commit >=4.1.0",
     "mcp[cli]",
     "scikit-learn",
+    "matplotlib >=3.10.3",
+    "seaborn >=0.13.2",
+    "joblib >=1.5.2",
     # "pytrec-eval",
     # "ipykernel >=6.29.5",
 ]

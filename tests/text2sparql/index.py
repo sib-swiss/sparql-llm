@@ -6,7 +6,7 @@ from endpoint_schema import EndpointSchema
 from langchain_core.documents import Document
 from qdrant_client import models
 
-from sparql_llm.config import embedding_model, qdrant_client
+from sparql_llm.indexing.index_resources import embedding_model, qdrant_client
 
 QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), "queries.csv")
 VECTORDB_URL = "http://localhost:6334"
@@ -24,10 +24,7 @@ def init_vectordb(
     docs: list[Document] = []
 
     # Index example queries
-    if graph == "https://text2sparql.aksw.org/2025/dbpedia/":
-        examples = ["QALD-9+", "LC-QuAD"]
-    elif graph == "https://text2sparql.aksw.org/2025/corporate/":
-        examples = ["Generated-CK"]
+    examples = ["Generated-CK"] if "corporate" in graph else ["QALD-9+", "LC-QuAD"]
 
     queries = pd.read_csv(QUERIES_FILE)
     queries = queries[queries["dataset"].isin(examples)].reset_index(drop=True)

@@ -3877,16 +3877,13 @@ dependencies = [
 agent = [
     { name = "fastapi" },
     { name = "jinja2" },
-    { name = "joblib" },
     { name = "langchain" },
     { name = "langchain-mcp-adapters" },
     { name = "langchain-openai" },
     { name = "langfuse" },
     { name = "langgraph" },
-    { name = "matplotlib" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
-    { name = "seaborn" },
     { name = "sentry-sdk", extra = ["fastapi"] },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -3896,6 +3893,8 @@ bench = [
     { name = "pytrec-eval" },
 ]
 dev = [
+    { name = "joblib" },
+    { name = "matplotlib" },
     { name = "mcp", extra = ["cli"] },
     { name = "mypy" },
     { name = "pre-commit" },
@@ -3903,6 +3902,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "scikit-learn", version = "1.7.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "scikit-learn", version = "1.8.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "seaborn" },
 ]
 
 [package.metadata]
@@ -3913,7 +3913,6 @@ requires-dist = [
     { name = "fastembed", specifier = ">=0.7.4" },
     { name = "httpx", specifier = ">=0.27.2" },
     { name = "jinja2", marker = "extra == 'agent'", specifier = ">=3.1.5" },
-    { name = "joblib", marker = "extra == 'agent'", specifier = ">=1.5.2" },
     { name = "langchain", marker = "extra == 'agent'", specifier = ">=1.2.0" },
     { name = "langchain-core", specifier = ">=1.2.6" },
     { name = "langchain-mcp-adapters", marker = "extra == 'agent'", specifier = ">=0.2.1" },
@@ -3921,14 +3920,12 @@ requires-dist = [
     { name = "langfuse", marker = "extra == 'agent'", specifier = ">=3.8.1" },
     { name = "langgraph", marker = "extra == 'agent'", specifier = ">=1.0.5" },
     { name = "markdownify", specifier = ">=1.1.0" },
-    { name = "matplotlib", marker = "extra == 'agent'", specifier = ">=3.10.3" },
     { name = "mcp", specifier = ">=1.25.0,<2" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "pydantic", marker = "extra == 'agent'", specifier = ">=2.10.0" },
     { name = "pydantic-settings", marker = "extra == 'agent'", specifier = ">=2.7.0" },
     { name = "qdrant-client", specifier = ">=1.16.2" },
     { name = "rdflib", specifier = ">=7.0.0" },
-    { name = "seaborn", marker = "extra == 'agent'", specifier = ">=0.13.2" },
     { name = "sentry-sdk", extras = ["fastapi"], marker = "extra == 'agent'", specifier = ">=2.27.0" },
     { name = "sparqlwrapper", specifier = ">=2.0.0" },
     { name = "typing-extensions", specifier = ">=4.15.0" },
@@ -3939,12 +3936,15 @@ provides-extras = ["agent"]
 [package.metadata.requires-dev]
 bench = [{ name = "pytrec-eval" }]
 dev = [
+    { name = "joblib", specifier = ">=1.5.2" },
+    { name = "matplotlib", specifier = ">=3.10.3" },
     { name = "mcp", extras = ["cli"] },
     { name = "mypy", specifier = ">=1.15.0" },
     { name = "pre-commit", specifier = ">=4.1.0" },
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
     { name = "scikit-learn" },
+    { name = "seaborn", specifier = ">=0.13.2" },
 ]
 
 [[package]]
