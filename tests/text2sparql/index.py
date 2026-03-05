@@ -53,7 +53,7 @@ def init_vectordb(
     start_time = time.time()
     schema = EndpointSchema(
         endpoint_url=endpoint_url,
-        graph=graph,
+        # graph=graph,
         limit_schema=limit_schema,
         max_workers=max_workers,
         force_recompute=force_recompute,
@@ -98,19 +98,19 @@ def init_vectordb(
 
 
 if __name__ == "__main__":
-    # Init vectordb for corporate dataset
-    init_vectordb(
-        endpoint_url="http://localhost:8890/sparql/",
-        graph="https://text2sparql.aksw.org/2025/corporate/",
-        limit_schema={
-            "top_classes_percentile": 0,
-            "top_n_predicates": 20,
-            "top_n_ranges": 1,
-        },
-        max_workers=4,
-        force_recompute=True,
-        schema_path=os.path.join("data", "benchmarks", "Text2SPARQL", "schemas", "corporate_schema.json"),
-    )
+    # # Init vectordb for corporate dataset
+    # init_vectordb(
+    #     endpoint_url="http://localhost:8890/sparql/",
+    #     graph="https://text2sparql.aksw.org/2025/corporate/",
+    #     limit_schema={
+    #         "top_classes_percentile": 0,
+    #         "top_n_predicates": 20,
+    #         "top_n_ranges": 1,
+    #     },
+    #     max_workers=4,
+    #     force_recompute=True,
+    #     schema_path=os.path.join("data", "corporate_schema.json"),
+    # )
     # Init vectordb for dbpedia dataset
     init_vectordb(
         endpoint_url="http://localhost:8890/sparql/",
@@ -122,5 +122,5 @@ if __name__ == "__main__":
         },
         max_workers=4,
         force_recompute=True,
-        schema_path=os.path.join("data", "benchmarks", "Text2SPARQL", "schemas", "dbpedia_schema.json"),
+        schema_path=os.path.join("data", "dbpedia_schema.json"),
     )

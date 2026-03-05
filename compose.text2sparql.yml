@@ -14,14 +14,12 @@ services:
     ports:
       - "9080:9080"
     volumes:
-      - ./data/tentris/dbpedia:/data
+      - /local/data/tentris/dbpedia:/data
       - ./data/dumps/dbpedia:/dumps
       - ./data/tentris/tentris-license.toml:/config/tentris-license.toml:ro
     # environment:
     #   TENTRIS_DEFAULT_GRAPH_MODE: union
     #   # TENTRIS_RDF_FILE: /dumps/*
-
-  # docker compose -f compose.text2sparql.yml run --rm --entrypoint sh tentris-dbpedia -c "cat /dumps/* | tentris --config /config/tentris-server-config.toml --license /config/tentris-license.toml load"
 
   # tentris-corporate:
   #   image: ghcr.io/tentris/tentris:latest
