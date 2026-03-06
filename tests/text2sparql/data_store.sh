@@ -65,6 +65,11 @@ nohup docker compose -f compose.text2sparql.yml run text2sparql-api tests/text2s
 # nohup docker compose -f compose.text2sparql.yml run text2sparql-api tests/text2sparql/index.py https://text2sparql.aksw.org/2025/corporate/ > indexing-endpoint.log 2>&1 &
 
 
+## Query API
+
+curl -G https://biosoda.unil.ch/sparql-llm/ --data-urlencode "dataset=https://text2sparql.aksw.org/2025/dbpedia/" --data-urlencode "query=How many unique authors have written science fiction novels?"
+
+
 ## Old script for loading data into Virtuoso with retries
 
 # MAX_RETRIES=5

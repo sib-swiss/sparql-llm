@@ -2,12 +2,11 @@ import os
 import time
 
 import pandas as pd
+from api import DATASETS_ENDPOINTS, embedding_model, get_dataset_id_from_iri, qdrant_client
+from endpoint_schema import EndpointSchema
 from langchain_core.documents import Document
 from qdrant_client import models
 from qdrant_client.http.models import Distance, VectorParams
-
-from tests.text2sparql.api import DATASETS_ENDPOINTS, embedding_model, get_dataset_id_from_iri, qdrant_client
-from tests.text2sparql.endpoint_schema import EndpointSchema
 
 QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), "queries.csv")
 
