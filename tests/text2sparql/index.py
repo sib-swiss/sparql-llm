@@ -22,6 +22,7 @@ def init_vectordb(
     docs: list[Document] = []
 
     # Index example queries
+    # examples = ["Generated-CK", "Text2SPARQL-ck"] if "corporate" in dataset_iri else ["QALD-9+", "LC-QuAD", "Text2SPARQL-db"]
     examples = ["Generated-CK"] if "corporate" in dataset_iri else ["QALD-9+", "LC-QuAD"]
 
     queries = pd.read_csv(QUERIES_FILE)
@@ -110,12 +111,10 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    dataset_iri = args.dataset_iri
-
     # Init vectordb for the specified dataset
     init_vectordb(
-        endpoint_url=DATASETS_ENDPOINTS[dataset_iri],
-        dataset_iri=dataset_iri,
+        endpoint_url=DATASETS_ENDPOINTS[args.dataset_iri],
+        dataset_iri=args.dataset_iri,
         limit_schema={
             "top_classes_percentile": 0,
             "top_n_predicates": 20,

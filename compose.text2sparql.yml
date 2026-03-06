@@ -3,62 +3,6 @@ services:
     extends:
       file: compose.yml
       service: vectordb
-    # ports:
-    #   - 6334:6334
-
-  # https://docs.tentris.io/running_with_docker.html
-  tentris-dbpedia:
-    image: ghcr.io/tentris/tentris:latest
-    restart: unless-stopped
-    ports:
-      - "9080:9080"
-    volumes:
-      - /local/data/tentris/dbpedia:/data
-      - ./data/dumps/dbpedia:/dumps
-      - ./data/tentris/tentris-license.toml:/config/tentris-license.toml:ro
-    # environment:
-    #   TENTRIS_DEFAULT_GRAPH_MODE: union
-    #   # TENTRIS_RDF_FILE: /dumps/*
-
-  # tentris-corporate:
-  #   image: ghcr.io/tentris/tentris:latest
-  #   restart: unless-stopped
-  #   ports:
-  #     - "9080:9080"
-  #   volumes:
-  #     - ./data/tentris/corporate:/data
-  #     - ./data/tentris/corporate-dumps:/dumps
-  #     - ./data/tentris/tentris-license.toml:/config/tentris-license.toml:ro
-
-  virtuoso-dbpedia:
-    image: openlink/virtuoso-opensource-7:latest
-    restart: unless-stopped
-    ports:
-      - "8890:8890"   # HTTP SPARQL endpoint
-      - "1111:1111"   # ISQL interface
-    environment:
-      DBA_PASSWORD: dba
-      VIRT_Parameters_NumberOfBuffers: 2720000
-      VIRT_Parameters_MaxDirtyBuffers: 2000000
-      VIRT_Parameters_DirsAllowed: "., /dumps"
-    volumes:
-      - ./data/dumps/dbpedia:/dumps
-      - ./data/virtuoso/dbpedia:/database
-
-  # virtuoso-corporate:
-  #   image: openlink/virtuoso-opensource-7:latest
-  #   restart: unless-stopped
-  #   # ports:
-  #   #   - "8890:8890"   # HTTP SPARQL endpoint
-  #   #   - "1111:1111"   # ISQL interface
-  #   environment:
-  #     DBA_PASSWORD: dba
-  #     VIRT_Parameters_NumberOfBuffers: 2720000
-  #     VIRT_Parameters_MaxDirtyBuffers: 2000000
-  #     VIRT_Parameters_DirsAllowed: "., /dumps"
-  #   volumes:
-  #     - ./data/dumps/corporate:/dumps
-  #     - ./data/virtuoso/corporate:/database
 
   text2sparql-api:
     build: .
@@ -72,12 +16,61 @@ services:
     env_file:
       - .env
     environment:
-      # - DBPEDIA_URL=https://text2sparql.aksw.org/2026/dbpedia/sparql
-      # - CORPORATE_URL=https://text2sparql.aksw.org/2026/corporate/sparql
+      - BENCH_MODEL=openrouter/openai/gpt-oss-120b:free
+      - PYTHONUNBUFFERED=1
+      - VECTORDB_URL=http://vectordb:6334/
+      # - DBPEDIA_URL=http://141.57.8.18:9081/sparql
+      # - CORPORATE_URL=http://141.57.8.18:9080/sparql
       - DBPEDIA_URL=http://virtuoso-dbpedia:8890/sparql
       - CORPORATE_URL=http://virtuoso-corporate:8890/sparql
-      - VECTORDB_URL=http://vectordb:6334/
-      - BENCH_MODEL=openrouter/openai/gpt-oss-120b
-      - PYTHONUNBUFFERED=1
     entrypoint: uv run
     command: uvicorn tests.text2sparql.api:app --host 0.0.0.0 --port 8765
+
+  virtuoso-dbpedia:
+    image: openlink/virtuoso-opensource-7:latest
+    restart: unless-stopped
+    ports:
+      - "8890:8890"
+    environment:
+      DBA_PASSWORD: dba
+      VIRT_Parameters_NumberOfBuffers: 2720000
+      VIRT_Parameters_MaxDirtyBuffers: 2000000
+      VIRT_Parameters_DirsAllowed: "., /dumps"
+    volumes:
+      - ./data/dumps/dbpedia:/dumps
+      - ./data/virtuoso/dbpedia:/database
+
+  # virtuoso-corporate:
+  #   image: openlink/virtuoso-opensource-7:latest
+  #   restart: unless-stopped
+  #   # ports:
+  #   #   - "8890:8890"
+  #   environment:
+  #     DBA_PASSWORD: dba
+  #     VIRT_Parameters_NumberOfBuffers: 2720000
+  #     VIRT_Parameters_MaxDirtyBuffers: 2000000
+  #     VIRT_Parameters_DirsAllowed: "., /dumps"
+  #   volumes:
+  #     - ./data/dumps/corporate:/dumps
+  #     - ./data/virtuoso/corporate:/database
+
+  # # https://docs.tentris.io/running_with_docker.html
+  # tentris-dbpedia:
+  #   image: ghcr.io/tentris/tentris:latest
+  #   restart: unless-stopped
+  #   ports:
+  #     - "9080:9080"
+  #   volumes:
+  #     - /local/data/tentris/dbpedia:/data
+  #     - ./data/dumps/dbpedia:/dumps
+  #     - ./data/tentris/tentris-license.toml:/config/tentris-license.toml:ro
+
+  # tentris-corporate:
+  #   image: ghcr.io/tentris/tentris:latest
+  #   restart: unless-stopped
+  #   ports:
+  #     - "9080:9080"
+  #   volumes:
+  #     - ./data/tentris/corporate:/data
+  #     - ./data/tentris/corporate-dumps:/dumps
+  #     - ./data/tentris/tentris-license.toml:/config/tentris-license.toml:ro
