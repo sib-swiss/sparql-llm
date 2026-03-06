@@ -72,7 +72,7 @@ Your response must follow these rules:
 """
 
 embedding_model = TextEmbedding(settings.embedding_model)
-vectordb = QdrantClient(url=settings.vectordb_url, prefer_grpc=True)
+qdrant_client = QdrantClient(url=settings.vectordb_url, prefer_grpc=True)
 
 # Statistics
 question_num = 0
@@ -102,7 +102,7 @@ async def get_answer(question: str, dataset: str):
     endpoint_url = DATASETS_ENDPOINTS[dataset]
     # Retrieve relevant queries
     question_embeddings = next(iter(embedding_model.embed([question])))
-    retrieved_queries = vectordb.query_points(
+    retrieved_queries = qdrant_client.query_points(
         collection_name=f"text2sparql-{get_dataset_id_from_iri(dataset)}",
         query=question_embeddings,
         limit=settings.default_number_of_retrieved_docs,
@@ -117,7 +117,7 @@ async def get_answer(question: str, dataset: str):
     )
 
     # Retrieve relevant classes
-    retrieved_classes = vectordb.query_points(
+    retrieved_classes = qdrant_client.query_points(
         collection_name=f"text2sparql-{get_dataset_id_from_iri(dataset)}",
         query=question_embeddings,
         limit=settings.default_number_of_retrieved_docs,

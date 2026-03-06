@@ -6,8 +6,7 @@ from langchain_core.documents import Document
 from qdrant_client import models
 from qdrant_client.http.models import Distance, VectorParams
 
-from sparql_llm.indexing.index_resources import embedding_model, qdrant_client
-from tests.text2sparql.api import DATASETS_ENDPOINTS, get_dataset_id_from_iri
+from tests.text2sparql.api import DATASETS_ENDPOINTS, embedding_model, get_dataset_id_from_iri, qdrant_client
 from tests.text2sparql.endpoint_schema import EndpointSchema
 
 QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), "queries.csv")
