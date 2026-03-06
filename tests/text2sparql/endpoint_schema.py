@@ -228,7 +228,7 @@ if __name__ == "__main__":
     #     },
     #     max_workers=4,
     #     force_recompute=True,
-    #     schema_path=os.path.join("data", "benchmarks", "Text2SPARQL", "schemas", "corporate_schema.json"),
+    #     schema_path=os.path.join("data", "corporate_schema.json"),
     # )
 
     schema = EndpointSchema(

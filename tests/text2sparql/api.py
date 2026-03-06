@@ -3,6 +3,7 @@
 import json
 import os
 import time
+from typing import Any
 
 import fastapi
 from fastembed import TextEmbedding
@@ -15,23 +16,37 @@ from sparql_llm.config import Configuration, settings
 from sparql_llm.utils import query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries, validate_sparql
 
-app = fastapi.FastAPI(title="TEXT2SPARQL API")
+app = fastapi.FastAPI(title="SPARQL-LLM TEXT2SPARQL API")
 
-KNOWN_DATASETS = ["https://text2sparql.aksw.org/2025/dbpedia/", "https://text2sparql.aksw.org/2025/corporate/"]
+
+def get_dataset_id_from_iri(dataset_iri: str) -> str:
+    return dataset_iri.split("/")[-2]
+
+
+# TODO: refactor to use different endbpoints instead of different graphs
+DATASETS_ENDPOINTS = {
+    "https://text2sparql.aksw.org/2025/dbpedia/": os.getenv("DBPEDIA_URL", "http://virtuoso-dbpedia:8890/sparql"),
+    "https://text2sparql.aksw.org/2025/corporate/": os.getenv("CORPORATE_URL", "http://virtuoso-corporate:8890/sparql"),
+}
 
 MODEL = "openrouter/openai/gpt-oss-120b"
 DOCKER_ENDPOINT_URL = "http://text2sparql-virtuoso:8890/sparql/"
 DOCKER_VECTORDB_URL = "http://vectordb:6334"
 ENDPOINT_URL = "http://localhost:8890/sparql/"
 
+# def normalize_docker_to_localhost(url: str) -> str:
+
+
 SCHEMAS = {}
-for dataset in KNOWN_DATASETS:
+for dataset_iri in DATASETS_ENDPOINTS.keys():
     with open(
-        os.path.join("/", "data", "benchmarks", "Text2SPARQL", "schemas", f"{dataset.split('/')[-2]}_schema.json"),
+        os.path.join("/", "data", f"{get_dataset_id_from_iri(dataset_iri)}_schema.json"),
         encoding="utf-8",
     ) as f:
-        SCHEMAS[dataset] = json.load(f)
-    SCHEMAS[dataset][DOCKER_ENDPOINT_URL] = SCHEMAS[dataset].pop(ENDPOINT_URL)
+        SCHEMAS[dataset_iri] = json.load(f)
+    # SCHEMAS[dataset][DOCKER_ENDPOINT_URL] = SCHEMAS[dataset].pop(ENDPOINT_URL)
+    # docker_url =
+    SCHEMAS[dataset_iri][DOCKER_ENDPOINT_URL] = SCHEMAS[dataset_iri].pop(ENDPOINT_URL)
 
 RAG_PROMPT = """
 
@@ -61,11 +76,11 @@ Your response must follow these rules:
 """
 
 embedding_model = TextEmbedding(settings.embedding_model)
-vectordb = QdrantClient(url=DOCKER_VECTORDB_URL, prefer_grpc=True)
+vectordb = QdrantClient(url=settings.vectordb_url, prefer_grpc=True)
 
 # Statistics
 question_num = 0
-statistics = {
+statistics: Any = {
     "DBpedia (EN)": {
         "llm_time": [],
         "input_tokens": [],
@@ -86,7 +101,7 @@ statistics = {
 
 @app.get("/")
 async def get_answer(question: str, dataset: str):
-    if dataset not in KNOWN_DATASETS:
+    if dataset not in DATASETS_ENDPOINTS:
         raise fastapi.HTTPException(404, "Unknown dataset ...")
     # Retrieve relevant queries
     question_embeddings = next(iter(embedding_model.embed([question])))

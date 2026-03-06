@@ -4,7 +4,6 @@ services:
       file: compose.yml
       service: vectordb
     # ports:
-    #   - 6333:6333
     #   - 6334:6334
 
   # https://docs.tentris.io/running_with_docker.html
@@ -72,4 +71,11 @@ services:
       - ./data:/data
     env_file:
       - .env
-    entrypoint: ["uv", "run", "uvicorn", "tests.text2sparql.api:app", "--host", "0.0.0.0", "--port", "8765", "--reload"]
+    environment:
+      # - DBPEDIA_URL=https://text2sparql.aksw.org/2026/dbpedia/sparql
+      # - CORPORATE_URL=https://text2sparql.aksw.org/2026/corporate/sparql
+      - DBPEDIA_URL=http://virtuoso-dbpedia:8890/sparql
+      - CORPORATE_URL=http://virtuoso-corporate:8890/sparql
+      - VECTORDB_URL=http://vectordb:6334/
+    entrypoint: uv run
+    command: uvicorn tests.text2sparql.api:app --host 0.0.0.0 --port 8765

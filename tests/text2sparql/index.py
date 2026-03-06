@@ -2,15 +2,15 @@ import os
 import time
 
 import pandas as pd
-from endpoint_schema import EndpointSchema
 from langchain_core.documents import Document
 from qdrant_client import models
 from qdrant_client.http.models import Distance, VectorParams
 
 from sparql_llm.indexing.index_resources import embedding_model, qdrant_client
+from tests.text2sparql.api import DATASETS_ENDPOINTS, get_dataset_id_from_iri
+from tests.text2sparql.endpoint_schema import EndpointSchema
 
 QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), "queries.csv")
-VECTORDB_URL = "http://localhost:6334"
 
 
 def init_vectordb(
@@ -105,23 +105,21 @@ def init_vectordb(
 
 
 if __name__ == "__main__":
-    # # Init vectordb for corporate dataset
-    # init_vectordb(
-    #     endpoint_url="http://localhost:8890/sparql/",
-    #     graph="https://text2sparql.aksw.org/2025/corporate/",
-    #     limit_schema={
-    #         "top_classes_percentile": 0,
-    #         "top_n_predicates": 20,
-    #         "top_n_ranges": 1,
-    #     },
-    #     max_workers=4,
-    #     force_recompute=True,
-    #     schema_path=os.path.join("data", "corporate_schema.json"),
-    # )
-    # Init vectordb for dbpedia dataset
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Initialize vectordb for a dataset IRI")
+    parser.add_argument(
+        "dataset_iri",
+        help="Dataset IRI, e.g. https://text2sparql.aksw.org/2025/dbpedia/",
+    )
+    args = parser.parse_args()
+
+    dataset_iri = args.dataset_iri
+
+    # Init vectordb for the specified dataset
     init_vectordb(
-        endpoint_url="http://localhost:8890/sparql/",
-        graph="https://text2sparql.aksw.org/2025/dbpedia/",
+        endpoint_url=DATASETS_ENDPOINTS[dataset_iri],
+        graph=dataset_iri,
         limit_schema={
             "top_classes_percentile": 0,
             "top_n_predicates": 20,
@@ -129,5 +127,5 @@ if __name__ == "__main__":
         },
         max_workers=4,
         force_recompute=True,
-        schema_path=os.path.join("data", "dbpedia_schema.json"),
+        schema_path=os.path.join("data", f"{get_dataset_id_from_iri(dataset_iri)}_schema.json"),
     )
