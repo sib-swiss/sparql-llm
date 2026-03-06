@@ -77,5 +77,6 @@ services:
       - DBPEDIA_URL=http://virtuoso-dbpedia:8890/sparql
       - CORPORATE_URL=http://virtuoso-corporate:8890/sparql
       - VECTORDB_URL=http://vectordb:6334/
+      - BENCH_MODEL=openrouter/openai/gpt-oss-120b
     entrypoint: uv run
     command: uvicorn tests.text2sparql.api:app --host 0.0.0.0 --port 8765

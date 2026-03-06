@@ -15,17 +15,16 @@ QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), "queries
 
 def init_vectordb(
     endpoint_url: str,
-    graph: str,
+    dataset_iri: str,
     limit_schema: dict[str, float],
     max_workers: int,
     force_recompute: bool,
-    schema_path: str,
 ) -> None:
     """Initialize the vectordb with example queries and schema information from the SPARQL endpoints"""
     docs: list[Document] = []
 
     # Index example queries
-    examples = ["Generated-CK"] if "corporate" in graph else ["QALD-9+", "LC-QuAD"]
+    examples = ["Generated-CK"] if "corporate" in dataset_iri else ["QALD-9+", "LC-QuAD"]
 
     queries = pd.read_csv(QUERIES_FILE)
     queries = queries[queries["dataset"].isin(examples)].reset_index(drop=True)
@@ -51,11 +50,10 @@ def init_vectordb(
     start_time = time.time()
     schema = EndpointSchema(
         endpoint_url=endpoint_url,
-        # graph=graph,
         limit_schema=limit_schema,
         max_workers=max_workers,
         force_recompute=force_recompute,
-        schema_path=schema_path,
+        schema_path=os.path.join("data", f"{get_dataset_id_from_iri(dataset_iri)}_schema.json"),
     ).get_schema()
 
     docs += schema.apply(
@@ -84,7 +82,7 @@ def init_vectordb(
 
     embeddings = list(embedding_model.embed([d.page_content for d in docs]))
 
-    collection_name = f"text2sparql-{graph.split('/')[-2]}"
+    collection_name = f"text2sparql-{get_dataset_id_from_iri(dataset_iri)}"
     # Ensure collection exists before upserting
     if not qdrant_client.collection_exists(collection_name):
         qdrant_client.create_collection(
@@ -119,7 +117,7 @@ if __name__ == "__main__":
     # Init vectordb for the specified dataset
     init_vectordb(
         endpoint_url=DATASETS_ENDPOINTS[dataset_iri],
-        graph=dataset_iri,
+        dataset_iri=dataset_iri,
         limit_schema={
             "top_classes_percentile": 0,
             "top_n_predicates": 20,
@@ -127,5 +125,4 @@ if __name__ == "__main__":
         },
         max_workers=4,
         force_recompute=True,
-        schema_path=os.path.join("data", f"{get_dataset_id_from_iri(dataset_iri)}_schema.json"),
     )

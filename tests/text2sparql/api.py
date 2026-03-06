@@ -29,24 +29,20 @@ DATASETS_ENDPOINTS = {
     "https://text2sparql.aksw.org/2025/corporate/": os.getenv("CORPORATE_URL", "http://virtuoso-corporate:8890/sparql"),
 }
 
-MODEL = "openrouter/openai/gpt-oss-120b"
-DOCKER_ENDPOINT_URL = "http://text2sparql-virtuoso:8890/sparql/"
-DOCKER_VECTORDB_URL = "http://vectordb:6334"
-ENDPOINT_URL = "http://localhost:8890/sparql/"
-
-# def normalize_docker_to_localhost(url: str) -> str:
-
+MODEL = os.getenv("BENCH_MODEL", "openrouter/openai/gpt-oss-120b")
 
 SCHEMAS = {}
 for dataset_iri in DATASETS_ENDPOINTS.keys():
-    with open(
-        os.path.join("/", "data", f"{get_dataset_id_from_iri(dataset_iri)}_schema.json"),
-        encoding="utf-8",
-    ) as f:
-        SCHEMAS[dataset_iri] = json.load(f)
-    # SCHEMAS[dataset][DOCKER_ENDPOINT_URL] = SCHEMAS[dataset].pop(ENDPOINT_URL)
-    # docker_url =
-    SCHEMAS[dataset_iri][DOCKER_ENDPOINT_URL] = SCHEMAS[dataset_iri].pop(ENDPOINT_URL)
+    try:
+        with open(
+            os.path.join("/", "data", f"{get_dataset_id_from_iri(dataset_iri)}_schema.json"),
+            encoding="utf-8",
+        ) as f:
+            SCHEMAS[dataset_iri] = json.load(f)
+    except FileNotFoundError:
+        print(
+            f"Schema file for dataset {dataset_iri} not found. Please run the indexing script to generate the schema files."
+        )
 
 RAG_PROMPT = """
 
@@ -103,10 +99,11 @@ statistics: Any = {
 async def get_answer(question: str, dataset: str):
     if dataset not in DATASETS_ENDPOINTS:
         raise fastapi.HTTPException(404, "Unknown dataset ...")
+    endpoint_url = DATASETS_ENDPOINTS[dataset]
     # Retrieve relevant queries
     question_embeddings = next(iter(embedding_model.embed([question])))
     retrieved_queries = vectordb.query_points(
-        collection_name=f"text2sparql-{dataset.split('/')[-2]}",
+        collection_name=f"text2sparql-{get_dataset_id_from_iri(dataset)}",
         query=question_embeddings,
         limit=settings.default_number_of_retrieved_docs,
         query_filter=Filter(
@@ -121,7 +118,7 @@ async def get_answer(question: str, dataset: str):
 
     # Retrieve relevant classes
     retrieved_classes = vectordb.query_points(
-        collection_name=f"text2sparql-{dataset.split('/')[-2]}",
+        collection_name=f"text2sparql-{get_dataset_id_from_iri(dataset)}",
         query=question_embeddings,
         limit=settings.default_number_of_retrieved_docs,
         query_filter=Filter(
@@ -163,14 +160,13 @@ async def get_answer(question: str, dataset: str):
             chat_resp_md = response.model_dump()["content"]
             generated_sparqls = extract_sparql_queries(chat_resp_md)
             generated_sparql = generated_sparqls[-1]["query"].strip()
-            generated_sparql = generated_sparql.replace(ENDPOINT_URL, DOCKER_ENDPOINT_URL)
             # print(f"Generated SPARQL query: {generated_sparql}")
             # print(f"Response message: {resp_msg}")
         except Exception:
             resp_msg += "## No SPARQL query could be extracted from the model response. Please provide a valid SPARQL query based on the provided information and try again.\n"
         if generated_sparql != "":
             try:
-                res = query_sparql(generated_sparql, DOCKER_ENDPOINT_URL)
+                res = query_sparql(generated_sparql, endpoint_url)
                 if res.get("results", {}).get("bindings"):
                     # Successfully generated a query with results
                     if num_of_tries > 0:
@@ -183,7 +179,7 @@ async def get_answer(question: str, dataset: str):
 
             except Exception as e:
                 validation_output = validate_sparql(
-                    query=generated_sparql, endpoint_url=DOCKER_ENDPOINT_URL, endpoints_void_dict=SCHEMAS[dataset]
+                    query=generated_sparql, endpoint_url=endpoint_url, endpoints_void_dict=SCHEMAS[dataset]
                 )
                 if validation_output["errors"]:
                     error_str = "- " + "\n- ".join(validation_output["errors"])
