@@ -92,6 +92,7 @@ dev = [
 ]
 bench = [
     "pytrec-eval",
+    # NOTE: use maintained pytrec_eval_terrier https://github.com/terrierteam/pytrec_eval
 ]
 
 # # Required for onnxruntime-gpu on CUDA 12

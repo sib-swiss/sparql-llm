@@ -35,14 +35,16 @@ SCHEMAS = {}
 for dataset_iri in DATASETS_ENDPOINTS.keys():
     try:
         with open(
-            os.path.join("/", "data", f"{get_dataset_id_from_iri(dataset_iri)}_schema.json"),
+            os.path.join("data", f"{get_dataset_id_from_iri(dataset_iri)}_schema.json"),
             encoding="utf-8",
         ) as f:
+            print(f"Loading schema for dataset {dataset_iri} from {f}...")
             SCHEMAS[dataset_iri] = json.load(f)
     except FileNotFoundError:
         print(
-            f"Schema file for dataset {dataset_iri} not found. Please run the indexing script to generate the schema files."
+            f"⚠️ Schema file for dataset {dataset_iri} not found. Please run the indexing script to generate the schema files."
         )
+        SCHEMAS[dataset_iri] = {}
 
 RAG_PROMPT = """
 
@@ -179,7 +181,7 @@ async def get_answer(question: str, dataset: str):
 
             except Exception as e:
                 validation_output = validate_sparql(
-                    query=generated_sparql, endpoint_url=endpoint_url, endpoints_void_dict=SCHEMAS[dataset]
+                    query=generated_sparql, endpoint_url=endpoint_url, endpoints_void_dict=SCHEMAS.get(dataset, {})
                 )
                 if validation_output["errors"]:
                     error_str = "- " + "\n- ".join(validation_output["errors"])

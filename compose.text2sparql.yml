@@ -16,7 +16,7 @@ services:
     env_file:
       - .env
     environment:
-      - BENCH_MODEL=openrouter/openai/gpt-oss-120b:free
+      - BENCH_MODEL=openrouter/openai/gpt-oss-120b
       - PYTHONUNBUFFERED=1
       - VECTORDB_URL=http://vectordb:6334/
       # - DBPEDIA_URL=http://141.57.8.18:9081/sparql
