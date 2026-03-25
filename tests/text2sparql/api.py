@@ -111,7 +111,7 @@ async def get_answer(question: str, dataset: str):
         query_filter=Filter(
             must=[
                 FieldCondition(
-                    key="metadata.doc_type",
+                    key="doc_type",
                     match=MatchValue(value="SPARQL endpoints query examples"),
                 )
             ]
@@ -126,7 +126,7 @@ async def get_answer(question: str, dataset: str):
         query_filter=Filter(
             must=[
                 FieldCondition(
-                    key="metadata.doc_type",
+                    key="doc_type",
                     match=MatchValue(value="classes"),
                 )
             ]
@@ -134,9 +134,9 @@ async def get_answer(question: str, dataset: str):
     )
 
     # Initial interaction with the chat model
-    relevant_queries = "\n\n".join(json.dumps(doc.payload["metadata"], indent=2) for doc in retrieved_queries.points)
-    relevant_classes = "\n\n".join(doc.payload["metadata"]["desc"] for doc in retrieved_classes.points)
-    # logger.info(f"📚️ Retrieved {len(retrieved_docs.points)} documents")
+    relevant_queries = "\n\n".join(json.dumps(doc.payload, indent=2) for doc in retrieved_queries.points)
+    relevant_classes = "\n\n".join(doc.payload["desc"] for doc in retrieved_classes.points)
+    # print(f"📚️ Retrieved {len(retrieved_queries.points)} relevant queries and {len(retrieved_classes.points)} relevant classes")
     client = load_chat_model(Configuration(model=MODEL))
     messages = [
         SystemMessage(
