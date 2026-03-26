@@ -67,6 +67,7 @@ Your role is to transform the user question into a SPARQL query based on the con
 Your response must follow these rules:
     - Always output one SPARQL query.
     - Enclose the SPARQL query in a single markdown code block using the "sparql" language tag.
+    - Use unicode characters in the SPARQL query if they are present in the question or the provided context.
     - Include a comment at the beginning of the query that specifies the target endpoint using the following format: "#+ endpoint: ".
     - Use full URIs for all entities in the SPARQL query.
     - Prefer a single endpoint; use a federated SPARQL query only if access across multiple endpoints is required.
