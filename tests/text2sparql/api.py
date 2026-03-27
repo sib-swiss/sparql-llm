@@ -38,7 +38,7 @@ for dataset_iri in DATASETS_ENDPOINTS.keys():
             os.path.join("data", f"{get_dataset_id_from_iri(dataset_iri)}_schema.json"),
             encoding="utf-8",
         ) as f:
-            print(f"Loading schema for dataset {dataset_iri} from {f}...")
+            print(f"Loading schema for dataset {dataset_iri} from {os.path.abspath(f.name)}...")
             SCHEMAS[dataset_iri] = json.load(f)
     except FileNotFoundError:
         print(
@@ -72,6 +72,8 @@ Your response must follow these rules:
     - Use full URIs for all entities in the SPARQL query.
     - Prefer a single endpoint; use a federated SPARQL query only if access across multiple endpoints is required.
     - Do not add more codeblocks than necessary.
+    - Unless explictly asked use one variable for the answer, if not explicitly specified it is most probably the URI that is expected.
+    - Use only the endpoint provided in the context to execute the query. Do not use any other endpoints.
 """
 
 embedding_model = TextEmbedding(settings.embedding_model)
@@ -136,7 +138,7 @@ async def get_answer(question: str, dataset: str):
 
     # Initial interaction with the chat model
     relevant_queries = "\n\n".join(json.dumps(doc.payload, indent=2) for doc in retrieved_queries.points)
-    relevant_classes = "\n\n".join(doc.payload["desc"] for doc in retrieved_classes.points)
+    relevant_classes = "\n\n".join(doc.payload["desc"] for doc in retrieved_classes.points)  # type: ignore
     # print(f"📚️ Retrieved {len(retrieved_queries.points)} relevant queries and {len(retrieved_classes.points)} relevant classes")
     client = load_chat_model(Configuration(model=MODEL))
     messages = [
@@ -149,6 +151,7 @@ async def get_answer(question: str, dataset: str):
 
     client_time = time.perf_counter()
     response = client.invoke(messages)
+    messages.append(response)
     total_client_time = time.perf_counter() - client_time
     total_input_tokens = response.model_dump()["response_metadata"]["token_usage"]["prompt_tokens"]
     total_output_tokens = response.model_dump()["response_metadata"]["token_usage"]["completion_tokens"]
@@ -162,7 +165,7 @@ async def get_answer(question: str, dataset: str):
         try:
             chat_resp_md = response.model_dump()["content"]
             generated_sparqls = extract_sparql_queries(chat_resp_md)
-            generated_sparql = generated_sparqls[-1]["query"].strip()
+            generated_sparql = generated_sparqls[-1].get("query", "").strip()  # type: ignore
             # print(f"Generated SPARQL query: {generated_sparql}")
             # print(f"Response message: {resp_msg}")
         except Exception:
@@ -171,12 +174,39 @@ async def get_answer(question: str, dataset: str):
             try:
                 res = query_sparql(generated_sparql, endpoint_url)
                 if res.get("results", {}).get("bindings"):
-                    # Successfully generated a query with results
-                    if num_of_tries > 0:
-                        print("✅ Fixed SPARQL query. Conversation:\n")
-                        for msg in messages:
-                            print(f"{msg.type}: {msg.content}\n")
                     break
+                    # # Ask the LLM if the results actually answer the original question
+                    # # TODO: handle resp for ask/construct queries as well
+                    # results_preview = str(res)
+                    # with contextlib.suppress(Exception):
+                    #     results_preview = json.dumps(res["results"]["bindings"][:10], indent=2)
+
+                    # satisfaction_response = client.invoke([
+                    #     HumanMessage(content=(
+                    #         f'The following SPARQL query was executed to answer this question: "{question}"\n\n'
+                    #         f"```sparql\n{generated_sparql}\n```\n\n"
+                    #         f"It returned these results:\n```json\n{results_preview}\n```\n\n"
+                    #         "Do these results satisfactorily answer the original question? Regarding the endpoint content"
+                    #         'Reply with only "YES" or "NO" on the first line, optionally followed by a brief explanation of what is wrong.'
+                    #     ))
+                    # ])
+                    # satisfaction_content = satisfaction_response.model_dump()["content"].strip()
+                    # total_input_tokens += satisfaction_response.model_dump()["response_metadata"]["token_usage"]["prompt_tokens"]
+                    # total_output_tokens += satisfaction_response.model_dump()["response_metadata"]["token_usage"]["completion_tokens"]
+
+                    # if satisfaction_content.upper().startswith("YES"):
+                    #     # Successfully generated a query with satisfactory results
+                    #     # if num_of_tries > 0:
+                    #     #     for msg in messages:
+                    #     #         print(f"{msg.type}: {msg.content}\n")
+                    #     break
+                    # else:
+                    #     resp_msg += (
+                    #         f"## The query returned results but they do not satisfactorily answer the original question.\n"
+                    #         f"### Generated query\n```sparql\n{generated_sparql}\n```\n"
+                    #         f"### Results obtained\n```json\n{results_preview}\n```\n"
+                    #         f"### Why the results are unsatisfactory\n{satisfaction_content}\n"
+                    #     )
                 else:
                     raise Exception("No results")
 
@@ -195,7 +225,7 @@ async def get_answer(question: str, dataset: str):
             print(f"❌ Could not fix generate SPARQL query for question: {question} \n")
 
         # If no valid SPARQL query was generated, ask the model to fix it
-        messages = [HumanMessage(content=question + resp_msg)]
+        messages.append(HumanMessage(content=question + resp_msg))
 
         client_time = time.perf_counter()
         response = client.invoke(messages)
