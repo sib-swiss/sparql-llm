@@ -1,5 +1,6 @@
 """TEXT2SPARQL API"""
 
+import contextlib
 import json
 import os
 import time
@@ -174,39 +175,46 @@ async def get_answer(question: str, dataset: str):
             try:
                 res = query_sparql(generated_sparql, endpoint_url)
                 if res.get("results", {}).get("bindings"):
-                    break
-                    # # Ask the LLM if the results actually answer the original question
-                    # # TODO: handle resp for ask/construct queries as well
-                    # results_preview = str(res)
-                    # with contextlib.suppress(Exception):
-                    #     results_preview = json.dumps(res["results"]["bindings"][:10], indent=2)
+                    # break
+                    # Ask the LLM if the results actually answer the original question
+                    results_preview = str(res)
+                    with contextlib.suppress(Exception):
+                        results_preview = json.dumps(res["results"]["bindings"][:10], indent=2)
 
-                    # satisfaction_response = client.invoke([
-                    #     HumanMessage(content=(
-                    #         f'The following SPARQL query was executed to answer this question: "{question}"\n\n'
-                    #         f"```sparql\n{generated_sparql}\n```\n\n"
-                    #         f"It returned these results:\n```json\n{results_preview}\n```\n\n"
-                    #         "Do these results satisfactorily answer the original question? Regarding the endpoint content"
-                    #         'Reply with only "YES" or "NO" on the first line, optionally followed by a brief explanation of what is wrong.'
-                    #     ))
-                    # ])
-                    # satisfaction_content = satisfaction_response.model_dump()["content"].strip()
-                    # total_input_tokens += satisfaction_response.model_dump()["response_metadata"]["token_usage"]["prompt_tokens"]
-                    # total_output_tokens += satisfaction_response.model_dump()["response_metadata"]["token_usage"]["completion_tokens"]
+                    satisfaction_response = client.invoke(
+                        [
+                            HumanMessage(
+                                content=(
+                                    f'The following SPARQL query was executed to answer this question: "{question}"\n\n'
+                                    f"```sparql\n{generated_sparql}\n```\n\n"
+                                    f"It returned these results:\n```json\n{results_preview}\n```\n\n"
+                                    "Do these results satisfactorily answer the original question? Regarding the endpoint content"
+                                    'Reply with only "YES" or "NO" on the first line, optionally followed by a brief explanation of what is wrong.'
+                                )
+                            )
+                        ]
+                    )
+                    satisfaction_content = satisfaction_response.model_dump()["content"].strip()
+                    total_input_tokens += satisfaction_response.model_dump()["response_metadata"]["token_usage"][
+                        "prompt_tokens"
+                    ]
+                    total_output_tokens += satisfaction_response.model_dump()["response_metadata"]["token_usage"][
+                        "completion_tokens"
+                    ]
 
-                    # if satisfaction_content.upper().startswith("YES"):
-                    #     # Successfully generated a query with satisfactory results
-                    #     # if num_of_tries > 0:
-                    #     #     for msg in messages:
-                    #     #         print(f"{msg.type}: {msg.content}\n")
-                    #     break
-                    # else:
-                    #     resp_msg += (
-                    #         f"## The query returned results but they do not satisfactorily answer the original question.\n"
-                    #         f"### Generated query\n```sparql\n{generated_sparql}\n```\n"
-                    #         f"### Results obtained\n```json\n{results_preview}\n```\n"
-                    #         f"### Why the results are unsatisfactory\n{satisfaction_content}\n"
-                    #     )
+                    if satisfaction_content.upper().startswith("YES"):
+                        # Successfully generated a query with satisfactory results
+                        # if num_of_tries > 0:
+                        #     for msg in messages:
+                        #         print(f"{msg.type}: {msg.content}\n")
+                        break
+                    else:
+                        resp_msg += (
+                            f"## The query returned results but they do not satisfactorily answer the original question.\n"
+                            f"### Generated query\n```sparql\n{generated_sparql}\n```\n"
+                            f"### Results obtained\n```json\n{results_preview}\n```\n"
+                            f"### Why the results are unsatisfactory\n{satisfaction_content}\n"
+                        )
                 else:
                     raise Exception("No results")
 
