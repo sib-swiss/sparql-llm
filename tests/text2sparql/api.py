@@ -172,10 +172,12 @@ async def get_answer(question: str, dataset: str):
         except Exception:
             resp_msg += "## No SPARQL query could be extracted from the model response. Please provide a valid SPARQL query based on the provided information and try again.\n"
         if generated_sparql != "":
+            print(f"[Try {num_of_tries}] Generated SPARQL:\n{generated_sparql}\n")
             try:
                 res = query_sparql(generated_sparql, endpoint_url)
-                if res.get("results", {}).get("bindings"):
-                    # break
+                bindings = res.get("results", {}).get("bindings", [])
+                print(f"[Try {num_of_tries}] Query returned {len(bindings)} result(s)")
+                if bindings:
                     # Ask the LLM if the results actually answer the original question
                     results_preview = str(res)
                     with contextlib.suppress(Exception):
@@ -188,7 +190,7 @@ async def get_answer(question: str, dataset: str):
                                     f'The following SPARQL query was executed to answer this question: "{question}"\n\n'
                                     f"```sparql\n{generated_sparql}\n```\n\n"
                                     f"It returned these results:\n```json\n{results_preview}\n```\n\n"
-                                    "Do these results satisfactorily answer the original question? Regarding the endpoint content"
+                                    "Do these results satisfactorily answer the original question?\n"
                                     'Reply with only "YES" or "NO" on the first line, optionally followed by a brief explanation of what is wrong.'
                                 )
                             )
@@ -201,12 +203,10 @@ async def get_answer(question: str, dataset: str):
                     total_output_tokens += satisfaction_response.model_dump()["response_metadata"]["token_usage"][
                         "completion_tokens"
                     ]
+                    print(f"[Try {num_of_tries}] Satisfaction check: {satisfaction_content[:300]}")
 
                     if satisfaction_content.upper().startswith("YES"):
                         # Successfully generated a query with satisfactory results
-                        # if num_of_tries > 0:
-                        #     for msg in messages:
-                        #         print(f"{msg.type}: {msg.content}\n")
                         break
                     else:
                         resp_msg += (
@@ -219,11 +219,13 @@ async def get_answer(question: str, dataset: str):
                     raise Exception("No results")
 
             except Exception as e:
+                print(f"[Try {num_of_tries}] Query failed: {e}")
                 validation_output = validate_sparql(
                     query=generated_sparql, endpoint_url=endpoint_url, endpoints_void_dict=SCHEMAS.get(dataset, {})
                 )
                 if validation_output["errors"]:
                     error_str = "- " + "\n- ".join(validation_output["errors"])
+                    print(f"[Try {num_of_tries}] Validation errors: {error_str[:300]}")
                     resp_msg += f"## SPARQL query not valid. Please fix the query based on the provided information and try again.\n### Erroneous SPARQL query\n```sparql\n{validation_output['original_query']}\n```\n### Validation Errors:\n{error_str}\n"
                 else:
                     resp_msg += f"## SPARQL query returned error: {e}. Please provide an alternative query based on the provided information and try again.\n### Erroneous SPARQL query\n```sparql\n{generated_sparql}\n```\n"
@@ -231,6 +233,7 @@ async def get_answer(question: str, dataset: str):
         num_of_tries += 1
         if num_of_tries == settings.default_max_try_fix_sparql:
             print(f"❌ Could not fix generate SPARQL query for question: {question} \n")
+            break
 
         # If no valid SPARQL query was generated, ask the model to fix it
         messages.append(HumanMessage(content=question + resp_msg))
