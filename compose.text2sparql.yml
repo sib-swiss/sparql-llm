@@ -24,7 +24,7 @@ services:
       - DBPEDIA_URL=http://virtuoso-dbpedia:8890/sparql
       - CORPORATE_URL=http://virtuoso-corporate:8890/sparql
     entrypoint: uv run
-    command: uvicorn tests.text2sparql.api:app --host 0.0.0.0 --port 8765
+    command: uvicorn tests.text2sparql.api:app --host 0.0.0.0 --port 8765 --workers 4
 
   virtuoso-dbpedia:
     image: openlink/virtuoso-opensource-7:latest
