@@ -16,14 +16,15 @@ services:
     env_file:
       - .env
     environment:
+      - BENCH_MODEL=openrouter/openai/gpt-5.4
+      # - BENCH_MODEL=openrouter/anthropic/claude-opus-4.6
       # - BENCH_MODEL=openrouter/openai/gpt-oss-120b
-      - BENCH_MODEL=openrouter/openai/gpt-5.2
       - PYTHONUNBUFFERED=1
       - VECTORDB_URL=http://vectordb:6334/
-      # - DBPEDIA_URL=http://141.57.8.18:9081/sparql
-      # - CORPORATE_URL=http://141.57.8.18:9080/sparql
       - DBPEDIA_URL=http://virtuoso-dbpedia:8890/sparql
       - CORPORATE_URL=http://virtuoso-corporate:8890/sparql
+      # - DBPEDIA_URL=http://141.57.8.18:9081/sparql
+      # - CORPORATE_URL=http://141.57.8.18:9080/sparql
     entrypoint: uv run
     command: uvicorn tests.text2sparql.api:app --host 0.0.0.0 --port 8765 --workers 2
 
