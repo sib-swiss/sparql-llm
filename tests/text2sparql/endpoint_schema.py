@@ -19,7 +19,7 @@ logger.setLevel(logging.INFO)
 class EndpointSchema:
     # FROM <{graph}>
     _CLASS_PREDICATE_QUERY = """
-    SELECT ?class ?predicate COUNT(*) AS ?count
+    SELECT ?class ?predicate (COUNT(*) AS ?count)
     WHERE {
         ?s a ?class ;
             ?predicate ?o .
