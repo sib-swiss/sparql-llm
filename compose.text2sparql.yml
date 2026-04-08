@@ -20,26 +20,26 @@ services:
       - BENCH_MODEL=openrouter/openai/gpt-5.2
       - PYTHONUNBUFFERED=1
       - VECTORDB_URL=http://vectordb:6334/
-      # - DBPEDIA_URL=http://141.57.8.18:9081/sparql
-      # - CORPORATE_URL=http://141.57.8.18:9080/sparql
-      - DBPEDIA_URL=http://virtuoso-dbpedia:8890/sparql
-      - CORPORATE_URL=http://virtuoso-corporate:8890/sparql
+      - DBPEDIA_URL=http://141.57.8.18:9081/sparql
+      - CORPORATE_URL=http://141.57.8.18:9080/sparql
+      # - DBPEDIA_URL=http://virtuoso-dbpedia:8890/sparql
+      # - CORPORATE_URL=http://virtuoso-corporate:8890/sparql
     entrypoint: uv run
     command: uvicorn tests.text2sparql.api:app --host 0.0.0.0 --port 8765 --workers 2
 
-  virtuoso-dbpedia:
-    image: openlink/virtuoso-opensource-7:latest
-    restart: unless-stopped
-    ports:
-      - "8890:8890"
-    environment:
-      DBA_PASSWORD: dba
-      VIRT_Parameters_NumberOfBuffers: 2720000
-      VIRT_Parameters_MaxDirtyBuffers: 2000000
-      VIRT_Parameters_DirsAllowed: "., /dumps"
-    volumes:
-      - ./data/dumps/dbpedia:/dumps
-      - ./data/virtuoso/dbpedia:/database
+  # virtuoso-dbpedia:
+  #   image: openlink/virtuoso-opensource-7:latest
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8890:8890"
+  #   environment:
+  #     DBA_PASSWORD: dba
+  #     VIRT_Parameters_NumberOfBuffers: 2720000
+  #     VIRT_Parameters_MaxDirtyBuffers: 2000000
+  #     VIRT_Parameters_DirsAllowed: "., /dumps"
+  #   volumes:
+  #     - ./data/dumps/dbpedia:/dumps
+  #     - ./data/virtuoso/dbpedia:/database
 
   # virtuoso-corporate:
   #   image: openlink/virtuoso-opensource-7:latest
