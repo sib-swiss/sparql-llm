@@ -25,8 +25,8 @@ def get_dataset_id_from_iri(dataset_iri: str) -> str:
 
 # TODO: refactor to use different endbpoints instead of different graphs
 DATASETS_ENDPOINTS = {
-    "https://text2sparql.aksw.org/2025/dbpedia/": os.getenv("DBPEDIA_URL", "http://virtuoso-dbpedia:8890/sparql"),
-    "https://text2sparql.aksw.org/2025/corporate/": os.getenv("CORPORATE_URL", "http://virtuoso-corporate:8890/sparql"),
+    "https://text2sparql.aksw.org/2026/dbpedia/": os.getenv("DBPEDIA_URL", "http://virtuoso-dbpedia:8890/sparql"),
+    "https://text2sparql.aksw.org/2026/corporate/": os.getenv("CORPORATE_URL", "http://virtuoso-corporate:8890/sparql"),
 }
 
 MODEL = os.getenv("BENCH_MODEL", "openrouter/openai/gpt-oss-120b")
@@ -246,15 +246,15 @@ async def get_answer(question: str, dataset: str):
 
     # Statistics
     global question_num
-    if dataset == "https://text2sparql.aksw.org/2025/dbpedia/" and question_num % 2 == 0:
+    if dataset == "https://text2sparql.aksw.org/2026/dbpedia/" and question_num % 2 == 0:
         statistics["DBpedia (EN)"]["llm_time"].append(total_client_time)
         statistics["DBpedia (EN)"]["input_tokens"].append(total_input_tokens)
         statistics["DBpedia (EN)"]["output_tokens"].append(total_output_tokens)
-    elif dataset == "https://text2sparql.aksw.org/2025/dbpedia/" and question_num % 2 == 1:
+    elif dataset == "https://text2sparql.aksw.org/2026/dbpedia/" and question_num % 2 == 1:
         statistics["DBpedia (ES)"]["llm_time"].append(total_client_time)
         statistics["DBpedia (ES)"]["input_tokens"].append(total_input_tokens)
         statistics["DBpedia (ES)"]["output_tokens"].append(total_output_tokens)
-    elif dataset == "https://text2sparql.aksw.org/2025/corporate/":
+    elif dataset == "https://text2sparql.aksw.org/2026/corporate/":
         statistics["Corporate"]["llm_time"].append(total_client_time)
         statistics["Corporate"]["input_tokens"].append(total_input_tokens)
         statistics["Corporate"]["output_tokens"].append(total_output_tokens)
