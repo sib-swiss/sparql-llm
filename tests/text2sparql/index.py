@@ -22,8 +22,8 @@ def init_vectordb(
     docs: list[Document] = []
 
     # Index example queries
-    # examples = ["Generated-CK", "Text2SPARQL-ck"] if "corporate" in dataset_iri else ["QALD-9+", "LC-QuAD", "Text2SPARQL-db"]
-    examples = ["Generated-CK"] if "corporate" in dataset_iri else ["QALD-9+", "LC-QuAD"]
+    examples = ["Generated-CK", "Text2SPARQL-ck"] if "corporate" in dataset_iri else ["QALD-9+", "LC-QuAD", "Text2SPARQL-db"]
+    # examples = ["Generated-CK"] if "corporate" in dataset_iri else ["QALD-9+", "LC-QuAD"]
 
     queries = pd.read_csv(QUERIES_FILE)
     queries = queries[queries["dataset"].isin(examples)].reset_index(drop=True)
