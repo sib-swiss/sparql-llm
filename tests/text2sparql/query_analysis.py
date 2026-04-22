@@ -1,8 +1,10 @@
 import os
 import time
+from typing import Any
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import pytrec_eval
 import seaborn as sns
 
 """
@@ -157,9 +159,61 @@ def print_error_histogram():
         error_counts = df["comment"].str.split("/").explode().str.strip().value_counts()
         print(error_counts)
 
+def print_federated_bio_f1_score(queries: pd.DataFrame) -> float:
+
+    def sparql_results_to_trec(question: str, sparql_dict: dict[str, Any]) -> dict[str, Any]:
+        """Transform a SPARQL results dict into a dict to be evaluated through the pyTREC library.
+
+        Args:
+            sparql_dict (dict): Dictionary of the URIs, returned by the end-point
+
+        Returns:
+            dict: Dictionary of the predicted lists in which all items have the same weight
+        """
+        d: dict[str, Any] = {}
+        d[question] = {}
+        try:
+            if "boolean" in sparql_dict:
+                bool_result = sparql_dict["boolean"]
+                d[question]["true"] = 1 if bool_result else 0
+            else:
+                # print(sparql_dict)
+                list_results = sparql_dict["results"]["bindings"]
+                list_vars = sparql_dict["head"]["vars"]
+                # We add all vars found flattened and compare this
+                for var in list_vars:
+                    for value in list_results:
+                        if var in value:
+                            d[question][value[var]["value"]] = 1
+        except Exception as e:
+            print(f"⚠️ Could not transform SPARQL results to TREC format: {e}")
+        return d
+
+    def compute_trec_eval(question: str, reference_results: dict[str, Any], generated_results: dict[str, Any]) -> dict[str, Any]:
+
+        reference_results = sparql_results_to_trec(question, reference_results)
+        generated_results = sparql_results_to_trec(question, generated_results)
+
+        f1_score = pytrec_eval.RelevanceEvaluator(reference_results, {"set_F"}).evaluate(generated_results)
+        f1_score = f1_score[question]["set_F"]
+        return f1_score
+
+    for dataset in ["uniprot", "cellosaurus", "bgee"]:
+        for model in ["gpt-5", "gpt-4o-mini", "gpt-oss-120b"]:
+             for fold in [1, 2, 3]:
+
+                bio_bench_file = os.path.join("data", "benchmarks", "20251126", f"{dataset}_{model}_fold{fold}.jsonl")
+                bio_bench = pd.read_json(bio_bench_file, lines=True)
+
+                bio_bench["F1_Score"] = bio_bench.apply(lambda r: compute_trec_eval(r["question"], r["reference_results"], r["generated_results"]), axis=1)
+                bio_bench = bio_bench.merge(queries[["question", "federated"]], on="question", how="left")
+                bio_bench = bio_bench[bio_bench["federated"]]
+                f1_score = bio_bench["F1_Score"].mean()
+                print(f"Dataset: {dataset}, Model: {model}, Fold: {fold}, F1 Score: {f1_score}")
 
 if __name__ == "__main__":
     queries = pd.read_csv(QUERIES_FILE)
+    print_federated_bio_f1_score(queries)
     plot_queries_by_dataset(queries)
     plot_result_length(queries)
     plot_triple_patterns(queries)
