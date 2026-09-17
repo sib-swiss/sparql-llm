@@ -20,11 +20,11 @@ nohup docker compose exec virtuoso-corporate isql -U dba -P dba exec="ld_dir_all
 
 ## Run indexing
 
-nohup docker compose -f compose.text2sparql.yml run text2sparql-api tests/text2sparql/index.py https://text2sparql.aksw.org/2025/dbpedia/ > indexing-dbpedia.log 2>&1 &
+nohup docker compose -f compose.text2sparql.yml run text2sparql-api tests/text2sparql/index.py https://text2sparql.aksw.org/2026/dbpedia/ > indexing-dbpedia.log 2>&1 &
 
-nohup docker compose -f compose.text2sparql.yml run text2sparql-api tests/text2sparql/index.py https://text2sparql.aksw.org/2025/corporate/ > indexing-corporate.log 2>&1 &
+nohup docker compose -f compose.text2sparql.yml run text2sparql-api tests/text2sparql/index.py https://text2sparql.aksw.org/2026/corporate/ > indexing-corporate.log 2>&1 &
 
 
 ## Query API
 
-# curl -G https://biosoda.unil.ch/sparql-llm/ --data-urlencode "dataset=https://text2sparql.aksw.org/2025/dbpedia/" --data-urlencode "query=How many unique authors have written science fiction novels?"
+# curl -G https://biosoda.unil.ch/sparql-llm/ --data-urlencode "dataset=https://text2sparql.aksw.org/2026/dbpedia/" --data-urlencode "query=How many unique authors have written science fiction novels?"
