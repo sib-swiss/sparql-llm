@@ -41,7 +41,7 @@ if [ "$1" = "build" ]; then
 
 elif [ "$1" = "clean" ]; then
     echo "🧹 Cleaning up the vector database"
-    ssh_cmd "git pull ; rm -rf data/qdrant data/endpoints_metadata.json ; podman-compose -f compose.prod.yml up --force-recreate -d"
+    ssh_cmd "git pull ; rm -rf data/qdrant data/endpoints_metadata.json ; podman-compose -f compose.prod.yml down ; pkill -9 aardvark-dns 2>/dev/null || true ; rm -rf /run/user/1001/containers/networks/aardvark-dns ; podman-compose -f compose.prod.yml up --force-recreate -d"
 
 elif [ "$1" = "logs" ]; then
     ssh_cmd "podman-compose -f compose.prod.yml logs api"
@@ -64,8 +64,14 @@ elif [ "$1" = "likes" ]; then
     scp expasychat:/var/containers/podman/sparql-llm/data/logs/dislikes.jsonl ./data/prod/
     scp expasychat:/var/containers/podman/sparql-llm/data/logs/user_questions.log ./data/prod/
 
+elif [ "$1" = "netclean" ]; then
+    echo "🔧 Cleaning up Podman network state and redeploying"
+    ssh_cmd "git pull ; podman-compose -f compose.prod.yml down ; pkill -9 aardvark-dns ; rm -rf /run/user/1001/containers/networks/aardvark-dns ; podman-compose -f compose.prod.yml up -d"
+
 else
-    ssh_cmd "git pull ; podman-compose -f compose.prod.yml up --force-recreate -d"
+    echo "🚀 Deploying"
+    # Clean up network state before deploying to avoid DNS issues
+    ssh_cmd "git pull ; podman-compose -f compose.prod.yml down ; pkill -9 aardvark-dns 2>/dev/null || true ; rm -rf /run/user/1001/containers/networks/aardvark-dns ; podman-compose -f compose.prod.yml up --force-recreate -d"
 fi
 
 # Fix connectivities issues between api and vectordb (which happens sometimes with podman compose)
