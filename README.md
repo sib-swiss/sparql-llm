@@ -382,16 +382,20 @@ Checkout the [`CONTRIBUTING.md`](https://github.com/sib-swiss/sparql-llm/blob/ma
 
 If you reuse any part of this work, please cite at least one of our articles below:
 
-- [SPARQL-LLM: Real-Time SPARQL Query Generation from Natural Language Questions](https://arxiv.org/abs/2512.14277)
+- [SPARQL-LLM: Real-Time SPARQL Query Generation from Natural Language Questions](https://doi.org/10.1145/3847195)
 ```bibtex
-@misc{smeros2025sparqlllmrealtimesparqlquery,
-      title={SPARQL-LLM: Real-Time SPARQL Query Generation from Natural Language Questions},
-      author={Panayiotis Smeros and Vincent Emonet and Ruijie Wang and Ana-Claudia Sima and Tarcisio Mendes de Farias},
-      year={2025},
-      eprint={2512.14277},
-      archivePrefix={arXiv},
-      primaryClass={cs.IR},
-      url={https://arxiv.org/abs/2512.14277},
+@article{10.1145/3847195,
+author = {Smeros, Panayiotis and Emonet, Vincent and Wang, Ruijie and Sima, Ana-Claudia and Mendes de Farias, Tarcisio},
+title = {SPARQL-LLM: Real-Time SPARQL Query Generation from Natural Language Questions},
+year = {2026},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+issn = {1559-1131},
+url = {https://doi.org/10.1145/3847195},
+doi = {10.1145/3847195},
+journal = {ACM Trans. Web},
+month = sep,
+keywords = {Large Language Models, SPARQL, TEXT2SPARQL, Bioinformatics, Knowledge Graphs}
 }
 ```
 
