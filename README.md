@@ -289,10 +289,6 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 
    OPENROUTER_API_KEY=sk-YYY
    OPENAI_API_KEY=sk-proj-YYY
-
-   LANGFUSE_HOST=https://cloud.langfuse.com
-   LANGFUSE_PUBLIC_KEY=
-   LANGFUSE_SECRET_KEY=
    ```
 
 3. Optionally, if you made changes to it, build the chat UI webpage:
@@ -329,6 +325,8 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
    ```
 
    > All data from the containers are stored persistently in the `data` folder (e.g. vectordb indexes and endpoints metadata)
+
+   > Conversations are logged in `data/logs/requests.jsonl`, one JSON line per request (group lines on `sessionId` to rebuild multi-turn conversations): full messages, steps, generated SPARQL query, tokens, cost and runtime. Those logs can be explored with [chat-logs-viewer](https://github.com/sib-swiss/chat-logs-viewer). Change the path with the `REQUESTS_LOGS_FILEPATH` env variable.
 
 > [!NOTE]
 >
@@ -385,17 +383,17 @@ If you reuse any part of this work, please cite at least one of our articles bel
 - [SPARQL-LLM: Real-Time SPARQL Query Generation from Natural Language Questions](https://doi.org/10.1145/3847195)
 ```bibtex
 @article{10.1145/3847195,
-author = {Smeros, Panayiotis and Emonet, Vincent and Wang, Ruijie and Sima, Ana-Claudia and Mendes de Farias, Tarcisio},
-title = {SPARQL-LLM: Real-Time SPARQL Query Generation from Natural Language Questions},
-year = {2026},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-issn = {1559-1131},
-url = {https://doi.org/10.1145/3847195},
-doi = {10.1145/3847195},
-journal = {ACM Trans. Web},
-month = sep,
-keywords = {Large Language Models, SPARQL, TEXT2SPARQL, Bioinformatics, Knowledge Graphs}
+    author = {Smeros, Panayiotis and Emonet, Vincent and Wang, Ruijie and Sima, Ana-Claudia and Mendes de Farias, Tarcisio},
+    title = {SPARQL-LLM: Real-Time SPARQL Query Generation from Natural Language Questions},
+    year = {2026},
+    publisher = {Association for Computing Machinery},
+    address = {New York, NY, USA},
+    issn = {1559-1131},
+    url = {https://doi.org/10.1145/3847195},
+    doi = {10.1145/3847195},
+    journal = {ACM Trans. Web},
+    month = sep,
+    keywords = {Large Language Models, SPARQL, TEXT2SPARQL, Bioinformatics, Knowledge Graphs}
 }
 ```
 

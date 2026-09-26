@@ -39,7 +39,7 @@ export class ChatState {
     this.apiUrl = apiUrl;
     this.apiKey = apiKey;
     this.model = model;
-    // Generate a unique session ID for this conversation (used by Langfuse to group multi-turn conversations)
+    // Generate a unique session ID for this conversation (used in the logs to group multi-turn conversations)
     this.sessionId = crypto.randomUUID();
 
     const [messages, setMessages] = createSignal<Message[]>([]);

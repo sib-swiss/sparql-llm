@@ -26,6 +26,9 @@ def load_chat_model(configuration: Configuration) -> BaseChatModel:
             temperature=configuration.temperature,
             api_key=SecretStr(os.getenv("OPENROUTER_API_KEY") or ""),
             seed=configuration.seed,
+            # Include token usage in streamed responses, and ask OpenRouter for the cost of each call
+            stream_usage=True,
+            extra_body={"usage": {"include": True}},
             # default_headers={
             #     "HTTP-Referer": getenv("YOUR_SITE_URL"),
             #     "X-Title": getenv("YOUR_SITE_NAME"),

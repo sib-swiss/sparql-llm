@@ -7,6 +7,7 @@ import logging
 import os
 import pathlib
 import re
+import time
 from collections.abc import AsyncGenerator, AsyncIterator
 from datetime import datetime
 from typing import Any
@@ -18,10 +19,10 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from langchain_core.runnables import RunnableConfig
-from langfuse.langchain import CallbackHandler
 from pydantic import BaseModel
 
 from sparql_llm.agent.graph import graph
+from sparql_llm.agent.logs import UsageTracker, log_conversation
 from sparql_llm.config import settings
 from sparql_llm.mcp_server import get_mcp_app
 from sparql_llm.utils import logger
@@ -37,9 +38,6 @@ if settings.sentry_url:
         traces_sample_rate=0.0,
     )
 
-
-# Initialize Langfuse logs tracing CallbackHandler for Langchain https://langfuse.com/docs/integrations/langchain/example-python-langgraph
-langfuse_handler = [CallbackHandler(update_trace=True)] if os.getenv("LANGFUSE_SECRET_KEY") else []
 
 mcp = get_mcp_app()
 
@@ -138,20 +136,32 @@ def convert_chunk_to_dict(obj: Any) -> Any:
         return obj
 
 
-async def stream_response(inputs: Any, config: RunnableConfig) -> AsyncGenerator[str, Any]:
-    """Stream the response from the assistant."""
-    async for event, chunk in graph.astream(inputs, stream_mode=["messages", "updates"], config=config):
-        chunk_dict = convert_chunk_to_dict(
-            {
-                "event": event,
-                "data": chunk,
-            }
-        )
-        # print(chunk_dict)
-        # TODO: log_msg(logs_folder + "/all.jsonl", full_messages) when complete
-        yield f"data: {json.dumps(chunk_dict)}\n\n"
-        await asyncio.sleep(0)
-    yield "data: [DONE]"
+async def stream_response(inputs: Any, config: RunnableConfig, log_ctx: dict[str, Any]) -> AsyncGenerator[str, Any]:
+    """Stream the response from the assistant, and log the finished round to the JSONL logs."""
+    # "values" gives the full graph state after each node: keep the last one to log the final state
+    final_state: Any = None
+    error: str | None = None
+    try:
+        async for event, chunk in graph.astream(inputs, stream_mode=["messages", "updates", "values"], config=config):
+            if event == "values":
+                final_state = chunk
+                continue
+            chunk_dict = convert_chunk_to_dict(
+                {
+                    "event": event,
+                    "data": chunk,
+                }
+            )
+            # print(chunk_dict)
+            yield f"data: {json.dumps(chunk_dict)}\n\n"
+            await asyncio.sleep(0)
+        yield "data: [DONE]"
+    except Exception as e:
+        error = str(e)
+        raise
+    finally:
+        # Also logged when the client disconnects mid-stream
+        log_conversation(output=convert_chunk_to_dict(final_state), error=error, **log_ctx)
 
 
 # FastAPI does not support Union in response model (even if it says otherwise in docs)
@@ -174,38 +184,51 @@ async def chat(request: Request) -> StreamingResponse | JSONResponse:
     if not question:
         raise ValueError("No question provided")
 
-    # print(request.model)
-    # Pass session_id via metadata for Langfuse to properly group multi-turn conversations
-    # https://langfuse.com/docs/integrations/langchain/tracing#trace-attributes
-    langfuse_metadata = {}
-    if chat_request.session_id:
-        langfuse_metadata["langfuse_session_id"] = chat_request.session_id
-
+    # Tracks tokens/cost of every LLM call made during this round (including extraction nodes)
+    usage_tracker = UsageTracker()
     config = RunnableConfig(
         configurable={
             "model": chat_request.model,
             "validate_output": chat_request.validate_output,
             "enable_sparql_execution": chat_request.enable_sparql_execution,
         },
-        metadata=langfuse_metadata,
         recursion_limit=25,
-        callbacks=langfuse_handler,  # type: ignore
+        callbacks=[usage_tracker],
     )
     inputs: Any = {
         "messages": [(msg.role, msg.content) for msg in chat_request.messages[-10:]],
+    }
+    log_ctx: dict[str, Any] = {
+        "inputs": inputs,
+        "metadata": {
+            "model": chat_request.model,
+            "validate_output": chat_request.validate_output,
+            "enable_sparql_execution": chat_request.enable_sparql_execution,
+            "max_tokens": chat_request.max_tokens,
+            "temperature": chat_request.temperature,
+            "stream": chat_request.stream,
+        },
+        "session_id": chat_request.session_id,
+        "usage_tracker": usage_tracker,
+        "started_at": time.time(),
     }
 
     # request.stream = False
     if chat_request.stream:
         return StreamingResponse(
-            stream_response(inputs, config),
+            stream_response(inputs, config, log_ctx),
             media_type="text/event-stream",
             # media_type="application/x-ndjson"
         )
 
-    response = await graph.ainvoke(inputs, config=config)
+    try:
+        response = await graph.ainvoke(inputs, config=config)
+    except Exception as e:
+        log_conversation(output=None, error=str(e), **log_ctx)
+        raise
     # Convert LangChain message objects to dicts for JSON serialization
     response_dict = convert_chunk_to_dict(response)
+    log_conversation(output=response_dict, **log_ctx)
     return JSONResponse(content=response_dict)
 
 

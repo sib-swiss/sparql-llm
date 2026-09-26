@@ -184,6 +184,7 @@ It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC
 
     logs_folder: str = "./data/logs"
     logs_filepath: str = "./data/logs/user_questions.log"
+    requests_logs_filepath: str = "./data/logs/requests.jsonl"
 
     use_tools: bool = False
     """Experimental: Whether to use tools or not. If set to False, the agent will use the functions sequentially to answer questions."""
