@@ -1,6 +1,7 @@
 # /// script
 # requires-python = ">=3.9"
-# dependencies = ["mcp", "langchain-mcp-adapters", "langchain >=1.0.0a10", "langchain-mistralai"]
+# NOTE: langchain-mcp-adapters does not support mcp v2 yet
+# dependencies = ["mcp <2", "langchain-mcp-adapters", "langchain >=1.0.0a10", "langchain-mistralai"]
 # ///
 
 import asyncio

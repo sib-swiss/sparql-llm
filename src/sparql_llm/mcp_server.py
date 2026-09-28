@@ -1,10 +1,11 @@
 import argparse
 import json
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 
+from sparql_llm import __version__
 from sparql_llm.config import settings
 from sparql_llm.indexing.index_resources import embedding_model, endpoints_metadata, init_vectordb, qdrant_client
 from sparql_llm.utils import logger, query_sparql
@@ -33,30 +34,31 @@ ignore case, make sure you are not overriding an existing variable with BIND, or
 and check them one by one."""
 
 
-def get_mcp_app(enable_resources_info_tool: bool = True) -> FastMCP:
-    """Get the MCP server instance."""
-
-    transport_security = (
-        TransportSecuritySettings(
-            enable_dns_rebinding_protection=True,
-            allowed_hosts=["localhost:*", "127.0.0.1:*", settings.app_public_host],
-            allowed_origins=["http://localhost:*", f"https://{settings.app_public_host}"],
-        )
-        if settings.app_public_host
-        else None
+def get_transport_security() -> TransportSecuritySettings | None:
+    """Allow the public host when deployed, otherwise use the SDK default localhost-only DNS rebinding protection."""
+    if not settings.app_public_host:
+        return None
+    # https://github.com/modelcontextprotocol/python-sdk/issues/1798
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=["localhost:*", "127.0.0.1:*", settings.app_public_host],
+        allowed_origins=["http://localhost:*", f"https://{settings.app_public_host}"],
     )
 
+
+def get_mcp_app(enable_resources_info_tool: bool = True) -> MCPServer:
+    """Get the MCP server instance.
+
+    Transport options (stateless, JSON response, path, security) are passed when building the app,
+    e.g. `mcp.streamable_http_app(stateless_http=True, json_response=True, transport_security=get_transport_security())`
+    """
     # Create MCP server https://github.com/modelcontextprotocol/python-sdk
-    mcp = FastMCP(
-        name=f"{settings.app_org} MCP",
+    mcp = MCPServer(
+        f"{settings.app_org} MCP",
+        instructions="Provide tools that helps users to access biological data resources from the Swiss Institute of Bioinformatics (SIB) through the SPARQL query language.",
+        version=__version__,
         debug=True,
         dependencies=["mcp", "qdrant_client", "fastembed", "sparql-llm"],
-        instructions="Provide tools that helps users to access biological data resources from the Swiss Institute of Bioinformatics (SIB) through the SPARQL query language.",
-        json_response=True,
-        stateless_http=True,
-        streamable_http_path="/",
-        # https://github.com/modelcontextprotocol/python-sdk/issues/1798
-        transport_security=transport_security,
     )
 
     # Check if the docs collection exists and has data, initialize if not
@@ -279,9 +281,9 @@ Returns:
 
     # https://modelcontextprotocol.io/docs/concepts/resources
     @mcp.resource("examples://{question}")
-    def get_examples(question: str) -> str:
+    async def get_examples(question: str) -> str:
         """Get relevant SPARQL query examples and other documents to help the user write a SPARQL query."""
-        return search_sparql_docs(question, [], [])
+        return await search_sparql_docs(question, [], [])
 
     return mcp
 
@@ -328,10 +330,13 @@ def cli() -> None:
     mcp = get_mcp_app()
     # settings = Settings.from_file(args.settings_filepath)
     if args.http:
-        mcp.run()
-        mcp.settings.port = args.port
-        mcp.settings.log_level = "INFO"
-        mcp.run(transport="streamable-http")
+        mcp.run(
+            transport="streamable-http",
+            port=args.port,
+            stateless_http=True,
+            json_response=True,
+            transport_security=get_transport_security(),
+        )
     else:
         mcp.run()
 

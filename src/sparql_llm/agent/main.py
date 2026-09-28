@@ -25,7 +25,7 @@ from sparql_llm.agent.graph import graph
 from sparql_llm.agent.logs import UsageTracker, log_conversation
 from sparql_llm.agent.utils import convert_chunk_to_dict
 from sparql_llm.config import settings
-from sparql_llm.mcp_server import get_mcp_app
+from sparql_llm.mcp_server import get_mcp_app, get_transport_security
 from sparql_llm.utils import logger
 
 if settings.sentry_url:
@@ -58,7 +58,17 @@ such as SPARQL endpoints, to get information about proteins, genes, and other bi
     lifespan=lifespan,
 )
 
-app.mount("/mcp", mcp.streamable_http_app(), name="mcp")
+# Mounted at /mcp: the MCP app serves at its root, stateless with plain JSON responses
+app.mount(
+    "/mcp",
+    mcp.streamable_http_app(
+        streamable_http_path="/",
+        stateless_http=True,
+        json_response=True,
+        transport_security=get_transport_security(),
+    ),
+    name="mcp",
+)
 
 
 app.add_middleware(
@@ -271,9 +281,9 @@ app.mount(
 async def chat_ui(request: Request) -> HTMLResponse:
     """Render the chat UI using jinja2 + HTML."""
     return templates.TemplateResponse(
+        request,
         "index.html",
         {
-            "request": request,
             "api_key": settings.chat_api_key,
             "chat_endpoint": "/chat",
             "feedback_endpoint": "/feedback",

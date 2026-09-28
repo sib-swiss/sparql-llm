@@ -1,13 +1,37 @@
 """Custom MCP tool node for handling async tool calls."""
 
+from typing import Any
+
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
-from langchain_mcp_adapters.client import MultiServerMCPClient
+from mcp import Client
+from mcp.types import CallToolResult, TextContent
 
 from sparql_llm.agent.state import State
 from sparql_llm.config import settings
 
 # NOTE: experimental, not actually used by the chat agent
+
+# The MCP app is mounted at /mcp and serves at its root
+MCP_URL = f"{settings.server_url}/mcp/"
+
+
+async def get_mcp_tools() -> list[dict[str, Any]]:
+    """List the MCP server tools, in the OpenAI function format accepted by `bind_tools`."""
+    async with Client(MCP_URL) as client:
+        tools = await client.list_tools()
+    return [
+        {
+            "type": "function",
+            "function": {"name": tool.name, "description": tool.description or "", "parameters": tool.input_schema},
+        }
+        for tool in tools.tools
+    ]
+
+
+def format_tool_result(result: CallToolResult) -> str:
+    """Join the text content blocks of a tool call result."""
+    return "\n".join(item.text if isinstance(item, TextContent) else str(item) for item in result.content)
 
 
 async def mcp_tools_node(state: State, config: RunnableConfig) -> dict[str, list[ToolMessage]]:
@@ -27,43 +51,19 @@ async def mcp_tools_node(state: State, config: RunnableConfig) -> dict[str, list
         # No tool calls to process
         return {"messages": []}
 
-    # Set up MCP client
-    mcp_client = MultiServerMCPClient(
-        {
-            "expasy-mcp": {
-                "url": f"{settings.server_url}/mcp",
-                "transport": "streamable_http",
-            }
-        }
-    )
-
     tool_messages = []
-    async with mcp_client.session("expasy-mcp") as mcp_session:
+    async with Client(MCP_URL) as mcp_client:
         # Process each tool call
         for tool_call in last_msg.tool_calls:
             print(tool_call)
             try:
-                # Execute the tool via MCP client
-                # The langchain-mcp-adapters should handle the tool name mapping
-                result = await mcp_session.call_tool(tool_call["name"], tool_call.get("args", {}))  # type: ignore
-                print(result)
-
-                # Create tool message with the result
-                # The result from MCP client should have content accessible
-                content = ""
-                if hasattr(result, "content"):
-                    if isinstance(result.content, list):
-                        # Handle list of content items
-                        content = "\n".join(str(item) for item in result.content)
-                    else:
-                        content = str(result.content)
-                else:
-                    content = str(result)
-
+                # Execute the tool via MCP client, and pass its text output back to the model
+                result = await mcp_client.call_tool(tool_call["name"], tool_call.get("args", {}))
                 tool_messages.append(
                     ToolMessage(
-                        content=content,
+                        content=format_tool_result(result),
                         tool_call_id=tool_call["id"],
+                        status="error" if result.is_error else "success",
                     )
                 )
 

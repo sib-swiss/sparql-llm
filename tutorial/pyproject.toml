@@ -21,7 +21,7 @@ dependencies = [
     "chainlit >=2.8.1",
     # "langgraph >=0.2.73",
     "langchain-qdrant >=0.2.0",
-    "mcp >=1.15.0",
+    "mcp >=2.2.0",
 ]
 
 

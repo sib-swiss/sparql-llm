@@ -8,8 +8,8 @@ from typing import Any
 from langchain_core.messages import AIMessage, AnyMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableConfig
-from langchain_mcp_adapters.client import MultiServerMCPClient
 
+from sparql_llm.agent.nodes.mcp_tools import get_mcp_tools
 from sparql_llm.agent.state import State
 from sparql_llm.agent.utils import load_chat_model
 from sparql_llm.config import Configuration, settings
@@ -35,15 +35,7 @@ async def call_model(state: State, config: RunnableConfig) -> dict[str, list[Any
 
     # Set up MCP client (experimental, not used in production)
     if settings.use_tools:
-        mcp_client = MultiServerMCPClient(
-            {
-                "expasy-mcp": {
-                    "url": f"{settings.server_url}/mcp",
-                    "transport": "streamable_http",
-                }
-            }
-        )
-        tools = await mcp_client.get_tools()
+        tools = await get_mcp_tools()
 
     model = load_chat_model(configuration).bind_tools(tools) if tools else load_chat_model(configuration)
 

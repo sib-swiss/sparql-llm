@@ -4,7 +4,7 @@ import os
 from dataclasses import dataclass, field
 
 from fastembed import TextEmbedding
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 from sparql_llm.utils import query_sparql
@@ -34,7 +34,7 @@ vectordb = QdrantClient(path="data/vectordb")
 
 
 # Create MCP server https://github.com/modelcontextprotocol/python-sdk
-mcp = FastMCP(
+mcp = MCPServer(
     "SIB BioData MCP",
     dependencies=["mcp", "qdrant_client", "fastembed", "sparql-llm"],
     # debug=True,
@@ -185,8 +185,7 @@ def main() -> None:
     if args.stdio:
         mcp.run()
     else:
-        mcp.settings.port = args.port
-        mcp.run(transport="streamable-http")
+        mcp.run(transport="streamable-http", port=args.port)
         # mcp.run(transport="sse")
 
 
