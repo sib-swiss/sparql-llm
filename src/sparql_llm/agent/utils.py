@@ -1,6 +1,7 @@
 """Utilities for the AI agent, e.g. load model."""
 
 import os
+from typing import Any
 
 from langchain.chat_models import init_chat_model
 from langchain_core.language_models import BaseChatModel
@@ -109,3 +110,31 @@ def get_msg_text(msg: AnyMessage) -> str:
     else:
         txts = [c if isinstance(c, str) else (c.get("text") or "") for c in content]
         return "".join(txts).strip()
+
+
+def convert_chunk_to_dict(obj: Any) -> Any:
+    """Recursively convert a langgraph chunk object to a dict.
+
+    Required because LangGraph objects are not serializable by default.
+    And they use a mix of tuples, dataclasses (State, Configuration) and pydantic BaseModel (BaseMessage).
+    """
+    # {'retrieve': {'retrieved_docs': [Document(metadata={'endpoint_url':
+    # When sending a msg LangGraph sends a tuple with the message and the metadata
+    if isinstance(obj, tuple) and len(obj) == 2:
+        # Message and metadata
+        return [convert_chunk_to_dict(obj[0]), convert_chunk_to_dict(obj[1])]
+    elif isinstance(obj, list):
+        return [convert_chunk_to_dict(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {k: convert_chunk_to_dict(v) for k, v in obj.items()}
+    elif hasattr(obj, "model_dump"):
+        return obj.model_dump()  # type: ignore
+    elif hasattr(obj, "dict"):
+        return obj.dict()  # type: ignore
+    elif hasattr(obj, "__dict__"):
+        return obj.__dict__
+    # elif hasattr(obj, "__dict__") and not isinstance(obj, type):
+    #     # Convert dataclass or other objects to dict, but skip type objects
+    #     return {k: convert_chunk_to_dict(v) for k, v in obj.__dict__.items()}
+    else:
+        return obj

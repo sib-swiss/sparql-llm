@@ -23,6 +23,7 @@ from pydantic import BaseModel
 
 from sparql_llm.agent.graph import graph
 from sparql_llm.agent.logs import UsageTracker, log_conversation
+from sparql_llm.agent.utils import convert_chunk_to_dict
 from sparql_llm.config import settings
 from sparql_llm.mcp_server import get_mcp_app
 from sparql_llm.utils import logger
@@ -108,34 +109,6 @@ class ChatCompletionRequest(BaseModel):
     session_id: str | None = None
 
 
-def convert_chunk_to_dict(obj: Any) -> Any:
-    """Recursively convert a langgraph chunk object to a dict.
-
-    Required because LangGraph objects are not serializable by default.
-    And they use a mix of tuples, dataclasses (State, Configuration) and pydantic BaseModel (BaseMessage).
-    """
-    # {'retrieve': {'retrieved_docs': [Document(metadata={'endpoint_url':
-    # When sending a msg LangGraph sends a tuple with the message and the metadata
-    if isinstance(obj, tuple) and len(obj) == 2:
-        # Message and metadata
-        return [convert_chunk_to_dict(obj[0]), convert_chunk_to_dict(obj[1])]
-    elif isinstance(obj, list):
-        return [convert_chunk_to_dict(item) for item in obj]
-    elif isinstance(obj, dict):
-        return {k: convert_chunk_to_dict(v) for k, v in obj.items()}
-    elif hasattr(obj, "model_dump"):
-        return obj.model_dump()  # type: ignore
-    elif hasattr(obj, "dict"):
-        return obj.dict()  # type: ignore
-    elif hasattr(obj, "__dict__"):
-        return obj.__dict__
-    # elif hasattr(obj, "__dict__") and not isinstance(obj, type):
-    #     # Convert dataclass or other objects to dict, but skip type objects
-    #     return {k: convert_chunk_to_dict(v) for k, v in obj.__dict__.items()}
-    else:
-        return obj
-
-
 async def stream_response(inputs: Any, config: RunnableConfig, log_ctx: dict[str, Any]) -> AsyncGenerator[str, Any]:
     """Stream the response from the assistant, and log the finished round to the JSONL logs."""
     # "values" gives the full graph state after each node: keep the last one to log the final state
@@ -161,7 +134,7 @@ async def stream_response(inputs: Any, config: RunnableConfig, log_ctx: dict[str
         raise
     finally:
         # Also logged when the client disconnects mid-stream
-        log_conversation(output=convert_chunk_to_dict(final_state), error=error, **log_ctx)
+        log_conversation(output=final_state, error=error, **log_ctx)
 
 
 # FastAPI does not support Union in response model (even if it says otherwise in docs)
@@ -226,10 +199,9 @@ async def chat(request: Request) -> StreamingResponse | JSONResponse:
     except Exception as e:
         log_conversation(output=None, error=str(e), **log_ctx)
         raise
+    log_conversation(output=response, **log_ctx)
     # Convert LangChain message objects to dicts for JSON serialization
-    response_dict = convert_chunk_to_dict(response)
-    log_conversation(output=response_dict, **log_ctx)
-    return JSONResponse(content=response_dict)
+    return JSONResponse(content=convert_chunk_to_dict(response))
 
 
 class LogMessage(Message):

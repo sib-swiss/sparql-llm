@@ -4,7 +4,7 @@ One line is appended per request (a round of a conversation), multi turn convers
 rebuilt by grouping lines on `sessionId`. Field names are kept close to the Langfuse trace
 export used by https://github.com/sib-swiss/chat-logs-viewer: `id`, `timestamp`, `sessionId`,
 `input`, `output`, `metadata`, `usage`, `totalCost`, plus `endTime`, `latency`, `llmCalls`
-and `error`.
+and `error`. Messages use the OpenAI chat format (`role`: system, user, assistant or tool).
 """
 
 from __future__ import annotations
@@ -20,8 +20,10 @@ from typing import Any
 
 import httpx
 from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.messages import convert_to_openai_messages
 from langchain_core.outputs import LLMResult
 
+from sparql_llm.agent.utils import convert_chunk_to_dict
 from sparql_llm.config import settings
 from sparql_llm.utils import logger
 
@@ -139,7 +141,7 @@ def log_conversation(
 
     Args:
         inputs: The inputs passed to the graph (messages sent by the user).
-        output: The final state of the graph (already converted to plain dicts).
+        output: The final state of the graph, None if the request failed before finishing.
         metadata: Runtime configuration of the request (model, feature flags...).
         session_id: Client session ID used to group multi turn conversations.
         usage_tracker: Handler that collected tokens/cost of the LLM calls.
@@ -148,6 +150,10 @@ def log_conversation(
         filepath: Override the log file path.
     """
     ended_at = time.time()
+    # Messages are logged in the OpenAI format (role system/user/assistant/tool)
+    inputs = {**inputs, "messages": convert_to_openai_messages(inputs.get("messages", []))}
+    if output:
+        output = {**convert_chunk_to_dict(output), "messages": convert_to_openai_messages(output.get("messages", []))}
     entry: dict[str, Any] = {
         "id": uuid.uuid4().hex,
         "timestamp": datetime.fromtimestamp(started_at, tz=timezone.utc).isoformat(),
