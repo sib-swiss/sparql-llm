@@ -18,6 +18,15 @@ The system integrates Retrieval-Augmented Generation (RAG) and SPARQL query vali
 
 The components are designed to work either independently or as part of a full chat-based system that can be deployed for a set of SPARQL endpoints. It **requires endpoints to include metadata** such as [SPARQL query examples](https://github.com/sib-swiss/sparql-examples) and endpoint descriptions using the [Vocabulary of Interlinked Datasets (VoID)](https://www.w3.org/TR/void/), which can be automatically generated using the [void-generator](https://github.com/JervenBolleman/void-generator).
 
+## 💥 News
+🥇 We won the first place at the [Text2SPARQL Challenge](https://aksw.github.io/text2sparql.aksw.org/latest/results), co-located with ESWC 2026. Some highlights from our evaluation:
+- 🎯 up to 59% higher F1 score*
+- 🚀 up to 27× faster*
+- 💸 no more than $0.01 per question
+- 🌍 works across English, Spanish, and German
+
+*compared with the second-best system in the challenge
+
 ## 🌈 Features
 
 - **Metadata Extraction**: Functions to extract and load relevant metadata from SPARQL endpoints. These loaders are compatible with [LangChain](https://python.langchain.com) but are flexible enough to be used independently, providing metadata as JSON for custom vector store integration.
@@ -380,7 +389,7 @@ Checkout the [`CONTRIBUTING.md`](https://github.com/sib-swiss/sparql-llm/blob/ma
 
 If you reuse any part of this work, please cite at least one of our articles below:
 
-- [SPARQL-LLM: Real-Time SPARQL Query Generation from Natural Language Questions](https://doi.org/10.1145/3847195)
+- [SPARQL-LLM: Real-Time SPARQL Query Generation from Natural Language Questions](https://doi.org/10.1145/3847195) (full paper)
 ```bibtex
 @article{10.1145/3847195,
     author = {Smeros, Panayiotis and Emonet, Vincent and Wang, Ruijie and Sima, Ana-Claudia and Mendes de Farias, Tarcisio},
@@ -397,7 +406,7 @@ If you reuse any part of this work, please cite at least one of our articles bel
 }
 ```
 
-- [LLM-based SPARQL Query Generation from Natural Language over Federated Knowledge Graphs](https://ceur-ws.org/Vol-3953/355.pdf)
+- [LLM-based SPARQL Query Generation from Natural Language over Federated Knowledge Graphs](https://ceur-ws.org/Vol-3953/355.pdf) (short paper)
 ```bibtex
 @conference{emonet2025llm,
     title={LLM-based SPARQL Query Generation from Natural Language over Federated Knowledge Graphs},
