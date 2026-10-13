@@ -1,37 +1,98 @@
 import argparse
 import json
+from typing import Any
 
+import httpx
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
+from rdflib.plugins.sparql import prepareQuery
+from typing_extensions import NotRequired, TypedDict
 
 from sparql_llm import __version__
 from sparql_llm.config import settings
 from sparql_llm.indexing.index_resources import embedding_model, endpoints_metadata, init_vectordb, qdrant_client
+from sparql_llm.loaders.sparql_info_loader import GENERAL_INFO_DOC_TYPE
 from sparql_llm.utils import logger, query_sparql
 from sparql_llm.validate_sparql import validate_sparql
 
 # What are the rat orthologs of the human TP53?
 # TODO: MCP integrated https://github.com/modelcontextprotocol/python-sdk/pull/1007
 
-PROMPT_TOOL_SPARQL = """Formulate a precise SPARQL query to access specific biological data and answer the user's question.
-
-## SPARQL Query Guidelines
+SPARQL_QUERY_GUIDELINES = """## SPARQL Query Guidelines
 - **Always include the endpoint URL** as a comment at the start: `#+ endpoint: http://example.org/sparql`
 - **Use only ONE endpoint** per query
 - **Base your query on the provided context**, never create generic or unsupported queries
 - **Use appropriate prefixes** and class names from the schema documentation
-
-## Knowledge Base
-The following {docs_count} documents contain relevant query examples, and classes schemas to help you construct an accurate response:
-
-{formatted_docs}
 """
 
-FIX_QUERY_PROMPT = """Please fix the query, and try again.
-We suggest you to make the query less restricted, e.g. use a broader regex for string matching instead of exact match,
-ignore case, make sure you are not overriding an existing variable with BIND, or break down your query in smaller parts
-and check them one by one."""
+MAX_RESULT_ROWS = 50
+
+EXAMPLES_DOC_TYPE = "SPARQL endpoints query examples"
+CLASSES_SCHEMA_DOC_TYPE = "SPARQL endpoints classes schema"
+
+
+class QueryExample(TypedDict):
+    question: str
+    query: str
+    endpoint_url: str
+
+
+class ClassSchema(TypedDict):
+    label: str
+    iri: str
+    shex: str
+    endpoint_url: str
+
+
+class ResourceInfo(TypedDict):
+    question: str
+    answer: str
+    endpoint_url: NotRequired[str]
+
+
+class SparqlExamplesSearchResults(TypedDict):
+    query_examples: list[QueryExample]
+
+
+class ClassesSchemaSearchResults(TypedDict):
+    classes_schemas: list[ClassSchema]
+
+
+class ResourcesInfoSearchResults(TypedDict):
+    resources_info: list[ResourceInfo]
+
+
+# SPARQL 1.1 query results JSON format https://www.w3.org/TR/sparql11-results-json/
+# Functional syntax since `xml:lang` is not a valid identifier
+SparqlTerm = TypedDict(
+    "SparqlTerm",
+    {
+        "type": str,
+        "value": str,
+        "xml:lang": NotRequired[str],
+        "datatype": NotRequired[str],
+    },
+)
+
+
+class SparqlHead(TypedDict):
+    vars: list[str]
+
+
+class SparqlBindings(TypedDict):
+    bindings: list[dict[str, SparqlTerm]]
+
+
+class SparqlQueryResults(TypedDict):
+    """SPARQL JSON results, with extra info on the executed query and truncation."""
+
+    head: SparqlHead
+    results: SparqlBindings
+    total_results: int
+    truncated: bool
+    fixed_query: NotRequired[str]
 
 
 def get_transport_security() -> TransportSecuritySettings | None:
@@ -55,7 +116,9 @@ def get_mcp_app(enable_resources_info_tool: bool = True) -> MCPServer:
     # Create MCP server https://github.com/modelcontextprotocol/python-sdk
     mcp = MCPServer(
         f"{settings.app_org} MCP",
-        instructions="Provide tools that helps users to access biological data resources from the Swiss Institute of Bioinformatics (SIB) through the SPARQL query language.",
+        instructions="Provide tools that helps users to access biological data resources from the Swiss Institute of Bioinformatics (SIB) through the SPARQL query language. "
+        "To answer a question: search relevant query examples with `search_examples`, or relevant classes with "
+        "`search_classes`, then run the query with `execute_sparql_query`.",
         version=__version__,
         debug=True,
         dependencies=["mcp", "qdrant_client", "fastembed", "sparql-llm"],
@@ -87,211 +150,212 @@ def get_mcp_app(enable_resources_info_tool: bool = True) -> MCPServer:
 
     # potential_entities: Potential entities and instances of classes
 
-    search_sparql_docs_tool_desc = f"""Retrieve relevant SPARQL query examples and classes schema to write queries to answer user questions related to {settings.app_topics}
+    search_examples_desc = (
+        f"""Search SPARQL query examples relevant to a question related to {settings.app_topics}
+
+Use the examples as a base to write a SPARQL query answering the question, then use `search_classes`
+to check the details of classes and predicates used in the query.
 
 Args:
     question: The question to be answered with a SPARQL query
-    potential_classes: High level concepts and potential classes that could be found in the SPARQL endpoints
     steps: Split the question in standalone smaller parts if relevant (if the question is already 1 step, leave empty)
 
 Returns:
-    Relevant documents (examples, classes schemas)
+    Relevant SPARQL query examples, with the question they answer and the endpoint to run them on
+
 """
+        + SPARQL_QUERY_GUIDELINES
+    )
 
-    @mcp.tool(description=search_sparql_docs_tool_desc)
-    async def search_sparql_docs(question: str, potential_classes: list[str], steps: list[str]) -> str:
-        relevant_docs: list[ScoredPoint] = []
-        for search_embeddings in embedding_model.embed([question, *steps, *potential_classes]):
-            # Get SPARQL example queries
-            relevant_docs.extend(
-                doc
-                for doc in qdrant_client.query_points(
-                    query=search_embeddings,
-                    collection_name=settings.docs_collection_name,
-                    limit=settings.default_number_of_retrieved_docs,
-                    query_filter=Filter(
-                        must=[
-                            FieldCondition(
-                                key="doc_type",
-                                match=MatchValue(value="SPARQL endpoints query examples"),
-                            )
-                        ]
-                    ),
-                ).points
-                # Make sure we don't add duplicate docs
-                if doc.payload
-                and doc.payload.get("answer")
-                not in {
-                    existing_doc.payload.get("answer") if existing_doc.payload else None
-                    for existing_doc in relevant_docs
-                }
-            )
-            # Get other relevant documentation (classes schemas, general information)
-            relevant_docs.extend(
-                doc
-                for doc in qdrant_client.query_points(
-                    query=search_embeddings,
-                    collection_name=settings.docs_collection_name,
-                    limit=settings.default_number_of_retrieved_docs,
-                    query_filter=Filter(
-                        must_not=[
-                            FieldCondition(
-                                key="doc_type",
-                                match=MatchValue(value="SPARQL endpoints query examples"),
-                            )
-                        ]
-                    ),
-                ).points
-                if doc.payload
-                and doc.payload.get("answer")
-                not in {
-                    existing_doc.payload.get("answer") if existing_doc.payload else None
-                    for existing_doc in relevant_docs
-                }
-            )
-        # await ctx.info(f"Using {len(relevant_docs)} documents to answer the question")
-        return PROMPT_TOOL_SPARQL.format(docs_count=str(len(relevant_docs)), formatted_docs=format_docs(relevant_docs))
-
-    # PROMPT_TOOL_SPARQL = """Depending on the user request and provided context, you may provide general information about
-    # the resources available at the SIB, or help the user to formulate a query to run on a SPARQL endpoint.
-    # If answering with a SPARQL query, always add the URL of the endpoint on which the query should be
-    # executed in a comment at the start of the query inside the codeblocks starting with "#+ endpoint: " (always only 1
-    # endpoint). Derive your answer from the context provided in the prompt, do not try to create a query from nothing and do
-    # not provide a generic query.
-    # Here is a list of {docs_count} documents (reference questions and query answers, classes schema or general endpoints information)
-    # relevant to the user question that will help you answer the user question accurately:
-    # """
+    @mcp.tool(description=search_examples_desc)
+    async def search_examples(question: str, steps: list[str]) -> SparqlExamplesSearchResults:
+        docs = search_docs(
+            list(embedding_model.embed([question, *steps])), Filter(must=[doc_type_condition(EXAMPLES_DOC_TYPE)])
+        )
+        return {"query_examples": [to_query_example(doc) for doc in docs]}
 
     @mcp.tool()
-    async def get_classes_schema(classes: list[str]) -> str:
-        """Search for specific classes and their schema in the SPARQL endpoints.
+    async def search_classes(classes: list[str]) -> ClassesSchemaSearchResults:
+        """Search classes and their schema (predicates and the types of their values) in the SPARQL endpoints.
 
         Args:
             classes: High level concepts and potential classes that could be found in the SPARQL endpoints
 
         Returns:
-            Relevant classes schemas in ShEx format
+            Relevant classes schemas in ShEx format, with the endpoint where the class is found
         """
-        relevant_docs: list[ScoredPoint] = []
-        for search_embeddings in embedding_model.embed(classes):
-            # Get other relevant documentation (classes schemas, general information)
-            relevant_docs.extend(
-                doc
-                for doc in qdrant_client.query_points(
-                    query=search_embeddings,
-                    collection_name=settings.docs_collection_name,
-                    limit=settings.default_number_of_retrieved_docs,
-                    query_filter=Filter(
-                        must_not=[
-                            FieldCondition(
-                                key="doc_type",
-                                match=MatchValue(value="SPARQL endpoints query examples"),
-                            )
-                        ]
-                    ),
-                ).points
-                if doc.payload
-                and doc.payload.get("answer")
-                not in {
-                    existing_doc.payload.get("answer") if existing_doc.payload else None
-                    for existing_doc in relevant_docs
-                }
-            )
-        return f"""Here is a list of {len(relevant_docs)} classes schema relevant to the request:
-    {format_docs(relevant_docs)}"""
+        docs = search_docs(
+            list(embedding_model.embed(classes)), Filter(must=[doc_type_condition(CLASSES_SCHEMA_DOC_TYPE)])
+        )
+        return {"classes_schemas": [to_class_schema(doc) for doc in docs]}
 
     if enable_resources_info_tool:
 
         @mcp.tool()
-        def get_resources_info(question: str) -> str:
-            """Get information about the SPARQL endpoints indexed by this MCP server.
+        async def search_resources(question: str) -> ResourcesInfoSearchResults:
+            """Search general information about the resources and SPARQL endpoints indexed by this MCP server.
 
             Only call this tool when the user explicitly asks for information about the resources themselves.
 
             Args:
-                question: The user question.
+                question: The user question
 
             Returns:
-                str: Information about the resources.
+                Relevant information about the resources (description, endpoints, metadata)
             """
-            search_embeddings = next(iter(embedding_model.embed([question])))
-            relevant_docs = qdrant_client.query_points(
-                collection_name=settings.docs_collection_name,
-                query=search_embeddings,
-                limit=settings.default_number_of_retrieved_docs,
-                query_filter=Filter(
-                    must=[
-                        FieldCondition(
-                            key="doc_type",
-                            match=MatchValue(value="General information"),
-                        )
-                    ]
-                ),
-            ).points
-            return f"""Here is a list of {len(relevant_docs)} documents relevant to the question that will help answer it accurately:
-{format_docs(relevant_docs)}"""
+            docs = search_docs(
+                list(embedding_model.embed([question])), Filter(must=[doc_type_condition(GENERAL_INFO_DOC_TYPE)])
+            )
+            return {"resources_info": [to_resource_info(doc) for doc in docs]}
 
     @mcp.tool()
-    def execute_sparql_query(sparql_query: str, endpoint_url: str) -> str:
+    def execute_sparql_query(sparql_query: str, endpoint_url: str) -> SparqlQueryResults | str:
         """Execute a SPARQL query against a SPARQL endpoint.
+
+        If the query returns no results, make it less restrictive (e.g. case-insensitive regex instead of exact
+        string match, no variable overridden with BIND), or break it down in smaller parts and check them one by one.
 
         Args:
             sparql_query: A valid SPARQL query string
             endpoint_url: The SPARQL endpoint URL to execute the query against
 
         Returns:
-            The query results in JSON format
+            For SELECT and ASK queries: the results in the SPARQL JSON format (first 50 rows), with the total number of results.
+            For CONSTRUCT and DESCRIBE queries: the resulting RDF graph in Turtle format.
         """
-        resp_msg = ""
         # First check if query valid based on classes schema and known prefixes
         validation_output = validate_sparql(
             sparql_query, endpoint_url, endpoints_metadata.prefixes_map, endpoints_metadata.void_dict
         )
-        if validation_output["fixed_query"]:
-            # Pass the fixed query to the client
-            resp_msg += f"Fixed the prefixes of the generated SPARQL query automatically:\n```sparql\n{validation_output['fixed_query']}\n```\n"
-            sparql_query = validation_output["fixed_query"]
+        fixed_query = validation_output["fixed_query"]
+        if fixed_query:
+            sparql_query = fixed_query
         if validation_output["errors"]:
-            # Recall the LLM to try to fix the errors
             error_str = "- " + "\n- ".join(validation_output["errors"])
-            resp_msg += (
-                "The query generated in the original response is not valid according to the endpoints schema.\n"
-                f"### Validation results\n{error_str}\n"
-                f"### Erroneous SPARQL query\n```sparql\n{validation_output['original_query']}\n```\n"
-                "Fix the SPARQL query helping yourself with the error message and context from previous messages."
+            raise ToolError(
+                "The SPARQL query is not valid according to the endpoint schema:\n"
+                f"{error_str}\n\nErroneous SPARQL query:\n```sparql\n{sparql_query}\n```\n"
+                "Fix the query using the error messages and the classes schema."
             )
-            return resp_msg
-        # Execute the SPARQL query
-        try:
-            res = query_sparql(sparql_query, endpoint_url, timeout=10, post=True)
-            bindings = res.get("results", {}).get("bindings")
-            if not bindings:
-                # If no results, return a message to ask fix the query
-                resp_msg += f"SPARQL query returned no results. {FIX_QUERY_PROMPT}\n```sparql\n{sparql_query}\n```"
-            else:
-                # If results, return them (limit to first 50 rows if too many)
-                resp_msg += f"Results of SPARQL query execution on {endpoint_url}"
-                if len(bindings) > 50:
-                    res["results"]["bindings"] = bindings[:50]
-                    resp_msg += f" (showing first 50 of {len(bindings)} results)"
-                resp_msg += f":\n```\n{json.dumps(res, indent=2)}\n```"
-        except Exception as e:
-            resp_msg += f"SPARQL query returned error: {e}. {FIX_QUERY_PROMPT}\n```sparql\n{sparql_query}\n```"
-        return resp_msg
 
-    # https://modelcontextprotocol.io/docs/concepts/resources
-    @mcp.resource("examples://{question}")
-    async def get_examples(question: str) -> str:
-        """Get relevant SPARQL query examples and other documents to help the user write a SPARQL query."""
-        return await search_sparql_docs(question, [], [])
+        # Execute the query, turning each kind of failure into an error message the client can act on
+        try:
+            if is_graph_query(sparql_query):
+                # CONSTRUCT and DESCRIBE return an RDF graph, request it as Turtle
+                resp = httpx.post(
+                    endpoint_url,
+                    headers={"Accept": "text/turtle"},
+                    data={"query": sparql_query},
+                    timeout=10,
+                    follow_redirects=True,
+                )
+                resp.raise_for_status()
+                return resp.text
+            res = query_sparql(sparql_query, endpoint_url, timeout=10, post=True)
+        except httpx.HTTPStatusError as e:
+            # Endpoints usually put the parser or execution error in the response body
+            body = e.response.text.strip()[:2000] or "(empty response body)"
+            raise ToolError(
+                f"SPARQL endpoint {endpoint_url} returned HTTP {e.response.status_code}:\n{body}\n\n"
+                f"Query:\n```sparql\n{sparql_query}\n```\nFix the query using the error message and try again."
+            ) from e
+        except httpx.TimeoutException as e:
+            raise ToolError(
+                f"SPARQL query timed out after 10s on {endpoint_url}. Make the query more specific, "
+                f"add a LIMIT, or avoid expensive patterns (unbound predicates, FILTER on large sets, regex).\n"
+                f"Query:\n```sparql\n{sparql_query}\n```"
+            ) from e
+        except httpx.RequestError as e:
+            raise ToolError(f"Could not reach SPARQL endpoint {endpoint_url}: {type(e).__name__} {e}") from e
+        except json.JSONDecodeError as e:
+            raise ToolError(
+                f"SPARQL endpoint {endpoint_url} did not return SPARQL JSON results, check the endpoint URL "
+                "and that the query is a SELECT, ASK, CONSTRUCT or DESCRIBE query."
+            ) from e
+
+        # Limit the number of rows returned to the client
+        bindings = res.get("results", {}).get("bindings", [])
+        output: SparqlQueryResults = {
+            "head": {"vars": res.get("head", {}).get("vars", [])},
+            "results": {"bindings": bindings[:MAX_RESULT_ROWS]},
+            "total_results": len(bindings),
+            "truncated": len(bindings) > MAX_RESULT_ROWS,
+        }
+        if fixed_query:
+            output["fixed_query"] = fixed_query
+        return output
 
     return mcp
 
+    # # https://modelcontextprotocol.io/docs/concepts/resources
+    # @mcp.resource("examples://{question}")
+    # async def get_examples(question: str) -> str:
+    #     """Get relevant SPARQL query examples and other documents to help the user write a SPARQL query."""
+    #     embeddings = list(embedding_model.embed([question]))
+    #     docs = search_docs(embeddings, Filter(must=[doc_type_condition(EXAMPLES_DOC_TYPE)])) + search_docs(
+    #         embeddings, Filter(must_not=[doc_type_condition(EXAMPLES_DOC_TYPE)])
+    #     )
+    #     return PROMPT_TOOL_SPARQL.format(docs_count=str(len(docs)), formatted_docs=format_docs(docs))
+    # @mcp.resource("schema://{endpoint}/cls/{uri}")
+    # def get_class_schema(endpoint: str, uri: str) -> str:
+    #     """Get the schema of a class given its URI."""
+    #     return format_docs(retrieve_docs(uri))
 
-# @mcp.resource("schema://{endpoint}/cls/{uri}")
-# def get_class_schema(endpoint: str, uri: str) -> str:
-#     """Get the schema of a class given its URI."""
-#     return format_docs(retrieve_docs(uri))
+
+def is_graph_query(sparql_query: str) -> bool:
+    """Check if a query returns an RDF graph (CONSTRUCT or DESCRIBE) rather than SPARQL JSON results."""
+    return prepareQuery(sparql_query).algebra.name in ("ConstructQuery", "DescribeQuery")
+
+
+def doc_type_condition(doc_type: str) -> FieldCondition:
+    """Qdrant condition matching documents of a given type."""
+    return FieldCondition(key="doc_type", match=MatchValue(value=doc_type))
+
+
+def search_docs(embeddings: list[Any], query_filter: Filter) -> list[ScoredPoint]:
+    """Search the vectordb for each embedding, deduplicating documents by their answer."""
+    docs: list[ScoredPoint] = []
+    seen_answers: set[str] = set()
+    for embedding in embeddings:
+        for doc in qdrant_client.query_points(
+            query=embedding,
+            collection_name=settings.docs_collection_name,
+            limit=settings.default_number_of_retrieved_docs,
+            query_filter=query_filter,
+        ).points:
+            answer = doc.payload.get("answer") if doc.payload else None
+            if answer and answer not in seen_answers:
+                seen_answers.add(answer)
+                docs.append(doc)
+    return docs
+
+
+# Convert retrieved documents payloads to the tools structured output
+def to_query_example(doc: ScoredPoint) -> QueryExample:
+    payload = doc.payload or {}
+    return {
+        "question": str(payload.get("question", "")),
+        "query": str(payload.get("answer", "")),
+        "endpoint_url": str(payload.get("endpoint_url", "")),
+    }
+
+
+def to_class_schema(doc: ScoredPoint) -> ClassSchema:
+    payload = doc.payload or {}
+    return {
+        "label": str(payload.get("question", "")),
+        "iri": str(payload.get("iri", "")),
+        "shex": str(payload.get("answer", "")),
+        "endpoint_url": str(payload.get("endpoint_url", "")),
+    }
+
+
+def to_resource_info(doc: ScoredPoint) -> ResourceInfo:
+    payload = doc.payload or {}
+    info: ResourceInfo = {"question": str(payload.get("question", "")), "answer": str(payload.get("answer", ""))}
+    if payload.get("endpoint_url"):
+        info["endpoint_url"] = str(payload["endpoint_url"])
+    return info
 
 
 def format_docs(docs: list[ScoredPoint]) -> str:
@@ -343,3 +407,14 @@ def cli() -> None:
 
 # if __name__ == "__main__":
 #     cli()
+
+# PROMPT_TOOL_SPARQL = (
+#     "Formulate a precise SPARQL query to access specific biological data and answer the user's question.\n\n"
+#     + SPARQL_QUERY_GUIDELINES
+#     + """
+# ## Knowledge Base
+# The following {docs_count} documents contain relevant query examples, and classes schemas to help you construct an accurate response:
+
+# {formatted_docs}
+# """
+# )

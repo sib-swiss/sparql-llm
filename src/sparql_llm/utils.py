@@ -163,7 +163,10 @@ def query_sparql(
             # Handle ASK queries
             if query_resp.get("boolean") is not None:
                 query_resp = {
-                    "results": {"bindings": [{"ask-variable": {"value": str(query_resp["boolean"]).lower()}}]}
+                    "head": {"vars": ["ask-variable"]},
+                    "results": {
+                        "bindings": [{"ask-variable": {"type": "literal", "value": str(query_resp["boolean"]).lower()}}]
+                    },
                 }
             elif check_service_desc and not query_resp.get("results", {}).get("bindings", []):
                 # If no results found directly in the endpoint we check in its service description
