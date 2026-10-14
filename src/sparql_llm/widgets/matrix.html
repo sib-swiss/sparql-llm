@@ -1,0 +1,339 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .toolbar input[type="search"] {
+        flex: 1;
+        min-width: 120px;
+      }
+      .toolbar input[type="number"] {
+        width: 64px;
+      }
+      .toolbar label {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .scroll {
+        max-height: 460px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      :root[data-mode="fullscreen"] .scroll {
+        max-height: calc(100vh - 190px);
+      }
+      table {
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 12px;
+      }
+      th,
+      td {
+        padding: 0;
+        background: var(--bg);
+      }
+      thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        vertical-align: bottom;
+        border-bottom: 1px solid var(--border);
+      }
+      /* Gene names written bottom to top */
+      thead th.gene {
+        cursor: pointer;
+        padding: 6px 0 4px;
+        font-weight: 500;
+      }
+      thead th.gene div {
+        writing-mode: vertical-rl;
+        transform: rotate(180deg);
+        margin: 0 auto;
+        white-space: nowrap;
+      }
+      th.term,
+      td.term {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        text-align: left;
+        padding: 0 8px;
+        width: 300px;
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        border-right: 1px solid var(--border);
+      }
+      thead th.term {
+        z-index: 3;
+        padding-bottom: 4px;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      td.term {
+        cursor: pointer;
+      }
+      td.n {
+        padding: 0 6px;
+        color: var(--muted);
+        text-align: right;
+        min-width: 44px;
+      }
+      td.n span {
+        display: inline-block;
+        height: 6px;
+        margin-right: 4px;
+        border-radius: 3px;
+        background: var(--muted);
+        opacity: 0.4;
+        vertical-align: middle;
+      }
+      td.cell {
+        width: 18px;
+        min-width: 18px;
+        height: 18px;
+        border: 1px solid var(--bg);
+      }
+      tbody tr:hover td,
+      tr.selected td,
+      td.selected,
+      th.selected {
+        background-color: var(--hover);
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .legend span {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .legend i {
+        width: 11px;
+        height: 11px;
+        border-radius: 2px;
+      }
+      .details {
+        margin-top: 8px;
+        padding: 8px 10px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        min-height: 38px;
+      }
+      .details .actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Loading annotations</h1>
+      <span class="muted" id="subtitle"></span>
+      <span class="spacer"></span>
+      <button type="button" id="fullscreen">Full screen</button>
+    </header>
+    <div class="toolbar">
+      <select id="type" aria-label="Annotation type"></select>
+      <input id="filter" type="search" placeholder="Filter terms" />
+      <label>Min. proteins <input id="min" type="number" min="1" value="2" /></label>
+      <label><input id="group" type="checkbox" checked /> Group similar</label>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead id="head"></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="details muted" id="details">Click a term or a gene for details</div>
+
+    <script src="colors.js"></script>
+    <script src="bridge.js"></script>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const MAX_TERMS = 150;
+      const TYPES = [
+        "GO biological process",
+        "GO molecular function",
+        "GO cellular component",
+        "Keyword",
+        "Reactome pathway",
+      ];
+      const URLS = {
+        GO: (id) => `https://www.ebi.ac.uk/QuickGO/term/${id}`,
+        KW: (id) => `https://www.uniprot.org/keywords/${id}`,
+        R: (id) => `https://reactome.org/content/detail/${id}`,
+      };
+      // Cell opacity by evidence: experimental, curated or computational, electronic (IEA)
+      const LEVELS = { 3: 1, 2: 0.6, 1: 0.3 };
+      let data;
+      let selected = null;
+      let shown = { terms: [], proteins: [] };
+
+      /** Terms of the chosen type shared by enough proteins, and proteins ordered to group similar ones */
+      function compute() {
+        const type = $("type").value;
+        const text = $("filter").value.toLowerCase();
+        const min = Math.max(1, Number($("min").value) || 1);
+        const count = (t) => data.proteins.filter((p) => t.id in p.terms).length;
+        let terms = Object.values(data.terms)
+          .filter((t) => t.type === type && (!text || `${t.id} ${t.name}`.toLowerCase().includes(text)))
+          .map((t) => ({ ...t, n: count(t) }))
+          .filter((t) => t.n >= min);
+        terms.sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
+        const total = terms.length;
+        terms = terms.slice(0, MAX_TERMS);
+        let proteins = [...data.proteins];
+        if ($("group").checked) {
+          // Proteins with the same most shared terms side by side, then terms with the same proteins
+          const key = (p) => terms.map((t) => (t.id in p.terms ? "1" : "0")).join("");
+          proteins.sort((a, b) => key(b).localeCompare(key(a)));
+          const pattern = (t) => proteins.map((p) => (t.id in p.terms ? "1" : "0")).join("");
+          terms.sort((a, b) => b.n - a.n || pattern(b).localeCompare(pattern(a)));
+        }
+        shown = { terms, proteins, total };
+      }
+
+      function render() {
+        compute();
+        const { terms, proteins, total } = shown;
+        const max = Math.max(1, ...terms.map((t) => t.n));
+        $("head").innerHTML =
+          `<tr><th class="term">${total > terms.length ? `${terms.length} of ${total} terms` : `${total} terms`}</th>
+          <th></th>${proteins
+            .map(
+              (p) =>
+                `<th class="gene ${selected?.accession === p.accession ? "selected" : ""}" data-acc="${p.accession}" title="${escapeHtml(`${p.gene} · ${p.name ?? ""}`)}"><div>${escapeHtml(p.gene)}</div></th>`,
+            )
+            .join("")}</tr>`;
+        $("rows").innerHTML =
+          terms
+            .map(
+              (t) => `<tr class="${selected?.id === t.id ? "selected" : ""}" data-id="${t.id}">
+                <td class="term" title="${escapeHtml(`${t.name} (${t.id})`)}">${escapeHtml(t.name)}</td>
+                <td class="n"><span style="width:${Math.round((24 * t.n) / max)}px"></span>${t.n}</td>
+                ${proteins
+                  .map((p) => {
+                    const level = p.terms[t.id];
+                    const fill = level
+                      ? `background:color-mix(in srgb, var(--accent) ${LEVELS[level] * 100}%, transparent)`
+                      : "";
+                    const sel = selected?.accession === p.accession ? "selected" : "";
+                    return `<td class="cell ${sel}" style="${fill}" title="${escapeHtml(`${p.gene} · ${t.name}`)}"></td>`;
+                  })
+                  .join("")}</tr>`,
+            )
+            .join("") ||
+          `<tr><td class="term muted" colspan="2">No term shared by ${$("min").value} proteins, lower the minimum</td></tr>`;
+        $("legend").innerHTML = $("type").value.startsWith("GO")
+          ? [
+              [3, "Experimental"],
+              [2, "Curated or computational"],
+              [1, "Electronic (IEA)"],
+            ]
+              .map(
+                ([l, name]) =>
+                  `<span><i style="background:color-mix(in srgb, var(--accent) ${LEVELS[l] * 100}%, transparent)"></i>${name}</span>`,
+              )
+              .join("")
+          : "";
+      }
+
+      const termUrl = (id) => URLS[id.split(/[:-]/)[0]]?.(id);
+
+      /** Details of the selected term or protein, also told to the model */
+      function select(item) {
+        selected = item;
+        render();
+        $("details").classList.remove("muted");
+        if (item.id) {
+          const genes = data.proteins.filter((p) => item.id in p.terms).map((p) => p.gene);
+          const others = data.proteins.filter((p) => !(item.id in p.terms)).map((p) => p.gene);
+          $("details").innerHTML = `
+            <div><b>${escapeHtml(item.name)}</b> <a data-url="${escapeHtml(termUrl(item.id))}">${escapeHtml(item.id)}</a>
+              <span class="muted">${escapeHtml(item.type)} · ${genes.length} of ${data.proteins.length} proteins</span></div>
+            <div>${escapeHtml(genes.join(", "))}</div>
+            <div class="actions"><button type="button" id="ask">Ask about it</button></div>`;
+          $("ask").onclick = () =>
+            mcpApp.message(`What is the role of ${genes.join(", ")} in ${item.name} (${item.id})?`);
+          void mcpApp.context(
+            `The user selected the ${item.type} "${item.name}" (${item.id}) in the annotation matrix, annotated for ` +
+              `${genes.join(", ")}${others.length ? `, not for ${others.join(", ")}` : ""}`,
+          );
+        } else {
+          const counts = TYPES.map((type) => [
+            type,
+            Object.keys(item.terms).filter((id) => data.terms[id].type === type).length,
+          ]);
+          $("details").innerHTML = `
+            <div><b>${escapeHtml(item.gene)}</b> ${escapeHtml(item.name ?? "")}
+              <a data-url="https://www.uniprot.org/uniprotkb/${item.accession}/entry">${item.accession}</a></div>
+            <div class="muted">${counts.map(([type, n]) => `${n} ${escapeHtml(type)}`).join(" · ")}</div>
+            <div class="actions"><button type="button" id="ask">Ask about it</button></div>`;
+          const others = data.proteins.filter((p) => p !== item).map((p) => p.gene);
+          $("ask").onclick = () =>
+            mcpApp.message(`What does ${item.gene} (${item.accession}) do, compared to ${others.join(", ")}?`);
+          void mcpApp.context(
+            `The user selected ${item.gene} (${item.accession}, ${item.name}) in the annotation matrix`,
+          );
+        }
+      }
+
+      $("rows").addEventListener("click", (e) => {
+        const tr = e.target.closest("tr[data-id]");
+        if (tr) select(data.terms[tr.dataset.id]);
+      });
+      $("head").addEventListener("click", (e) => {
+        const th = e.target.closest("th[data-acc]");
+        if (th) select(data.proteins.find((p) => p.accession === th.dataset.acc));
+      });
+      $("details").addEventListener("click", (e) => {
+        const url = e.target.dataset?.url;
+        if (url) void mcpApp.openLink(url);
+      });
+      for (const id of ["type", "min", "group"]) $(id).onchange = render;
+      $("filter").oninput = render;
+      $("fullscreen").onclick = () =>
+        mcpApp.displayMode(document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen");
+      mcpApp.on("hostContext", (ctx) => {
+        $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";
+      });
+
+      mcpApp.on("result", (result) => {
+        data = result.structuredContent;
+        if (!data) return ($("title").textContent = "No annotations");
+        $("title").textContent = `Annotations of ${data.proteins.length} proteins`;
+        const missing = data.missing.length ? ` · not found: ${data.missing.join(", ")}` : "";
+        $("subtitle").textContent = `${data.organism ?? ""}${missing}`;
+        const counts = Object.fromEntries(TYPES.map((t) => [t, 0]));
+        for (const t of Object.values(data.terms)) counts[t.type]++;
+        $("type").innerHTML = TYPES.map((t) => `<option value="${t}">${t} (${counts[t]})</option>`).join("");
+        // One protein: every term, else terms shared by at least 2
+        $("min").value = data.proteins.length > 1 ? 2 : 1;
+        render();
+      });
+      mcpApp.start("UniProt annotation matrix");
+    </script>
+  </body>
+</html>

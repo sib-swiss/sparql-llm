@@ -1,0 +1,458 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      .layout {
+        display: grid;
+        grid-template-columns: 170px minmax(0, 1fr);
+        gap: 12px;
+      }
+      @media (max-width: 560px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+      .facets {
+        font-size: 12px;
+        max-height: 560px;
+        overflow-y: auto;
+      }
+      .facets h2 {
+        font-size: 12px;
+        margin: 8px 0 4px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .facets h2:first-child {
+        margin-top: 0;
+      }
+      .facets label {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 1px 0;
+        cursor: pointer;
+      }
+      .facets label span:first-of-type {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .facets i,
+      .legend i {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        flex: none;
+      }
+      .toolbar {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+      .toolbar input {
+        flex: 1;
+        min-width: 0;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 70px minmax(0, 1fr);
+        align-items: center;
+        /* The Nightingale manager sets it to 0 */
+        line-height: 1.45;
+      }
+      .label {
+        font-size: 12px;
+        color: var(--muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      nightingale-navigation,
+      nightingale-sequence,
+      nightingale-track,
+      nightingale-variation-canvas {
+        display: block;
+        width: 100%;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        margin: 4px 0 0 70px;
+      }
+      .legend span {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .details {
+        margin-top: 8px;
+        padding: 8px 10px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        min-height: 38px;
+      }
+      .details .actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 6px;
+      }
+      .scroll {
+        margin-top: 8px;
+        max-height: 260px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      :root[data-mode="fullscreen"] .scroll {
+        max-height: calc(100vh - 640px);
+        min-height: 160px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      th,
+      td {
+        padding: 3px 8px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      td.change {
+        max-width: 130px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      td.disease {
+        max-width: 260px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      th {
+        position: sticky;
+        top: 0;
+        background: var(--panel);
+        z-index: 1;
+      }
+      tbody tr {
+        cursor: pointer;
+      }
+      tbody tr:hover,
+      tr.selected {
+        background: var(--hover);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Loading variants</h1>
+      <span class="muted" id="subtitle"></span>
+      <span class="spacer"></span>
+      <a id="link">UniProt</a>
+      <button type="button" id="fullscreen">Full screen</button>
+    </header>
+    <div class="layout">
+      <div class="facets" id="facets"></div>
+      <div>
+        <div class="toolbar">
+          <input id="filter" type="search" placeholder="Filter by change, disease, dbSNP or ClinVar ID" />
+          <span class="muted" id="count"></span>
+        </div>
+        <nightingale-manager id="manager"><div id="viewer"></div></nightingale-manager>
+        <div class="legend" id="legend"></div>
+        <div class="details muted" id="details">
+          Ctrl + scroll to zoom, drag the top bar to pan, click a variant for details
+        </div>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Position</th>
+                <th>Change</th>
+                <th>Consequence</th>
+                <th>Significance</th>
+                <th>Disease</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script src="colors.js"></script>
+    <script src="bridge.js"></script>
+    <script type="module">
+      // Nightingale web components, the manager syncs zoom and highlight between them
+      import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-manager@5.11.0/+esm";
+      import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-navigation@5.11.0/+esm";
+      import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-sequence@5.11.0/+esm";
+      import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-track@5.11.1/+esm";
+      import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-variation-canvas@5.11.1/+esm";
+
+      const $ = (id) => document.getElementById(id);
+      const MAX_ROWS = 300;
+      let entry;
+      let variation;
+
+      // Clinical significance classes, the most severe of a variant gives its color
+      const CLASSES = [
+        ["Pathogenic", "#b42318", (s) => s === "Pathogenic" || s === "Disease"],
+        ["Likely pathogenic", "#f97066", (s) => s === "Likely pathogenic"],
+        ["Uncertain", "#f79009", (s) => s === "Variant of uncertain significance"],
+        ["Likely benign", "#66b85a", (s) => s === "Likely benign"],
+        ["Benign", "#2e7d32", (s) => s === "Benign"],
+        ["Other", "#8c959f", () => true],
+        ["Not classified", "#c4c9d0", () => false],
+      ];
+      const classOf = (v) =>
+        v.significance.length ? CLASSES.find(([, , test]) => v.significance.some(test))[0] : "Not classified";
+      const colorOf = (v) => CLASSES.find(([name]) => name === classOf(v))[1];
+
+      // Facets, a variant matches one when any of its values is checked (none checked means no filter)
+      const facets = { consequence: new Set(), significance: new Set(), evidence: new Set(), disease: new Set() };
+      const facetValues = {
+        consequence: (v) => [v.consequence],
+        significance: (v) => [classOf(v)],
+        evidence: (v) => v.evidence,
+        disease: (v) => v.diseases,
+      };
+      const matches = (v, skip) =>
+        Object.entries(facets).every(
+          ([k, values]) => k === skip || !values.size || facetValues[k](v).some((x) => values.has(x)),
+        );
+      const filtered = () => {
+        const text = $("filter").value.toLowerCase();
+        return entry.variants.filter(
+          (v) =>
+            matches(v) &&
+            (!text ||
+              [v.change, v.dbsnp, v.uniprot, ...v.diseases, ...v.clinvar].join(" ").toLowerCase().includes(text)),
+        );
+      };
+
+      function renderFacets() {
+        const titles = {
+          consequence: "Consequence",
+          significance: "Clinical significance",
+          evidence: "Evidence",
+          disease: "Disease",
+        };
+        $("facets").innerHTML = "";
+        for (const key of Object.keys(facets)) {
+          const counts = new Map();
+          for (const v of entry.variants.filter((v) => matches(v, key)))
+            for (const x of new Set(facetValues[key](v))) counts.set(x, (counts.get(x) ?? 0) + 1);
+          const order = key === "significance" ? CLASSES.map(([n]) => n) : null;
+          const list = [...counts].sort((a, b) => (order ? order.indexOf(a[0]) - order.indexOf(b[0]) : b[1] - a[1]));
+          if (!list.length) continue;
+          $("facets").insertAdjacentHTML("beforeend", `<h2>${titles[key]}</h2>`);
+          for (const [value, n] of list.slice(0, key === "disease" ? 15 : undefined)) {
+            const color = key === "significance" && CLASSES.find(([name]) => name === value)[1];
+            const label = document.createElement("label");
+            label.innerHTML = `<input type="checkbox" ${facets[key].has(value) ? "checked" : ""} />
+              ${color ? `<i style="background:${color}"></i>` : ""}
+              <span title="${escapeHtml(value)}">${escapeHtml(value)}</span><span class="muted">${n}</span>`;
+            label.querySelector("input").onchange = (e) => {
+              e.target.checked ? facets[key].add(value) : facets[key].delete(value);
+              render();
+            };
+            $("facets").append(label);
+          }
+        }
+      }
+
+      /** Number of lanes needed so overlapping domains do not hide each other */
+      function lanes(features) {
+        const ends = [];
+        for (const f of [...features].sort((a, b) => a.start - b.start)) {
+          const lane = ends.findIndex((end) => end < f.start);
+          lane < 0 ? ends.push(f.end) : (ends[lane] = f.end);
+        }
+        return ends.length;
+      }
+
+      const el = (tag, attrs = {}) => {
+        const e = document.createElement(tag);
+        for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+        return e;
+      };
+      const row = (label, child) => {
+        const r = el("div", { class: "row" });
+        r.append(el("div", { class: "label" }), child);
+        r.firstChild.textContent = label;
+        return r;
+      };
+
+      /** Navigation, sequence, domains, then the variants by new amino acid */
+      function renderViewer() {
+        const length = entry.length;
+        const common = {
+          length,
+          "display-start": 1,
+          "display-end": length,
+          "use-ctrl-to-zoom": "",
+          "margin-left": 20,
+          "margin-right": 20,
+          "margin-color": getComputedStyle(document.body).backgroundColor,
+        };
+        const viewer = $("viewer");
+        viewer.innerHTML = "";
+        viewer.append(row("", el("nightingale-navigation", { ...common, height: 40, "show-highlight": "" })));
+        viewer.append(row("Sequence", el("nightingale-sequence", { ...common, height: 24, sequence: entry.sequence })));
+        if (entry.features.length) {
+          const height = Math.min(60, 8 + lanes(entry.features) * 12);
+          const domains = el("nightingale-track", { ...common, height, layout: "non-overlapping" });
+          viewer.append(row("Domains", domains));
+          domains.data = entry.features.map((f, i) => ({
+            accession: `domain-${i}`,
+            start: f.start,
+            end: f.end,
+            color: featureColor(f),
+            fill: featureColor(f),
+            shape: "roundRectangle",
+          }));
+        }
+        variation = el("nightingale-variation-canvas", { ...common, height: 330, "highlight-event": "onclick" });
+        viewer.append(row("Variants", variation));
+        $("legend").innerHTML = CLASSES.map(
+          ([name, color]) => `<span><i style="background:${color}"></i>${name}</span>`,
+        )
+          .concat(`<span>Rows: new amino acid, * stop, d deletion, insertion or frameshift</span>`)
+          .join("");
+      }
+
+      function render() {
+        renderFacets();
+        const list = filtered();
+        $("count").textContent = `${list.length} of ${entry.variants.length}`;
+        // A new object, the viewer skips data it already has
+        variation.data = {
+          sequence: entry.sequence,
+          variants: list.map((v) => ({
+            accession: String(entry.variants.indexOf(v)),
+            variant: v.aa,
+            start: v.start,
+            xrefNames: v.evidence,
+            hasPredictions: false,
+            consequenceType: v.consequence,
+            color: colorOf(v),
+            size: 3,
+          })),
+        };
+        $("rows").innerHTML = list
+          .slice(0, MAX_ROWS)
+          .map(
+            (v) => `<tr data-i="${entry.variants.indexOf(v)}">
+              <td>${v.start === v.end ? v.start : `${v.start}-${v.end}`}</td>
+              <td class="change" title="${escapeHtml(v.change)}"><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${colorOf(v)}"></i> ${escapeHtml(v.change)}</td>
+              <td>${escapeHtml(v.consequence)}</td>
+              <td>${escapeHtml(classOf(v))}</td>
+              <td class="disease" title="${escapeHtml(v.diseases.join("; "))}">${escapeHtml(v.diseases.join("; "))}</td></tr>`,
+          )
+          .join("");
+        if (list.length > MAX_ROWS)
+          $("rows").insertAdjacentHTML(
+            "beforeend",
+            `<tr><td colspan="5" class="muted">${list.length - MAX_ROWS} more, filter to see them</td></tr>`,
+          );
+      }
+
+      /** Links of a variant, one line per database */
+      const links = (v) => {
+        const a = (id, url) => `<a data-url="${escapeHtml(url)}">${escapeHtml(id)}</a>`;
+        return [
+          ["ClinVar", v.clinvar.map((id) => a(id, `https://www.ncbi.nlm.nih.gov/clinvar/${id}/`))],
+          ["dbSNP", v.dbsnp ? [a(v.dbsnp, `https://www.ncbi.nlm.nih.gov/snp/${v.dbsnp}`)] : []],
+          ["UniProt", v.uniprot ? [a(v.uniprot, `https://web.expasy.org/variant_pages/${v.uniprot}.html`)] : []],
+          ["PubMed", v.pubmed.map((id) => a(id, `https://pubmed.ncbi.nlm.nih.gov/${id}/`))],
+        ]
+          .filter(([, list]) => list.length)
+          .map(([name, list]) => `<div class="muted">${name}: ${list.join(", ")}</div>`)
+          .join("");
+      };
+
+      /** Details of the selected variant, also told to the model */
+      function select(v) {
+        for (const tr of $("rows").children)
+          tr.classList.toggle("selected", tr.dataset.i === String(entry.variants.indexOf(v)));
+        for (const e of $("viewer").querySelectorAll("[length]")) e.setAttribute("highlight", `${v.start}:${v.end}`);
+        const freq = v.frequency ? ` · allele frequency ${v.frequency.toPrecision(2)}` : "";
+        $("details").classList.remove("muted");
+        $("details").innerHTML = `
+          <div><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colorOf(v)}"></i>
+            <b>${escapeHtml(v.change)}</b> ${escapeHtml(v.consequence)}
+            <span class="muted">${escapeHtml(v.significance.join(", ") || "No clinical significance")}${freq}</span></div>
+          ${v.diseases.length ? `<div>${escapeHtml(v.diseases.join("; "))}</div>` : ""}
+          <div class="muted">Evidence: ${escapeHtml(v.evidence.join(", ") || "-")}</div>
+          ${links(v)}
+          <div class="actions">
+            <button type="button" id="ask">Ask about it</button>
+            <button type="button" id="structure">Show in 3D</button>
+          </div>`;
+        const name = `${entry.gene ?? entry.accession} ${v.change}`;
+        const label = `${name} (${v.consequence}, ${v.significance.join(", ") || "no clinical significance"}${v.diseases.length ? `, ${v.diseases.join("; ")}` : ""})`;
+        $("ask").onclick = () => mcpApp.message(`Tell me more about the variant ${label}`);
+        $("structure").onclick = () =>
+          mcpApp.message(
+            `Show the 3D structure of ${entry.accession} highlighting residue ${v.start} (variant ${name})`,
+          );
+        void mcpApp.context(`The user selected the variant ${label} in the variant explorer`);
+      }
+
+      // Clicks on variants bubble from the viewer as `change` events
+      $("manager").addEventListener("change", (e) => {
+        const item = e.detail?.eventType === "click" && e.detail.feature;
+        if (!item) return;
+        if (/^\d+$/.test(item.accession)) return select(entry.variants[Number(item.accession)]);
+        // Domain: its name and range in the details
+        const f = entry.features[Number(item.accession.split("-")[1])];
+        $("details").classList.remove("muted");
+        $("details").innerHTML =
+          `<b>${escapeHtml(f.type)}</b> ${escapeHtml(f.description)} <span class="muted">residues ${featurePos(f)}</span>`;
+      });
+      $("rows").addEventListener("click", (e) => {
+        const tr = e.target.closest("tr[data-i]");
+        if (tr) select(entry.variants[Number(tr.dataset.i)]);
+      });
+      $("details").addEventListener("click", (e) => {
+        const url = e.target.dataset?.url;
+        if (url) void mcpApp.openLink(url);
+      });
+      $("filter").oninput = render;
+      $("fullscreen").onclick = () =>
+        mcpApp.displayMode(document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen");
+      mcpApp.on("hostContext", (ctx) => {
+        $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";
+        if (entry && ctx.theme) {
+          renderViewer();
+          render();
+        }
+      });
+
+      mcpApp.on("result", (result) => {
+        entry = result.structuredContent;
+        if (!entry) return ($("title").textContent = "No variants");
+        $("title").textContent = `${entry.gene ?? entry.id} · ${entry.name ?? ""}`;
+        const shown = entry.total > entry.variants.length ? `${entry.variants.length} of ${entry.total}` : entry.total;
+        $("subtitle").textContent = `${entry.accession} · ${entry.organism} · ${entry.length} aa · ${shown} variants`;
+        $("link").onclick = () =>
+          mcpApp.openLink(`https://www.uniprot.org/uniprotkb/${entry.accession}/variant-viewer`);
+        renderViewer();
+        render();
+      });
+      mcpApp.start("UniProt variants");
+    </script>
+  </body>
+</html>

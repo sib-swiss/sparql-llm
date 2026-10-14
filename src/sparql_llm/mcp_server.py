@@ -14,6 +14,8 @@ from sparql_llm import __version__
 from sparql_llm.config import settings
 from sparql_llm.indexing.index_resources import embedding_model, endpoints_metadata, init_vectordb, qdrant_client
 from sparql_llm.loaders.sparql_info_loader import GENERAL_INFO_DOC_TYPE
+from sparql_llm.uniprot_tools import add_uniprot_tools
+from sparql_llm.uniprot_tools import apps as uniprot_apps
 from sparql_llm.utils import logger, query_sparql
 from sparql_llm.validate_sparql import validate_sparql
 
@@ -107,22 +109,34 @@ def get_transport_security() -> TransportSecuritySettings | None:
     )
 
 
-def get_mcp_app(enable_resources_info_tool: bool = True) -> MCPServer:
+def get_mcp_app(enable_resources_info_tool: bool = True, enable_uniprot_tools: bool = True) -> MCPServer:
     """Get the MCP server instance.
 
     Transport options (stateless, JSON response, path, security) are passed when building the app,
     e.g. `mcp.streamable_http_app(stateless_http=True, json_response=True, transport_security=get_transport_security())`
     """
+    instructions = (
+        "Provide tools that helps users to access biological data resources from the Swiss Institute of Bioinformatics (SIB) through the SPARQL query language. "
+        "To answer a question: search relevant query examples with `search_sparql_examples`, or relevant classes with "
+        "`search_sparql_classes`, then run the query with `execute_sparql_query`."
+    )
+    if enable_uniprot_tools:
+        instructions += (
+            " For simple questions on UniProtKB proteins, `search_proteins` and `get_protein` query the UniProt REST API "
+            "directly, and the `show_*` and `search_proteins_table` tools show interactive views of proteins to the user."
+        )
     # Create MCP server https://github.com/modelcontextprotocol/python-sdk
+    # UniProt tools showing widgets are added through the MCP Apps extension
     mcp = MCPServer(
         f"{settings.app_org} MCP",
-        instructions="Provide tools that helps users to access biological data resources from the Swiss Institute of Bioinformatics (SIB) through the SPARQL query language. "
-        "To answer a question: search relevant query examples with `search_examples`, or relevant classes with "
-        "`search_classes`, then run the query with `execute_sparql_query`.",
+        instructions=instructions,
         version=__version__,
         debug=True,
         dependencies=["mcp", "qdrant_client", "fastembed", "sparql-llm"],
+        extensions=[uniprot_apps] if enable_uniprot_tools else [],
     )
+    if enable_uniprot_tools:
+        add_uniprot_tools(mcp)
 
     # Check if the docs collection exists and has data, initialize if not
     # In prod with multiple workers, auto_init should be set to False to avoid race conditions
@@ -150,10 +164,10 @@ def get_mcp_app(enable_resources_info_tool: bool = True) -> MCPServer:
 
     # potential_entities: Potential entities and instances of classes
 
-    search_examples_desc = (
+    search_sparql_examples_desc = (
         f"""Search SPARQL query examples relevant to a question related to {settings.app_topics}
 
-Use the examples as a base to write a SPARQL query answering the question, then use `search_classes`
+Use the examples as a base to write a SPARQL query answering the question, then use `search_sparql_classes`
 to check the details of classes and predicates used in the query.
 
 Args:
@@ -167,15 +181,15 @@ Returns:
         + SPARQL_QUERY_GUIDELINES
     )
 
-    @mcp.tool(description=search_examples_desc)
-    async def search_examples(question: str, steps: list[str]) -> SparqlExamplesSearchResults:
+    @mcp.tool(description=search_sparql_examples_desc)
+    async def search_sparql_examples(question: str, steps: list[str]) -> SparqlExamplesSearchResults:
         docs = search_docs(
             list(embedding_model.embed([question, *steps])), Filter(must=[doc_type_condition(EXAMPLES_DOC_TYPE)])
         )
         return {"query_examples": [to_query_example(doc) for doc in docs]}
 
     @mcp.tool()
-    async def search_classes(classes: list[str]) -> ClassesSchemaSearchResults:
+    async def search_sparql_classes(classes: list[str]) -> ClassesSchemaSearchResults:
         """Search classes and their schema (predicates and the types of their values) in the SPARQL endpoints.
 
         Args:

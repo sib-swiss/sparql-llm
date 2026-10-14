@@ -58,6 +58,19 @@ The server exposes a [Model Context Protocol (MCP)](https://modelcontextprotocol
     - `query` (string): a valid SPARQL query string
     - `endpoint` (string): the SPARQL endpoint URL to execute the query against
 
+UniProt tools calling the [UniProt REST API](https://rest.uniprot.org) directly, defined in [`uniprot_tools.py`](src/sparql_llm/uniprot_tools.py):
+
+- **🔎 `search_proteins`**: search UniProtKB entries (accession, name, genes, organism)
+- **🧬 `get_protein`**: get a UniProtKB entry by accession (name, organism, function, sequence)
+
+UniProt tools showing interactive widgets to the user, for clients supporting [MCP Apps](https://modelcontextprotocol.io/specification/draft/extensions/apps). The widget gets the full data, the model only gets a text summary. Widgets are in [`widgets/`](src/sparql_llm/widgets):
+
+- **`show_protein_features`**: [Nightingale](https://github.com/ebi-webcomponents/nightingale) tracks of domains, sites, PTMs, processing, topology, secondary structure and variants, zoomable along the sequence
+- **`show_protein_structure`**: AlphaFold model colored by pLDDT, or a PDB entry, in Mol\* ([PDBe Molstar](https://github.com/molstar/pdbe-molstar)), next to the features list: clicking one highlights its residues. Residues can be highlighted from the start, e.g. a mutation
+- **`search_proteins_table`**: results of a UniProtKB query (up to 1000 rows) in a sortable table with facets for reviewed status, annotation score and organism. The rows selected by the user are sent back to the model
+- **`show_protein_variants`**: disease and natural variants from the [EBI Proteins API](https://www.ebi.ac.uk/proteins/api/doc/) positioned on the sequence next to the domains, filterable by consequence, clinical significance, evidence and disease, with links to ClinVar, dbSNP and PubMed
+- **`show_annotation_matrix`**: heatmap of the reviewed proteins of a gene list by GO terms, keywords or Reactome pathways, for a quick functional overview
+
 ### ⚡️ Connect client to MCP server
 
 Follow the instructions of your client, and use the URL of the public server: **https://chat.expasy.org/mcp**

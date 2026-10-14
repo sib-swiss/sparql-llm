@@ -1,0 +1,83 @@
+:root {
+  --fg: #1f2328;
+  --muted: #656d76;
+  --bg: #ffffff;
+  --panel: #f6f8fa;
+  --border: #d0d7de;
+  --accent: #0969da;
+  --hover: rgba(9, 105, 218, 0.08);
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --fg: #e6edf3;
+  --muted: #8d96a0;
+  --bg: #0d1117;
+  --panel: #161b22;
+  --border: #30363d;
+  --accent: #4493f8;
+  --hover: rgba(68, 147, 248, 0.12);
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  padding: 12px 14px;
+  font:
+    13px/1.45 system-ui,
+    sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+}
+header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.muted {
+  color: var(--muted);
+}
+.spacer {
+  flex: 1;
+}
+a {
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: none;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+button {
+  cursor: pointer;
+}
+button:hover {
+  background: var(--hover);
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.error {
+  color: #cf222e;
+}

@@ -1,0 +1,297 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      .layout {
+        display: grid;
+        grid-template-columns: 170px minmax(0, 1fr);
+        gap: 12px;
+      }
+      @media (max-width: 560px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+      .facets {
+        font-size: 12px;
+        max-height: 430px;
+        overflow-y: auto;
+      }
+      .facets h2 {
+        font-size: 12px;
+        margin: 8px 0 4px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .facets h2:first-child {
+        margin-top: 0;
+      }
+      .facets label {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 1px 0;
+        cursor: pointer;
+      }
+      .facets label span:first-of-type {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .toolbar {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 6px;
+      }
+      .toolbar input {
+        flex: 1;
+        min-width: 0;
+      }
+      .scroll {
+        max-height: 400px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      :root[data-mode="fullscreen"] .scroll,
+      :root[data-mode="fullscreen"] .facets {
+        max-height: calc(100vh - 150px);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      th,
+      td {
+        padding: 4px 8px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      td.name {
+        white-space: normal;
+        min-width: 180px;
+      }
+      th {
+        position: sticky;
+        top: 0;
+        background: var(--panel);
+        cursor: pointer;
+        user-select: none;
+        z-index: 1;
+      }
+      th[data-dir="asc"]::after {
+        content: " \25B2";
+      }
+      th[data-dir="desc"]::after {
+        content: " \25BC";
+      }
+      tbody tr:hover {
+        background: var(--hover);
+      }
+      tr.selected {
+        background: var(--hover);
+      }
+      .stars {
+        color: #d4a72c;
+        letter-spacing: -1px;
+      }
+      .selection {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        margin-top: 8px;
+      }
+      .selection input {
+        flex: 1;
+        min-width: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Loading results</h1>
+      <span class="muted" id="subtitle"></span>
+      <span class="spacer"></span>
+      <button type="button" id="fullscreen">Full screen</button>
+    </header>
+    <div class="layout">
+      <div class="facets" id="facets"></div>
+      <div>
+        <div class="toolbar">
+          <input id="filter" type="search" placeholder="Filter by accession, name, gene" />
+        </div>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th data-col="selected"><input type="checkbox" id="all" aria-label="Select all shown" /></th>
+                <th data-col="accession">Entry</th>
+                <th data-col="gene">Gene</th>
+                <th data-col="name">Protein</th>
+                <th data-col="organism">Organism</th>
+                <th data-col="length">Length</th>
+                <th data-col="score">Score</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="selection">
+      <span id="count" class="muted">No selection</span>
+      <input id="prompt" placeholder="Compare these proteins" />
+      <button type="button" class="primary" id="send" disabled>Send</button>
+    </div>
+
+    <script src="colors.js"></script>
+    <script src="bridge.js"></script>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      let rows = [];
+      let data;
+      const selected = new Set();
+      // Facet values checked, none checked means no filter
+      const facets = { reviewed: new Set(), organism: new Set(), score: new Set() };
+      const facetValue = {
+        reviewed: (r) => (r.reviewed ? "Reviewed (Swiss-Prot)" : "Unreviewed (TrEMBL)"),
+        organism: (r) => r.organism ?? "Unknown",
+        score: (r) => `${r.score}/5`,
+      };
+      let sort = { col: null, dir: 1 };
+
+      const filtered = () => {
+        const text = $("filter").value.toLowerCase();
+        return rows.filter(
+          (r) =>
+            Object.entries(facets).every(([k, values]) => !values.size || values.has(facetValue[k](r))) &&
+            (!text || `${r.accession} ${r.id} ${r.gene} ${r.name}`.toLowerCase().includes(text)),
+        );
+      };
+
+      /** Facet values with their counts among the rows matching the other facets */
+      function renderFacets() {
+        const titles = { reviewed: "Status", score: "Annotation score", organism: "Organism" };
+        $("facets").innerHTML = "";
+        for (const key of ["reviewed", "score", "organism"]) {
+          const others = rows.filter((r) =>
+            Object.entries(facets).every(([k, v]) => k === key || !v.size || v.has(facetValue[k](r))),
+          );
+          const counts = Object.entries(Object.groupBy(others, facetValue[key])).map(([v, list]) => [v, list.length]);
+          counts.sort((a, b) => (key === "score" ? b[0].localeCompare(a[0]) : b[1] - a[1]));
+          $("facets").insertAdjacentHTML("beforeend", `<h2>${titles[key]}</h2>`);
+          for (const [value, n] of counts.slice(0, key === "organism" ? 15 : undefined)) {
+            const label = document.createElement("label");
+            label.innerHTML = `<input type="checkbox" ${facets[key].has(value) ? "checked" : ""} />
+              <span>${escapeHtml(value)}</span><span class="muted">${n}</span>`;
+            label.querySelector("input").onchange = (e) => {
+              e.target.checked ? facets[key].add(value) : facets[key].delete(value);
+              render();
+            };
+            $("facets").append(label);
+          }
+        }
+      }
+
+      function renderRows() {
+        let list = filtered();
+        if (sort.col) {
+          const key = (r) => (sort.col === "selected" ? selected.has(r.accession) : (r[sort.col] ?? ""));
+          list = [...list].sort((a, b) => {
+            const [x, y] = [key(a), key(b)];
+            return (typeof x === "string" ? x.localeCompare(y) : x - y) * sort.dir;
+          });
+        }
+        $("rows").innerHTML = list
+          .map(
+            (r) => `<tr class="${selected.has(r.accession) ? "selected" : ""}" data-acc="${r.accession}">
+              <td><input type="checkbox" ${selected.has(r.accession) ? "checked" : ""} aria-label="Select ${r.accession}" /></td>
+              <td><a data-acc="${r.accession}">${r.accession}</a> <span title="${r.reviewed ? "Reviewed" : "Unreviewed"}">${r.reviewed ? "★" : "☆"}</span></td>
+              <td>${escapeHtml(r.gene ?? "")}</td>
+              <td class="name">${escapeHtml(r.name ?? "")}</td>
+              <td>${escapeHtml(r.organism ?? "")}</td>
+              <td>${r.length ?? ""}</td>
+              <td class="stars" title="${r.score}/5">${"●".repeat(r.score)}</td></tr>`,
+          )
+          .join("");
+        $("subtitle").textContent = `${list.length} of ${rows.length} loaded (${data.total} in UniProt)`;
+        $("all").checked = list.length > 0 && list.every((r) => selected.has(r.accession));
+        $("all").dataset.shown = JSON.stringify(list.map((r) => r.accession));
+      }
+
+      function render() {
+        renderFacets();
+        renderRows();
+      }
+
+      /** Selected rows, told to the model with the next message */
+      function selectionChanged() {
+        const list = rows.filter((r) => selected.has(r.accession));
+        $("count").textContent = list.length ? `${list.length} selected` : "No selection";
+        $("send").disabled = !list.length;
+        const text = list.length
+          ? `The user selected ${list.length} entries in the UniProt results table: ` +
+            list.map((r) => `${r.accession} (${r.gene ?? r.id}, ${r.name}, ${r.organism})`).join("; ")
+          : "The user has not selected entries in the UniProt results table";
+        void mcpApp.context(text);
+      }
+
+      $("rows").addEventListener("click", (e) => {
+        const link = e.target.closest("a[data-acc]");
+        if (link) return void mcpApp.openLink(`https://www.uniprot.org/uniprotkb/${link.dataset.acc}/entry`);
+        const tr = e.target.closest("tr");
+        if (!tr) return;
+        const acc = tr.dataset.acc;
+        selected.has(acc) ? selected.delete(acc) : selected.add(acc);
+        tr.classList.toggle("selected", selected.has(acc));
+        tr.querySelector("input").checked = selected.has(acc);
+        selectionChanged();
+      });
+      $("all").onclick = (e) => {
+        e.stopPropagation();
+        for (const acc of JSON.parse($("all").dataset.shown ?? "[]"))
+          e.target.checked ? selected.add(acc) : selected.delete(acc);
+        renderRows();
+        selectionChanged();
+      };
+      document.querySelector("thead").addEventListener("click", (e) => {
+        const th = e.target.closest("th");
+        if (!th || e.target.id === "all") return;
+        sort = { col: th.dataset.col, dir: sort.col === th.dataset.col ? -sort.dir : 1 };
+        for (const h of document.querySelectorAll("th")) delete h.dataset.dir;
+        th.dataset.dir = sort.dir > 0 ? "asc" : "desc";
+        renderRows();
+      });
+      $("filter").oninput = renderRows;
+      $("send").onclick = () => {
+        const list = rows.filter((r) => selected.has(r.accession));
+        const prompt = $("prompt").value.trim() || "Compare these proteins";
+        void mcpApp.message(`${prompt}: ${list.map((r) => `${r.accession} (${r.gene ?? r.id})`).join(", ")}`);
+        $("prompt").value = "";
+      };
+      // Block body: a handler returning false would cancel every key typed
+      $("prompt").onkeydown = (e) => {
+        if (e.key === "Enter" && !$("send").disabled) $("send").click();
+      };
+      $("fullscreen").onclick = () =>
+        mcpApp.displayMode(document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen");
+      mcpApp.on("hostContext", (ctx) => {
+        $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";
+      });
+
+      mcpApp.on("result", (result) => {
+        data = result.structuredContent;
+        if (!data) return ($("title").textContent = "No results");
+        rows = data.rows;
+        $("title").textContent = data.query;
+        render();
+      });
+      mcpApp.start("UniProt results");
+    </script>
+  </body>
+</html>

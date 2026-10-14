@@ -1,0 +1,315 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="common.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pdbe-molstar@3.12.0/build/pdbe-molstar-light.css" />
+    <style>
+      .main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 260px;
+        gap: 10px;
+        height: 440px;
+      }
+      :root[data-mode="fullscreen"] .main {
+        height: calc(100vh - 90px);
+      }
+      @media (max-width: 560px) {
+        .main {
+          grid-template-columns: 1fr;
+          grid-template-rows: 320px 220px;
+          height: auto;
+        }
+      }
+      #viewer {
+        position: relative;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .side {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-height: 0;
+      }
+      .filters {
+        display: flex;
+        gap: 6px;
+      }
+      .filters input {
+        flex: 1;
+        min-width: 0;
+      }
+      .filters select {
+        width: 96px;
+      }
+      #features {
+        flex: 1;
+        overflow-y: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .feature {
+        display: grid;
+        grid-template-columns: 10px minmax(0, 1fr);
+        gap: 6px;
+        padding: 4px 8px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--border);
+        font-size: 12px;
+      }
+      .feature:hover {
+        background: var(--hover);
+      }
+      .feature.active {
+        background: var(--hover);
+        box-shadow: inset 3px 0 0 #ff00c8;
+      }
+      .feature i {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        margin-top: 3px;
+      }
+      .feature .desc {
+        color: var(--muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .legend {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .legend i {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        margin-right: 4px;
+        vertical-align: -1px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Loading structure</h1>
+      <span class="muted" id="subtitle"></span>
+      <span class="spacer"></span>
+      <select id="source" aria-label="Structure"></select>
+      <button type="button" id="fullscreen">Full screen</button>
+    </header>
+    <div class="main">
+      <div id="viewer"><p class="muted" style="padding: 0 12px">Loading the 3D viewer</p></div>
+      <div class="side">
+        <div class="filters">
+          <input id="filter" type="search" placeholder="Filter features" />
+          <select id="category" aria-label="Category">
+            <option value="">All</option>
+          </select>
+        </div>
+        <div id="features"></div>
+        <button type="button" id="clear">Clear highlight</button>
+      </div>
+    </div>
+    <div class="legend" id="legend"></div>
+
+    <script src="colors.js"></script>
+    <script src="bridge.js"></script>
+    <script>
+      // Mol* bundles an Emscripten module (video export) that builds named functions with `new Function` when
+      // loaded, blocked by the host CSP (no 'unsafe-eval'). This pattern is built without eval while the script loads
+      const NativeFunction = Function;
+      const namedFunction =
+        /^return function ([\w$]+)\(\) \{\s*"use strict";\s*return body\.apply\(this, arguments\);\s*\};?\s*$/;
+      window.Function = function (...args) {
+        const name = args.length === 2 && args[0] === "body" && namedFunction.exec(args[1])?.[1];
+        if (!name) return NativeFunction(...args);
+        return (body) =>
+          Object.defineProperty(
+            function () {
+              return body.apply(this, arguments);
+            },
+            "name",
+            { value: name },
+          );
+      };
+      window.Function.prototype = NativeFunction.prototype;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/pdbe-molstar@3.12.0/build/pdbe-molstar-plugin.js"></script>
+    <script>
+      window.Function = NativeFunction;
+      const $ = (id) => document.getElementById(id);
+      const HIGHLIGHT = { r: 255, g: 0, b: 200 };
+      const PLDDT = [
+        ["#0053d6", "Very high (> 90)"],
+        ["#65cbf3", "Confident (70-90)"],
+        ["#ffdb13", "Low (50-70)"],
+        ["#ff7d45", "Very low (< 50)"],
+      ];
+      const viewer = new PDBeMolstarPlugin();
+      let entry;
+      let source;
+      let active = null; // Feature highlighted, or the positions given to the tool
+      let rendered = false;
+
+      // Features shown in 3D, not the secondary structure or whole chain
+      const shownFeatures = () =>
+        entry.features.filter((f) => f.category !== "Secondary structure" && f.type !== "Chain");
+      const darkBg = () => document.documentElement.dataset.theme === "dark";
+
+      /** Residue ranges of a feature, bonds link 2 residues */
+      const ranges = (f) =>
+        f.type === "Disulfide bond" || f.type === "Cross-link"
+          ? [
+              [f.start, f.start],
+              [f.end, f.end],
+            ]
+          : [[f.start, f.end]];
+
+      /** Mol* selection of UniProt residues: AlphaFold models are numbered from the start of their sequence,
+       * PDB entries are mapped to UniProt with SIFTS */
+      const query = ([start, end]) => {
+        if (source === "alphafold") {
+          const offset = entry.alphafold.sequenceStart - 1;
+          return { start_residue_number: start - offset, end_residue_number: end - offset };
+        }
+        return {
+          uniprot_accession: entry.accession,
+          start_uniprot_residue_number: start,
+          end_uniprot_residue_number: end,
+        };
+      };
+
+      async function highlight() {
+        await viewer.visual.clearSelection();
+        if (!active) return;
+        const list = active.positions ? active.positions.map((p) => [p, p]) : ranges(active);
+        const small = list.every(([s, e]) => e - s < 15);
+        await viewer.visual.select({ data: list.map((r) => ({ ...query(r), color: HIGHLIGHT, sideChain: small })) });
+        // Camera on all the highlighted residues
+        await viewer.visual.focus(list.map(query));
+      }
+
+      function options() {
+        const bg = darkBg() ? { r: 13, g: 17, b: 23 } : { r: 255, g: 255, b: 255 };
+        const common = {
+          bgColor: bg,
+          hideControls: true,
+          landscape: true,
+          pdbeLink: false,
+          hideCanvasControls: ["animation", "controlToggle", "controlInfo", "selection"],
+        };
+        if (source === "alphafold")
+          return {
+            ...common,
+            customData: { url: entry.alphafold.url, format: "cif", binary: true },
+            alphafoldView: true,
+          };
+        return { ...common, moleculeId: source };
+      }
+
+      async function load() {
+        $("legend").innerHTML =
+          source === "alphafold"
+            ? `<span>pLDDT:</span>${PLDDT.map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join("")}`
+            : "";
+        $("legend").innerHTML += `<span><i style="background:#ff00c8"></i>Highlighted</span>`;
+        if (!rendered) {
+          rendered = true;
+          // Highlight again once a structure is loaded
+          viewer.events.loadComplete.subscribe((ok) => ok && highlight());
+          await viewer.render($("viewer"), options());
+        } else {
+          await viewer.visual.update(options(), true);
+        }
+      }
+
+      function renderFeatures() {
+        const text = $("filter").value.toLowerCase();
+        const category = $("category").value;
+        const list = shownFeatures().filter(
+          (f) =>
+            (!category || f.category === category) &&
+            (!text || `${f.type} ${featureLabel(f)} ${featurePos(f)}`.toLowerCase().includes(text)),
+        );
+        $("features").innerHTML = list
+          .map(
+            (f) => `<div class="feature${active === f ? " active" : ""}" data-i="${entry.features.indexOf(f)}"
+              title="${escapeHtml(f.description)}"><i style="background:${featureColor(f)}"></i>
+              <div><div>${escapeHtml(f.type)} <span class="muted">${f.change ?? featurePos(f)}</span></div>
+              <div class="desc">${escapeHtml(f.description.split(";")[0])}</div></div></div>`,
+          )
+          .join("");
+      }
+
+      $("features").addEventListener("click", (e) => {
+        const item = e.target.closest(".feature");
+        if (!item) return;
+        const f = entry.features[Number(item.dataset.i)];
+        active = active === f ? null : f;
+        renderFeatures();
+        void highlight();
+        if (active) {
+          const name = entry.gene ?? entry.accession;
+          void mcpApp.context(
+            `The user highlighted the ${f.type} ${featureLabel(f)} (residues ${featurePos(f)}) of ${entry.accession} ${name} in the ${source === "alphafold" ? "AlphaFold model" : `PDB entry ${source.toUpperCase()}`}`,
+          );
+        }
+      });
+      $("filter").oninput = renderFeatures;
+      $("category").onchange = renderFeatures;
+      $("clear").onclick = () => {
+        active = null;
+        renderFeatures();
+        void highlight();
+        void viewer.visual.reset({ camera: true });
+      };
+      $("source").onchange = () => {
+        source = $("source").value;
+        void load();
+      };
+      $("fullscreen").onclick = () =>
+        mcpApp.displayMode(document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen");
+      mcpApp.on("hostContext", (ctx) => {
+        $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";
+        if (rendered && ctx.theme) void viewer.canvas.setBgColor(options().bgColor);
+      });
+
+      mcpApp.on("result", (result) => {
+        entry = result.structuredContent;
+        if (!entry) return ($("title").textContent = "No structure");
+        source = entry.source;
+        $("title").textContent = `${entry.gene ?? entry.id} · ${entry.name ?? ""}`;
+        $("subtitle").textContent = `${entry.accession} · ${entry.organism} · ${entry.length} aa`;
+        // Structures: AlphaFold model then PDB entries, best resolution first
+        const sources = [
+          ...(entry.alphafold ? [["alphafold", `AlphaFold (pLDDT ${entry.alphafold.meanPlddt})`]] : []),
+          ...entry.pdb.map((p) => [
+            p.id,
+            `PDB ${p.id.toUpperCase()} · ${p.method}${p.resolution ? ` ${p.resolution} A` : ""}`,
+          ]),
+        ];
+        if (!sources.some(([id]) => id === source)) sources.unshift([source, `PDB ${source.toUpperCase()}`]);
+        $("source").innerHTML = sources
+          .map(([id, label]) => `<option value="${id}">${escapeHtml(label)}</option>`)
+          .join("");
+        $("source").value = source;
+        for (const c of new Set(shownFeatures().map((f) => f.category)))
+          $("category").insertAdjacentHTML("beforeend", `<option>${escapeHtml(c)}</option>`);
+        if (entry.positions.length) active = { positions: entry.positions };
+        renderFeatures();
+        load().catch((err) => {
+          $("viewer").innerHTML =
+            `<p class="error">Could not load the structure: ${escapeHtml(err.message ?? err)}</p>`;
+        });
+      });
+      mcpApp.start("UniProt structure");
+    </script>
+  </body>
+</html>

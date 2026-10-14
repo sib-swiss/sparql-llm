@@ -1,0 +1,273 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+      .chips button {
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+      }
+      .chips button[aria-pressed="false"] {
+        opacity: 0.45;
+        text-decoration: line-through;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 130px minmax(0, 1fr);
+        align-items: center;
+        min-height: 18px;
+        /* The Nightingale manager sets it to 0 */
+        line-height: 1.45;
+      }
+      .row.category {
+        margin-top: 6px;
+        font-weight: 600;
+        font-size: 12px;
+        border-top: 1px solid var(--border);
+        padding-top: 4px;
+      }
+      .label {
+        font-size: 12px;
+        color: var(--muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding-right: 6px;
+      }
+      .label i {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 2px;
+        margin-right: 5px;
+      }
+      nightingale-navigation,
+      nightingale-sequence,
+      nightingale-track {
+        display: block;
+        width: 100%;
+      }
+      .hint {
+        font-size: 12px;
+        margin: 2px 0 6px;
+      }
+      .details {
+        margin-top: 10px;
+        padding: 8px 10px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        min-height: 38px;
+      }
+      .details .actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Loading features</h1>
+      <span class="muted" id="subtitle"></span>
+      <span class="spacer"></span>
+      <a id="link">UniProt</a>
+    </header>
+    <div class="chips" id="chips"></div>
+    <div class="hint muted">Ctrl + scroll to zoom, drag the top bar to pan, click a feature for details</div>
+    <nightingale-manager id="manager"><div id="viewer"></div></nightingale-manager>
+    <div class="details muted" id="details">Click a feature for details</div>
+
+    <script src="colors.js"></script>
+    <script src="bridge.js"></script>
+    <script type="module">
+      // Nightingale web components, the manager syncs zoom and highlight between them
+      import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-manager@5.6.0/+esm";
+      import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-navigation@5.6.0/+esm";
+      import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-sequence@5.6.0/+esm";
+      import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-track@5.6.0/+esm";
+
+      const $ = (id) => document.getElementById(id);
+      let entry;
+      const hidden = new Set();
+
+      // Feature shapes: single residues as symbols, bonds as bridges
+      const shapeOf = (f) =>
+        f.type === "Disulfide bond" || f.type === "Cross-link"
+          ? "bridge"
+          : f.category === "Variants"
+            ? "diamond"
+            : f.start === f.end
+              ? "circle"
+              : "roundRectangle";
+
+      /** Number of lanes needed so overlapping features do not hide each other */
+      function lanes(features) {
+        const ends = [];
+        for (const f of [...features].sort((a, b) => a.start - b.start)) {
+          const lane = ends.findIndex((end) => end < f.start);
+          lane < 0 ? ends.push(f.end) : (ends[lane] = f.end);
+        }
+        return ends.length;
+      }
+
+      const el = (tag, attrs = {}) => {
+        const e = document.createElement(tag);
+        for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+        return e;
+      };
+      const row = (label, child, cls = "") => {
+        const r = el("div", { class: `row ${cls}` });
+        const l = el("div", { class: "label" });
+        l.innerHTML = label;
+        r.append(l);
+        if (child) r.append(child);
+        return r;
+      };
+
+      /** Navigation, sequence, then one track per feature type, grouped by category */
+      function render() {
+        const viewer = $("viewer");
+        viewer.innerHTML = "";
+        const length = entry.length;
+        // Margins hide features out of the zoomed range, with the background color
+        const common = {
+          length,
+          "display-start": 1,
+          "display-end": length,
+          "use-ctrl-to-zoom": "",
+          "margin-color": getComputedStyle(document.body).backgroundColor,
+        };
+        viewer.append(row("", el("nightingale-navigation", { ...common, height: 40, "show-highlight": "" })));
+        viewer.append(row("Sequence", el("nightingale-sequence", { ...common, height: 24, sequence: entry.sequence })));
+        const byCategory = Map.groupBy(entry.features, (f) => f.category);
+        for (const [category, features] of byCategory) {
+          if (hidden.has(category)) continue;
+          viewer.append(row(category, null, "category"));
+          for (const [type, list] of Map.groupBy(features, (f) => f.type)) {
+            const height = Math.min(120, 8 + lanes(list) * 12);
+            const track = el("nightingale-track", {
+              ...common,
+              height,
+              layout: "non-overlapping",
+              "highlight-event": "onclick",
+            });
+            viewer.append(
+              row(`<i style="background:${featureColor(list[0])}"></i>${escapeHtml(type)} (${list.length})`, track),
+            );
+            track.data = list.map((f) => ({
+              accession: String(entry.features.indexOf(f)),
+              start: f.start,
+              end: f.end,
+              color: featureColor(f),
+              fill: featureColor(f),
+              shape: shapeOf(f),
+            }));
+          }
+        }
+      }
+
+      function renderChips() {
+        $("chips").innerHTML = "";
+        for (const category of new Set(entry.features.map((f) => f.category))) {
+          const b = el("button", { type: "button", "aria-pressed": String(!hidden.has(category)) });
+          b.textContent = category;
+          b.onclick = () => {
+            hidden.has(category) ? hidden.delete(category) : hidden.add(category);
+            renderChips();
+            render();
+          };
+          $("chips").append(b);
+        }
+      }
+
+      /** Details of the clicked feature, also told to the model */
+      function select(f) {
+        const name = entry.gene ?? entry.accession;
+        const refs = f.refs
+          .map((r) => {
+            const url = refUrl(r, entry.accession);
+            return url ? `<a data-url="${escapeHtml(url)}">${escapeHtml(r)}</a>` : escapeHtml(r);
+          })
+          .join(", ");
+        $("details").classList.remove("muted");
+        $("details").innerHTML = `
+          <div><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${featureColor(f)}"></i>
+            <b>${escapeHtml(f.type)}</b> ${escapeHtml(f.change ?? "")} <span class="muted">residues ${featurePos(f)}</span></div>
+          <div>${escapeHtml(f.description) || '<span class="muted">No description</span>'}</div>
+          ${refs ? `<div class="muted">Evidence: ${refs}</div>` : ""}
+          <div class="actions">
+            <button type="button" id="ask">Ask about it</button>
+            <button type="button" id="structure">Show in 3D</button>
+          </div>`;
+        const label = `${f.type} ${featureLabel(f)} (residues ${featurePos(f)}) of ${entry.accession} ${name}`;
+        $("ask").onclick = () => mcpApp.message(`Tell me more about the ${label}`);
+        $("structure").onclick = () =>
+          mcpApp.message(
+            `Show the 3D structure of ${entry.accession} highlighting residues ${featurePos(f)} (${f.type})`,
+          );
+        void mcpApp.context(`The user selected the ${label} in the sequence feature viewer`);
+      }
+
+      // Clicks on features bubble from the tracks as `change` events
+      $("manager").addEventListener("change", (e) => {
+        const feature = e.detail?.eventType === "click" && e.detail.feature;
+        if (feature) select(entry.features[Number(feature.accession)]);
+      });
+
+      /** Feature hit box closest to the point within `snap` px, ignoring parts hidden by the margins */
+      function nearestFeature(track, x, y, snap = 6) {
+        const box = track.getBoundingClientRect();
+        const left = box.left + track["margin-left"];
+        const right = box.right - track["margin-right"];
+        if (x < left || x > right) return null;
+        let best = null;
+        let bestDist = snap;
+        for (const rect of track.querySelectorAll("rect.outer-rectangle")) {
+          const r = rect.getBoundingClientRect();
+          const rl = Math.max(r.left, left);
+          const rr = Math.min(r.right, right);
+          if (rl > rr) continue;
+          const dist = Math.hypot(Math.max(rl - x, 0, x - rr), Math.max(r.top - y, 0, y - r.bottom));
+          if (dist <= bestDist) [best, bestDist] = [rect, dist];
+        }
+        return best;
+      }
+
+      // Features can be under 1px wide when zoomed out: a click that misses them is forwarded
+      // to the nearest feature of the same track, so direct hits and neighbouring rows are unaffected
+      $("viewer").addEventListener("click", (e) => {
+        const track = e.target.closest?.("nightingale-track");
+        if (!track || e.target.closest("rect.outer-rectangle")) return;
+        const rect = nearestFeature(track, e.clientX, e.clientY);
+        if (rect) rect.dispatchEvent(new MouseEvent("click", e));
+      });
+      $("details").addEventListener("click", (e) => {
+        const url = e.target.dataset?.url;
+        if (url) void mcpApp.openLink(url);
+      });
+
+      mcpApp.on("hostContext", (ctx) => entry && ctx.theme && render());
+      mcpApp.on("result", (result) => {
+        entry = result.structuredContent;
+        if (!entry) return ($("title").textContent = "No features");
+        $("title").textContent = `${entry.gene ?? entry.id} · ${entry.name ?? ""}`;
+        $("subtitle").textContent =
+          `${entry.accession} · ${entry.organism} · ${entry.length} aa · ${entry.features.length} features`;
+        $("link").onclick = () =>
+          mcpApp.openLink(`https://www.uniprot.org/uniprotkb/${entry.accession}/feature-viewer`);
+        renderChips();
+        render();
+      });
+      mcpApp.start("UniProt features");
+    </script>
+  </body>
+</html>
