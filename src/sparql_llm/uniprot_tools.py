@@ -96,6 +96,16 @@ class FeaturesData(EntryInfo):
     features: list[Feature]
 
 
+class Range(TypedDict):
+    start: int
+    end: int
+
+
+class FeaturesViewData(FeaturesData):
+    zoom: Range | None
+    """Residues zoomed on and highlighted when the viewer opens"""
+
+
 class AlphaFoldModel(TypedDict):
     entryId: str
     url: str
@@ -448,15 +458,41 @@ def add_uniprot_tools(mcp: MCPServer) -> None:
 
 
 # MCP Apps tools, showing their result in a widget
+def residue_range(start: int | None, end: int | None, length: int | None) -> Range | None:
+    """Range of residues from optional bounds, a single residue when only one is given, within the sequence"""
+    if start is None and end is None:
+        return None
+    first, last = sorted((start or end or 1, end or start or 1))
+    if length and first > length:
+        raise ToolError(f"Residue {first} is after the end of the sequence, which has {length} residues")
+    return Range(start=max(1, first), end=min(last, length or last))
+
+
 @apps.tool(resource_uri="ui://uniprot/features.html")
-async def show_protein_features(accession: str) -> CallToolResult:
+async def show_protein_features(accession: str, start: int | None = None, end: int | None = None) -> CallToolResult:
     """Show the sequence features of a UniProtKB entry (e.g. P31749) to the user in an interactive track viewer,
-    zoomable along the sequence: domains, sites, PTMs, signal peptides, topology, secondary structure and variants"""
+    zoomable along the sequence: domains, sites, PTMs, signal peptides, topology, secondary structure and variants.
+    To focus on a region, give its UniProt residue positions in `start` and `end` (e.g. 102 and 234 for a domain, or
+    only `start` for a single residue such as a mutation): the viewer opens zoomed on it, with the region highlighted"""
     async with http_client() as client:
         e = await fetch_entry(client, accession)
     info, features = entry_info(e), features_of(e)
-    text = f"Shown to the user: {len(features)} features of {entry_title(info)}\n{features_text(features)}"
-    return text_result(text, FeaturesData(**info, features=features))
+    zoom = residue_range(start, end, info["length"])
+    text = f"Shown to the user: {len(features)} features of {entry_title(info)}"
+    if zoom:
+        # Features overlapping the region first, the chain spans the whole sequence
+        region = (
+            f"residue {zoom['start']}" if zoom["start"] == zoom["end"] else f"residues {zoom['start']}-{zoom['end']}"
+        )
+        inside = [
+            f for f in features if f["start"] <= zoom["end"] and f["end"] >= zoom["start"] and f["type"] != "Chain"
+        ]
+        text += (
+            f"\nZoomed on {region}, highlighted, with {len(inside)} features overlapping "
+            f"them:\n{features_text(inside) or '- none'}\nAll features:"
+        )
+    text += f"\n{features_text(features)}"
+    return text_result(text, FeaturesViewData(**info, features=features, zoom=zoom))
 
 
 async def fetch_alphafold(client: httpx.AsyncClient, accession: str) -> AlphaFoldModel | None:

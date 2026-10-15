@@ -56,8 +56,20 @@
         width: 100%;
       }
       .hint {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
         font-size: 12px;
         margin: 2px 0 6px;
+      }
+      .hint button {
+        padding: 1px 8px;
+        font-size: 12px;
+      }
+      .hint b {
+        color: var(--fg);
+        font-weight: 500;
       }
       .details {
         margin-top: 10px;
@@ -82,7 +94,12 @@
       <a id="link">UniProt</a>
     </header>
     <div class="chips" id="chips"></div>
-    <div class="hint muted">Ctrl + scroll to zoom, drag the top bar to pan, click a feature for details</div>
+    <div class="hint muted">
+      <span id="range"></span>
+      <button type="button" id="zoom-region" hidden></button>
+      <button type="button" id="zoom-all" hidden>Whole sequence</button>
+      <span>Ctrl + scroll to zoom, drag the top bar to pan, click a feature for details</span>
+    </div>
     <nightingale-manager id="manager"><div id="viewer"></div></nightingale-manager>
     <div class="details muted" id="details">Click a feature for details</div>
 
@@ -97,7 +114,39 @@
 
       const $ = (id) => document.getElementById(id);
       let entry;
+      // Residues displayed, kept when tracks are rendered again
+      let view;
       const hidden = new Set();
+
+      /** Residues displayed for a region: padded, and at least 30 residues wide to read the sequence */
+      function windowOf({ start, end }) {
+        const width = end - start + 1;
+        const pad = Math.max(5, Math.ceil(width * 0.1), Math.ceil((30 - width) / 2));
+        return [Math.max(1, start - pad), Math.min(entry.length, end + pad)];
+      }
+
+      /** Displayed range, and buttons to go back to the region given or to the whole sequence */
+      function showRange() {
+        const [start, end] = view;
+        const whole = start <= 1 && end >= entry.length;
+        // Positions are fractional while zooming with the mouse
+        const label = `${Math.max(1, Math.round(start))}-${Math.min(entry.length, Math.round(end))}`;
+        $("range").innerHTML = whole ? "Whole sequence" : `Residues <b>${label}</b> of ${entry.length}`;
+        $("zoom-all").hidden = whole;
+        const z = entry.zoom;
+        $("zoom-region").hidden = !z || (start === windowOf(z)[0] && end === windowOf(z)[1]);
+        if (z) $("zoom-region").textContent = `Zoom on ${z.start === z.end ? z.start : `${z.start}-${z.end}`}`;
+      }
+
+      /** Zooms all tracks on the residues given */
+      function zoomTo([start, end]) {
+        view = [start, end];
+        for (const e of $("viewer").querySelectorAll("[length]")) {
+          e.setAttribute("display-start", start);
+          e.setAttribute("display-end", end);
+        }
+        showRange();
+      }
 
       // Feature shapes: single residues as symbols, bonds as bridges
       const shapeOf = (f) =>
@@ -141,11 +190,13 @@
         // Margins hide features out of the zoomed range, with the background color
         const common = {
           length,
-          "display-start": 1,
-          "display-end": length,
+          "display-start": view[0],
+          "display-end": view[1],
           "use-ctrl-to-zoom": "",
           "margin-color": getComputedStyle(document.body).backgroundColor,
         };
+        // Region given to the tool highlighted on all tracks
+        if (entry.zoom) common.highlight = `${entry.zoom.start}:${entry.zoom.end}`;
         viewer.append(row("", el("nightingale-navigation", { ...common, height: 40, "show-highlight": "" })));
         viewer.append(row("Sequence", el("nightingale-sequence", { ...common, height: 24, sequence: entry.sequence })));
         const byCategory = Map.groupBy(entry.features, (f) => f.category);
@@ -217,11 +268,17 @@
         void mcpApp.context(`The user selected the ${label} in the sequence feature viewer`);
       }
 
-      // Clicks on features bubble from the tracks as `change` events
+      // Clicks on features and zoom changes bubble from the tracks as `change` events
       $("manager").addEventListener("change", (e) => {
+        if (e.detail?.["display-start"] !== undefined) {
+          view = [e.detail["display-start"], e.detail["display-end"]];
+          return showRange();
+        }
         const feature = e.detail?.eventType === "click" && e.detail.feature;
         if (feature) select(entry.features[Number(feature.accession)]);
       });
+      $("zoom-all").onclick = () => zoomTo([1, entry.length]);
+      $("zoom-region").onclick = () => zoomTo(windowOf(entry.zoom));
 
       /** Feature hit box closest to the point within `snap` px, ignoring parts hidden by the margins */
       function nearestFeature(track, x, y, snap = 6) {
@@ -264,8 +321,10 @@
           `${entry.accession} · ${entry.organism} · ${entry.length} aa · ${entry.features.length} features`;
         $("link").onclick = () =>
           mcpApp.openLink(`https://www.uniprot.org/uniprotkb/${entry.accession}/feature-viewer`);
+        view = entry.zoom ? windowOf(entry.zoom) : [1, entry.length];
         renderChips();
         render();
+        showRange();
       });
       mcpApp.start("UniProt features");
     </script>
