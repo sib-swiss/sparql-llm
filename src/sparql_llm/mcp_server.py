@@ -1,11 +1,17 @@
 import argparse
+import fcntl
 import json
+import pathlib
+import time
+from datetime import datetime, timezone
 from typing import Any
 
 import httpx
+from mcp.server.context import CallNext, HandlerResult, ServerRequestContext
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
+from pydantic import BaseModel
 from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 from rdflib.plugins.sparql import prepareQuery
 from typing_extensions import NotRequired, TypedDict
@@ -109,6 +115,49 @@ def get_transport_security() -> TransportSecuritySettings | None:
     )
 
 
+async def log_tool_calls(ctx: ServerRequestContext[Any, Any], call_next: CallNext) -> HandlerResult:
+    """Server middleware appending each tool call, with its args and result, to a JSONL file."""
+    if ctx.method != "tools/call" or not settings.mcp_logs_filepath:
+        return await call_next(ctx)
+    started_at = time.time()
+    result: HandlerResult = None
+    error: str | None = None
+    try:
+        result = await call_next(ctx)
+        return result
+    except Exception as e:
+        # Protocol-level failures (unknown tool, invalid params) are raised, tool failures come back as `isError` results
+        error = repr(e)
+        raise
+    finally:
+        params = ctx.params or {}
+        client = ctx.session.client_params.client_info if ctx.session.client_params else None
+        entry = {
+            "timestamp": datetime.fromtimestamp(started_at, tz=timezone.utc).isoformat(),
+            "latency": round(time.time() - started_at, 3),
+            "tool": params.get("name"),
+            "args": params.get("arguments"),
+            "result": result.model_dump(mode="json", by_alias=True, exclude_none=True)
+            if isinstance(result, BaseModel)
+            else result,
+            "error": error,
+            "requestId": ctx.request_id,
+            "client": client.model_dump(mode="json", exclude_none=True) if client else None,
+        }
+        path = settings.mcp_logs_filepath
+        try:
+            line = json.dumps(entry, ensure_ascii=False, default=str) + "\n"
+            with open(path, "a", encoding="utf-8") as f:
+                # Lock so lines from concurrent workers are never interleaved
+                fcntl.flock(f, fcntl.LOCK_EX)
+                try:
+                    f.write(line)
+                finally:
+                    fcntl.flock(f, fcntl.LOCK_UN)
+        except Exception as e:
+            logger.warning(f"⚠️ Could not write MCP tool call log to {path}: {e}")
+
+
 def get_mcp_app(enable_resources_info_tool: bool = True, enable_uniprot_tools: bool = True) -> MCPServer:
     """Get the MCP server instance.
 
@@ -134,9 +183,12 @@ def get_mcp_app(enable_resources_info_tool: bool = True, enable_uniprot_tools: b
         debug=True,
         dependencies=["mcp", "qdrant_client", "fastembed", "sparql-llm"],
         extensions=[uniprot_apps] if enable_uniprot_tools else [],
+        middleware=[log_tool_calls],
     )
     if enable_uniprot_tools:
         add_uniprot_tools(mcp)
+    if settings.mcp_logs_filepath:
+        pathlib.Path(settings.mcp_logs_filepath).parent.mkdir(parents=True, exist_ok=True)
 
     # Check if the docs collection exists and has data, initialize if not
     # In prod with multiple workers, auto_init should be set to False to avoid race conditions
