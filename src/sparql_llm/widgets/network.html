@@ -1,0 +1,629 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .toolbar label {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .toolbar input[type="number"] {
+        width: 64px;
+      }
+      .main {
+        display: grid;
+        grid-template-columns: 1fr 260px;
+        gap: 8px;
+      }
+      @media (max-width: 640px) {
+        .main {
+          grid-template-columns: 1fr;
+        }
+      }
+      #graph {
+        height: 480px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      aside {
+        max-height: 480px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+      :root[data-mode="fullscreen"] #graph,
+      :root[data-mode="fullscreen"] aside {
+        height: calc(100vh - 200px);
+        max-height: none;
+      }
+      h2 {
+        margin: 6px 0 4px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+      .item {
+        padding: 3px 4px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .item:hover,
+      .item.selected {
+        background: var(--hover);
+      }
+      .item label {
+        display: flex;
+        gap: 4px;
+        align-items: baseline;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .legend span {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .legend i {
+        width: 18px;
+        height: 0;
+        border-top: 3px solid;
+      }
+      .legend i.box {
+        width: 14px;
+        height: 11px;
+        border: 1.5px solid var(--accent);
+        border-radius: 3px;
+      }
+      .details {
+        margin-top: 8px;
+        padding: 8px 10px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        min-height: 38px;
+      }
+      .details .source {
+        margin-top: 4px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .details ul {
+        margin: 4px 0;
+        padding-left: 18px;
+      }
+      .sources {
+        margin-top: 8px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .sources summary {
+        cursor: pointer;
+      }
+      .sources ul {
+        margin: 4px 0;
+        padding-left: 18px;
+      }
+      .details .actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Loading network</h1>
+      <span class="muted" id="subtitle"></span>
+      <span class="spacer"></span>
+      <button type="button" id="fullscreen">Full screen</button>
+    </header>
+    <div class="toolbar">
+      <label><input id="show-regulation" type="checkbox" checked /> Regulation</label>
+      <label><input id="show-physical" type="checkbox" checked /> Physical interaction</label>
+      <label><input id="show-pathways" type="checkbox" checked /> Pathway membership</label>
+      <label>Min. evidence <input id="min" type="number" min="0" value="0" /></label>
+      <select id="layout" aria-label="Layout">
+        <option value="flow">Signal flow</option>
+        <option value="force">Force</option>
+        <option value="circle">Circle</option>
+      </select>
+      <button type="button" id="fit">Fit</button>
+    </div>
+    <div class="main">
+      <div id="graph"></div>
+      <aside>
+        <h2 id="paths-title">Paths</h2>
+        <div id="paths"></div>
+        <h2>Feedback loops</h2>
+        <div id="loops"></div>
+        <h2>Shared pathways</h2>
+        <div id="pathways"></div>
+      </aside>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="details muted" id="details">Click a protein, an edge, a path or a loop for details and sources</div>
+    <details class="sources" id="sources">
+      <summary>Data sources</summary>
+      <ul id="sources-list"></ul>
+      <div>
+        Paths, feedback loops, linkers, the "mixed" effect and the layout are computed by this tool from the OmniPath
+        regulations: best supported paths have the highest minimum evidence, then the fewest steps.
+      </div>
+    </details>
+
+    <script src="colors.js"></script>
+    <script src="bridge.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.33.1/dist/cytoscape.min.js"></script>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      // Regulation edges by effect, physical interactions and highlight colors
+      const EFFECTS = {
+        activation: { color: "#2da44e", arrow: "triangle", text: "-&gt;" },
+        inhibition: { color: "#cf222e", arrow: "tee", text: "-|" },
+        mixed: { color: "#bf8700", arrow: "triangle-tee", text: "-&gt;" },
+        unknown: { color: "#8c959f", arrow: "vee", text: "-&gt;" },
+      };
+      const PHYSICAL = "#8250df";
+      const HIGHLIGHT = "#ff00c8";
+      // Pathways shown as nodes by default
+      const DEFAULT_PATHWAYS = 3;
+      let data;
+      let cy;
+      let gene = {};
+      let regs = {};
+      let shownPathways = new Set();
+
+      const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      const regId = (s, t) => `r:${s}>${t}`;
+      const uniprotUrl = (acc) => `https://www.uniprot.org/uniprotkb/${acc}/entry`;
+
+      /** Cytoscape style, with the colors of the current theme */
+      function style() {
+        return [
+          {
+            selector: "node.protein",
+            style: {
+              label: "data(label)",
+              "font-size": 11,
+              color: css("--fg"),
+              "text-valign": "center",
+              shape: "round-rectangle",
+              width: (n) => 14 + 7 * n.data("label").length,
+              height: 22,
+              "background-color": css("--panel"),
+              "border-width": 1.5,
+              "border-color": css("--accent"),
+            },
+          },
+          { selector: "node.linker", style: { "border-style": "dashed", "border-color": css("--muted") } },
+          { selector: "node.endpoint", style: { "border-width": 3 } },
+          {
+            selector: "node.pathway",
+            style: {
+              label: "data(label)",
+              "font-size": 10,
+              color: css("--muted"),
+              shape: "diamond",
+              width: 14,
+              height: 14,
+              "background-color": css("--muted"),
+              "text-valign": "bottom",
+              "text-margin-y": 3,
+              "text-wrap": "ellipsis",
+              "text-max-width": 150,
+            },
+          },
+          { selector: "edge", style: { "curve-style": "bezier", width: "data(width)", opacity: 0.85 } },
+          {
+            selector: "edge.regulation",
+            style: {
+              "line-color": "data(color)",
+              "target-arrow-color": "data(color)",
+              "target-arrow-shape": "data(arrow)",
+            },
+          },
+          { selector: "edge.physical", style: { "line-color": PHYSICAL, opacity: 0.55 } },
+          {
+            selector: "edge.membership",
+            style: { "line-color": css("--muted"), "line-style": "dotted", width: 1, opacity: 0.6 },
+          },
+          { selector: ".hidden", style: { display: "none" } },
+          { selector: ".faded", style: { opacity: 0.12 } },
+          { selector: "node.hl", style: { "border-width": 3, "border-color": HIGHLIGHT } },
+          { selector: "edge.hl", style: { opacity: 1, "z-index": 10 } },
+        ];
+      }
+
+      function elements() {
+        const els = data.nodes.map((n) => ({
+          data: { id: n.accession, label: n.gene },
+          classes: [
+            "protein",
+            n.listed ? "" : "linker",
+            [data.source, data.target].includes(n.accession) ? "endpoint" : "",
+          ].join(" "),
+        }));
+        for (const r of data.regulations) {
+          const e = EFFECTS[r.effect];
+          els.push({
+            data: {
+              id: regId(r.source, r.target),
+              source: r.source,
+              target: r.target,
+              evidence: r.evidence,
+              color: e.color,
+              arrow: e.arrow,
+              width: 1 + 1.5 * Math.log10(1 + r.evidence),
+            },
+            classes: "regulation",
+          });
+        }
+        for (const i of data.interactions) {
+          els.push({
+            data: { id: `p:${i.a}-${i.b}`, source: i.a, target: i.b, width: 1 + Math.log2(i.experiments) },
+            classes: "physical",
+          });
+        }
+        for (const p of data.pathways) {
+          els.push({ data: { id: p.id, label: p.name }, classes: "pathway" });
+          for (const m of p.members) {
+            els.push({ data: { id: `m:${p.id}:${m}`, source: m, target: p.id, width: 1 }, classes: "membership" });
+          }
+        }
+        return els;
+      }
+
+      /** Hides the layers unchecked, the regulations below the minimum evidence and the pathways not selected */
+      function applyFilters() {
+        const min = Number($("min").value) || 0;
+        cy.batch(() => {
+          cy.edges(".regulation").forEach((e) =>
+            e.toggleClass("hidden", !$("show-regulation").checked || e.data("evidence") < min),
+          );
+          cy.edges(".physical").toggleClass("hidden", !$("show-physical").checked);
+          cy.nodes(".pathway").forEach((n) =>
+            n.toggleClass("hidden", !$("show-pathways").checked || !shownPathways.has(n.id())),
+          );
+        });
+      }
+
+      /** Proteins in layers by their depth from the source, each layer ordered by the mean position of the regulators
+       * of its proteins, and shown pathways in extra slots after them. Layers go left to right in a wide graph, top
+       * to bottom in a tall one, spaced to fill it */
+      function flowPositions() {
+        const layers = {};
+        const last = Math.max(0, ...data.nodes.map((n) => n.depth ?? 0)) + 1;
+        for (const n of data.nodes) (layers[n.depth ?? last] ??= []).push(n.accession);
+        const depths = Object.keys(layers)
+          .map(Number)
+          .sort((a, b) => a - b);
+        const pathways = data.pathways.filter((p) => shownPathways.has(p.id));
+        const slots = Math.max(...depths.map((d) => layers[d].length)) + pathways.length;
+        // Position along the layers (main) and in a layer (cross), in units, scaled to the graph size
+        const wide = cy.width() >= cy.height();
+        const [mainSize, crossSize] = wide ? [cy.width(), cy.height()] : [cy.height(), cy.width()];
+        const step = { main: mainSize / Math.max(1, depths.length), cross: crossSize / Math.max(1, slots) };
+        const at = (main, cross) =>
+          wide ? { x: main * step.main, y: cross * step.cross } : { x: cross * step.cross, y: main * step.main };
+        const units = {};
+        const mean = (values) => values.reduce((a, b) => a + b, 0) / values.length;
+        depths.forEach((d, i) => {
+          const order = Object.fromEntries(
+            layers[d].map((acc) => {
+              const regulators = data.regulations.filter((r) => r.target === acc && units[r.source]);
+              return [acc, regulators.length ? mean(regulators.map((r) => units[r.source].cross)) : 0];
+            }),
+          );
+          layers[d].sort((a, b) => order[a] - order[b]);
+          layers[d].forEach((acc, j) => (units[acc] = { main: i, cross: j - (layers[d].length - 1) / 2 }));
+        });
+        const end = Math.max(...Object.values(units).map((u) => u.cross));
+        pathways.forEach(
+          (p, i) => (units[p.id] = { main: mean(p.members.map((m) => units[m].main)), cross: end + 1 + i }),
+        );
+        return Object.fromEntries(Object.entries(units).map(([id, u]) => [id, at(u.main, u.cross)]));
+      }
+
+      function layout() {
+        const name = $("layout").value;
+        const positions = name === "flow" ? flowPositions() : null;
+        const opts =
+          name === "flow"
+            ? { name: "preset", positions: (n) => positions[n.id()] }
+            : name === "force"
+              ? { name: "cose", animate: false, nodeRepulsion: () => 9000, idealEdgeLength: () => 90 }
+              : { name: "circle" };
+        cy.elements(":visible").layout({ ...opts, padding: 20 }).run();
+      }
+
+      /** Fades everything but `eles`, or clears the highlight */
+      function highlight(eles) {
+        cy.elements().removeClass("hl faded");
+        for (const item of document.querySelectorAll(".item.selected")) item.classList.remove("selected");
+        if (!eles) return;
+        cy.elements().not(eles).addClass("faded");
+        eles.addClass("hl");
+      }
+
+      /** Nodes and edges of a chain of regulations */
+      const chainEles = (nodes) => {
+        let eles = cy.collection();
+        nodes.forEach((n, i) => {
+          eles = eles.union(cy.getElementById(n));
+          if (i) eles = eles.union(cy.getElementById(regId(nodes[i - 1], n)));
+        });
+        return eles;
+      };
+
+      /** e.g. EGFR -> GRB2 -| SOS1, arrows colored by effect */
+      const chainHtml = (nodes) =>
+        nodes
+          .map((n, i) => {
+            if (!i) return escapeHtml(gene[n]);
+            const e = EFFECTS[regs[regId(nodes[i - 1], n)]?.effect ?? "unknown"];
+            return ` <b style="color:${e.color}">${e.text}</b> ${escapeHtml(gene[n])}`;
+          })
+          .join("");
+      const chainText = (nodes) =>
+        nodes
+          .map((n, i) => (i ? ` -${regs[regId(nodes[i - 1], n)]?.effect ?? "?"}-> ${gene[n]}` : gene[n]))
+          .join("");
+
+      function showDetails(html, ask, context) {
+        $("details").classList.remove("muted");
+        $("details").innerHTML = `${html}<div class="actions"><button type="button" id="ask">Ask about it</button></div>`;
+        $("ask").onclick = () => mcpApp.message(ask);
+        void mcpApp.context(context);
+      }
+
+      const links = (items) =>
+        items.map(({ label, url }) => `<a data-url="${escapeHtml(url)}">${escapeHtml(label)}</a>`).join(" · ");
+      const source = (html) => `<div class="source">Source: ${html}</div>`;
+      /** e.g. HPRD, SIGNOR +3 */
+      const resourceList = (resources, max = 6) =>
+        escapeHtml(resources.slice(0, max).join(", ")) + (resources.length > max ? ` +${resources.length - max}` : "");
+      /** One line per regulation of a path or loop, with its evidence and OmniPath records */
+      const stepsHtml = (nodes) =>
+        `<ul>${nodes
+          .slice(1)
+          .map((n, i) => {
+            const r = regs[regId(nodes[i], n)];
+            return `<li>${chainHtml([nodes[i], n])} <span class="muted">${escapeHtml(r.effect)} · evidence
+              ${r.evidence} · ${resourceList(r.resources, 3)}</span> ${links(r.links.slice(0, 1))}</li>`;
+          })
+          .join("")}</ul>`;
+
+      function selectNode(n) {
+        if (n.hasClass("pathway")) {
+          const p = data.pathways.find((p) => p.id === n.id());
+          return selectPathway(p);
+        }
+        const node = data.nodes.find((x) => x.accession === n.id());
+        highlight(n.closedNeighborhood());
+        const out = data.regulations.filter((r) => r.source === node.accession).map((r) => gene[r.target]);
+        const inc = data.regulations.filter((r) => r.target === node.accession).map((r) => gene[r.source]);
+        const partners = data.interactions
+          .filter((i) => i.a === node.accession || i.b === node.accession)
+          .map((i) => gene[i.a === node.accession ? i.b : i.a]);
+        const pathways = data.pathways.filter((p) => p.members.includes(node.accession)).map((p) => p.name);
+        const added = node.via
+          ? `<div>Added by this tool as it connects ${chainHtml(node.via)} in OmniPath</div>`
+          : "";
+        showDetails(
+          `<div><b>${escapeHtml(node.gene)}</b> ${escapeHtml(node.name ?? "")}</div>
+          ${added}
+          <div class="muted">Regulates: ${escapeHtml(out.join(", ") || "-")} · Regulated by: ${escapeHtml(inc.join(", ") || "-")}</div>
+          <div class="muted">Binds: ${escapeHtml(partners.join(", ") || "-")} · Pathways: ${escapeHtml(pathways.join(", ") || "-")}</div>
+          ${source(`UniProtKB ${links([{ label: node.accession, url: uniprotUrl(node.accession) }])}`)}`,
+          `What is the role of ${node.gene} (${node.accession}) in this network, between ${gene[data.source]}${data.target ? ` and ${gene[data.target]}` : ""}?`,
+          `The user selected ${node.gene} (${node.accession}) in the network: regulates ${out.join(", ") || "none"}, ` +
+            `regulated by ${inc.join(", ") || "none"}, binds ${partners.join(", ") || "none"}`,
+        );
+      }
+
+      function selectEdge(e) {
+        if (e.hasClass("membership")) return selectNode(e.target());
+        highlight(e.union(e.connectedNodes()));
+        const [s, t] = [e.source().id(), e.target().id()];
+        if (e.hasClass("physical")) {
+          const i = data.interactions.find((i) => i.a === s && i.b === t);
+          return showDetails(
+            `<div><b>${escapeHtml(gene[s])} - ${escapeHtml(gene[t])}</b> <span class="muted">physical interaction ·
+              ${i.experiments} experiments</span></div>
+            ${source(`IntAct, as summarized in UniProtKB · ${links(i.links)}`)}`,
+            `How do ${gene[s]} and ${gene[t]} physically interact, and what is the role of this interaction?`,
+            `The user selected the physical interaction of ${gene[s]} and ${gene[t]} (${i.experiments} IntAct experiments)`,
+          );
+        }
+        const r = regs[e.id()];
+        const effect = r.majority ? `${r.effect}, mostly ${r.majority}` : r.effect;
+        const sites = r.sites.map((x) => x.label).join(", ");
+        const refs = r.references.map(
+          (ref) =>
+            `<li>${links([{ label: `PMID:${ref.pubmed}`, url: `https://pubmed.ncbi.nlm.nih.gov/${ref.pubmed}/` }])}
+            <span class="muted">cited by ${resourceList(ref.resources, 4)}</span></li>`,
+        );
+        showDetails(
+          `<div><b>${chainHtml([s, t])}</b> <span class="muted">${escapeHtml(effect)} · evidence ${r.evidence}
+            (resource and reference pairs)</span></div>
+          ${r.sites.map((x) => `<div>${escapeHtml(x.label)} <span class="muted">from ${resourceList(x.resources, 4)}</span></div>`).join("")}
+          ${refs.length ? `<ul>${refs.join("")}</ul>` : '<div class="muted">No reference</div>'}
+          ${source(`OmniPath, combining ${r.resources.length} resources: ${resourceList(r.resources, 12)} · ${links(r.links)}`)}`,
+          `What is known about the regulation of ${gene[t]} by ${gene[s]} (${effect}${sites ? `, ${sites}` : ""})? Cite the references.`,
+          `The user selected the regulation ${gene[s]} -> ${gene[t]} from OmniPath (${effect}, evidence ${r.evidence}, ` +
+            `${sites || "no site"}, resources ${r.resources.join(", ")}, ` +
+            `PubMed ${r.references.map((ref) => ref.pubmed).join(", ") || "none"})`,
+        );
+      }
+
+      function selectPathway(p, item) {
+        highlight(cy.getElementById(p.id).union(cy.collection(p.members.map((m) => cy.getElementById(m)))));
+        item?.classList.add("selected");
+        const genes = p.members.map((m) => gene[m]);
+        showDetails(
+          `<div><b>${escapeHtml(p.name)}</b> <span class="muted">${p.id} · ${genes.length} of ${data.nodes.length}
+            proteins</span></div>
+          <div>${escapeHtml(genes.join(", "))}</div>
+          ${source(`Reactome, from the cross-references of the UniProtKB entries · ${links(p.links)}`)}`,
+          `What is the role of ${genes.join(", ")} in the Reactome pathway ${p.name} (${p.id})?`,
+          `The user selected the Reactome pathway ${p.name} (${p.id}), with members ${genes.join(", ")}`,
+        );
+      }
+
+      /** Paths, feedback loops and pathways lists */
+      function renderSide() {
+        $("paths-title").textContent = data.target
+          ? `Paths ${gene[data.source]} to ${gene[data.target]}`
+          : "Paths";
+        $("paths").innerHTML =
+          data.paths.map((p, i) => `<div class="item" data-path="${i}">${chainHtml(p)}</div>`).join("") ||
+          `<div class="muted">${data.target ? "No directed path" : "No target given"}</div>`;
+        $("loops").innerHTML =
+          data.feedback
+            .map(
+              (f, i) =>
+                `<div class="item" data-loop="${i}">${chainHtml([f.source, f.target])}
+                <span class="muted">· loop of ${f.loop.length}</span></div>`,
+            )
+            .join("") || '<div class="muted">No loop</div>';
+        $("pathways").innerHTML =
+          data.pathways
+            .map(
+              (p) => `<div class="item" data-pathway="${p.id}"><label>
+                <input type="checkbox" ${shownPathways.has(p.id) ? "checked" : ""} title="Show as a node" />
+                <span>${escapeHtml(p.name)} <span class="muted">(${p.members.length})</span></span></label></div>`,
+            )
+            .join("") || '<div class="muted">No pathway shared</div>';
+      }
+
+      $("paths").addEventListener("click", (e) => {
+        const item = e.target.closest("[data-path]");
+        if (!item) return;
+        const path = data.paths[item.dataset.path];
+        highlight(chainEles(path));
+        item.classList.add("selected");
+        const text = chainText(path);
+        showDetails(
+          `<div><b>${chainHtml(path)}</b></div>
+          ${stepsHtml(path)}
+          ${source("computed by this tool from the OmniPath regulations, highest minimum evidence then fewest steps")}`,
+          `Explain how the signal goes from ${gene[path[0]]} to ${gene[path.at(-1)]} through ${text}, with references.`,
+          `The user highlighted the directed path ${text}`,
+        );
+      });
+      $("loops").addEventListener("click", (e) => {
+        const item = e.target.closest("[data-loop]");
+        if (!item) return;
+        const f = data.feedback[item.dataset.loop];
+        const cycle = [...f.loop, f.target];
+        highlight(chainEles(cycle));
+        item.classList.add("selected");
+        const r = regs[regId(f.source, f.target)];
+        const text = chainText(cycle);
+        showDetails(
+          `<div><b>${chainHtml(cycle)}</b></div>
+          <div class="muted">${escapeHtml(gene[f.source])} goes back upstream to ${escapeHtml(gene[f.target])}:
+            ${escapeHtml(r.majority ? `${r.effect}, mostly ${r.majority}` : r.effect)}
+            ${r.sites.length ? `· ${escapeHtml(r.sites.map((x) => x.label).join(", "))}` : ""}</div>
+          ${stepsHtml(cycle)}
+          ${source("computed by this tool from the OmniPath regulations, edges going back closer to the source")}`,
+          `Explain the feedback loop ${text}: is it a negative or positive feedback, and what is its effect on the signal?`,
+          `The user highlighted the feedback loop ${text}`,
+        );
+      });
+      $("pathways").addEventListener("click", (e) => {
+        const item = e.target.closest("[data-pathway]");
+        if (!item) return;
+        const p = data.pathways.find((p) => p.id === item.dataset.pathway);
+        if (e.target.matches("input")) {
+          if (e.target.checked) shownPathways.add(p.id);
+          else shownPathways.delete(p.id);
+          applyFilters();
+          return layout();
+        }
+        if (e.target.closest("label")) e.preventDefault();
+        selectPathway(p, item);
+      });
+      for (const id of ["details", "sources"]) {
+        $(id).addEventListener("click", (e) => {
+          const url = e.target.dataset?.url;
+          if (url) void mcpApp.openLink(url);
+        });
+      }
+      for (const id of ["show-regulation", "show-physical", "show-pathways", "min"]) {
+        $(id).onchange = () => {
+          applyFilters();
+          layout();
+        };
+      }
+      $("layout").onchange = layout;
+      $("fit").onclick = () => cy?.fit(undefined, 20);
+      $("fullscreen").onclick = () =>
+        mcpApp.displayMode(document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen");
+      mcpApp.on("hostContext", (ctx) => {
+        $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";
+        if (!cy) return;
+        cy.style(style());
+        // Graph size changes with the display mode, and the flow layout with it
+        setTimeout(() => {
+          cy.resize();
+          layout();
+        }, 50);
+      });
+
+      $("legend").innerHTML = [
+        "<b>Regulation (OmniPath):</b>",
+        ...Object.entries(EFFECTS).map(([k, e]) => `<span><i style="border-color:${e.color}"></i>${k}</span>`),
+        `<span><i style="border-color:${PHYSICAL}"></i><b>Physical interaction (IntAct)</b></span>`,
+        `<span><i style="border-top-style:dotted"></i><b>Pathway membership (Reactome)</b></span>`,
+        `<span><i class="box" style="border-style:dashed"></i>linker added by this tool</span>`,
+      ].join("");
+
+      mcpApp.on("result", (result) => {
+        data = result.structuredContent;
+        if (!data?.nodes) return ($("title").textContent = "No network");
+        gene = Object.fromEntries(data.nodes.map((n) => [n.accession, n.gene]));
+        regs = Object.fromEntries(data.regulations.map((r) => [regId(r.source, r.target), r]));
+        shownPathways = new Set(data.pathways.slice(0, DEFAULT_PATHWAYS).map((p) => p.id));
+        $("title").textContent = data.target
+          ? `${gene[data.source]} to ${gene[data.target]}`
+          : `Network of ${data.nodes.length} proteins`;
+        const missing = data.missing.length ? ` · not found: ${data.missing.join(", ")}` : "";
+        $("subtitle").textContent =
+          `${data.organism ?? ""} · ${data.nodes.length} proteins · ${data.regulations.length} regulations · ` +
+          `${data.interactions.length} physical interactions${missing}`;
+        $("min").max = Math.max(0, ...data.regulations.map((r) => r.evidence));
+        $("sources-list").innerHTML = data.sources
+          .map((s) => `<li><b>${links([{ label: s.name, url: s.url }])}</b>: ${escapeHtml(s.provides)}</li>`)
+          .join("");
+        cy = cytoscape({ container: $("graph"), elements: elements(), style: style(), minZoom: 0.2, maxZoom: 3 });
+        cy.on("tap", "node", (e) => selectNode(e.target));
+        cy.on("tap", "edge", (e) => selectEdge(e.target));
+        cy.on("tap", (e) => e.target === cy && highlight(null));
+        renderSide();
+        applyFilters();
+        layout();
+      });
+      mcpApp.start("Protein network");
+    </script>
+  </body>
+</html>

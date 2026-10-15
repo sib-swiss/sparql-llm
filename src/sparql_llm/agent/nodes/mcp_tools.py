@@ -12,7 +12,7 @@ from sparql_llm.config import settings
 
 # NOTE: experimental, not actually used by the chat agent
 
-# The MCP app is mounted at /mcp and serves at its root
+# The MCP endpoint is served at both /mcp and /mcp/
 MCP_URL = f"{settings.server_url}/mcp/"
 
 

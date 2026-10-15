@@ -9,21 +9,27 @@ Regular tools are added with `add_uniprot_tools(mcp)`, MCP Apps tools with `MCPS
 """
 
 import asyncio
+import heapq
 import re
 from collections import Counter
 from collections.abc import Mapping
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
 import httpx
 from mcp.server.apps import Apps, ResourceCsp
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult, TextContent
 from typing_extensions import TypedDict
 
 UNIPROT_API = "https://rest.uniprot.org/uniprotkb"
 ALPHAFOLD_API = "https://alphafold.ebi.ac.uk/api/prediction"
 PROTEINS_API = "https://www.ebi.ac.uk/proteins/api"
+OMNIPATH_API = "https://omnipathdb.org"
+# IntAct evidences of an interaction, in the PSI-MITAB format, queried with MIQL
+INTACT_MIQL = "https://www.ebi.ac.uk/Tools/webservices/psicquic/intact/webservices/current/search/query"
 WIDGETS = Path(__file__).parent / "widgets"
 CDN = "https://cdn.jsdelivr.net"
 # UniProt queries not cached yet can take tens of seconds, and the API sometimes answers 503
@@ -56,6 +62,9 @@ MAX_VARIANTS = 4000
 GO_EXPERIMENTAL = {"EXP", "IDA", "IPI", "IMP", "IGI", "IEP", "HTP", "HDA", "HMP", "HGI", "HEP"}
 # Annotation types of the matrix, GO aspects by the prefix of their term
 GO_ASPECTS = {"P": "GO biological process", "F": "GO molecular function", "C": "GO cellular component"}
+# Keywords of the enzymes whose modification sites are trusted: OmniPath also has text-mined sites of non-enzymes
+ENZYME_KEYWORDS = {"KW-0418", "KW-0904"}  # Kinase, Protein phosphatase
+UNIPROT_ACCESSION = re.compile(r"^[OPQ]\d[A-Z\d]{3}\d$|^[A-NR-Z]\d([A-Z][A-Z\d]{2}\d){1,2}$")
 
 apps = Apps()
 
@@ -181,6 +190,99 @@ class MatrixData(TypedDict):
     """Genes without a reviewed entry"""
 
 
+class Link(TypedDict):
+    label: str
+    url: str
+
+
+class NetworkNode(TypedDict):
+    accession: str
+    gene: str
+    name: str | None
+    listed: bool
+    """In the list given, else a linker added to connect them"""
+    via: list[str] | None
+    """For linkers: the OmniPath regulations path between 2 listed proteins that made it added"""
+    depth: int | None
+    """Steps from the source along the best supported path, None when not reachable"""
+
+
+class Reference(TypedDict):
+    pubmed: str
+    resources: list[str]
+    """OmniPath resources citing it for this relationship"""
+
+
+class Site(TypedDict):
+    label: str
+    """e.g. phosphorylation T693"""
+    resources: list[str]
+
+
+class Regulation(TypedDict):
+    source: str
+    target: str
+    effect: str
+    """activation, inhibition, mixed (both reported) or unknown"""
+    majority: str | None
+    """Effect reported by most resources, when mixed"""
+    evidence: int
+    """OmniPath curation effort: number of unique resource and reference pairs"""
+    resources: list[str]
+    """Resources combined by OmniPath for this relationship"""
+    references: list[Reference]
+    sites: list[Site]
+    """Modifications of the target by the source, from OmniPath enzyme-substrate relationships"""
+    links: list[Link]
+    """OmniPath records of the relationship and its sites"""
+
+
+class PhysicalInteraction(TypedDict):
+    a: str
+    b: str
+    experiments: int
+    """Number of IntAct experiments, as summarized in UniProtKB"""
+    links: list[Link]
+
+
+class Pathway(TypedDict):
+    id: str
+    name: str
+    members: list[str]
+    """Proteins annotated with the pathway in their UniProtKB cross-references"""
+    links: list[Link]
+
+
+class DataSource(TypedDict):
+    name: str
+    provides: str
+    url: str
+    """Query of the data used, or home page"""
+
+
+class Feedback(TypedDict):
+    source: str
+    target: str
+    """Edge going back upstream, from `source` to `target`"""
+    loop: list[str]
+    """Shortest directed path from `target` back to `source`, closed by the edge"""
+
+
+class NetworkData(TypedDict):
+    organism: str | None
+    source: str
+    target: str | None
+    nodes: list[NetworkNode]
+    regulations: list[Regulation]
+    interactions: list[PhysicalInteraction]
+    pathways: list[Pathway]
+    paths: list[list[str]]
+    """Best supported directed paths from `source` to `target`"""
+    feedback: list[Feedback]
+    missing: list[str]
+    sources: list[DataSource]
+
+
 def text_result(text: str, data: Mapping[str, Any]) -> CallToolResult:
     """Summary for the model, full data for the widget"""
     return CallToolResult(content=[TextContent(type="text", text=text)], structured_content=dict(data))
@@ -199,7 +301,7 @@ async def get(client: httpx.AsyncClient, url: str, params: dict[str, Any] | None
                 return res
         except httpx.TransportError:
             if attempt == ATTEMPTS:
-                raise RuntimeError(f"{url} did not answer after {ATTEMPTS} attempts, try again later") from None
+                raise ToolError(f"{url} did not answer after {ATTEMPTS} attempts, try again later") from None
         await asyncio.sleep(attempt)
     raise AssertionError("unreachable")
 
@@ -207,7 +309,7 @@ async def get(client: httpx.AsyncClient, url: str, params: dict[str, Any] | None
 async def fetch_entry(client: httpx.AsyncClient, accession: str) -> dict[str, Any]:
     res = await get(client, f"{UNIPROT_API}/{accession.strip()}.json")
     if res.status_code in (400, 404):
-        raise ValueError(f"UniProtKB entry {accession!r} not found")
+        raise ToolError(f"UniProtKB entry {accession!r} not found")
     res.raise_for_status()
     return res.json()
 
@@ -310,7 +412,7 @@ async def search_proteins(query: str, size: int = 5) -> list[ProteinSummary]:
         res = await get(client, f"{UNIPROT_API}/search", params)
     # Invalid queries are explained to the model, which can fix them
     if res.status_code == 400:
-        raise ValueError(f"Invalid query: {', '.join(res.json().get('messages', []))}")
+        raise ToolError(f"Invalid query: {', '.join(res.json().get('messages', []))}")
     res.raise_for_status()
     return [
         ProteinSummary(
@@ -418,7 +520,7 @@ async def show_protein_structure(
     info, features, pdb = entry_info(e), features_of(e), pdb_entries(e)
     source = pdb_id.lower() if pdb_id else "alphafold" if alphafold else pdb[0]["id"] if pdb else None
     if not source:
-        raise ValueError(f"No AlphaFold model or PDB entry for {accession}")
+        raise ToolError(f"No AlphaFold model or PDB entry for {accession}")
     positions = positions or []
     # PDB entries the user can switch to in the widget
     data = StructureData(
@@ -483,7 +585,7 @@ async def search_proteins_table(query: str, max_rows: int = 1000) -> CallToolRes
     async with http_client() as client:
         res = await get(client, f"{UNIPROT_API}/search", params)
         if res.status_code == 400:
-            raise ValueError(f"Invalid query: {', '.join(res.json().get('messages', []))}")
+            raise ToolError(f"Invalid query: {', '.join(res.json().get('messages', []))}")
         res.raise_for_status()
         total = int(res.headers.get("x-total-results", 0))
         rows += [search_row(e) for e in res.json()["results"]]
@@ -601,6 +703,45 @@ def go_level(evidence_type: str) -> int:
     return 3 if code in GO_EXPERIMENTAL else 1 if code == "IEA" else 2
 
 
+def gene_name(e: dict[str, Any]) -> str:
+    return next((g["geneName"]["value"] for g in e.get("genes", []) if "geneName" in g), e["primaryAccession"])
+
+
+async def fetch_genes(
+    client: httpx.AsyncClient, genes: list[str], organism_id: int, fields: str
+) -> tuple[list[tuple[str, dict[str, Any]]], list[str]]:
+    """Reviewed UniProtKB entries of a gene list with the given extra fields, one per gene: the one with it as primary
+    name, else as synonym. Returns the (gene, entry) pairs found, without duplicate entries, and the genes not found"""
+    genes = list(dict.fromkeys(g.strip() for g in genes if g.strip()))[:100]
+    if not genes:
+        raise ToolError("No gene given")
+    params = {
+        "query": f"({' OR '.join(f'gene_exact:{g}' for g in genes)}) AND organism_id:{organism_id} AND reviewed:true",
+        "size": 500,
+        "fields": f"accession,gene_names,protein_name,organism_name,{fields}",
+    }
+    res = await get(client, f"{UNIPROT_API}/search", params)
+    if res.status_code == 400:
+        raise ToolError(f"Invalid gene list: {', '.join(res.json().get('messages', []))}")
+    res.raise_for_status()
+    results = res.json()["results"]
+    names = [{g["geneName"]["value"].upper() for g in e.get("genes", []) if "geneName" in g} for e in results]
+    synonyms = [{s["value"].upper() for g in e.get("genes", []) for s in g.get("synonyms", [])} for e in results]
+    found: list[tuple[str, dict[str, Any]]] = []
+    missing = []
+    for gene in genes:
+        entry = next((e for e, n in zip(results, names, strict=True) if gene.upper() in n), None) or next(
+            (e for e, n in zip(results, synonyms, strict=True) if gene.upper() in n), None
+        )
+        if not entry:
+            missing.append(gene)
+        elif all(e["primaryAccession"] != entry["primaryAccession"] for _, e in found):
+            found.append((gene, entry))
+    if not found:
+        raise ToolError(f"No reviewed UniProtKB entry for {', '.join(genes)} in organism {organism_id}")
+    return found, missing
+
+
 def matrix_protein(e: dict[str, Any], terms: dict[str, Term]) -> MatrixProtein:
     """GO terms, keywords (except technical ones) and Reactome pathways of an entry, added to `terms`"""
     annotations: dict[str, int] = {}
@@ -617,8 +758,7 @@ def matrix_protein(e: dict[str, Any], terms: dict[str, Term]) -> MatrixProtein:
         if k["category"] not in ("Technical term", "Coding sequence diversity"):
             terms[k["id"]] = Term(id=k["id"], name=k["name"], type="Keyword")
             annotations[k["id"]] = 3
-    gene = next((g["geneName"]["value"] for g in e.get("genes", []) if "geneName" in g), e["primaryAccession"])
-    return MatrixProtein(accession=e["primaryAccession"], gene=gene, name=protein_name(e), terms=annotations)
+    return MatrixProtein(accession=e["primaryAccession"], gene=gene_name(e), name=protein_name(e), terms=annotations)
 
 
 @apps.tool(resource_uri="ui://uniprot/matrix.html")
@@ -626,39 +766,11 @@ async def show_annotation_matrix(genes: list[str], organism_id: int = 9606) -> C
     """Show a heatmap of the reviewed UniProtKB entries of a gene list (e.g. ["TP53", "MDM2", "CDKN1A"]) by their
     GO terms, keywords or Reactome pathways to the user, for a quick functional overview of the list.
     `organism_id` is the NCBI taxonomy ID, human by default"""
-    genes = list(dict.fromkeys(g.strip() for g in genes if g.strip()))[:100]
-    if not genes:
-        raise ValueError("No gene given")
-    query = f"({' OR '.join(f'gene_exact:{g}' for g in genes)}) AND organism_id:{organism_id} AND reviewed:true"
-    params = {
-        "query": query,
-        "size": 500,
-        "fields": "accession,gene_primary,protein_name,organism_name,go,keyword,xref_reactome",
-    }
     async with http_client() as client:
-        res = await get(client, f"{UNIPROT_API}/search", params)
-    if res.status_code == 400:
-        raise ValueError(f"Invalid gene list: {', '.join(res.json().get('messages', []))}")
-    res.raise_for_status()
-    results = res.json()["results"]
-
-    # One entry per gene, the one with it as primary name, else matching a synonym
+        entries, missing = await fetch_genes(client, genes, organism_id, "go,keyword,xref_reactome")
     terms: dict[str, Term] = {}
-    proteins: list[MatrixProtein] = []
-    missing = []
-    for gene in genes:
-        names = [{g["geneName"]["value"].upper() for g in e.get("genes", []) if "geneName" in g} for e in results]
-        synonyms = [{s["value"].upper() for g in e.get("genes", []) for s in g.get("synonyms", [])} for e in results]
-        entry = next((e for e, n in zip(results, names, strict=True) if gene.upper() in n), None) or next(
-            (e for e, n in zip(results, synonyms, strict=True) if gene.upper() in n), None
-        )
-        if entry and all(p["accession"] != entry["primaryAccession"] for p in proteins):
-            proteins.append(matrix_protein(entry, terms))
-        elif not entry:
-            missing.append(gene)
-    if not proteins:
-        raise ValueError(f"No reviewed UniProtKB entry for {', '.join(genes)} in organism {organism_id}")
-    organism = next((e.get("organism", {}).get("scientificName") for e in results), None)
+    proteins = [matrix_protein(e, terms) for _, e in entries]
+    organism = next((e.get("organism", {}).get("scientificName") for _, e in entries), None)
 
     # Summary: terms shared by most proteins, per annotation type
     lines = [f"Shown to the user: annotation matrix of {len(proteins)} {organism} proteins"]
@@ -674,6 +786,397 @@ async def show_annotation_matrix(genes: list[str], organism_id: int = 9606) -> C
         lines.append(f"Most shared, {kind}: {top or 'none'}")
     lines.append("The user can switch annotation types and click terms or proteins to ask about them.")
     return text_result("\n".join(lines), MatrixData(organism=organism, proteins=proteins, terms=terms, missing=missing))
+
+
+NETWORK_FIELDS = "cc_interaction,xref_reactome,keyword"
+
+
+async def fetch_omnipath(
+    client: httpx.AsyncClient, endpoint: str, params: dict[str, Any], organism_id: int
+) -> list[dict[str, Any]]:
+    """OmniPath records between UniProt accessions, complexes excluded"""
+    params = {**params, "organisms": organism_id, "genesymbols": "yes", "format": "json"}
+    res = await get(client, f"{OMNIPATH_API}/{endpoint}", params)
+    res.raise_for_status()
+    keys = ("source", "target") if endpoint == "interactions" else ("enzyme", "substrate")
+    return [r for r in res.json() if all(UNIPROT_ACCESSION.match(r[k]) for k in keys)]
+
+
+def omnipath_url(endpoint: str, sources: list[str], targets: list[str], organism_id: int) -> str:
+    """Human readable (TSV) OmniPath query of the records between sources and targets, with their provenance"""
+    keys = (
+        ("sources", "targets", "source_target")
+        if endpoint == "interactions"
+        else ("enzymes", "substrates", "enzyme_substrate")
+    )
+    params = {
+        keys[0]: ",".join(sources),
+        keys[1]: ",".join(targets),
+        keys[2]: "AND",
+        "organisms": organism_id,
+        "genesymbols": "yes",
+        "fields": "sources,references,curation_effort",
+    }
+    return str(httpx.URL(f"{OMNIPATH_API}/{endpoint}", params=params))
+
+
+def by_resource(refs: str) -> dict[str, list[str]]:
+    """OmniPath references `Resource:PMID;...` grouped by PubMed ID, derived resources `Resource_Origin` merged"""
+    grouped: dict[str, list[str]] = {}
+    for ref in refs.split(";"):
+        resource, _, pmid = ref.partition(":")
+        # PubMed IDs only, as reported by the resources
+        if pmid.isdigit():
+            grouped.setdefault(pmid, [])
+            if resource.split("_")[0] not in grouped[pmid]:
+                grouped[pmid].append(resource.split("_")[0])
+    return grouped
+
+
+def regulation_of(r: dict[str, Any], organism_id: int) -> Regulation:
+    """Directed OmniPath interaction, with its effect and provenance"""
+    stim, inh = r["is_stimulation"], r["is_inhibition"]
+    effect = "mixed" if stim and inh else "activation" if stim else "inhibition" if inh else "unknown"
+    majority = None
+    if effect == "mixed" and r["consensus_stimulation"] != r["consensus_inhibition"]:
+        majority = "activation" if r["consensus_stimulation"] else "inhibition"
+    # Most cited references first
+    refs = sorted(by_resource(r.get("references") or "").items(), key=lambda x: -len(x[1]))
+    return Regulation(
+        source=r["source"],
+        target=r["target"],
+        effect=effect,
+        majority=majority,
+        evidence=int(r.get("curation_effort") or 0),
+        resources=list(dict.fromkeys(s.split("_")[0] for s in r.get("sources", []))),
+        references=[Reference(pubmed=p, resources=res) for p, res in refs[:10]],
+        sites=[],
+        links=[
+            Link(label="OmniPath records", url=omnipath_url("interactions", [r["source"]], [r["target"]], organism_id))
+        ],
+    )
+
+
+def pick_linkers(records: list[dict[str, Any]], listed: set[str], max_linkers: int) -> dict[str, list[str]]:
+    """Proteins not listed with a directed edge from a listed protein and one to another, best supported first,
+    with their best supported path between the 2 listed proteins"""
+    into: dict[str, dict[str, int]] = {}
+    out: dict[str, dict[str, int]] = {}
+    for r in records:
+        if r["source"] in listed and r["target"] not in listed:
+            into.setdefault(r["target"], {})[r["source"]] = r["curation_effort"]
+        elif r["target"] in listed and r["source"] not in listed:
+            out.setdefault(r["source"], {})[r["target"]] = r["curation_effort"]
+    best = {
+        x: max(((min(ea, eb), [a, x, b]) for a, ea in into[x].items() for b, eb in out[x].items() if a != b))
+        for x in into.keys() & out.keys()
+        if any(a != b for a in into[x] for b in out[x])
+    }
+    return {x: best[x][1] for x in sorted(best, key=lambda x: best[x][0], reverse=True)[:max_linkers]}
+
+
+Graph = dict[str, dict[str, int]]
+"""Evidence of the regulations by source and target"""
+
+
+def best_paths(graph: Graph, start: str, end: str, limit: int = 5, max_len: int = 8) -> list[list[str]]:
+    """Simple directed paths from `start` to `end`, the best supported first: highest minimum evidence along the path,
+    then fewest steps. Depth-first search pruning paths that cannot beat the ones found, with a budget of steps"""
+    found: list[tuple[int, int, list[str]]] = []
+    budget = 50000
+
+    def walk(path: list[str], width: int) -> None:
+        nonlocal budget
+        budget -= 1
+        # Pruned when it cannot rank in the `limit` best: weaker, or as weak and not shorter
+        if budget < 0 or len(path) > max_len + 1 or (len(found) >= limit and (-width, len(path)) >= found[-1][:2]):
+            return
+        if path[-1] == end:
+            found.append((-width, len(path), path))
+            found.sort(key=lambda f: f[:2])
+            del found[limit:]
+            return
+        for v, evidence in sorted(graph.get(path[-1], {}).items(), key=lambda x: -x[1]):
+            if v not in path:
+                walk([*path, v], min(width, evidence))
+
+    walk([start], 10**9)
+    return [p for _, _, p in found]
+
+
+def signal_depth(graph: Graph, start: str) -> dict[str, int]:
+    """Steps from `start` to each node reachable from it, along its best supported path (as `best_paths`)"""
+    best = {start: (10**9, 0)}
+    heap = [(-(10**9), 0, start)]
+    while heap:
+        width, steps, u = heapq.heappop(heap)
+        if (-width, steps) != best[u]:
+            continue
+        for v, evidence in graph.get(u, {}).items():
+            cand = (min(-width, evidence), steps + 1)
+            if v not in best or (-cand[0], cand[1]) < (-best[v][0], best[v][1]):
+                best[v] = cand
+                heapq.heappush(heap, (-cand[0], cand[1], v))
+    return {n: steps for n, (_, steps) in best.items()}
+
+
+def feedback_edges(regulations: list[Regulation], graph: Graph, depth: dict[str, int]) -> list[Feedback]:
+    """Edges going back upstream: to a node closer to the source along the best supported paths (`depth` from
+    `signal_depth`), closing a loop. Inhibitions and best supported first"""
+    loops: list[tuple[Regulation, list[str]]] = []
+    for r in regulations:
+        u, v = r["source"], r["target"]
+        if u == v or depth.get(v, 99) >= depth.get(u, 99):
+            continue
+        back = best_paths(graph, v, u, limit=1)
+        if back:
+            loops.append((r, back[0]))
+    rank = {"inhibition": 0, "mixed": 1, "unknown": 2, "activation": 3}
+    loops.sort(key=lambda x: (rank[x[0]["effect"]], -x[0]["evidence"]))
+    return [Feedback(source=r["source"], target=r["target"], loop=loop) for r, loop in loops[:30]]
+
+
+@apps.tool(resource_uri="ui://uniprot/network.html")
+async def show_protein_network(
+    genes: list[str],
+    source: str | None = None,
+    target: str | None = None,
+    organism_id: int = 9606,
+    max_linkers: int = 5,
+) -> CallToolResult:
+    """Show an interactive graph connecting a list of proteins to the user, distinguishing 3 kinds of sourced
+    relationships: directed regulations (activation, inhibition) from OmniPath with their resources, references and
+    modification sites, physical interactions from IntAct (via UniProtKB), and Reactome pathway membership.
+    Shows the best supported directed paths from `source` to `target`, and the feedback loops going back upstream.
+
+    Give official gene symbols, including the expected intermediates, e.g. to connect EGFR to ERK:
+    ["EGFR", "GRB2", "SOS1", "HRAS", "RAF1", "MAP2K1", "MAPK1", "MAPK3"] with source "EGFR" and target "MAPK1".
+    `source` defaults to the first gene. Up to `max_linkers` proteins not listed are added when they connect 2 listed
+    proteins. `organism_id` is the NCBI taxonomy ID: 9606 (human, default), 10090 (mouse) or 10116 (rat)"""
+    genes = [g for g in [source, *genes, target] if g]
+    async with http_client() as client:
+        entries, missing = await fetch_genes(client, genes, organism_id, NETWORK_FIELDS)
+        by_gene = {g.upper(): e["primaryAccession"] for g, e in entries}
+        listed = [e for _, e in entries]
+        accs = [e["primaryAccession"] for e in listed]
+
+        # Directed interactions between the listed proteins, or touching them to find linkers
+        params = {"sources": ",".join(accs), "targets": ",".join(accs), "fields": "sources,references,curation_effort"}
+        if not max_linkers:
+            params["source_target"] = "AND"
+        records = [r for r in await fetch_omnipath(client, "interactions", params, organism_id) if r["is_directed"]]
+        linkers = pick_linkers(records, set(accs), max_linkers) if max_linkers else {}
+        others: list[dict[str, Any]] = []
+        if linkers:
+            query = " OR ".join(f"accession:{a}" for a in linkers)
+            res = await get(client, f"{UNIPROT_API}/search", {"query": query, "fields": NETWORK_FIELDS + ",gene_names"})
+            res.raise_for_status()
+            others = res.json()["results"]
+        nodes = {e["primaryAccession"]: e for e in [*listed, *others]}
+
+        # Modification sites, between enzymes annotated as such
+        params = {"enzymes": ",".join(nodes), "substrates": ",".join(nodes), "enzyme_substrate": "AND"}
+        params["fields"] = "sources,curation_effort"
+        sites = await fetch_omnipath(client, "enz_sub", params, organism_id)
+
+    regulations = [regulation_of(r, organism_id) for r in records if r["source"] in nodes and r["target"] in nodes]
+    regulations.sort(key=lambda r: -r["evidence"])
+    enzymes = {a for a, e in nodes.items() if ENZYME_KEYWORDS & {k["id"] for k in e.get("keywords", [])}}
+    by_pair = {(r["source"], r["target"]): r for r in regulations}
+    for s in sorted(sites, key=lambda s: -(s.get("curation_effort") or 0)):
+        r = by_pair.get((s["enzyme"], s["substrate"]))
+        if r and s["enzyme"] in enzymes and (s.get("curation_effort") or 0) >= 2 and len(r["sites"]) < 6:
+            resources = list(dict.fromkeys(x.split("_")[0] for x in s.get("sources", [])))
+            r["sites"].append(
+                Site(label=f"{s['modification']} {s['residue_type']}{s['residue_offset']}", resources=resources)
+            )
+    for r in regulations:
+        if r["sites"]:
+            url = omnipath_url("enz_sub", [r["source"]], [r["target"]], organism_id)
+            r["links"].append(Link(label="OmniPath sites", url=url))
+
+    # Physical interactions of the entries, between the nodes
+    physical: dict[frozenset[str], PhysicalInteraction] = {}
+    for a, e in nodes.items():
+        for c in e.get("comments", []):
+            for i in c.get("interactions", []):
+                b = i["interactantTwo"].get("uniProtKBAccession", "").split("-")[0]
+                if b in nodes and b != a and frozenset((a, b)) not in physical:
+                    physical[frozenset((a, b))] = PhysicalInteraction(
+                        a=a,
+                        b=b,
+                        experiments=i["numberOfExperiments"],
+                        links=[
+                            Link(label="IntAct evidence (MITAB)", url=f"{INTACT_MIQL}/id:{a}%20AND%20id:{b}"),
+                            Link(
+                                label="UniProtKB interactions",
+                                url=f"https://www.uniprot.org/uniprotkb/{a}/entry#interaction",
+                            ),
+                        ],
+                    )
+
+    # Reactome pathways shared by at least 2 nodes
+    members: dict[str, list[str]] = {}
+    names: dict[str, str] = {}
+    for a, e in nodes.items():
+        for x in e.get("uniProtKBCrossReferences", []):
+            if x["database"] == "Reactome":
+                members.setdefault(x["id"], []).append(a)
+                names[x["id"]] = next((p["value"] for p in x["properties"] if p["key"] == "PathwayName"), x["id"])
+    pathways = [
+        Pathway(
+            id=p,
+            name=names[p],
+            members=m,
+            links=[Link(label="Reactome", url=f"https://reactome.org/content/detail/{p}")],
+        )
+        for p, m in members.items()
+        if len(m) > 1
+    ]
+    pathways.sort(key=lambda p: (-len(p["members"]), p["name"]))
+
+    # Paths from the source to the target, and feedback loops
+    start = by_gene.get((source or genes[0]).upper(), accs[0])
+    end = by_gene.get(target.upper()) if target else None
+    graph: Graph = {}
+    for r in regulations:
+        graph.setdefault(r["source"], {})[r["target"]] = r["evidence"]
+    paths = best_paths(graph, start, end) if end else []
+    depth = signal_depth(graph, start)
+    feedback = feedback_edges(regulations, graph, depth)
+
+    data = NetworkData(
+        organism=next((e.get("organism", {}).get("scientificName") for e in listed), None),
+        source=start,
+        target=end,
+        nodes=[
+            NetworkNode(
+                accession=a,
+                gene=gene_name(e),
+                name=protein_name(e),
+                listed=a in accs,
+                via=linkers.get(a),
+                depth=depth.get(a),
+            )
+            for a, e in nodes.items()
+        ],
+        regulations=regulations,
+        interactions=sorted(physical.values(), key=lambda i: -i["experiments"]),
+        pathways=pathways[:40],
+        paths=paths,
+        feedback=feedback,
+        missing=missing,
+        sources=network_sources(list(nodes), regulations, organism_id),
+    )
+    return text_result(network_text(data), data)
+
+
+def network_sources(accs: list[str], regulations: list[Regulation], organism_id: int) -> list[DataSource]:
+    """Where the data of the network comes from, with the queries of the data used"""
+    resources = Counter(res for r in regulations for res in r["resources"])
+    entries = " OR ".join(f"accession:{a}" for a in accs)
+    return [
+        DataSource(
+            name="UniProtKB",
+            provides="Reviewed protein entries: names, physical interactions (Interaction section) and Reactome "
+            "pathways (cross-references), kinase and phosphatase keywords",
+            url=str(httpx.URL("https://www.uniprot.org/uniprotkb", params={"query": entries})),
+        ),
+        DataSource(
+            name="OmniPath interactions",
+            provides="Directed regulations, combining "
+            f"{len(resources)} resources: {', '.join(r for r, _ in resources.most_common())}",
+            url=omnipath_url("interactions", accs, accs, organism_id),
+        ),
+        DataSource(
+            name="OmniPath enzyme-substrate",
+            provides="Modification sites of the regulations, kept when the enzyme is a kinase or phosphatase in "
+            "UniProtKB",
+            url=omnipath_url("enz_sub", accs, accs, organism_id),
+        ),
+        DataSource(
+            name="IntAct",
+            provides="Physical interactions and their number of experiments, as summarized in UniProtKB",
+            url="https://www.ebi.ac.uk/intact/",
+        ),
+        DataSource(
+            name="Reactome",
+            provides="Pathways shared by at least 2 proteins, from UniProtKB",
+            url="https://reactome.org",
+        ),
+    ]
+
+
+def network_text(data: NetworkData) -> str:
+    """Summary of the network for the model"""
+    gene = {n["accession"]: n["gene"] for n in data["nodes"]}
+    regs = {(r["source"], r["target"]): r for r in data["regulations"]}
+
+    def reg(r: Regulation) -> str:
+        effect = f"{r['effect']}, mostly {r['majority']}" if r["majority"] else r["effect"]
+        sites = f"; {', '.join(s['label'] for s in r['sites'])}" if r["sites"] else ""
+        more = f" +{len(r['resources']) - 4}" if len(r["resources"]) > 4 else ""
+        resources = ", ".join(r["resources"][:4]) + more
+        pmids = ", ".join(ref["pubmed"] for ref in r["references"][:3]) or "none"
+        return (
+            f"{gene[r['source']]} -> {gene[r['target']]} ({effect}; evidence {r['evidence']}{sites}; "
+            f"resources {resources}; PMID {pmids})"
+        )
+
+    def chain(nodes: list[str]) -> str:
+        return " ".join([gene[nodes[0]]] + [f"-{regs[(a, b)]['effect'][:3]}-> {gene[b]}" for a, b in pairwise(nodes)])
+
+    linkers = [
+        f"{n['gene']} ({' -> '.join(gene[a] for a in n['via'] or [])})" for n in data["nodes"] if not n["listed"]
+    ]
+    counts_by_effect = Counter(r["effect"] for r in data["regulations"])
+    lines = [
+        f"Shown to the user: network of {len(data['nodes'])} {data['organism']} proteins"
+        + (
+            f", with linkers added as they connect 2 listed proteins in OmniPath: {', '.join(linkers)}"
+            if linkers
+            else ""
+        ),
+    ]
+    if data["missing"]:
+        lines.append(f"No reviewed entry for: {', '.join(data['missing'])}")
+    lines.append(
+        f"Directed regulations from OmniPath ({len(data['regulations'])}: "
+        f"{', '.join(f'{n} {k}' for k, n in counts_by_effect.most_common())}), evidence is the number of "
+        "resource and reference pairs, mixed when both activation and inhibition are reported:"
+    )
+    lines += [f"- {reg(r)}" for r in data["regulations"][:60]]
+    if len(data["regulations"]) > 60:
+        lines.append(f"- +{len(data['regulations']) - 60} less supported")
+    if data["target"]:
+        found = "; ".join(chain(p) for p in data["paths"]) or "none"
+        lines.append(
+            f"Best supported directed paths (highest minimum evidence, then shortest) {gene[data['source']]} to {gene[data['target']]}: {found}"
+        )
+    lines.append(f"Feedback, edges going back upstream of {gene[data['source']]} and the loop they close:")
+    lines += [
+        f"- {reg(regs[(f['source'], f['target'])])}, loop: {chain([*f['loop'], f['target']])}"
+        for f in data["feedback"][:15]
+    ] or ["- none"]
+    physical = "; ".join(
+        f"{gene[i['a']]} - {gene[i['b']]} ({i['experiments']} experiments)" for i in data["interactions"][:40]
+    )
+    lines.append(f"Physical interactions from IntAct, via UniProtKB: {physical or 'none'}")
+    shared = "; ".join(
+        f"{p['name']} ({p['id']}): {', '.join(gene[m] for m in p['members'])}" for p in data["pathways"][:12]
+    )
+    lines.append(f"Reactome pathways shared, from UniProtKB cross-references: {shared or 'none'}")
+    lines.append("Sources, with the queries of the data used:")
+    lines += [f"- {s['name']}: {s['provides']} ({s['url']})" for s in data["sources"]]
+    lines.append(
+        "Paths, feedback loops, linkers and the mixed effect are computed by this tool from the OmniPath "
+        "regulations, cite the resources and PubMed IDs of their edges"
+    )
+    lines.append(
+        "The user can toggle the 3 kinds of relationships, filter by evidence, and click proteins, edges, paths "
+        "or loops to highlight them and ask about them."
+    )
+    return "\n".join(lines)
 
 
 def widget_html(name: str) -> str:
@@ -712,3 +1215,9 @@ apps.add_html_resource(
     csp=ResourceCsp(resource_domains=[CDN]),
 )
 apps.add_html_resource("ui://uniprot/matrix.html", widget_html("matrix.html"), title="UniProt annotation matrix")
+apps.add_html_resource(
+    "ui://uniprot/network.html",
+    widget_html("network.html"),
+    title="Protein pathway and interaction network",
+    csp=ResourceCsp(resource_domains=[CDN]),
+)

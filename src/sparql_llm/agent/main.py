@@ -19,7 +19,9 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from langchain_core.runnables import RunnableConfig
+from mcp.server.streamable_http_manager import StreamableHTTPASGIApp
 from pydantic import BaseModel
+from starlette.routing import Route
 
 from sparql_llm.agent.graph import graph
 from sparql_llm.agent.logs import UsageTracker, log_conversation
@@ -58,17 +60,11 @@ such as SPARQL endpoints, to get information about proteins, genes, and other bi
     lifespan=lifespan,
 )
 
-# Mounted at /mcp: the MCP app serves at its root, stateless with plain JSON responses
-app.mount(
-    "/mcp",
-    mcp.streamable_http_app(
-        streamable_http_path="/",
-        stateless_http=True,
-        json_response=True,
-        transport_security=get_transport_security(),
-    ),
-    name="mcp",
-)
+# Serve MCP (stateless, plain JSON) on both /mcp and /mcp/ to avoid the trailing slash redirect,
+# which uvicorn builds with http:// behind the HTTPS proxy
+mcp.streamable_http_app(stateless_http=True, json_response=True, transport_security=get_transport_security())
+mcp_endpoint = StreamableHTTPASGIApp(mcp.session_manager)
+app.router.routes += [Route("/mcp", mcp_endpoint), Route("/mcp/", mcp_endpoint)]
 
 
 app.add_middleware(
