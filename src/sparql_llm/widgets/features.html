@@ -118,13 +118,6 @@
       let view;
       const hidden = new Set();
 
-      /** Residues displayed for a region: padded, and at least 30 residues wide to read the sequence */
-      function windowOf({ start, end }) {
-        const width = end - start + 1;
-        const pad = Math.max(5, Math.ceil(width * 0.1), Math.ceil((30 - width) / 2));
-        return [Math.max(1, start - pad), Math.min(entry.length, end + pad)];
-      }
-
       /** Displayed range, and buttons to go back to the region given or to the whole sequence */
       function showRange() {
         const [start, end] = view;
@@ -134,7 +127,7 @@
         $("range").innerHTML = whole ? "Whole sequence" : `Residues <b>${label}</b> of ${entry.length}`;
         $("zoom-all").hidden = whole;
         const z = entry.zoom;
-        $("zoom-region").hidden = !z || (start === windowOf(z)[0] && end === windowOf(z)[1]);
+        $("zoom-region").hidden = !z || (start === regionWindow(z, entry.length)[0] && end === regionWindow(z, entry.length)[1]);
         if (z) $("zoom-region").textContent = `Zoom on ${z.start === z.end ? z.start : `${z.start}-${z.end}`}`;
       }
 
@@ -278,7 +271,7 @@
         if (feature) select(entry.features[Number(feature.accession)]);
       });
       $("zoom-all").onclick = () => zoomTo([1, entry.length]);
-      $("zoom-region").onclick = () => zoomTo(windowOf(entry.zoom));
+      $("zoom-region").onclick = () => zoomTo(regionWindow(entry.zoom, entry.length));
 
       /** Feature hit box closest to the point within `snap` px, ignoring parts hidden by the margins */
       function nearestFeature(track, x, y, snap = 6) {
@@ -321,7 +314,7 @@
           `${entry.accession} · ${entry.organism} · ${entry.length} aa · ${entry.features.length} features`;
         $("link").onclick = () =>
           mcpApp.openLink(`https://www.uniprot.org/uniprotkb/${entry.accession}/feature-viewer`);
-        view = entry.zoom ? windowOf(entry.zoom) : [1, entry.length];
+        view = entry.zoom ? regionWindow(entry.zoom, entry.length) : [1, entry.length];
         renderChips();
         render();
         showRange();

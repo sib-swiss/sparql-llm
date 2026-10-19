@@ -177,7 +177,7 @@ def get_mcp_app(enable_resources_info_tool: bool = True, enable_uniprot_tools: b
     # Create MCP server https://github.com/modelcontextprotocol/python-sdk
     # UniProt tools showing widgets are added through the MCP Apps extension
     mcp = MCPServer(
-        f"{settings.app_org} MCP",
+        "Expasy MCP",
         instructions=instructions,
         version=__version__,
         debug=True,

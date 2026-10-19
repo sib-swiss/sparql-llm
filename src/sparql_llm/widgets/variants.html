@@ -152,6 +152,22 @@
       tr.selected {
         background: var(--hover);
       }
+      .hint {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        font-size: 12px;
+        margin: 0 0 6px;
+      }
+      .hint button {
+        padding: 1px 8px;
+        font-size: 12px;
+      }
+      .hint b {
+        color: var(--fg);
+        font-weight: 500;
+      }
     </style>
   </head>
   <body>
@@ -168,6 +184,11 @@
         <div class="toolbar">
           <input id="filter" type="search" placeholder="Filter by change, disease, dbSNP or ClinVar ID" />
           <span class="muted" id="count"></span>
+        </div>
+        <div class="hint muted">
+          <span id="range"></span>
+          <button type="button" id="zoom-region" hidden></button>
+          <button type="button" id="zoom-all" hidden>Whole sequence</button>
         </div>
         <nightingale-manager id="manager"><div id="viewer"></div></nightingale-manager>
         <div class="legend" id="legend"></div>
@@ -205,6 +226,8 @@
       const MAX_ROWS = 300;
       let entry;
       let variation;
+      // Residues displayed, kept when the viewer is rendered again
+      let view;
 
       // Clinical significance classes, the most severe of a variant gives its color
       const CLASSES = [
@@ -300,13 +323,15 @@
         const length = entry.length;
         const common = {
           length,
-          "display-start": 1,
-          "display-end": length,
+          "display-start": view[0],
+          "display-end": view[1],
           "use-ctrl-to-zoom": "",
           "margin-left": 20,
           "margin-right": 20,
           "margin-color": getComputedStyle(document.body).backgroundColor,
         };
+        // Region given to the tool highlighted on all tracks
+        if (entry.zoom) common.highlight = `${entry.zoom.start}:${entry.zoom.end}`;
         const viewer = $("viewer");
         viewer.innerHTML = "";
         viewer.append(row("", el("nightingale-navigation", { ...common, height: 40, "show-highlight": "" })));
@@ -333,10 +358,34 @@
           .join("");
       }
 
+      /** Displayed range, and buttons to go back to the region given or to the whole sequence */
+      function showRange() {
+        const [start, end] = view;
+        const whole = start <= 1 && end >= entry.length;
+        // Positions are fractional while zooming with the mouse
+        const label = `${Math.max(1, Math.round(start))}-${Math.min(entry.length, Math.round(end))}`;
+        $("range").innerHTML = whole ? "Whole sequence" : `Residues <b>${label}</b> of ${entry.length}`;
+        $("zoom-all").hidden = whole;
+        const z = entry.zoom;
+        const [zs, ze] = z ? regionWindow(z, entry.length) : [];
+        $("zoom-region").hidden = !z || (start === zs && end === ze);
+        if (z) $("zoom-region").textContent = `Zoom on ${z.start === z.end ? z.start : `${z.start}-${z.end}`}`;
+      }
+
+      /** Zooms all tracks on the residues given */
+      function zoomTo([start, end]) {
+        view = [start, end];
+        for (const e of $("viewer").querySelectorAll("[length]")) {
+          e.setAttribute("display-start", start);
+          e.setAttribute("display-end", end);
+        }
+        showRange();
+        renderRows();
+      }
+
       function render() {
         renderFacets();
         const list = filtered();
-        $("count").textContent = `${list.length} of ${entry.variants.length}`;
         // A new object, the viewer skips data it already has
         variation.data = {
           sequence: entry.sequence,
@@ -351,7 +400,17 @@
             size: 3,
           })),
         };
-        $("rows").innerHTML = list
+        renderRows();
+      }
+
+      /** Table of the filtered variants in the displayed range, with their count */
+      function renderRows() {
+        const list = filtered();
+        const inView = list.filter((v) => v.end >= view[0] && v.start <= view[1]);
+        const whole = view[0] <= 1 && view[1] >= entry.length;
+        $("count").textContent =
+          (whole ? "" : `${inView.length} in view · `) + `${list.length} of ${entry.variants.length}`;
+        $("rows").innerHTML = inView
           .slice(0, MAX_ROWS)
           .map(
             (v) => `<tr data-i="${entry.variants.indexOf(v)}">
@@ -362,10 +421,10 @@
               <td class="disease" title="${escapeHtml(v.diseases.join("; "))}">${escapeHtml(v.diseases.join("; "))}</td></tr>`,
           )
           .join("");
-        if (list.length > MAX_ROWS)
+        if (inView.length > MAX_ROWS)
           $("rows").insertAdjacentHTML(
             "beforeend",
-            `<tr><td colspan="5" class="muted">${list.length - MAX_ROWS} more, filter to see them</td></tr>`,
+            `<tr><td colspan="5" class="muted">${inView.length - MAX_ROWS} more, filter or zoom to see them</td></tr>`,
           );
       }
 
@@ -411,8 +470,13 @@
         void mcpApp.context(`The user selected the variant ${label} in the variant explorer`);
       }
 
-      // Clicks on variants bubble from the viewer as `change` events
+      // Clicks on variants and zoom changes bubble from the viewer as `change` events
       $("manager").addEventListener("change", (e) => {
+        if (e.detail?.["display-start"] !== undefined) {
+          view = [e.detail["display-start"], e.detail["display-end"]];
+          showRange();
+          return renderRows();
+        }
         const item = e.detail?.eventType === "click" && e.detail.feature;
         if (!item) return;
         if (/^\d+$/.test(item.accession)) return select(entry.variants[Number(item.accession)]);
@@ -431,6 +495,8 @@
         if (url) void mcpApp.openLink(url);
       });
       $("filter").oninput = render;
+      $("zoom-all").onclick = () => zoomTo([1, entry.length]);
+      $("zoom-region").onclick = () => zoomTo(regionWindow(entry.zoom, entry.length));
       $("fullscreen").onclick = () =>
         mcpApp.displayMode(document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen");
       mcpApp.on("hostContext", (ctx) => {
@@ -449,8 +515,10 @@
         $("subtitle").textContent = `${entry.accession} · ${entry.organism} · ${entry.length} aa · ${shown} variants`;
         $("link").onclick = () =>
           mcpApp.openLink(`https://www.uniprot.org/uniprotkb/${entry.accession}/variant-viewer`);
+        view = entry.zoom ? regionWindow(entry.zoom, entry.length) : [1, entry.length];
         renderViewer();
         render();
+        showRange();
       });
       mcpApp.start("UniProt variants");
     </script>

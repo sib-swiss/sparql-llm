@@ -175,6 +175,8 @@ class VariantsData(EntryInfo):
     """Domains, repeats and motifs, to position the variants"""
     variants: list[Variant]
     total: int
+    zoom: Range | None
+    """Residues zoomed on and highlighted when the explorer opens"""
 
 
 class Term(TypedDict):
@@ -468,6 +470,14 @@ def residue_range(start: int | None, end: int | None, length: int | None) -> Ran
     return Range(start=max(1, first), end=min(last, length or last))
 
 
+def range_label(r: Range) -> str:
+    return f"residue {r['start']}" if r["start"] == r["end"] else f"residues {r['start']}-{r['end']}"
+
+
+def in_range(v: Variant | Feature, r: Range | None) -> bool:
+    return r is not None and v["start"] <= r["end"] and v["end"] >= r["start"]
+
+
 @apps.tool(resource_uri="ui://uniprot/features.html")
 async def show_protein_features(accession: str, start: int | None = None, end: int | None = None) -> CallToolResult:
     """Show the sequence features of a UniProtKB entry (e.g. P31749) to the user in an interactive track viewer,
@@ -481,12 +491,8 @@ async def show_protein_features(accession: str, start: int | None = None, end: i
     text = f"Shown to the user: {len(features)} features of {entry_title(info)}"
     if zoom:
         # Features overlapping the region first, the chain spans the whole sequence
-        region = (
-            f"residue {zoom['start']}" if zoom["start"] == zoom["end"] else f"residues {zoom['start']}-{zoom['end']}"
-        )
-        inside = [
-            f for f in features if f["start"] <= zoom["end"] and f["end"] >= zoom["start"] and f["type"] != "Chain"
-        ]
+        region = range_label(zoom)
+        inside = [f for f in features if in_range(f, zoom) and f["type"] != "Chain"]
         text += (
             f"\nZoomed on {region}, highlighted, with {len(inside)} features overlapping "
             f"them:\n{features_text(inside) or '- none'}\nAll features:"
@@ -703,14 +709,20 @@ def variant_rank(v: Variant) -> tuple[bool, ...]:
 
 
 @apps.tool(resource_uri="ui://uniprot/variants.html")
-async def show_protein_variants(accession: str) -> CallToolResult:
+async def show_protein_variants(accession: str, start: int | None = None, end: int | None = None) -> CallToolResult:
     """Show the disease and natural variants of a UniProtKB entry (e.g. P04637) to the user in an interactive
     explorer: variants positioned on the sequence next to domains, filterable by consequence, clinical significance,
-    evidence and disease, with links to ClinVar, dbSNP and publications"""
+    evidence and disease, with links to ClinVar, dbSNP and publications.
+    To focus on a region, give its UniProt residue positions in `start` and `end` (e.g. 102 and 234 for a domain, or
+    only `start` for a single residue): the explorer opens zoomed on it, with the region highlighted"""
     async with http_client() as client:
         e, raw = await asyncio.gather(fetch_entry(client, accession), fetch_variants(client, accession))
     info = entry_info(e)
-    variants = sorted((variant_of(v) for v in raw), key=variant_rank, reverse=True)[:MAX_VARIANTS]
+    zoom = residue_range(start, end, info["length"])
+    # Variants of the region kept first when there are too many to send
+    variants = sorted((variant_of(v) for v in raw), key=lambda v: (in_range(v, zoom), *variant_rank(v)), reverse=True)[
+        :MAX_VARIANTS
+    ]
     variants.sort(key=lambda v: v["start"])
     domains = [f for f in features_of(e) if f["type"] in ("Domain", "Repeat", "Zinc finger", "DNA binding", "Motif")]
 
@@ -731,7 +743,21 @@ async def show_protein_variants(accession: str) -> CallToolResult:
             "The user can filter the variants and click them for details and links to ClinVar and dbSNP.",
         ]
     )
-    return text_result(text, VariantsData(**info, features=domains, variants=variants, total=len(raw)))
+    if zoom:
+        # Variants of the region, the most documented first
+        inside = sorted((v for v in variants if in_range(v, zoom)), key=variant_rank, reverse=True)
+        listed = "; ".join(
+            f"{v['change']} ({', '.join(v['significance']) or 'no significance'}"
+            + (f", {', '.join(v['diseases'][:2])}" if v["diseases"] else "")
+            + ")"
+            for v in inside[:30]
+        )
+        text += (
+            f"\nZoomed on {range_label(zoom)}, highlighted, with {len(inside)} variants in it"
+            + (f", the most documented: {listed}" if listed else "")
+            + f"\nClinical significance in it: {counts([s for v in inside for s in v['significance']]) or 'none'}"
+        )
+    return text_result(text, VariantsData(**info, features=domains, variants=variants, total=len(raw), zoom=zoom))
 
 
 def go_level(evidence_type: str) -> int:

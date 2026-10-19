@@ -58,8 +58,10 @@ elif [ "$1" = "import-entities-index" ]; then
     # scp -r adsicore:/mnt/scratch/sparql-llm/data/qdrant/collections/entities expasychatpodman:/var/containers/podman/sparql-llm/data/qdrant/collections/entities
     # zip -r data/entities.zip data/qdrant/collections/entities
 
-elif [ "$1" = "likes" ]; then
+elif [ "$1" = "ddl-logs" ]; then
     mkdir -p data/prod
+    scp expasychat:/var/containers/podman/sparql-llm/data/logs/mcp_logs.jsonl ./data/prod/
+    scp expasychat:/var/containers/podman/sparql-llm/data/logs/requests.jsonl ./data/prod/
     scp expasychat:/var/containers/podman/sparql-llm/data/logs/likes.jsonl ./data/prod/
     scp expasychat:/var/containers/podman/sparql-llm/data/logs/dislikes.jsonl ./data/prod/
     scp expasychat:/var/containers/podman/sparql-llm/data/logs/user_questions.log ./data/prod/

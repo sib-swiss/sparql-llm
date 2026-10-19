@@ -34,6 +34,12 @@ const FEATURE_COLORS = {
 };
 const featureColor = (f) => FEATURE_COLORS[f.type] ?? "#888888";
 const featurePos = (f) => (f.start === f.end ? `${f.start}` : `${f.start}-${f.end}`);
+/** Residues displayed to zoom on a region: padded, and at least 30 residues wide to read the sequence */
+const regionWindow = ({ start, end }, length) => {
+  const width = end - start + 1;
+  const pad = Math.max(5, Math.ceil(width * 0.1), Math.ceil((30 - width) / 2));
+  return [Math.max(1, start - pad), Math.min(length, end + pad)];
+};
 /** Short label, e.g. "E17K" or "150-408 Protein kinase" */
 const featureLabel = (f) => [f.change ?? featurePos(f), f.description.split(";")[0]].filter(Boolean).join(" ");
 /** Evidence URLs by source, persistent ones when the source has them (DOI, PURL, identifiers.org) */
