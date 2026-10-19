@@ -277,7 +277,8 @@
       $("fullscreen").onclick = () =>
         mcpApp.displayMode(document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen");
       mcpApp.on("hostContext", (ctx) => {
-        $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";
+        $("fullscreen").textContent =
+          document.documentElement.dataset.mode === "fullscreen" ? "Exit full screen" : "Full screen";
         if (rendered && ctx.theme) void viewer.canvas.setBgColor(options().bgColor);
       });
 

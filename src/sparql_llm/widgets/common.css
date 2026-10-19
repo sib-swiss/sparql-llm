@@ -81,3 +81,8 @@ button:disabled {
 .error {
   color: #cf222e;
 }
+
+/* Host without full screen */
+:root[data-inline-only] #fullscreen {
+  display: none;
+}

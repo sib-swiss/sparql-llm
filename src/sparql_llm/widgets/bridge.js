@@ -19,6 +19,10 @@ const mcpApp = (() => {
   // Theme and display mode of the host, as attributes on <html> for the CSS
   const setHostContext = (ctx = {}) => {
     if (ctx.theme) document.documentElement.dataset.theme = ctx.theme;
+    // Full screen buttons hidden when the host does not offer it
+    if (ctx.availableDisplayModes) {
+      document.documentElement.toggleAttribute("data-inline-only", !ctx.availableDisplayModes.includes("fullscreen"));
+    }
     if (ctx.displayMode && ctx.displayMode !== document.documentElement.dataset.mode) {
       document.documentElement.dataset.mode = ctx.displayMode;
       // Back inline: size sent again once laid out, the host may have kept another one
@@ -86,6 +90,8 @@ const mcpApp = (() => {
     /** Tells the model what the user sees or selected, sent with the next message */
     context: (text) => request("ui/update-model-context", { content: [{ type: "text", text }] }),
     openLink: (url) => request("ui/open-link", { url }),
-    displayMode: (mode) => request("ui/request-display-mode", { mode }),
+    /** Requests a display mode, the mode set is in the answer of the host, which may not send a context change */
+    displayMode: (mode) =>
+      request("ui/request-display-mode", { mode }).then((r) => r?.mode && setHostContext({ displayMode: r.mode })),
   };
 })();
