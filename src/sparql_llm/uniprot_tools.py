@@ -12,10 +12,10 @@ import asyncio
 import heapq
 import re
 from collections import Counter
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from itertools import pairwise
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any
 
 import httpx
 from mcp.server.apps import Apps, ResourceCsp
@@ -67,12 +67,6 @@ ENZYME_KEYWORDS = {"KW-0418", "KW-0904"}  # Kinase, Protein phosphatase
 UNIPROT_ACCESSION = re.compile(r"^[OPQ]\d[A-Z\d]{3}\d$|^[A-NR-Z]\d([A-Z][A-Z\d]{2}\d){1,2}$")
 
 apps = Apps()
-_ToolFn = TypeVar("_ToolFn", bound=Callable[..., Any])
-
-
-def app_tool(resource_uri: str) -> Callable[[_ToolFn], _ToolFn]:
-    """Tool showing a widget, also with the flat `ui/resourceUri` meta key set by the official MCP Apps SDK"""
-    return apps.tool(resource_uri=resource_uri, meta={"ui/resourceUri": resource_uri})
 
 
 # Data sent to the widgets in `structuredContent`, as read by `widgets/*.html`
@@ -484,7 +478,7 @@ def in_range(v: Variant | Feature, r: Range | None) -> bool:
     return r is not None and v["start"] <= r["end"] and v["end"] >= r["start"]
 
 
-@app_tool("ui://uniprot/features.html")
+@apps.tool(resource_uri="ui://uniprot/features.html")
 async def show_protein_features(accession: str, start: int | None = None, end: int | None = None) -> CallToolResult:
     """Show the sequence features of a UniProtKB entry (e.g. P31749) to the user in an interactive track viewer,
     zoomable along the sequence: domains, sites, PTMs, signal peptides, topology, secondary structure and variants.
@@ -549,7 +543,7 @@ def pdb_entries(e: dict[str, Any]) -> list[PdbEntry]:
     return sorted(entries, key=lambda p: p["resolution"] or 99)
 
 
-@app_tool("ui://uniprot/structure.html")
+@apps.tool(resource_uri="ui://uniprot/structure.html")
 async def show_protein_structure(
     accession: str, pdb_id: str | None = None, positions: list[int] | None = None
 ) -> CallToolResult:
@@ -617,7 +611,7 @@ def counts(values: list[Any], top: int = 8) -> str:
     return ", ".join(f"{k}: {n}" for k, n in Counter(values).most_common(top))
 
 
-@app_tool("ui://uniprot/table.html")
+@apps.tool(resource_uri="ui://uniprot/table.html")
 async def search_proteins_table(query: str, max_rows: int = 1000) -> CallToolResult:
     """Search UniProtKB and show all results to the user in a sortable table, with facets for reviewed status,
     organism and annotation score. Only a summary is returned: the user can select rows in the table and send them back
@@ -714,7 +708,7 @@ def variant_rank(v: Variant) -> tuple[bool, ...]:
     return ("UniProt" in v["evidence"], pathogenic, bool(v["significance"]), bool(v["diseases"]), bool(v["dbsnp"]))
 
 
-@app_tool("ui://uniprot/variants.html")
+@apps.tool(resource_uri="ui://uniprot/variants.html")
 async def show_protein_variants(accession: str, start: int | None = None, end: int | None = None) -> CallToolResult:
     """Show the disease and natural variants of a UniProtKB entry (e.g. P04637) to the user in an interactive
     explorer: variants positioned on the sequence next to domains, filterable by consequence, clinical significance,
@@ -829,7 +823,7 @@ def matrix_protein(e: dict[str, Any], terms: dict[str, Term]) -> MatrixProtein:
     return MatrixProtein(accession=e["primaryAccession"], gene=gene_name(e), name=protein_name(e), terms=annotations)
 
 
-@app_tool("ui://uniprot/matrix.html")
+@apps.tool(resource_uri="ui://uniprot/matrix.html")
 async def show_annotation_matrix(genes: list[str], organism_id: int = 9606) -> CallToolResult:
     """Show a heatmap of the reviewed UniProtKB entries of a gene list (e.g. ["TP53", "MDM2", "CDKN1A"]) by their
     GO terms, keywords or Reactome pathways to the user, for a quick functional overview of the list.
@@ -1004,7 +998,7 @@ def feedback_edges(regulations: list[Regulation], graph: Graph, depth: dict[str,
     return [Feedback(source=r["source"], target=r["target"], loop=loop) for r, loop in loops[:30]]
 
 
-@app_tool("ui://uniprot/network.html")
+@apps.tool(resource_uri="ui://uniprot/network.html")
 async def show_protein_network(
     genes: list[str],
     source: str | None = None,
