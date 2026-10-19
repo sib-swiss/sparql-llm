@@ -34,6 +34,8 @@ const mcpApp = (() => {
 
   addEventListener("message", ({ source, data: m }) => {
     if (source !== parent || !m || m.jsonrpc !== "2.0") return;
+    // Messages from the host, shown in the developer tools console with the Verbose level
+    console.debug("[mcp-app]", m.method ?? `response ${m.id}`, m.params ?? m.result ?? m.error);
     // Response to a request of the app
     if (m.id !== undefined && !m.method) {
       const p = pending[m.id];
