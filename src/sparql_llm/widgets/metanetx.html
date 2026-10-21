@@ -1,0 +1,632 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      [hidden] {
+        display: none !important;
+      }
+      .badge {
+        font-size: 11px;
+        padding: 1px 7px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--muted);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+        gap: 10px;
+      }
+      @media (max-width: 640px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      h2 {
+        font-size: 13px;
+        font-weight: 600;
+        margin: 10px 0 4px;
+      }
+      /* Depictions are drawn on white, also in dark mode */
+      .structure {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        display: flex;
+        justify-content: center;
+      }
+      .structure img {
+        width: 100%;
+        max-width: 220px;
+        aspect-ratio: 1;
+      }
+      .props td {
+        padding: 1px 8px 1px 0;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+      }
+      .props td:first-child {
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      #participants {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 4px;
+        background: #fff;
+        color: #1f2328;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px;
+        margin-bottom: 6px;
+      }
+      .mol-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 130px;
+        padding: 4px;
+        border: 2px solid transparent;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: center;
+        font-size: 12px;
+      }
+      .mol-card:hover,
+      .mol-card.selected {
+        border-color: #0969da;
+      }
+      .mol-card img,
+      .mol-card .noimg {
+        width: 110px;
+        height: 110px;
+      }
+      .mol-card .noimg {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #656d76;
+      }
+      .mol-card .comp {
+        color: #656d76;
+        font-size: 11px;
+      }
+      .op {
+        font-size: 22px;
+        color: #656d76;
+      }
+      .graph-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 4px;
+      }
+      .graph-bar label {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      #graph {
+        height: 340px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      :root[data-mode="fullscreen"] #graph {
+        height: calc(100vh - 420px);
+        min-height: 340px;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .legend span {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .legend i {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .chips a {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0 7px;
+        font-size: 12px;
+      }
+      .list-head {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .list-head input {
+        flex: 1;
+        max-width: 220px;
+      }
+      .list {
+        max-height: 240px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      :root[data-mode="fullscreen"] .list {
+        max-height: 40vh;
+      }
+      table.rows {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 12px;
+      }
+      table.rows td,
+      table.rows th {
+        padding: 2px 8px;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 360px;
+      }
+      table.rows th {
+        position: sticky;
+        top: 0;
+        background: var(--panel);
+        color: var(--muted);
+        font-weight: 500;
+      }
+      table.rows tbody tr {
+        cursor: pointer;
+      }
+      table.rows tbody tr:hover,
+      table.rows tr.selected {
+        background: var(--hover);
+      }
+      .details {
+        margin-top: 10px;
+        padding: 8px 10px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        min-height: 38px;
+        overflow-wrap: anywhere;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Loading MetaNetX</h1>
+      <span id="badges"></span>
+      <span class="spacer"></span>
+      <button type="button" id="fullscreen">Full screen</button>
+    </header>
+    <div id="participants" hidden></div>
+    <div class="grid">
+      <div id="summary"></div>
+      <div>
+        <div class="graph-bar">
+          <b>Identifiers in other databases</b>
+          <span class="spacer"></span>
+          <select id="db" aria-label="Database"></select>
+          <label><input id="obsolete" type="checkbox" /> Obsolete</label>
+        </div>
+        <div id="graph"></div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+    <div id="lists"></div>
+    <div class="details muted" id="details">Click an identifier, a participant, a reaction or a model for details</div>
+
+    <script src="colors.js"></script>
+    <script src="viewers.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.33.1/dist/cytoscape.min.js"></script>
+    <script type="module">
+      import {
+        App,
+        applyDocumentTheme,
+      } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@2.0.3/dist/src/app-with-deps.js";
+
+      // Connection to the host with the MCP Apps SDK
+      const app = new App({ name: "MetaNetX", version: "0.0.1" }, { availableDisplayModes: ["inline", "fullscreen"] });
+      const sendMessage = (text) => app.sendMessage({ role: "user", content: [{ type: "text", text }] });
+      const updateContext = (text) => app.updateModelContext({ content: [{ type: "text", text }] });
+
+      const $ = (id) => document.getElementById(id);
+      // Reconciliation of each identifier, from its InChIKey compared with the MetaNetX one
+      const STATUS = {
+        "identical structure": ["#2da44e", "Same structure as in MetaNetX"],
+        "other protonation": [
+          "#54aeff",
+          "Same molecule in another protonation state, MetaNetX uses the major one at pH 7.3",
+        ],
+        "other stereo": ["#bf8700", "Same skeleton, with other stereochemistry or isotopes"],
+        "different structure": ["#cf222e", "Different structure, reconciled by name or by the source database"],
+        "no structure": ["#8c959f", "No structure in the source database, reconciled by name or cross-references"],
+        obsolete: ["#d0d7de", "Secondary, deprecated or model-specific identifier mapped to this entity"],
+        reaction: ["#0969da", "Reaction identifier"],
+      };
+      const mnxUrl = (id) => `https://www.metanetx.org/${id.startsWith("MNXR") ? "equa" : "chem"}_info/${id}`;
+      let data;
+      let cy;
+      let selected = null;
+
+      const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      const chip = (label, attrs) => `<a ${attrs}>${escapeHtml(label)}</a>`;
+      const lipid = () => data.xrefs.some((x) => x.db === "SwissLipids" || x.db === "LIPID MAPS");
+
+      /** Graph of the identifiers: the MetaNetX entity, its databases, and their identifiers */
+      function renderGraph() {
+        const db = $("db").value;
+        const xrefs = data.xrefs.filter(
+          (x) => (!db || x.db === db) && ($("obsolete").checked || x.status !== "obsolete"),
+        );
+        const dbs = [...new Set(xrefs.map((x) => x.db))];
+        const elements = [
+          { data: { id: "mnx", label: data.id, kind: "mnx" } },
+          ...dbs.flatMap((d) => [
+            { data: { id: `db:${d}`, label: `${d} (${xrefs.filter((x) => x.db === d).length})`, kind: "db" } },
+            { data: { source: "mnx", target: `db:${d}` } },
+          ]),
+          ...xrefs.flatMap((x) => {
+            const i = data.xrefs.indexOf(x);
+            const label = x.id.length > 18 ? `${x.id.slice(0, 16)}…` : x.id;
+            return [
+              {
+                data: {
+                  id: `x:${i}`,
+                  label,
+                  kind: "xref",
+                  color: STATUS[x.status][0],
+                  obsolete: x.status === "obsolete",
+                },
+              },
+              { data: { source: `db:${x.db}`, target: `x:${i}` } },
+            ];
+          }),
+        ];
+        cy?.destroy();
+        const fg = css("--fg");
+        cy = cytoscape({
+          container: $("graph"),
+          elements,
+          wheelSensitivity: 0.3,
+          style: [
+            {
+              selector: "node",
+              style: { label: "data(label)", "font-size": 11, color: fg, "text-valign": "bottom", "text-margin-y": 2 },
+            },
+            {
+              selector: "node[kind='mnx']",
+              style: {
+                "background-color": css("--accent"),
+                width: 26,
+                height: 26,
+                "font-size": 12,
+                "font-weight": 600,
+              },
+            },
+            {
+              selector: "node[kind='db']",
+              style: {
+                shape: "round-rectangle",
+                "background-color": css("--panel"),
+                "border-width": 1,
+                "border-color": css("--border"),
+                width: "label",
+                height: 18,
+                padding: 4,
+                "text-valign": "center",
+                "text-margin-y": 0,
+                "font-size": 12,
+              },
+            },
+            { selector: "node[kind='xref']", style: { "background-color": "data(color)", width: 10, height: 10 } },
+            {
+              selector: "node[?obsolete]",
+              style: { "border-width": 1, "border-color": "#8c959f", "border-style": "dashed" },
+            },
+            { selector: "edge", style: { width: 1, "line-color": css("--border"), "curve-style": "straight" } },
+            { selector: "node:selected", style: { "border-width": 3, "border-color": css("--accent") } },
+          ],
+          layout: {
+            name: "cose",
+            animate: false,
+            nodeRepulsion: () => 3500,
+            idealEdgeLength: () => 24,
+            nodeOverlap: 8,
+            padding: 6,
+          },
+        });
+        cy.on("tap", "node[kind='xref']", (e) => selectXref(data.xrefs[Number(e.target.id().slice(2))]));
+        cy.on("tap", "node[kind='db']", (e) => {
+          $("db").value = $("db").value ? "" : e.target.id().slice(3);
+          renderGraph();
+        });
+        const shown = new Set(xrefs.map((x) => x.status));
+        $("legend").innerHTML = Object.entries(STATUS)
+          .filter(([s]) => shown.has(s))
+          .map(([s, [color, tip]]) => `<span title="${escapeHtml(tip)}"><i style="background:${color}"></i>${s}</span>`)
+          .join("");
+      }
+
+      const propsTable = (rows) =>
+        `<table class="props">${rows
+          .filter(([, v]) => v !== null && v !== undefined && v !== "")
+          .map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`)
+          .join("")}</table>`;
+
+      function renderChemical() {
+        const c = data.chemical;
+        $("summary").innerHTML = `
+          <div class="structure">${c.image ? `<img alt="${escapeHtml(c.name)}" src="${c.image}" />` : `<div class="muted" style="padding:40px">No structure</div>`}</div>
+          ${propsTable([
+            ["Formula", escapeHtml(c.formula)],
+            ["Charge", c.charge],
+            ["Mass", c.mass],
+            ["InChIKey", escapeHtml(c.inchikey)],
+            ["SMILES", escapeHtml(c.smiles)],
+            ["Reference", escapeHtml(data.reference)],
+          ])}
+          <div class="actions">${chemicalButtons(data.id, c.name, "metanetx", lipid())}</div>`;
+        const isomers = (rel) => data.isomers.filter((i) => i.relation === rel);
+        const isomerChips = (list) =>
+          list
+            .map((i) =>
+              chip(i.name, `data-prompt="${escapeHtml(`Show ${i.name} (${i.id}) in MetaNetX`)}" title="${i.id}"`),
+            )
+            .join("");
+        $("lists").innerHTML = `
+          ${
+            data.isomers.length
+              ? `<h2>Isomers</h2><div class="chips">${
+                  isomers("parent").length
+                    ? `<span class="muted">Less defined:</span>${isomerChips(isomers("parent"))}`
+                    : ""
+                }${isomers("child").length ? `<span class="muted">More defined:</span>${isomerChips(isomers("child"))}` : ""}</div>`
+              : ""
+          }
+          <div class="list-head"><h2>Reactions (${data.reactions.length} in the most models, of ${data.reactionTotal})</h2>
+            <input id="filter" type="search" placeholder="Filter reactions" /></div>
+          <div class="list"><table class="rows">
+            <thead><tr><th>Reaction</th><th>Equation</th><th>EC</th><th>Rhea</th><th>Models</th></tr></thead>
+            <tbody id="rows"></tbody></table></div>`;
+        $("filter").oninput = renderReactions;
+        renderReactions();
+      }
+
+      function renderReactions() {
+        const text = $("filter").value.toLowerCase();
+        $("rows").innerHTML =
+          data.reactions
+            .filter(
+              (r) =>
+                !text || `${r.id} ${r.equation} ${r.ec.join(" ")} ${r.rhea.join(" ")}`.toLowerCase().includes(text),
+            )
+            .map(
+              (r) => `<tr data-id="${r.id}" class="${selected === r ? "selected" : ""}"><td>${r.id}</td>
+                <td title="${escapeHtml(r.equation)}">${escapeHtml(r.equation)}</td>
+                <td title="${escapeHtml(r.ec.join(", "))}">${escapeHtml(r.ec.slice(0, 3).join(", "))}${r.ec.length > 3 ? "…" : ""}</td>
+                <td>${escapeHtml(r.rhea.slice(0, 2).join(", "))}</td><td>${r.models}</td></tr>`,
+            )
+            .join("") || `<tr><td class="muted" colspan="5">No reaction</td></tr>`;
+      }
+
+      function renderReaction() {
+        const card = (
+          p,
+          i,
+        ) => `<div class="mol-card ${selected === p ? "selected" : ""}" data-i="${i}" title="${escapeHtml(`${p.name} (${p.id})`)}">
+            ${p.image ? `<img alt="${escapeHtml(p.name)}" src="${p.image}" />` : `<div class="noimg">${escapeHtml(p.formula ?? "?")}</div>`}
+            <div>${p.coef !== 1 ? `<b>${p.coef}</b> ` : ""}${escapeHtml(p.name)}</div>
+            <div class="comp">${escapeHtml(p.compartment)}</div></div>`;
+        const side = (s) =>
+          data.participants
+            .map((p, i) => [p, i])
+            .filter(([p]) => p.side === s)
+            .map(([p, i]) => card(p, i))
+            .join(`<span class="op">+</span>`);
+        $("participants").hidden = false;
+        $("participants").innerHTML = `${side("left")}<span class="op">=</span>${side("right")}`;
+        const rhea = data.xrefs.filter((x) => x.db === "Rhea" && x.status !== "obsolete");
+        $("summary").innerHTML = `
+          <div>${escapeHtml(data.name)}</div>
+          ${propsTable([
+            ["EC", data.ec.map((e) => chip(e, `data-url="https://enzyme.expasy.org/EC/${e}"`)).join(" ")],
+            ["Balanced", data.balanced === null ? null : data.balanced ? "yes" : "no"],
+            ["Transport", data.transport === null ? null : data.transport ? "yes" : "no"],
+            ["Reference", escapeHtml(data.reference)],
+            ["Models", data.models.length],
+          ])}
+          <div class="actions">${rhea
+            .slice(0, 4)
+            .map((x) => promptButton(`Rhea ${x.id}`, `Show the Rhea reaction RHEA:${x.id} with its atom map`))
+            .join("")}</div>`;
+        $("lists").innerHTML = `
+          <div class="list-head"><h2>Genome-scale metabolic models (${data.models.length})</h2>
+            <input id="filter" type="search" placeholder="Filter models" /></div>
+          <div class="list"><table class="rows">
+            <thead><tr><th>Model</th><th>Organism</th><th>Reaction in model</th><th>Enzymes</th></tr></thead>
+            <tbody id="rows"></tbody></table></div>`;
+        $("filter").oninput = renderModels;
+        renderModels();
+      }
+
+      function renderModels() {
+        const text = $("filter").value.toLowerCase();
+        $("rows").innerHTML =
+          data.models
+            .filter(
+              (m) => !text || `${m.id} ${m.organism} ${m.reaction} ${m.enzymes.join(" ")}`.toLowerCase().includes(text),
+            )
+            .map(
+              (
+                m,
+              ) => `<tr data-id="${escapeHtml(m.id)}" class="${selected === m ? "selected" : ""}"><td>${escapeHtml(m.id)}</td>
+                <td title="${escapeHtml(m.organism)}">${escapeHtml(m.organism ?? "")}</td><td>${escapeHtml(m.reaction ?? "")}</td>
+                <td title="${escapeHtml(m.enzymes.join(" "))}">${escapeHtml(m.enzymes.slice(0, 4).join(" "))}${m.enzymes.length > 4 ? "…" : ""}</td></tr>`,
+            )
+            .join("") || `<tr><td class="muted" colspan="4">In no model</td></tr>`;
+      }
+
+      function showDetails(html, context) {
+        $("details").classList.remove("muted");
+        $("details").innerHTML = html;
+        void updateContext(context);
+      }
+
+      function selectXref(x) {
+        selected = x;
+        const actions = [];
+        if (x.db === "ChEBI") actions.push(chemicalButtons(`CHEBI:${x.id}`, x.name ?? data.name, "metanetx", lipid()));
+        if (x.db === "Rhea")
+          actions.push(promptButton("Rhea reaction", `Show the Rhea reaction RHEA:${x.id} with its atom map`));
+        showDetails(
+          `<div><b>${escapeHtml(x.db)} ${escapeHtml(x.id)}</b> ${x.url ? `<a data-url="${escapeHtml(x.url)}">open</a>` : ""}
+            ${x.name ? `· ${escapeHtml(x.name)}` : ""}</div>
+          <div><span style="color:${STATUS[x.status][0]}">●</span> ${escapeHtml(x.status)}: ${escapeHtml(STATUS[x.status][1])}</div>
+          ${x.inchikey ? `<div class="muted">InChIKey ${escapeHtml(x.inchikey)}${data.chemical?.inchikey ? ` · MetaNetX ${escapeHtml(data.chemical.inchikey)}` : ""}</div>` : ""}
+          <div class="actions"><button type="button" id="ask">Ask about it</button>${actions.join("")}</div>`,
+          `The user selected the identifier ${x.db} ${x.id} (${x.status}) of the MetaNetX ${data.kind} ${data.id} ${data.name}`,
+        );
+        $("ask").onclick = () =>
+          sendMessage(
+            `Why is ${x.db} ${x.id} mapped to the MetaNetX ${data.kind} ${data.id} (${data.name}), as ${x.status}?`,
+          );
+      }
+
+      function selectRow(id) {
+        if (data.kind === "chemical") {
+          const r = (selected = data.reactions.find((x) => x.id === id));
+          renderReactions();
+          showDetails(
+            `<div><b>${r.id}</b> <a data-url="${mnxUrl(r.id)}">MetaNetX</a> ${escapeHtml(r.equation)}</div>
+            <div class="muted">EC ${escapeHtml(r.ec.join(", ") || "none")} · in ${r.models} models</div>
+            <div class="actions"><button type="button" id="ask">Ask about it</button>
+              ${promptButton("Reaction and models", `Show the MetaNetX reaction ${r.id}`)}
+              ${r.rhea
+                .slice(0, 3)
+                .map((id) => promptButton(`Rhea ${id}`, `Show the Rhea reaction RHEA:${id} with its atom map`))
+                .join("")}</div>`,
+            `The user selected the reaction ${r.id} ${r.equation} of ${data.id} ${data.name} in MetaNetX`,
+          );
+          $("ask").onclick = () =>
+            sendMessage(`What is the role of ${data.name} in the reaction ${r.id}: ${r.equation}?`);
+        } else {
+          const m = (selected = data.models.find((x) => x.id === id));
+          renderModels();
+          const bigg = m.id.startsWith("bigg_")
+            ? `<a data-url="http://bigg.ucsd.edu/models/${m.id.slice(5)}">BiGG</a>`
+            : "";
+          const query = m.enzymes.map((a) => `accession:${a}`).join(" OR ");
+          showDetails(
+            `<div><b>${escapeHtml(m.id)}</b> ${bigg} ${escapeHtml(m.organism ?? "")}
+              ${m.taxId ? `<a data-url="https://www.uniprot.org/taxonomy/${m.taxId}">taxon ${m.taxId}</a>` : ""}</div>
+            <div class="muted">Reaction ${escapeHtml(m.reaction ?? "")} · enzymes ${escapeHtml(m.enzymes.join(" ") || "none")}</div>
+            <div class="actions"><button type="button" id="ask">Ask about it</button>
+              ${m.enzymes.length === 1 ? proteinButtons({ accession: m.enzymes[0] }) : ""}
+              ${m.enzymes.length > 1 ? promptButton("Enzymes in a table", `Search UniProtKB for \`${query}\` in a table`) : ""}</div>`,
+            `The user selected the model ${m.id} (${m.organism}) containing ${data.id} as ${m.reaction}, enzymes ${m.enzymes.join(" ")}`,
+          );
+          $("ask").onclick = () =>
+            sendMessage(
+              `What is the role of the reaction ${data.id} (${data.name}) in the ${m.organism} model ${m.id}?`,
+            );
+        }
+      }
+
+      function selectParticipant(p) {
+        selected = p;
+        renderReaction();
+        showDetails(
+          `<div><b>${escapeHtml(p.name)}</b> <a data-url="${mnxUrl(p.id)}">${p.id}</a>
+            <span class="muted">${p.side === "left" ? "reactant" : "product"} · ${escapeHtml(p.compartment)} ${escapeHtml(p.compartmentName ?? "")}</span></div>
+          <div>${[p.formula && `Formula ${p.formula}`, p.charge !== null && `charge ${p.charge}`, p.mass && `mass ${p.mass}`].filter(Boolean).map(escapeHtml).join(" · ")}</div>
+          ${p.smiles ? `<div class="muted">SMILES ${escapeHtml(p.smiles)}</div>` : ""}
+          <div class="actions"><button type="button" id="ask">Ask about it</button>${chemicalButtons(p.id, p.name, "reaction")}</div>`,
+          `The user selected ${p.name} (${p.id}) in the MetaNetX reaction ${data.id}: ${data.name}`,
+        );
+        $("ask").onclick = () =>
+          sendMessage(`What is the role of ${p.name} (${p.id}) in the reaction ${data.id}: ${data.name}?`);
+      }
+
+      $("participants").addEventListener("click", (e) => {
+        const card = e.target.closest(".mol-card");
+        if (card) selectParticipant(data.participants[Number(card.dataset.i)]);
+      });
+      $("lists").addEventListener("click", (e) => {
+        const tr = e.target.closest("tr[data-id]");
+        if (tr) selectRow(tr.dataset.id);
+      });
+      document.body.addEventListener("click", (e) => {
+        const { url, prompt } = e.target.closest("[data-url], [data-prompt]")?.dataset ?? {};
+        if (url) void app.openLink({ url });
+        if (prompt) void sendMessage(prompt);
+      });
+      $("db").onchange = renderGraph;
+      $("obsolete").onchange = renderGraph;
+      // Theme and display mode of the host as attributes on <html> for the CSS
+      function onContext(ctx) {
+        if (ctx.theme) {
+          applyDocumentTheme(ctx.theme);
+          if (data) renderGraph();
+        }
+        if (ctx.displayMode) {
+          document.documentElement.dataset.mode = ctx.displayMode;
+          $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";
+          cy?.resize();
+          cy?.fit(undefined, 10);
+        }
+      }
+      app.onhostcontextchanged = onContext;
+      // The host answers with the mode set, it may not send a context change
+      $("fullscreen").onclick = async () => {
+        const mode = document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen";
+        onContext({ displayMode: (await app.requestDisplayMode({ mode })).mode });
+      };
+
+      // Tool arguments, to call the tool again when the result has no `structuredContent`, as Claude Desktop
+      // gives to widgets restored after a reload of the chat https://github.com/modelcontextprotocol/ext-apps/issues/696
+      let toolArgs;
+      app.ontoolinput = (params) => (toolArgs = params.arguments);
+      app.ontoolresult = async (result) => {
+        if (!result.structuredContent && !result.isError && toolArgs) {
+          result = await app.callServerTool({ name: "show_metanetx", arguments: toolArgs }).catch(() => result);
+        }
+        data = result.structuredContent;
+        if (!data) return ($("title").textContent = "Not found in MetaNetX");
+        $("title").textContent = data.kind === "chemical" ? `${data.id} ${data.name}` : data.id;
+        $("badges").innerHTML = `<span class="badge">${data.kind}</span> <a data-url="${mnxUrl(data.id)}">MetaNetX</a>`;
+        const dbs = [...new Set(data.xrefs.map((x) => x.db))].sort();
+        $("db").innerHTML =
+          `<option value="">All databases (${dbs.length})</option>${dbs.map((d) => `<option>${escapeHtml(d)}</option>`).join("")}`;
+        // Obsolete identifiers shown when there is nothing else
+        $("obsolete").checked = data.xrefs.every((x) => x.status === "obsolete");
+        if (data.kind === "chemical") renderChemical();
+        else renderReaction();
+        renderGraph();
+      };
+
+      await app.connect();
+      // Full screen button only when the host offers it
+      const host = app.getHostContext() ?? {};
+      $("fullscreen").hidden = Boolean(
+        host.availableDisplayModes && !host.availableDisplayModes.includes("fullscreen"),
+      );
+      onContext(host);
+    </script>
+  </body>
+</html>

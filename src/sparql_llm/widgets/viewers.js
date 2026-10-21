@@ -62,3 +62,17 @@ const termTableButton = (term, organismId) => {
   const query = `${field} AND organism_id:${organismId} AND reviewed:true`;
   return promptButton("All proteins with it", `Search UniProtKB for \`${query}\` (${term.name}) in a table`);
 };
+
+/** Viewers of a chemical, by its ChEBI or MetaNetX ID */
+const CHEMICAL_VIEWERS = {
+  reaction: ["Rhea reactions", (id, name) => `Show the Rhea reactions involving ${name} (${id})`],
+  metanetx: ["MetaNetX", (id, name) => `Show ${name} (${id}) in MetaNetX, with its cross-references`],
+  lipid: ["SwissLipids", (id, name) => `Show the lipid ${name} (${id}) in SwissLipids`],
+};
+
+/** Buttons opening the viewers of a chemical, except the `current` one, SwissLipids only for lipids */
+const chemicalButtons = (id, name, current, lipid = false) =>
+  Object.entries(CHEMICAL_VIEWERS)
+    .filter(([viewer]) => viewer !== current && (viewer !== "lipid" || lipid))
+    .map(([, [label, prompt]]) => promptButton(label, prompt(id, name)))
+    .join("");

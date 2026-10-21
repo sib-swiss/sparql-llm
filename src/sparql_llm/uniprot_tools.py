@@ -304,7 +304,7 @@ def http_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(timeout=TIMEOUT)
 
 
-async def get(client: httpx.AsyncClient, url: str, params: dict[str, Any] | None = None) -> httpx.Response:
+async def get(client: httpx.AsyncClient, url: str, params: Any = None) -> httpx.Response:
     """GET retried on timeouts and server errors, which are transient on the UniProt and AlphaFold APIs"""
     for attempt in range(1, ATTEMPTS + 1):
         try:

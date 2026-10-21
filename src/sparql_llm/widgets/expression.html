@@ -1,0 +1,428 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .toolbar input[type="search"] {
+        flex: 1;
+        min-width: 120px;
+      }
+      .toolbar label {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .scroll {
+        max-height: 460px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      :root[data-mode="fullscreen"] .scroll {
+        max-height: calc(100vh - 210px);
+      }
+      table {
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 12px;
+        width: 100%;
+      }
+      th,
+      td {
+        padding: 0;
+        background: var(--bg);
+      }
+      thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        padding: 6px 4px 4px;
+        font-weight: 500;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      thead th.gene {
+        cursor: pointer;
+        width: 56px;
+        min-width: 56px;
+      }
+      th.cond,
+      td.cond {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        text-align: left;
+        padding: 0 8px;
+        max-width: 340px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        border-right: 1px solid var(--border);
+      }
+      thead th.cond {
+        z-index: 3;
+        color: var(--muted);
+      }
+      td.cond {
+        cursor: pointer;
+      }
+      td.cond .cell-type {
+        color: var(--muted);
+      }
+      td.cell {
+        height: 20px;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+        border: 1px solid var(--bg);
+        border-radius: 3px;
+      }
+      /* Not expressed: hatched */
+      td.cell.absent {
+        color: var(--muted);
+        background: repeating-linear-gradient(
+          45deg,
+          var(--panel),
+          var(--panel) 3px,
+          var(--border) 3px,
+          var(--border) 4px
+        );
+      }
+      td.cell.silver {
+        opacity: 0.75;
+      }
+      tbody tr:hover td.cond,
+      tr.selected td.cond,
+      th.selected {
+        background-color: var(--hover);
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .legend span {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .legend i {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+      }
+      .legend .gradient {
+        width: 120px;
+        height: 10px;
+        border-radius: 3px;
+      }
+      .details {
+        margin-top: 8px;
+        padding: 8px 10px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        min-height: 38px;
+      }
+      .details table {
+        width: auto;
+        margin-top: 4px;
+      }
+      .details td,
+      .details th {
+        background: transparent;
+        padding: 1px 10px 1px 0;
+        text-align: left;
+        font-weight: normal;
+      }
+      .details th {
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Loading expression</h1>
+      <span class="muted" id="subtitle"></span>
+      <span class="spacer"></span>
+      <button type="button" id="fullscreen">Full screen</button>
+    </header>
+    <div class="toolbar">
+      <select id="view" aria-label="Conditions">
+        <option value="calls">Anatomical entities and cell types</option>
+        <option value="systems">Organ systems</option>
+      </select>
+      <input id="filter" type="search" placeholder="Filter anatomical entities" />
+      <select id="type" aria-label="Data type"></select>
+      <select id="sort" aria-label="Sort"></select>
+      <label><input id="gold" type="checkbox" /> Gold only</label>
+      <label><input id="absent" type="checkbox" checked /> Not expressed</label>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead id="head"></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="details muted" id="details">Click an anatomical entity or a gene for details</div>
+
+    <script src="colors.js"></script>
+    <script src="viewers.js"></script>
+    <script type="module">
+      import {
+        App,
+        applyDocumentTheme,
+      } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@2.0.3/dist/src/app-with-deps.js";
+
+      // Connection to the host with the MCP Apps SDK
+      const app = new App(
+        { name: "Bgee gene expression", version: "0.0.1" },
+        { availableDisplayModes: ["inline", "fullscreen"] },
+      );
+      const sendMessage = (text) => app.sendMessage({ role: "user", content: [{ type: "text", text }] });
+      const updateContext = (text) => app.updateModelContext({ content: [{ type: "text", text }] });
+
+      const $ = (id) => document.getElementById(id);
+      const DATA_TYPES = ["RNA-Seq", "single-cell RNA-Seq", "Affymetrix", "in situ hybridization", "EST"];
+      // Viridis stops, as the Bgee expression graph
+      const VIRIDIS = ["#440154", "#3b528b", "#21918c", "#5ec962", "#fde725"];
+      const ontologyUrl = (id) => `http://purl.obolibrary.org/obo/${id.replace(":", "_")}`;
+      let data;
+      let selected = null;
+      let rows = [];
+      // Scores of expressed calls are mostly above 50: the colors span the lowest score shown to 100
+      let minScore = 0;
+
+      /** Viridis color of a score, and a readable text color on it */
+      function scoreColor(score) {
+        const t = Math.max(0, Math.min(1, (score - minScore) / (100 - minScore || 1)));
+        const x = t * (VIRIDIS.length - 1);
+        const i = Math.min(VIRIDIS.length - 2, Math.floor(x));
+        const mix = Math.round((x - i) * 100);
+        return {
+          bg: `color-mix(in srgb, ${VIRIDIS[i + 1]} ${mix}%, ${VIRIDIS[i]})`,
+          fg: t > 0.6 ? "#1f2328" : "#ffffff",
+        };
+      }
+
+      /** Call of a gene in a condition, if it passes the filters */
+      function callOf(gene, key) {
+        const c = gene[$("view").value][key];
+        if (!c) return null;
+        if ($("type").value && !c.dataTypes.includes($("type").value)) return null;
+        if ($("gold").checked && c.quality !== "gold") return null;
+        if (!c.expressed && !$("absent").checked) return null;
+        return c;
+      }
+
+      const condLabel = (c) => (c.cellName ? `${c.anatName} · ${c.cellName}` : c.anatName);
+
+      /** Conditions with a call passing the filters, sorted */
+      function compute() {
+        const text = $("filter").value.toLowerCase();
+        const keys = new Set(data.genes.flatMap((g) => Object.keys(g[$("view").value])));
+        rows = [...keys]
+          .map((key) => ({ key, cond: data.conditions[key], calls: data.genes.map((g) => callOf(g, key)) }))
+          .filter((r) => r.calls.some(Boolean))
+          .filter(
+            (r) => !text || `${condLabel(r.cond)} ${r.cond.anatId} ${r.cond.cellId ?? ""}`.toLowerCase().includes(text),
+          );
+        const sort = $("sort").value;
+        const score = (c) => (c ? (c.expressed ? c.score : -1) : -2);
+        if (sort === "name") rows.sort((a, b) => condLabel(a.cond).localeCompare(condLabel(b.cond)));
+        else if (sort === "max") rows.sort((a, b) => Math.max(...b.calls.map(score)) - Math.max(...a.calls.map(score)));
+        else {
+          const i = Number(sort);
+          rows.sort((a, b) => score(b.calls[i]) - score(a.calls[i]));
+        }
+        const scores = rows.flatMap((r) => r.calls.filter((c) => c?.expressed).map((c) => c.score));
+        minScore = scores.length ? Math.floor(Math.min(...scores) / 10) * 10 : 0;
+      }
+
+      function cellHtml(c, gene, cond) {
+        if (!c) return `<td class="cell" title="${escapeHtml(`${gene.name} · ${condLabel(cond)}: no data`)}"></td>`;
+        const tip = `${gene.name} · ${condLabel(cond)}: ${c.expressed ? `score ${c.score.toFixed(2)}` : "not expressed"}, ${c.quality}, ${c.dataTypes.join(", ")}`;
+        if (!c.expressed) return `<td class="cell absent" title="${escapeHtml(tip)}">-</td>`;
+        const { bg, fg } = scoreColor(c.score);
+        return `<td class="cell ${c.quality}" style="background:${bg};color:${fg}" title="${escapeHtml(tip)}">${Math.round(c.score)}</td>`;
+      }
+
+      function render() {
+        compute();
+        $("head").innerHTML =
+          `<tr><th class="cond">${rows.length} ${$("view").value === "systems" ? "organ systems" : "conditions"}</th>${data.genes
+            .map(
+              (g, i) =>
+                `<th class="gene ${selected?.gene === g ? "selected" : ""}" data-i="${i}" title="${escapeHtml(`${g.name} · ${g.description ?? ""}`)}">${escapeHtml(g.name)}</th>`,
+            )
+            .join("")}</tr>`;
+        $("rows").innerHTML =
+          rows
+            .map(
+              (r) => `<tr class="${selected?.key === r.key ? "selected" : ""}" data-key="${escapeHtml(r.key)}">
+                <td class="cond" title="${escapeHtml(`${condLabel(r.cond)} (${r.key.replace("|", ", ")})`)}">${escapeHtml(r.cond.anatName)}${
+                  r.cond.cellName ? ` <span class="cell-type">· ${escapeHtml(r.cond.cellName)}</span>` : ""
+                }</td>
+                ${r.calls.map((c, i) => cellHtml(c, data.genes[i], r.cond)).join("")}</tr>`,
+            )
+            .join("") ||
+          `<tr><td class="cond muted" colspan="${data.genes.length + 1}">No expression call with these filters</td></tr>`;
+        renderLegend();
+      }
+
+      function select(item) {
+        selected = item;
+        render();
+        $("details").classList.remove("muted");
+        const genes = data.genes.map((g) => g.name);
+        if (item.key) {
+          const cond = data.conditions[item.key];
+          const calls = data.genes.map((g) => [g, g[$("view").value][item.key]]);
+          const links = [[cond.anatId, cond.anatName], ...(cond.cellId ? [[cond.cellId, cond.cellName]] : [])]
+            .map(([id, name]) => `<b>${escapeHtml(name)}</b> <a data-url="${ontologyUrl(id)}">${escapeHtml(id)}</a>`)
+            .join(" · ");
+          $("details").innerHTML = `<div>${links}</div>
+            <table><tr><th>Gene</th><th>Expression score</th><th>FDR</th><th>Quality</th><th>Data types</th></tr>
+            ${calls
+              .map(
+                ([g, c]) =>
+                  `<tr><td>${escapeHtml(g.name)}</td>${
+                    c
+                      ? `<td>${c.expressed ? `${c.score.toFixed(2)}${c.confidence ? ` (${c.confidence} confidence)` : ""}` : "not expressed"}</td>
+                        <td>${escapeHtml(c.fdr ?? "")}</td><td>${escapeHtml(c.quality)}</td><td>${escapeHtml(c.dataTypes.join(", "))}</td>`
+                      : `<td class="muted" colspan="4">no data</td>`
+                  }</tr>`,
+              )
+              .join("")}</table>
+            <div class="actions"><button type="button" id="ask">Ask about it</button></div>`;
+          const label = condLabel(cond);
+          $("ask").onclick = () =>
+            sendMessage(
+              genes.length > 1
+                ? `Why are ${genes.join(", ")} expressed differently in ${label} (${item.key.replace("|", ", ")})?`
+                : `What is the role of ${genes[0]} in ${label} (${item.key.replace("|", ", ")})?`,
+            );
+          void updateContext(
+            `The user selected ${label} (${item.key.replace("|", ", ")}) in the Bgee expression heatmap: ` +
+              calls
+                .map(
+                  ([g, c]) =>
+                    `${g.name} ${c ? (c.expressed ? `score ${c.score.toFixed(1)}` : "not expressed") : "no data"}`,
+                )
+                .join(", "),
+          );
+        } else {
+          const g = item.gene;
+          const top = Object.entries(g.calls)
+            .filter(([, c]) => c.expressed)
+            .sort(([, a], [, b]) => b.score - a.score)
+            .slice(0, 8)
+            .map(([k, c]) => `${condLabel(data.conditions[k])} (${c.score.toFixed(1)})`);
+          const absent = Object.values(g.calls).filter((c) => !c.expressed).length;
+          $("details").innerHTML = `
+            <div><b>${escapeHtml(g.name)}</b> ${escapeHtml(g.description ?? "")}
+              <a data-url="https://www.bgee.org/gene/${g.id}">${g.id}</a></div>
+            <div class="muted">${Object.keys(g.calls).length - absent} expressed · ${absent} not expressed</div>
+            <div>Highest: ${escapeHtml(top.join(", "))}</div>
+            <div class="actions">
+              <button type="button" id="ask">Ask about it</button>
+              ${listButtons([g.name, ...genes.filter((n) => n !== g.name)], data.species.name)}
+            </div>`;
+          $("ask").onclick = () =>
+            sendMessage(`What does the expression pattern of ${g.name} (${g.id}) tell about its function?`);
+          void updateContext(
+            `The user selected ${g.name} (${g.id}) in the Bgee expression heatmap, highest in ${top.join(", ")}`,
+          );
+        }
+      }
+
+      function renderLegend() {
+        const gradient = `linear-gradient(to right, ${VIRIDIS.join(", ")})`;
+        $("legend").innerHTML =
+          `<span>Expression score ${minScore} <i class="gradient" style="background:${gradient}"></i> 100</span>
+          <span><i class="absent" style="background:repeating-linear-gradient(45deg, var(--panel), var(--panel) 3px, var(--border) 3px, var(--border) 4px)"></i>Not expressed</span>
+          <span><i style="border:1px solid var(--border)"></i>No data</span>
+          <span>Faded: silver quality</span>`;
+      }
+
+      $("rows").addEventListener("click", (e) => {
+        const tr = e.target.closest("tr[data-key]");
+        if (tr) select({ key: tr.dataset.key });
+      });
+      $("head").addEventListener("click", (e) => {
+        const th = e.target.closest("th[data-i]");
+        if (th) select({ gene: data.genes[Number(th.dataset.i)] });
+      });
+      $("details").addEventListener("click", (e) => {
+        const { url, prompt } = e.target.closest("[data-url], [data-prompt]")?.dataset ?? {};
+        if (url) void app.openLink({ url });
+        if (prompt) void sendMessage(prompt);
+      });
+      for (const id of ["view", "type", "sort", "gold", "absent"]) $(id).onchange = render;
+      $("filter").oninput = render;
+      // Theme and display mode of the host as attributes on <html> for the CSS
+      function onContext(ctx) {
+        if (ctx.theme) applyDocumentTheme(ctx.theme);
+        if (ctx.displayMode) {
+          document.documentElement.dataset.mode = ctx.displayMode;
+          $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";
+        }
+      }
+      app.onhostcontextchanged = onContext;
+      // The host answers with the mode set, it may not send a context change
+      $("fullscreen").onclick = async () => {
+        const mode = document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen";
+        onContext({ displayMode: (await app.requestDisplayMode({ mode })).mode });
+      };
+
+      // Tool arguments, to call the tool again when the result has no `structuredContent`, as Claude Desktop
+      // gives to widgets restored after a reload of the chat https://github.com/modelcontextprotocol/ext-apps/issues/696
+      let toolArgs;
+      app.ontoolinput = (params) => (toolArgs = params.arguments);
+      app.ontoolresult = async (result) => {
+        if (!result.structuredContent && !result.isError && toolArgs) {
+          result = await app.callServerTool({ name: "show_gene_expression", arguments: toolArgs }).catch(() => result);
+        }
+        data = result.structuredContent;
+        if (!data) return ($("title").textContent = "No expression data");
+        const names = data.genes.map((g) => g.name);
+        $("title").textContent = `Expression of ${names.length > 4 ? `${names.length} genes` : names.join(", ")}`;
+        const missing = data.missing.length ? ` · not found: ${data.missing.join(", ")}` : "";
+        $("subtitle").textContent =
+          `${data.species.name}${data.species.commonName ? ` (${data.species.commonName})` : ""} · Bgee${missing}`;
+        const present = new Set(data.genes.flatMap((g) => Object.values(g.calls).flatMap((c) => c.dataTypes)));
+        $("type").innerHTML = `<option value="">All data types</option>${DATA_TYPES.filter((t) => present.has(t))
+          .map((t) => `<option>${t}</option>`)
+          .join("")}`;
+        $("sort").innerHTML = `<option value="max">Sort by highest score</option>${
+          data.genes.length > 1
+            ? data.genes.map((g, i) => `<option value="${i}">Sort by ${escapeHtml(g.name)}</option>`).join("")
+            : ""
+        }<option value="name">Sort by name</option>`;
+        render();
+      };
+
+      await app.connect();
+      // Full screen button only when the host offers it
+      const host = app.getHostContext() ?? {};
+      $("fullscreen").hidden = Boolean(
+        host.availableDisplayModes && !host.availableDisplayModes.includes("fullscreen"),
+      );
+      onContext(host);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,594 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      [hidden] {
+        display: none !important;
+      }
+      .badge {
+        font-size: 11px;
+        padding: 1px 7px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--muted);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+        gap: 10px;
+      }
+      @media (max-width: 640px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      /* Depictions are drawn on white, also in dark mode */
+      .structure {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        display: flex;
+        justify-content: center;
+        min-height: 60px;
+      }
+      .structure img {
+        max-width: 100%;
+        max-height: 220px;
+        object-fit: contain;
+      }
+      .props td {
+        padding: 1px 8px 1px 0;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+      }
+      .props td:first-child {
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .chips a {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0 7px;
+        font-size: 12px;
+      }
+      #graph {
+        height: 360px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      :root[data-mode="fullscreen"] #graph {
+        height: calc(100vh - 420px);
+        min-height: 360px;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .legend span {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .legend i {
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+      }
+      .tabs {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin: 10px 0 6px;
+      }
+      .tabs button.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .tabs input[type="search"] {
+        flex: 1;
+        min-width: 100px;
+        max-width: 240px;
+      }
+      .tabs label {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .list {
+        max-height: 260px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      :root[data-mode="fullscreen"] .list {
+        max-height: 40vh;
+      }
+      table.rows {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 12px;
+      }
+      table.rows td,
+      table.rows th {
+        padding: 2px 8px;
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 420px;
+      }
+      table.rows th {
+        position: sticky;
+        top: 0;
+        background: var(--panel);
+        color: var(--muted);
+        font-weight: 500;
+      }
+      table.rows tbody tr {
+        cursor: pointer;
+      }
+      table.rows tbody tr:hover,
+      table.rows tr.selected {
+        background: var(--hover);
+      }
+      .details {
+        margin-top: 10px;
+        padding: 8px 10px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        min-height: 38px;
+        overflow-wrap: anywhere;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Loading lipid</h1>
+      <span id="badges"></span>
+      <span class="muted" id="subtitle"></span>
+      <span class="spacer"></span>
+      <button type="button" id="fullscreen">Full screen</button>
+    </header>
+    <div class="grid">
+      <div id="summary"></div>
+      <div>
+        <div id="graph"></div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+    <div class="tabs">
+      <span id="tabs"></span>
+      <span class="spacer"></span>
+      <input id="filter" type="search" placeholder="Filter" />
+      <select id="organism" aria-label="Organism"></select>
+      <label id="inherited-label"><input id="inherited" type="checkbox" checked /> Inherited from classes</label>
+    </div>
+    <div class="list">
+      <table class="rows">
+        <thead id="head"></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="details muted" id="details">
+      Click a lipid in the hierarchy, a reaction, an enzyme or a location for details
+    </div>
+
+    <script src="colors.js"></script>
+    <script src="viewers.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.33.1/dist/cytoscape.min.js"></script>
+    <script type="module">
+      import {
+        App,
+        applyDocumentTheme,
+      } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@2.0.3/dist/src/app-with-deps.js";
+
+      // Connection to the host with the MCP Apps SDK
+      const app = new App(
+        { name: "SwissLipids", version: "0.0.1" },
+        { availableDisplayModes: ["inline", "fullscreen"] },
+      );
+      const sendMessage = (text) => app.sendMessage({ role: "user", content: [{ type: "text", text }] });
+      const updateContext = (text) => app.updateModelContext({ content: [{ type: "text", text }] });
+
+      const $ = (id) => document.getElementById(id);
+      // Levels of the SwissLipids hierarchy, from the most generic
+      const LEVELS = {
+        Category: "#8250df",
+        Class: "#0969da",
+        Species: "#1a7f37",
+        "Molecular subspecies": "#9a6700",
+        "Structural subspecies": "#bc4c00",
+        "Isomeric subspecies": "#cf222e",
+      };
+      const ROOT = "SLM:000389145";
+      const MAX_GRAPH_CHILDREN = 12;
+      const XREF_URLS = {
+        ChEBI: (id) => `https://www.ebi.ac.uk/chebi/CHEBI:${id}`,
+        LipidMaps: (id) => `https://www.lipidmaps.org/databases/lmsd/${id}`,
+        HMDB: (id) => `https://hmdb.ca/metabolites/${id}`,
+        MetaNetX: (id) => `https://www.metanetx.org/chem_info/${id}`,
+      };
+      const lipidUrl = (id) => `https://www.swisslipids.org/#/entity/${id}/`;
+      const ontologyUrl = (id) =>
+        id.startsWith("GO:")
+          ? `https://www.ebi.ac.uk/QuickGO/term/${id}`
+          : `http://purl.obolibrary.org/obo/${id.replace(":", "_")}`;
+      let data;
+      let cy;
+      let tab = "reactions";
+      let selected = null;
+      let enzymes = [];
+
+      const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      const chip = (label, attrs) => `<a ${attrs}>${escapeHtml(label)}</a>`;
+      const short = (s, n = 28) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+      /** ChEBI ID of the lipid, known by Rhea and MetaNetX */
+      const chebiId = () => {
+        const x = data.xrefs.find((x) => x.source === "ChEBI");
+        return x ? `CHEBI:${x.id}` : data.id;
+      };
+
+      /** Hierarchy from the Lipid root to the lipid, and its first children */
+      function renderGraph() {
+        const nodes = new Map(data.lineage.map((n) => [n.id, { ...n, kind: "parent" }]));
+        nodes.set(data.id, { id: data.id, name: data.abbreviation ?? data.name, level: data.level, kind: "self" });
+        const edges = data.edges.map((e) => ({ source: e.parent, target: e.child }));
+        // Children named like the lipid with other chains, e.g. Phosphatidylcholine (16:0_18:1), shown as PC(16:0_18:1)
+        const head = data.abbreviation?.match(/^([A-Za-z-]+)\(/)?.[1];
+        const childLabel = (name) => {
+          const chains = name.match(/^[^(]+ \((.+)\)$/)?.[1];
+          return head && chains ? `${head}(${chains})` : name;
+        };
+        for (const [i, c] of data.children.slice(0, MAX_GRAPH_CHILDREN).entries()) {
+          nodes.set(c.id, { ...c, label: childLabel(c.name), kind: "child", odd: i % 2 === 1 });
+          edges.push({ source: data.id, target: c.id });
+        }
+        if (data.childrenTotal > MAX_GRAPH_CHILDREN) {
+          nodes.set("more", {
+            id: "more",
+            name: `+${data.childrenTotal - MAX_GRAPH_CHILDREN} more`,
+            level: null,
+            kind: "more",
+          });
+          edges.push({ source: data.id, target: "more" });
+        }
+        cy?.destroy();
+        cy = cytoscape({
+          container: $("graph"),
+          wheelSensitivity: 0.3,
+          elements: [
+            ...[...nodes.values()].map((n) => ({
+              data: {
+                id: n.id,
+                label: short(n.label ?? n.name, 24),
+                kind: n.kind,
+                odd: n.odd,
+                color: LEVELS[n.level] ?? "#8c959f",
+              },
+            })),
+            ...edges.map((e) => ({ data: e })),
+          ],
+          style: [
+            {
+              selector: "node",
+              style: {
+                label: "data(label)",
+                "background-color": "data(color)",
+                width: 12,
+                height: 12,
+                "font-size": 10,
+                color: css("--fg"),
+                "text-valign": "bottom",
+                "text-margin-y": 2,
+                "text-wrap": "wrap",
+                "text-max-width": 90,
+              },
+            },
+            {
+              selector: "node[kind='self']",
+              style: {
+                width: 22,
+                height: 22,
+                "font-weight": 600,
+                "font-size": 11,
+                "border-width": 3,
+                "border-color": css("--accent"),
+              },
+            },
+            { selector: "node[?odd]", style: { "text-valign": "top", "text-margin-y": -2 } },
+            { selector: "node[kind='more']", style: { shape: "round-rectangle", "background-color": css("--border") } },
+            {
+              selector: "edge",
+              style: {
+                width: 1,
+                "line-color": css("--border"),
+                "target-arrow-color": css("--border"),
+                "target-arrow-shape": "triangle",
+                "arrow-scale": 0.7,
+                "curve-style": "bezier",
+              },
+            },
+            { selector: "node:selected", style: { "border-width": 3, "border-color": css("--accent") } },
+          ],
+          layout: {
+            name: "breadthfirst",
+            directed: true,
+            roots: nodes.has(ROOT) ? [ROOT] : undefined,
+            spacingFactor: 1,
+            padding: 8,
+          },
+        });
+        cy.on("tap", "node", (e) => {
+          if (e.target.id() === "more") return showTab("children");
+          const n = nodes.get(e.target.id());
+          if (n.kind !== "self") selectNode(n);
+        });
+        const shown = new Set([...nodes.values()].map((n) => n.level));
+        $("legend").innerHTML = Object.entries(LEVELS)
+          .filter(([l]) => shown.has(l))
+          .map(([l, color]) => `<span><i style="background:${color}"></i>${l}</span>`)
+          .join("");
+      }
+
+      function renderSummary() {
+        const props = [
+          ["Formula", data.formula],
+          ["Mass", data.mass],
+          ["Charge", data.charge],
+          ["InChIKey", data.inchikey],
+          ["SMILES", data.smiles],
+        ].filter(([, v]) => v !== null && v !== undefined);
+        $("summary").innerHTML = `
+          ${data.definition ? `<div style="margin-bottom:6px">${escapeHtml(data.definition)}</div>` : ""}
+          <div class="structure">${data.depiction ? `<img alt="${escapeHtml(data.name)}" src="${data.depiction}" />` : `<div class="muted" style="padding:20px">No structure</div>`}</div>
+          <table class="props">${props.map(([k, v]) => `<tr><td>${k}</td><td>${escapeHtml(v)}</td></tr>`).join("")}</table>
+          ${
+            data.components.length
+              ? `<div class="chips"><span class="muted">Chains:</span>${data.components
+                  .map((c) => chip(`${c.position} ${c.name}`, `data-node="${c.id}" title="${c.id}"`))
+                  .join("")}</div>`
+              : ""
+          }
+          <div class="chips" style="margin-top:4px">${data.xrefs
+            .map((x) =>
+              chip(`${x.source} ${x.id}`, XREF_URLS[x.source] ? `data-url="${XREF_URLS[x.source](x.id)}"` : ""),
+            )
+            .join("")}</div>
+          ${data.synonyms.length ? `<div class="muted" style="margin-top:4px;font-size:12px">${escapeHtml(data.synonyms.slice(0, 6).join(" · "))}</div>` : ""}
+          <div class="actions">${chemicalButtons(chebiId(), data.name, "lipid")}</div>`;
+      }
+
+      // Tabs: rows of each list, with their columns
+      const TABS = {
+        reactions: {
+          label: () => `Reactions (${data.reactions.length})`,
+          head: ["Rhea", "Equation", "Enzymes", "Described for"],
+          rows: () =>
+            data.reactions
+              .filter((r) => $("inherited").checked || !r.inheritedFrom)
+              .filter((r) => !$("organism").value || r.enzymes.some((z) => z.organism === $("organism").value))
+              .map((r, i) => [
+                r,
+                [
+                  r.rhea,
+                  r.equation,
+                  r.enzymes.length,
+                  r.inheritedFrom ? short(r.inheritedFrom.name, 40) : "this lipid",
+                ],
+              ]),
+        },
+        enzymes: {
+          label: () => `Enzymes (${enzymes.length})`,
+          head: ["Entry", "Name", "Organism", "Reactions"],
+          rows: () =>
+            enzymes
+              .filter((z) => !$("organism").value || z.organism === $("organism").value)
+              .map((z) => [z, [z.accession, z.name, z.organism, z.reactions.length]]),
+        },
+        locations: {
+          label: () => `Locations (${data.locations.length})`,
+          head: ["Found in", "Type", "Species", "References"],
+          rows: () => data.locations.map((l) => [l, [l.name, l.kind, l.taxa.join(", "), l.pubmed.length]]),
+        },
+        children: {
+          label: () => `Children (${data.childrenTotal})`,
+          head: ["Lipid", "Level", "ID"],
+          rows: () => data.children.map((c) => [c, [c.name, c.level, c.id]]),
+        },
+      };
+      let rows = [];
+
+      function renderList() {
+        const text = $("filter").value.toLowerCase();
+        rows = TABS[tab].rows().filter(([, cells]) => !text || cells.join(" ").toLowerCase().includes(text));
+        $("head").innerHTML = `<tr>${TABS[tab].head.map((h) => `<th>${h}</th>`).join("")}</tr>`;
+        $("rows").innerHTML =
+          rows
+            .map(
+              ([item, cells], i) =>
+                `<tr data-i="${i}" class="${selected === item ? "selected" : ""}">${cells
+                  .map((c) => `<td title="${escapeHtml(c)}">${escapeHtml(c)}</td>`)
+                  .join("")}</tr>`,
+            )
+            .join("") || `<tr><td class="muted" colspan="4">None</td></tr>`;
+        $("inherited-label").hidden = tab !== "reactions";
+        $("organism").hidden = tab !== "reactions" && tab !== "enzymes";
+      }
+
+      function showTab(name) {
+        tab = name;
+        $("tabs").innerHTML = Object.entries(TABS)
+          .map(
+            ([k, t]) =>
+              `<button type="button" data-tab="${k}" class="${k === tab ? "active" : ""}">${t.label()}</button>`,
+          )
+          .join(" ");
+        renderList();
+      }
+
+      function showDetails(item, html, context) {
+        selected = item;
+        renderList();
+        $("details").classList.remove("muted");
+        $("details").innerHTML = html;
+        void updateContext(context);
+      }
+
+      function selectNode(n) {
+        showDetails(
+          n,
+          `<div><b>${escapeHtml(n.name)}</b> <a data-url="${lipidUrl(n.id)}">${n.id}</a>
+            <span class="muted">${escapeHtml(n.level ?? "")}</span></div>
+          <div class="actions"><button type="button" id="ask">Ask about it</button>
+            ${n.id.match(/^SLM:\d+$/) ? promptButton("Show this lipid", `Show the lipid ${n.name} (${n.id}) in SwissLipids`) : ""}</div>`,
+          `The user selected ${n.name} (${n.id}, ${n.level}) in the SwissLipids hierarchy of ${data.name} (${data.id})`,
+        );
+        $("ask").onclick = () => sendMessage(`What are ${n.name} (${n.id}), and how does ${data.name} relate to them?`);
+      }
+
+      function selectReaction(r) {
+        const query = [...new Set(r.enzymes.map((z) => z.accession))].map((a) => `accession:${a}`).join(" OR ");
+        showDetails(
+          r,
+          `<div><a data-url="https://www.rhea-db.org/rhea/${r.rhea}">RHEA:${r.rhea}</a> ${escapeHtml(r.equation)}</div>
+          ${r.inheritedFrom ? `<div class="muted">Described for the class ${escapeHtml(r.inheritedFrom.name)} (${r.inheritedFrom.id})</div>` : ""}
+          <div class="chips">${r.enzymes.map((z) => chip(`${z.name} (${z.organism})`, `data-url="https://www.uniprot.org/uniprotkb/${z.accession}/entry" title="${z.accession}"`)).join("")}</div>
+          <div class="actions"><button type="button" id="ask">Ask about it</button>
+            ${promptButton("Reaction and atom map", `Show the Rhea reaction RHEA:${r.rhea} with its atom map`)}
+            ${r.enzymes.length > 1 ? promptButton("Enzymes in a table", `Search UniProtKB for \`${query}\` in a table`) : ""}</div>`,
+          `The user selected the reaction RHEA:${r.rhea} ${r.equation} of ${data.name} in SwissLipids`,
+        );
+        $("ask").onclick = () =>
+          sendMessage(
+            `What is the role of the reaction RHEA:${r.rhea} (${r.equation}) in the metabolism of ${data.name}?`,
+          );
+      }
+
+      function selectEnzyme(z) {
+        showDetails(
+          z,
+          `<div><b>${escapeHtml(z.name)}</b> <a data-url="https://www.uniprot.org/uniprotkb/${z.accession}/entry">${z.accession}</a>
+            <span class="muted">${escapeHtml(z.organism)}</span></div>
+          <div class="muted">${z.reactions.length} reactions: ${z.reactions.map((r) => `RHEA:${r.rhea}`).join(", ")}</div>
+          <div class="actions"><button type="button" id="ask">Ask about it</button>${proteinButtons({ accession: z.accession, gene: z.name })}</div>`,
+          `The user selected the enzyme ${z.name} (${z.accession}, ${z.organism}) of ${data.name} in SwissLipids`,
+        );
+        $("ask").onclick = () =>
+          sendMessage(
+            `What is the role of ${z.name} (${z.accession}, ${z.organism}) in the metabolism of ${data.name}?`,
+          );
+      }
+
+      function selectLocation(l) {
+        showDetails(
+          l,
+          `<div><b>${escapeHtml(l.name)}</b> <a data-url="${ontologyUrl(l.id)}">${l.id}</a> <span class="muted">${l.kind} · ${escapeHtml(l.taxa.join(", "))}</span></div>
+          <div class="chips">${l.pubmed.map((id) => chip(`PubMed ${id}`, `data-url="https://pubmed.ncbi.nlm.nih.gov/${id}/"`)).join("")}</div>
+          <div class="actions"><button type="button" id="ask">Ask about it</button></div>`,
+          `The user selected the location ${l.name} (${l.id}) of ${data.name} in SwissLipids, in ${l.taxa.join(", ")}`,
+        );
+        $("ask").onclick = () => sendMessage(`What is known about ${data.name} in ${l.name} (${l.id})?`);
+      }
+
+      const SELECT = {
+        reactions: selectReaction,
+        enzymes: selectEnzyme,
+        locations: selectLocation,
+        children: selectNode,
+      };
+      $("rows").addEventListener("click", (e) => {
+        const tr = e.target.closest("tr[data-i]");
+        if (tr) SELECT[tab](rows[Number(tr.dataset.i)][0]);
+      });
+      $("tabs").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-tab]");
+        if (b) showTab(b.dataset.tab);
+      });
+      document.body.addEventListener("click", (e) => {
+        const el = e.target.closest("[data-url], [data-prompt], [data-node]");
+        const { url, prompt, node } = el?.dataset ?? {};
+        if (url) void app.openLink({ url });
+        if (prompt) void sendMessage(prompt);
+        if (node) selectNode({ id: node, name: el.textContent, level: null });
+      });
+      $("filter").oninput = renderList;
+      $("organism").onchange = renderList;
+      $("inherited").onchange = renderList;
+      // Theme and display mode of the host as attributes on <html> for the CSS
+      function onContext(ctx) {
+        if (ctx.theme) {
+          applyDocumentTheme(ctx.theme);
+          if (data) renderGraph();
+        }
+        if (ctx.displayMode) {
+          document.documentElement.dataset.mode = ctx.displayMode;
+          $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";
+          cy?.resize();
+          cy?.fit(undefined, 8);
+        }
+      }
+      app.onhostcontextchanged = onContext;
+      // The host answers with the mode set, it may not send a context change
+      $("fullscreen").onclick = async () => {
+        const mode = document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen";
+        onContext({ displayMode: (await app.requestDisplayMode({ mode })).mode });
+      };
+
+      // Tool arguments, to call the tool again when the result has no `structuredContent`, as Claude Desktop
+      // gives to widgets restored after a reload of the chat https://github.com/modelcontextprotocol/ext-apps/issues/696
+      let toolArgs;
+      app.ontoolinput = (params) => (toolArgs = params.arguments);
+      app.ontoolresult = async (result) => {
+        if (!result.structuredContent && !result.isError && toolArgs) {
+          result = await app.callServerTool({ name: "show_lipid", arguments: toolArgs }).catch(() => result);
+        }
+        data = result.structuredContent;
+        if (!data) return ($("title").textContent = "Lipid not found");
+        $("title").textContent = data.abbreviation ?? data.name;
+        $("subtitle").textContent = data.abbreviation && data.abbreviation !== data.name ? data.name : "";
+        $("badges").innerHTML =
+          `<span class="badge" style="color:${LEVELS[data.level] ?? "inherit"}">${escapeHtml(data.level ?? "")}</span>
+          <a data-url="${lipidUrl(data.id)}">${data.id}</a>`;
+        // Enzymes of all reactions, with the reactions they catalyze
+        const byAccession = new Map();
+        for (const r of data.reactions)
+          for (const z of r.enzymes) {
+            if (!byAccession.has(z.accession)) byAccession.set(z.accession, { ...z, reactions: [] });
+            byAccession.get(z.accession).reactions.push(r);
+          }
+        enzymes = [...byAccession.values()].sort((a, b) => b.reactions.length - a.reactions.length);
+        const organisms = [...new Set(enzymes.map((z) => z.organism))].sort();
+        $("organism").innerHTML = `<option value="">All organisms (${organisms.length})</option>${organisms
+          .map((o) => `<option>${escapeHtml(o)}</option>`)
+          .join("")}`;
+        renderSummary();
+        renderGraph();
+        showTab(data.reactions.length ? "reactions" : data.locations.length ? "locations" : "children");
+      };
+
+      await app.connect();
+      // Full screen button only when the host offers it
+      const host = app.getHostContext() ?? {};
+      $("fullscreen").hidden = Boolean(
+        host.availableDisplayModes && !host.availableDisplayModes.includes("fullscreen"),
+      );
+      onContext(host);
+    </script>
+  </body>
+</html>
