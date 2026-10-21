@@ -171,9 +171,21 @@
     </details>
 
     <script src="colors.js"></script>
-    <script src="bridge.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.33.1/dist/cytoscape.min.js"></script>
-    <script>
+    <script type="module">
+      import {
+        App,
+        applyDocumentTheme,
+      } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@2.0.3/dist/src/app-with-deps.js";
+
+      // Connection to the host with the MCP Apps SDK
+      const app = new App(
+        { name: "Protein network", version: "0.0.1" },
+        { availableDisplayModes: ["inline", "fullscreen"] },
+      );
+      const sendMessage = (text) => app.sendMessage({ role: "user", content: [{ type: "text", text }] });
+      const updateContext = (text) => app.updateModelContext({ content: [{ type: "text", text }] });
+
       const $ = (id) => document.getElementById(id);
       // Regulation edges by effect, physical interactions and highlight colors
       const EFFECTS = {
@@ -352,7 +364,9 @@
             : name === "force"
               ? { name: "cose", animate: false, nodeRepulsion: () => 9000, idealEdgeLength: () => 90 }
               : { name: "circle" };
-        cy.elements(":visible").layout({ ...opts, padding: 20 }).run();
+        cy.elements(":visible")
+          .layout({ ...opts, padding: 20 })
+          .run();
       }
 
       /** Fades everything but `eles`, or clears the highlight */
@@ -384,15 +398,14 @@
           })
           .join("");
       const chainText = (nodes) =>
-        nodes
-          .map((n, i) => (i ? ` -${regs[regId(nodes[i - 1], n)]?.effect ?? "?"}-> ${gene[n]}` : gene[n]))
-          .join("");
+        nodes.map((n, i) => (i ? ` -${regs[regId(nodes[i - 1], n)]?.effect ?? "?"}-> ${gene[n]}` : gene[n])).join("");
 
       function showDetails(html, ask, context) {
         $("details").classList.remove("muted");
-        $("details").innerHTML = `${html}<div class="actions"><button type="button" id="ask">Ask about it</button></div>`;
-        $("ask").onclick = () => mcpApp.message(ask);
-        void mcpApp.context(context);
+        $("details").innerHTML =
+          `${html}<div class="actions"><button type="button" id="ask">Ask about it</button></div>`;
+        $("ask").onclick = () => sendMessage(ask);
+        void updateContext(context);
       }
 
       const links = (items) =>
@@ -425,9 +438,7 @@
           .filter((i) => i.a === node.accession || i.b === node.accession)
           .map((i) => gene[i.a === node.accession ? i.b : i.a]);
         const pathways = data.pathways.filter((p) => p.members.includes(node.accession)).map((p) => p.name);
-        const added = node.via
-          ? `<div>Added by this tool as it connects ${chainHtml(node.via)} in OmniPath</div>`
-          : "";
+        const added = node.via ? `<div>Added by this tool as it connects ${chainHtml(node.via)} in OmniPath</div>` : "";
         showDetails(
           `<div><b>${escapeHtml(node.gene)}</b> ${escapeHtml(node.name ?? "")}</div>
           ${added}
@@ -491,9 +502,7 @@
 
       /** Paths, feedback loops and pathways lists */
       function renderSide() {
-        $("paths-title").textContent = data.target
-          ? `Paths ${gene[data.source]} to ${gene[data.target]}`
-          : "Paths";
+        $("paths-title").textContent = data.target ? `Paths ${gene[data.source]} to ${gene[data.target]}` : "Paths";
         $("paths").innerHTML =
           data.paths.map((p, i) => `<div class="item" data-path="${i}">${chainHtml(p)}</div>`).join("") ||
           `<div class="muted">${data.target ? "No directed path" : "No target given"}</div>`;
@@ -566,7 +575,7 @@
       for (const id of ["details", "sources"]) {
         $(id).addEventListener("click", (e) => {
           const url = e.target.dataset?.url;
-          if (url) void mcpApp.openLink(url);
+          if (url) void app.openLink({ url });
         });
       }
       for (const id of ["show-regulation", "show-physical", "show-pathways", "min"]) {
@@ -577,11 +586,13 @@
       }
       $("layout").onchange = layout;
       $("fit").onclick = () => cy?.fit(undefined, 20);
-      $("fullscreen").onclick = () =>
-        mcpApp.displayMode(document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen");
-      mcpApp.on("hostContext", (ctx) => {
-        $("fullscreen").textContent =
-          document.documentElement.dataset.mode === "fullscreen" ? "Exit full screen" : "Full screen";
+      // Theme and display mode of the host as attributes on <html> for the CSS
+      function onContext(ctx) {
+        if (ctx.theme) applyDocumentTheme(ctx.theme);
+        if (ctx.displayMode) {
+          document.documentElement.dataset.mode = ctx.displayMode;
+          $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";
+        }
         if (!cy) return;
         cy.style(style());
         // Graph size changes with the display mode, and the flow layout with it
@@ -589,7 +600,13 @@
           cy.resize();
           layout();
         }, 50);
-      });
+      }
+      app.onhostcontextchanged = onContext;
+      // The host answers with the mode set, it may not send a context change
+      $("fullscreen").onclick = async () => {
+        const mode = document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen";
+        onContext({ displayMode: (await app.requestDisplayMode({ mode })).mode });
+      };
 
       $("legend").innerHTML = [
         "<b>Regulation (OmniPath):</b>",
@@ -599,7 +616,14 @@
         `<span><i class="box" style="border-style:dashed"></i>linker added by this tool</span>`,
       ].join("");
 
-      mcpApp.on("result", (result) => {
+      // Tool arguments, to call the tool again when the result has no `structuredContent`, as Claude Desktop
+      // gives to widgets restored after a reload of the chat https://github.com/modelcontextprotocol/ext-apps/issues/696
+      let toolArgs;
+      app.ontoolinput = (params) => (toolArgs = params.arguments);
+      app.ontoolresult = async (result) => {
+        if (!result.structuredContent && !result.isError && toolArgs) {
+          result = await app.callServerTool({ name: "show_protein_network", arguments: toolArgs }).catch(() => result);
+        }
         data = result.structuredContent;
         if (!data?.nodes) return ($("title").textContent = "No network");
         gene = Object.fromEntries(data.nodes.map((n) => [n.accession, n.gene]));
@@ -623,8 +647,15 @@
         renderSide();
         applyFilters();
         layout();
-      });
-      mcpApp.start("Protein network", "show_protein_network");
+      };
+
+      await app.connect();
+      // Full screen button only when the host offers it
+      const host = app.getHostContext() ?? {};
+      $("fullscreen").hidden = Boolean(
+        host.availableDisplayModes && !host.availableDisplayModes.includes("fullscreen"),
+      );
+      onContext(host);
     </script>
   </body>
 </html>

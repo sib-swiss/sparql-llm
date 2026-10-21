@@ -1269,14 +1269,24 @@ apps.add_html_resource(
         connect_domains=["https://alphafold.ebi.ac.uk", "https://www.ebi.ac.uk"],
     ),
 )
-apps.add_html_resource("ui://uniprot/table.html", widget_html("table.html"), title="UniProt search results")
+apps.add_html_resource(
+    "ui://uniprot/table.html",
+    widget_html("table.html"),
+    title="UniProt search results",
+    csp=ResourceCsp(resource_domains=[CDN]),
+)
 apps.add_html_resource(
     "ui://uniprot/variants.html",
     widget_html("variants.html"),
     title="UniProt variant explorer",
     csp=ResourceCsp(resource_domains=[CDN]),
 )
-apps.add_html_resource("ui://uniprot/matrix.html", widget_html("matrix.html"), title="UniProt annotation matrix")
+apps.add_html_resource(
+    "ui://uniprot/matrix.html",
+    widget_html("matrix.html"),
+    title="UniProt annotation matrix",
+    csp=ResourceCsp(resource_domains=[CDN]),
+)
 apps.add_html_resource(
     "ui://uniprot/network.html",
     widget_html("network.html"),

@@ -120,7 +120,6 @@
     <div class="legend" id="legend"></div>
 
     <script src="colors.js"></script>
-    <script src="bridge.js"></script>
     <script>
       // Mol* bundles an Emscripten module (video export) that builds named functions with `new Function` when
       // loaded, blocked by the host CSP (no 'unsafe-eval'). This pattern is built without eval while the script loads
@@ -142,7 +141,19 @@
       window.Function.prototype = NativeFunction.prototype;
     </script>
     <script src="https://cdn.jsdelivr.net/npm/pdbe-molstar@3.12.0/build/pdbe-molstar-plugin.js"></script>
-    <script>
+    <script type="module">
+      import {
+        App,
+        applyDocumentTheme,
+      } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@2.0.3/dist/src/app-with-deps.js";
+
+      // Connection to the host with the MCP Apps SDK
+      const app = new App(
+        { name: "UniProt structure", version: "0.0.1" },
+        { availableDisplayModes: ["inline", "fullscreen"] },
+      );
+      const updateContext = (text) => app.updateModelContext({ content: [{ type: "text", text }] });
+
       window.Function = NativeFunction;
       const $ = (id) => document.getElementById(id);
       const HIGHLIGHT = { r: 255, g: 0, b: 200 };
@@ -257,7 +268,7 @@
         void highlight();
         if (active) {
           const name = entry.gene ?? entry.accession;
-          void mcpApp.context(
+          void updateContext(
             `The user highlighted the ${f.type} ${featureLabel(f)} (residues ${featurePos(f)}) of ${entry.accession} ${name} in the ${source === "alphafold" ? "AlphaFold model" : `PDB entry ${source.toUpperCase()}`}`,
           );
         }
@@ -274,15 +285,32 @@
         source = $("source").value;
         void load();
       };
-      $("fullscreen").onclick = () =>
-        mcpApp.displayMode(document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen");
-      mcpApp.on("hostContext", (ctx) => {
-        $("fullscreen").textContent =
-          document.documentElement.dataset.mode === "fullscreen" ? "Exit full screen" : "Full screen";
+      // Theme and display mode of the host as attributes on <html> for the CSS
+      function onContext(ctx) {
+        if (ctx.theme) applyDocumentTheme(ctx.theme);
+        if (ctx.displayMode) {
+          document.documentElement.dataset.mode = ctx.displayMode;
+          $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";
+        }
         if (rendered && ctx.theme) void viewer.canvas.setBgColor(options().bgColor);
-      });
+      }
+      app.onhostcontextchanged = onContext;
+      // The host answers with the mode set, it may not send a context change
+      $("fullscreen").onclick = async () => {
+        const mode = document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen";
+        onContext({ displayMode: (await app.requestDisplayMode({ mode })).mode });
+      };
 
-      mcpApp.on("result", (result) => {
+      // Tool arguments, to call the tool again when the result has no `structuredContent`, as Claude Desktop
+      // gives to widgets restored after a reload of the chat https://github.com/modelcontextprotocol/ext-apps/issues/696
+      let toolArgs;
+      app.ontoolinput = (params) => (toolArgs = params.arguments);
+      app.ontoolresult = async (result) => {
+        if (!result.structuredContent && !result.isError && toolArgs) {
+          result = await app
+            .callServerTool({ name: "show_protein_structure", arguments: toolArgs })
+            .catch(() => result);
+        }
         entry = result.structuredContent;
         if (!entry) return ($("title").textContent = "No structure");
         source = entry.source;
@@ -309,8 +337,15 @@
           $("viewer").innerHTML =
             `<p class="error">Could not load the structure: ${escapeHtml(err.message ?? err)}</p>`;
         });
-      });
-      mcpApp.start("UniProt structure", "show_protein_structure");
+      };
+
+      await app.connect();
+      // Full screen button only when the host offers it
+      const host = app.getHostContext() ?? {};
+      $("fullscreen").hidden = Boolean(
+        host.availableDisplayModes && !host.availableDisplayModes.includes("fullscreen"),
+      );
+      onContext(host);
     </script>
   </body>
 </html>

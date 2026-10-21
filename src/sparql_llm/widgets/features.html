@@ -104,13 +104,24 @@
     <div class="details muted" id="details">Click a feature for details</div>
 
     <script src="colors.js"></script>
-    <script src="bridge.js"></script>
     <script type="module">
+      import {
+        App,
+        applyDocumentTheme,
+      } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@2.0.3/dist/src/app-with-deps.js";
       // Nightingale web components, the manager syncs zoom and highlight between them
       import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-manager@5.6.0/+esm";
       import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-navigation@5.6.0/+esm";
       import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-sequence@5.6.0/+esm";
       import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-track@5.6.0/+esm";
+
+      // Connection to the host with the MCP Apps SDK
+      const app = new App(
+        { name: "UniProt features", version: "0.0.1" },
+        { availableDisplayModes: ["inline", "fullscreen"] },
+      );
+      const sendMessage = (text) => app.sendMessage({ role: "user", content: [{ type: "text", text }] });
+      const updateContext = (text) => app.updateModelContext({ content: [{ type: "text", text }] });
 
       const $ = (id) => document.getElementById(id);
       let entry;
@@ -127,7 +138,8 @@
         $("range").innerHTML = whole ? "Whole sequence" : `Residues <b>${label}</b> of ${entry.length}`;
         $("zoom-all").hidden = whole;
         const z = entry.zoom;
-        $("zoom-region").hidden = !z || (start === regionWindow(z, entry.length)[0] && end === regionWindow(z, entry.length)[1]);
+        $("zoom-region").hidden =
+          !z || (start === regionWindow(z, entry.length)[0] && end === regionWindow(z, entry.length)[1]);
         if (z) $("zoom-region").textContent = `Zoom on ${z.start === z.end ? z.start : `${z.start}-${z.end}`}`;
       }
 
@@ -253,12 +265,10 @@
             <button type="button" id="structure">Show in 3D</button>
           </div>`;
         const label = `${f.type} ${featureLabel(f)} (residues ${featurePos(f)}) of ${entry.accession} ${name}`;
-        $("ask").onclick = () => mcpApp.message(`Tell me more about the ${label}`);
+        $("ask").onclick = () => sendMessage(`Tell me more about the ${label}`);
         $("structure").onclick = () =>
-          mcpApp.message(
-            `Show the 3D structure of ${entry.accession} highlighting residues ${featurePos(f)} (${f.type})`,
-          );
-        void mcpApp.context(`The user selected the ${label} in the sequence feature viewer`);
+          sendMessage(`Show the 3D structure of ${entry.accession} highlighting residues ${featurePos(f)} (${f.type})`);
+        void updateContext(`The user selected the ${label} in the sequence feature viewer`);
       }
 
       // Clicks on features and zoom changes bubble from the tracks as `change` events
@@ -302,24 +312,37 @@
       });
       $("details").addEventListener("click", (e) => {
         const url = e.target.dataset?.url;
-        if (url) void mcpApp.openLink(url);
+        if (url) void app.openLink({ url });
       });
 
-      mcpApp.on("hostContext", (ctx) => entry && ctx.theme && render());
-      mcpApp.on("result", (result) => {
+      app.onhostcontextchanged = (ctx) => {
+        if (ctx.theme) applyDocumentTheme(ctx.theme);
+        if (entry && ctx.theme) render();
+      };
+      // Tool arguments, to call the tool again when the result has no `structuredContent`, as Claude Desktop
+      // gives to widgets restored after a reload of the chat https://github.com/modelcontextprotocol/ext-apps/issues/696
+      let toolArgs;
+      app.ontoolinput = (params) => (toolArgs = params.arguments);
+      app.ontoolresult = async (result) => {
+        if (!result.structuredContent && !result.isError && toolArgs) {
+          result = await app.callServerTool({ name: "show_protein_features", arguments: toolArgs }).catch(() => result);
+        }
         entry = result.structuredContent;
         if (!entry) return ($("title").textContent = "No features");
         $("title").textContent = `${entry.gene ?? entry.id} · ${entry.name ?? ""}`;
         $("subtitle").textContent =
           `${entry.accession} · ${entry.organism} · ${entry.length} aa · ${entry.features.length} features`;
         $("link").onclick = () =>
-          mcpApp.openLink(`https://www.uniprot.org/uniprotkb/${entry.accession}/feature-viewer`);
+          app.openLink({ url: `https://www.uniprot.org/uniprotkb/${entry.accession}/feature-viewer` });
         view = entry.zoom ? regionWindow(entry.zoom, entry.length) : [1, entry.length];
         renderChips();
         render();
         showRange();
-      });
-      mcpApp.start("UniProt features", "show_protein_features");
+      };
+
+      await app.connect();
+      const theme = app.getHostContext()?.theme;
+      if (theme) applyDocumentTheme(theme);
     </script>
   </body>
 </html>
