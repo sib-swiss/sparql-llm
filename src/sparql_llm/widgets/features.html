@@ -104,6 +104,8 @@
       import {
         App,
         applyDocumentTheme,
+        applyHostFonts,
+        applyHostStyleVariables,
       } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@2.0.3/dist/src/app-with-deps.js";
       // Nightingale web components, the manager syncs zoom and highlight between them
       import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-manager@5.6.0/+esm";
@@ -310,10 +312,13 @@
         if (prompt) void sendMessage(prompt);
       });
 
-      app.onhostcontextchanged = (ctx) => {
+      function onContext(ctx) {
+        if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+        if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
         if (ctx.theme) applyDocumentTheme(ctx.theme);
-        if (entry && ctx.theme) render();
-      };
+        if (entry && (ctx.theme || ctx.styles)) render();
+      }
+      app.onhostcontextchanged = onContext;
       // Tool arguments, to call the tool again when the result has no `structuredContent`, as Claude Desktop
       // gives to widgets restored after a reload of the chat https://github.com/modelcontextprotocol/ext-apps/issues/696
       let toolArgs;
@@ -336,8 +341,7 @@
       };
 
       await app.connect();
-      const theme = app.getHostContext()?.theme;
-      if (theme) applyDocumentTheme(theme);
+      onContext(app.getHostContext() ?? {});
     </script>
   </body>
 </html>

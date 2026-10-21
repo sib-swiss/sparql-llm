@@ -186,6 +186,8 @@
       import {
         App,
         applyDocumentTheme,
+        applyHostFonts,
+        applyHostStyleVariables,
       } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@2.0.3/dist/src/app-with-deps.js";
 
       // Connection to the host with the MCP Apps SDK
@@ -376,6 +378,8 @@
       $("filter").oninput = render;
       // Theme and display mode of the host as attributes on <html> for the CSS
       function onContext(ctx) {
+        if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+        if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
         if (ctx.theme) applyDocumentTheme(ctx.theme);
         if (ctx.displayMode) {
           document.documentElement.dataset.mode = ctx.displayMode;

@@ -1,19 +1,20 @@
+/* Colors from the host style variables of the MCP Apps spec when it sends them, so the widget blends in the chat */
 :root {
-  --fg: #1f2328;
-  --muted: #656d76;
-  --bg: #ffffff;
-  --panel: #f6f8fa;
-  --border: #d0d7de;
+  --fg: var(--color-text-primary, #1f2328);
+  --muted: var(--color-text-secondary, #656d76);
+  --bg: var(--color-background-primary, #ffffff);
+  --panel: var(--color-background-secondary, #f6f8fa);
+  --border: var(--color-border-primary, #d0d7de);
   --accent: #0969da;
   --hover: rgba(9, 105, 218, 0.08);
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --fg: #e6edf3;
-  --muted: #8d96a0;
-  --bg: #0d1117;
-  --panel: #161b22;
-  --border: #30363d;
+  --fg: var(--color-text-primary, #e6edf3);
+  --muted: var(--color-text-secondary, #8d96a0);
+  --bg: var(--color-background-primary, #0d1117);
+  --panel: var(--color-background-secondary, #161b22);
+  --border: var(--color-border-primary, #30363d);
   --accent: #4493f8;
   --hover: rgba(68, 147, 248, 0.12);
   color-scheme: dark;
@@ -25,8 +26,7 @@ body {
   margin: 0;
   padding: 12px 14px;
   font:
-    13px/1.45 system-ui,
-    sans-serif;
+    13px/1.45 var(--font-sans, system-ui, sans-serif);
   color: var(--fg);
   background: var(--bg);
 }

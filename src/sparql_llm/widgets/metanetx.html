@@ -238,6 +238,8 @@
       import {
         App,
         applyDocumentTheme,
+        applyHostFonts,
+        applyHostStyleVariables,
       } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@2.0.3/dist/src/app-with-deps.js";
 
       // Connection to the host with the MCP Apps SDK
@@ -264,7 +266,7 @@
       let cy;
       let selected = null;
 
-      const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      const css = (name) => `rgb(${cssRgb(name)})`;
       const chip = (label, attrs) => `<a ${attrs}>${escapeHtml(label)}</a>`;
       const lipid = () => data.xrefs.some((x) => x.db === "SwissLipids" || x.db === "LIPID MAPS");
 
@@ -580,10 +582,10 @@
       $("obsolete").onchange = renderGraph;
       // Theme and display mode of the host as attributes on <html> for the CSS
       function onContext(ctx) {
-        if (ctx.theme) {
-          applyDocumentTheme(ctx.theme);
-          if (data) renderGraph();
-        }
+        if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+        if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
+        if (ctx.theme) applyDocumentTheme(ctx.theme);
+        if (data && (ctx.theme || ctx.styles)) renderGraph();
         if (ctx.displayMode) {
           document.documentElement.dataset.mode = ctx.displayMode;
           $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";

@@ -147,6 +147,8 @@
       import {
         App,
         applyDocumentTheme,
+        applyHostFonts,
+        applyHostStyleVariables,
       } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@2.0.3/dist/src/app-with-deps.js";
 
       // Connection to the host with the MCP Apps SDK
@@ -175,7 +177,6 @@
       // Features shown in 3D, not the secondary structure or whole chain
       const shownFeatures = () =>
         entry.features.filter((f) => f.category !== "Secondary structure" && f.type !== "Chain");
-      const darkBg = () => document.documentElement.dataset.theme === "dark";
 
       /** Residue ranges of a feature, bonds link 2 residues */
       const ranges = (f) =>
@@ -211,7 +212,8 @@
       }
 
       function options() {
-        const bg = darkBg() ? { r: 13, g: 17, b: 23 } : { r: 255, g: 255, b: 255 };
+        const [r, g, b] = cssRgb("--bg");
+        const bg = { r, g, b };
         const common = {
           bgColor: bg,
           hideControls: true,
@@ -299,12 +301,14 @@
       };
       // Theme and display mode of the host as attributes on <html> for the CSS
       function onContext(ctx) {
+        if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+        if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
         if (ctx.theme) applyDocumentTheme(ctx.theme);
         if (ctx.displayMode) {
           document.documentElement.dataset.mode = ctx.displayMode;
           $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";
         }
-        if (rendered && ctx.theme) void viewer.canvas.setBgColor(options().bgColor);
+        if (rendered && (ctx.theme || ctx.styles)) void viewer.canvas.setBgColor(options().bgColor);
       }
       app.onhostcontextchanged = onContext;
       // The host answers with the mode set, it may not send a context change

@@ -213,6 +213,8 @@
       import {
         App,
         applyDocumentTheme,
+        applyHostFonts,
+        applyHostStyleVariables,
       } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@2.0.3/dist/src/app-with-deps.js";
       // Nightingale web components, the manager syncs zoom and highlight between them
       import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-manager@5.11.0/+esm";
@@ -504,12 +506,14 @@
       $("zoom-region").onclick = () => zoomTo(regionWindow(entry.zoom, entry.length));
       // Theme and display mode of the host as attributes on <html> for the CSS
       function onContext(ctx) {
+        if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
+        if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
         if (ctx.theme) applyDocumentTheme(ctx.theme);
         if (ctx.displayMode) {
           document.documentElement.dataset.mode = ctx.displayMode;
           $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";
         }
-        if (entry && ctx.theme) {
+        if (entry && (ctx.theme || ctx.styles)) {
           renderViewer();
           render();
         }
