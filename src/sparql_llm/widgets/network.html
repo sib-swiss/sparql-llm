@@ -122,11 +122,6 @@
         margin: 4px 0;
         padding-left: 18px;
       }
-      .details .actions {
-        display: flex;
-        gap: 6px;
-        margin-top: 6px;
-      }
     </style>
   </head>
   <body>
@@ -171,6 +166,7 @@
     </details>
 
     <script src="colors.js"></script>
+    <script src="viewers.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.33.1/dist/cytoscape.min.js"></script>
     <script type="module">
       import {
@@ -400,10 +396,11 @@
       const chainText = (nodes) =>
         nodes.map((n, i) => (i ? ` -${regs[regId(nodes[i - 1], n)]?.effect ?? "?"}-> ${gene[n]}` : gene[n])).join("");
 
-      function showDetails(html, ask, context) {
+      /** Details of the selection with buttons to ask about it and open other viewers, also told to the model */
+      function showDetails(html, ask, context, buttons = "") {
         $("details").classList.remove("muted");
         $("details").innerHTML =
-          `${html}<div class="actions"><button type="button" id="ask">Ask about it</button></div>`;
+          `${html}<div class="actions"><button type="button" id="ask">Ask about it</button>${buttons}</div>`;
         $("ask").onclick = () => sendMessage(ask);
         void updateContext(context);
       }
@@ -448,6 +445,7 @@
           `What is the role of ${node.gene} (${node.accession}) in this network, between ${gene[data.source]}${data.target ? ` and ${gene[data.target]}` : ""}?`,
           `The user selected ${node.gene} (${node.accession}) in the network: regulates ${out.join(", ") || "none"}, ` +
             `regulated by ${inc.join(", ") || "none"}, binds ${partners.join(", ") || "none"}`,
+          proteinButtons(node),
         );
       }
 
@@ -483,6 +481,7 @@
           `The user selected the regulation ${gene[s]} -> ${gene[t]} from OmniPath (${effect}, evidence ${r.evidence}, ` +
             `${sites || "no site"}, resources ${r.resources.join(", ")}, ` +
             `PubMed ${r.references.map((ref) => ref.pubmed).join(", ") || "none"})`,
+          siteButtons(t, r.sites),
         );
       }
 
@@ -497,6 +496,7 @@
           ${source(`Reactome, from the cross-references of the UniProtKB entries · ${links(p.links)}`)}`,
           `What is the role of ${genes.join(", ")} in the Reactome pathway ${p.name} (${p.id})?`,
           `The user selected the Reactome pathway ${p.name} (${p.id}), with members ${genes.join(", ")}`,
+          termTableButton(p, toolArgs?.organism_id ?? 9606) + listButtons(genes, data.organism, "network"),
         );
       }
 
@@ -524,6 +524,14 @@
             .join("") || '<div class="muted">No pathway shared</div>';
       }
 
+      /** Viewers of the target of a regulation, on the residues of its modification sites, e.g. "phosphorylation T693" */
+      function siteButtons(target, sites) {
+        const positions = sites.map((x) => Number(x.label.match(/\d+$/)?.[0])).filter(Boolean);
+        if (!positions.length) return "";
+        const region = { start: Math.min(...positions), end: Math.max(...positions) };
+        return proteinButtons({ accession: target, gene: gene[target] }, region);
+      }
+
       $("paths").addEventListener("click", (e) => {
         const item = e.target.closest("[data-path]");
         if (!item) return;
@@ -537,6 +545,11 @@
           ${source("computed by this tool from the OmniPath regulations, highest minimum evidence then fewest steps")}`,
           `Explain how the signal goes from ${gene[path[0]]} to ${gene[path.at(-1)]} through ${text}, with references.`,
           `The user highlighted the directed path ${text}`,
+          listButtons(
+            path.map((n) => gene[n]),
+            data.organism,
+            "network",
+          ),
         );
       });
       $("loops").addEventListener("click", (e) => {
@@ -557,6 +570,11 @@
           ${source("computed by this tool from the OmniPath regulations, edges going back closer to the source")}`,
           `Explain the feedback loop ${text}: is it a negative or positive feedback, and what is its effect on the signal?`,
           `The user highlighted the feedback loop ${text}`,
+          listButtons(
+            f.loop.map((n) => gene[n]),
+            data.organism,
+            "network",
+          ),
         );
       });
       $("pathways").addEventListener("click", (e) => {
@@ -574,8 +592,9 @@
       });
       for (const id of ["details", "sources"]) {
         $(id).addEventListener("click", (e) => {
-          const url = e.target.dataset?.url;
+          const { url, prompt } = e.target.closest("[data-url], [data-prompt]")?.dataset ?? {};
           if (url) void app.openLink({ url });
+          if (prompt) void sendMessage(prompt);
         });
       }
       for (const id of ["show-regulation", "show-physical", "show-pathways", "min"]) {

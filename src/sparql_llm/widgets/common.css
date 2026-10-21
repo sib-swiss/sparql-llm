@@ -81,3 +81,11 @@ button:disabled {
 .error {
   color: #cf222e;
 }
+/* Buttons under the details of a selection */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}

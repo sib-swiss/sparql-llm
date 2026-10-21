@@ -115,11 +115,13 @@
         </div>
         <div id="features"></div>
         <button type="button" id="clear">Clear highlight</button>
+        <div class="actions" id="actions"></div>
       </div>
     </div>
     <div class="legend" id="legend"></div>
 
     <script src="colors.js"></script>
+    <script src="viewers.js"></script>
     <script>
       // Mol* bundles an Emscripten module (video export) that builds named functions with `new Function` when
       // loaded, blocked by the host CSP (no 'unsafe-eval'). This pattern is built without eval while the script loads
@@ -152,6 +154,7 @@
         { name: "UniProt structure", version: "0.0.1" },
         { availableDisplayModes: ["inline", "fullscreen"] },
       );
+      const sendMessage = (text) => app.sendMessage({ role: "user", content: [{ type: "text", text }] });
       const updateContext = (text) => app.updateModelContext({ content: [{ type: "text", text }] });
 
       window.Function = NativeFunction;
@@ -257,6 +260,11 @@
               <div class="desc">${escapeHtml(f.description.split(";")[0])}</div></div></div>`,
           )
           .join("");
+        // Other viewers of the protein, on the highlighted residues
+        const region = active?.positions
+          ? { start: Math.min(...active.positions), end: Math.max(...active.positions) }
+          : active;
+        $("actions").innerHTML = proteinButtons(entry, region, "structure");
       }
 
       $("features").addEventListener("click", (e) => {
@@ -274,6 +282,10 @@
         }
       });
       $("filter").oninput = renderFeatures;
+      $("actions").addEventListener("click", (e) => {
+        const prompt = e.target.closest("[data-prompt]")?.dataset.prompt;
+        if (prompt) void sendMessage(prompt);
+      });
       $("category").onchange = renderFeatures;
       $("clear").onclick = () => {
         active = null;

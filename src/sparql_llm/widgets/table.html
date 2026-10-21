@@ -148,8 +148,10 @@
       <input id="prompt" placeholder="Compare these proteins" />
       <button type="button" class="primary" id="send" disabled>Send</button>
     </div>
+    <div class="actions" id="viewers"></div>
 
     <script src="colors.js"></script>
+    <script src="viewers.js"></script>
     <script type="module">
       import {
         App,
@@ -246,11 +248,27 @@
         const list = rows.filter((r) => selected.has(r.accession));
         $("count").textContent = list.length ? `${list.length} selected` : "No selection";
         $("send").disabled = !list.length;
+        renderViewers(list);
         const text = list.length
           ? `The user selected ${list.length} entries in the UniProt results table: ` +
             list.map((r) => `${r.accession} (${r.gene ?? r.id}, ${r.name}, ${r.organism})`).join("; ")
           : "The user has not selected entries in the UniProt results table";
         void updateContext(text);
+      }
+
+      /** Viewers of the selection: the protein views for one entry, the list views for entries of one organism */
+      function renderViewers(list) {
+        const organisms = new Set(list.map((r) => r.organism));
+        $("viewers").innerHTML =
+          list.length === 1
+            ? `<span class="muted">Open ${escapeHtml(proteinLabel(list[0]))} in:</span>${proteinButtons(list[0])}`
+            : list.length > 1 && organisms.size === 1
+              ? `<span class="muted">Open the ${list.length} entries in:</span>` +
+                listButtons(
+                  list.map((r) => r.gene ?? r.accession),
+                  list[0].organism,
+                )
+              : "";
       }
 
       $("rows").addEventListener("click", (e) => {
@@ -280,6 +298,10 @@
         renderRows();
       });
       $("filter").oninput = renderRows;
+      $("viewers").addEventListener("click", (e) => {
+        const prompt = e.target.closest("[data-prompt]")?.dataset.prompt;
+        if (prompt) void sendMessage(prompt);
+      });
       $("send").onclick = () => {
         const list = rows.filter((r) => selected.has(r.accession));
         const prompt = $("prompt").value.trim() || "Compare these proteins";

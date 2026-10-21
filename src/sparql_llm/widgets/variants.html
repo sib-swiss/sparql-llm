@@ -101,11 +101,6 @@
         border-radius: 8px;
         min-height: 38px;
       }
-      .details .actions {
-        display: flex;
-        gap: 6px;
-        margin-top: 6px;
-      }
       .scroll {
         margin-top: 8px;
         max-height: 260px;
@@ -213,6 +208,7 @@
     </div>
 
     <script src="colors.js"></script>
+    <script src="viewers.js"></script>
     <script type="module">
       import {
         App,
@@ -469,13 +465,11 @@
           ${links(v)}
           <div class="actions">
             <button type="button" id="ask">Ask about it</button>
-            <button type="button" id="structure">Show in 3D</button>
+            ${proteinButtons(entry, v, "variants")}
           </div>`;
         const name = `${entry.gene ?? entry.accession} ${v.change}`;
         const label = `${name} (${v.consequence}, ${v.significance.join(", ") || "no clinical significance"}${v.diseases.length ? `, ${v.diseases.join("; ")}` : ""})`;
         $("ask").onclick = () => sendMessage(`Tell me more about the variant ${label}`);
-        $("structure").onclick = () =>
-          sendMessage(`Show the 3D structure of ${entry.accession} highlighting residue ${v.start} (variant ${name})`);
         void updateContext(`The user selected the variant ${label} in the variant explorer`);
       }
 
@@ -493,15 +487,17 @@
         const f = entry.features[Number(item.accession.split("-")[1])];
         $("details").classList.remove("muted");
         $("details").innerHTML =
-          `<b>${escapeHtml(f.type)}</b> ${escapeHtml(f.description)} <span class="muted">residues ${featurePos(f)}</span>`;
+          `<b>${escapeHtml(f.type)}</b> ${escapeHtml(f.description)} <span class="muted">residues ${featurePos(f)}</span>
+          <div class="actions">${proteinButtons(entry, f, "variants")}</div>`;
       });
       $("rows").addEventListener("click", (e) => {
         const tr = e.target.closest("tr[data-i]");
         if (tr) select(entry.variants[Number(tr.dataset.i)]);
       });
       $("details").addEventListener("click", (e) => {
-        const url = e.target.dataset?.url;
+        const { url, prompt } = e.target.closest("[data-url], [data-prompt]")?.dataset ?? {};
         if (url) void app.openLink({ url });
+        if (prompt) void sendMessage(prompt);
       });
       $("filter").oninput = render;
       $("zoom-all").onclick = () => zoomTo([1, entry.length]);

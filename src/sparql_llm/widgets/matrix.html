@@ -139,11 +139,6 @@
         border-radius: 8px;
         min-height: 38px;
       }
-      .details .actions {
-        display: flex;
-        gap: 6px;
-        margin-top: 6px;
-      }
     </style>
   </head>
   <body>
@@ -169,6 +164,7 @@
     <div class="details muted" id="details">Click a term or a gene for details</div>
 
     <script src="colors.js"></script>
+    <script src="viewers.js"></script>
     <script type="module">
       import {
         App,
@@ -286,7 +282,11 @@
             <div><b>${escapeHtml(item.name)}</b> <a data-url="${escapeHtml(termUrl(item.id))}">${escapeHtml(item.id)}</a>
               <span class="muted">${escapeHtml(item.type)} · ${genes.length} of ${data.proteins.length} proteins</span></div>
             <div>${escapeHtml(genes.join(", "))}</div>
-            <div class="actions"><button type="button" id="ask">Ask about it</button></div>`;
+            <div class="actions">
+              <button type="button" id="ask">Ask about it</button>
+              ${termTableButton(item, toolArgs?.organism_id ?? 9606)}
+              ${genes.length > 1 ? listButtons(genes, data.organism, "matrix") : ""}
+            </div>`;
           $("ask").onclick = () => sendMessage(`What is the role of ${genes.join(", ")} in ${item.name} (${item.id})?`);
           void updateContext(
             `The user selected the ${item.type} "${item.name}" (${item.id}) in the annotation matrix, annotated for ` +
@@ -301,7 +301,10 @@
             <div><b>${escapeHtml(item.gene)}</b> ${escapeHtml(item.name ?? "")}
               <a data-url="https://www.uniprot.org/uniprotkb/${item.accession}/entry">${item.accession}</a></div>
             <div class="muted">${counts.map(([type, n]) => `${n} ${escapeHtml(type)}`).join(" · ")}</div>
-            <div class="actions"><button type="button" id="ask">Ask about it</button></div>`;
+            <div class="actions">
+              <button type="button" id="ask">Ask about it</button>
+              ${proteinButtons(item)}
+            </div>`;
           const others = data.proteins.filter((p) => p !== item).map((p) => p.gene);
           $("ask").onclick = () =>
             sendMessage(`What does ${item.gene} (${item.accession}) do, compared to ${others.join(", ")}?`);
@@ -320,8 +323,9 @@
         if (th) select(data.proteins.find((p) => p.accession === th.dataset.acc));
       });
       $("details").addEventListener("click", (e) => {
-        const url = e.target.dataset?.url;
+        const { url, prompt } = e.target.closest("[data-url], [data-prompt]")?.dataset ?? {};
         if (url) void app.openLink({ url });
+        if (prompt) void sendMessage(prompt);
       });
       for (const id of ["type", "min", "group"]) $(id).onchange = render;
       $("filter").oninput = render;
