@@ -11,8 +11,14 @@
       }
       @media (max-width: 560px) {
         .layout {
-          grid-template-columns: 1fr;
+          grid-template-columns: minmax(0, 1fr);
         }
+      }
+      .layout.collapsed {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .layout.collapsed .facets {
+        display: none;
       }
       .facets {
         font-size: 12px;
@@ -67,14 +73,34 @@
       }
       th,
       td {
-        padding: 4px 8px;
+        padding: 4px 6px;
         text-align: left;
         border-bottom: 1px solid var(--border);
         white-space: nowrap;
       }
-      td.name {
+      /* Wrapped between words, so the columns are never narrower than their longest word */
+      td.name,
+      td.organism {
         white-space: normal;
-        min-width: 180px;
+        overflow-wrap: break-word;
+      }
+      /* Readable protein names before falling back to the compact table */
+      .scroll:not(.compact) td.name {
+        min-width: 140px;
+      }
+      td .inline {
+        display: none;
+      }
+      /* Set by `fitTable` when all columns do not fit: first without the length, then compact with the gene under the
+      entry and the organism under the protein name */
+      .no-length .length,
+      .compact .gene,
+      .compact .organism,
+      .compact .length {
+        display: none;
+      }
+      .compact td .inline {
+        display: block;
       }
       th {
         position: sticky;
@@ -99,6 +125,7 @@
       .stars {
         color: #d4a72c;
         letter-spacing: -1px;
+        font-size: 10px;
       }
       .selection {
         display: flex;
@@ -119,10 +146,11 @@
       <span class="spacer"></span>
       <button type="button" id="fullscreen">Full screen</button>
     </header>
-    <div class="layout">
+    <div class="layout" id="layout">
       <div class="facets" id="facets"></div>
       <div>
         <div class="toolbar">
+          <button type="button" id="toggle-facets" aria-expanded="true">Hide filters</button>
           <input id="filter" type="search" placeholder="Filter by accession, name, gene" />
         </div>
         <div class="scroll">
@@ -131,10 +159,10 @@
               <tr>
                 <th data-col="selected"><input type="checkbox" id="all" aria-label="Select all shown" /></th>
                 <th data-col="accession">Entry</th>
-                <th data-col="gene">Gene</th>
+                <th data-col="gene" class="gene">Gene</th>
                 <th data-col="name">Protein</th>
-                <th data-col="organism">Organism</th>
-                <th data-col="length">Length</th>
+                <th data-col="organism" class="organism">Organism</th>
+                <th data-col="length" class="length">Length</th>
                 <th data-col="score">Score</th>
               </tr>
             </thead>
@@ -212,6 +240,23 @@
         }
       }
 
+      /** Most columns that fit in the width of the table, measured on the rows shown */
+      function fitTable() {
+        const scroll = document.querySelector(".scroll");
+        for (const mode of ["full", "no-length", "compact"]) {
+          scroll.classList.remove("no-length", "compact");
+          if (mode !== "full") scroll.classList.add(mode);
+          if (scroll.scrollWidth <= scroll.clientWidth) break;
+        }
+      }
+      // Measured again when the width changes, not the height, which changes with the mode
+      let tableWidth;
+      new ResizeObserver(([e]) => {
+        if (e.contentRect.width === tableWidth) return;
+        tableWidth = e.contentRect.width;
+        fitTable();
+      }).observe(document.querySelector(".scroll"));
+
       function renderRows() {
         let list = filtered();
         if (sort.col) {
@@ -225,23 +270,39 @@
           .map(
             (r) => `<tr class="${selected.has(r.accession) ? "selected" : ""}" data-acc="${r.accession}">
               <td><input type="checkbox" ${selected.has(r.accession) ? "checked" : ""} aria-label="Select ${r.accession}" /></td>
-              <td><a data-acc="${r.accession}">${r.accession}</a> <span title="${r.reviewed ? "Reviewed" : "Unreviewed"}">${r.reviewed ? "★" : "☆"}</span></td>
-              <td>${escapeHtml(r.gene ?? "")}</td>
-              <td class="name">${escapeHtml(r.name ?? "")}</td>
-              <td>${escapeHtml(r.organism ?? "")}</td>
-              <td>${r.length ?? ""}</td>
+              <td><a data-acc="${r.accession}">${r.accession}</a> <span title="${r.reviewed ? "Reviewed" : "Unreviewed"}">${r.reviewed ? "★" : "☆"}</span>
+                <span class="inline">${escapeHtml(r.gene ?? "")}</span></td>
+              <td class="gene">${escapeHtml(r.gene ?? "")}</td>
+              <td class="name">${escapeHtml(r.name ?? "")}
+                <span class="inline muted">${escapeHtml(r.organism ?? "")}</span></td>
+              <td class="organism">${escapeHtml(r.organism ?? "")}</td>
+              <td class="length">${r.length ?? ""}</td>
               <td class="stars" title="${r.score}/5">${"●".repeat(r.score)}</td></tr>`,
           )
           .join("");
         $("subtitle").textContent = `${list.length} of ${rows.length} loaded (${data.total} in UniProt)`;
         $("all").checked = list.length > 0 && list.every((r) => selected.has(r.accession));
         $("all").dataset.shown = JSON.stringify(list.map((r) => r.accession));
+        fitTable();
       }
 
       function render() {
         renderFacets();
         renderRows();
+        facetsToggleLabel();
       }
+
+      /** Filter sidebar shown by default, collapsed to give the table the full width */
+      function facetsToggleLabel() {
+        const collapsed = $("layout").classList.contains("collapsed");
+        const active = Object.values(facets).reduce((n, values) => n + values.size, 0);
+        $("toggle-facets").textContent = collapsed ? `Filters${active ? ` (${active})` : ""}` : "Hide filters";
+        $("toggle-facets").setAttribute("aria-expanded", String(!collapsed));
+      }
+      $("toggle-facets").onclick = () => {
+        $("layout").classList.toggle("collapsed");
+        facetsToggleLabel();
+      };
 
       /** Selected rows, told to the model with the next message */
       function selectionChanged() {
