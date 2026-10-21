@@ -41,6 +41,7 @@ dependencies = [
     "markdownify >=1.2.3",
     "pandas >=2.2.3",
     "typing-extensions >=4.16.0",
+    "defusedxml>=0.7.1",
 ]
 
 [project.optional-dependencies]

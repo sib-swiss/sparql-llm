@@ -44,4 +44,13 @@ def test_mcp_paths_without_redirects(client: TestClient, path: str, scheme: str)
     assert response.status_code == 200
     assert "location" not in response.headers
     tools = {tool["name"] for tool in response.json()["result"]["tools"]}
-    assert {"show_protein_variants", "show_gene_expression", "show_reaction", "show_metanetx", "show_lipid"} <= tools
+    assert {
+        "show_protein_variants",
+        "show_gene_expression",
+        "show_reaction",
+        "show_metanetx",
+        "show_lipid",
+        "show_cell_line",
+        "show_gene_family",
+        "show_ortholog_group",
+    } <= tools

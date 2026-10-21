@@ -17,7 +17,16 @@ from rdflib.plugins.sparql import prepareQuery
 from typing_extensions import NotRequired, TypedDict
 
 # Widget tools of other SIB resources are registered on the UniProt MCP Apps extension when imported
-from sparql_llm import __version__, bgee_tools, metanetx_tools, rhea_tools, swisslipids_tools  # noqa: F401
+from sparql_llm import (  # noqa: F401
+    __version__,
+    bgee_tools,
+    cellosaurus_tools,
+    metanetx_tools,
+    oma_tools,
+    orthodb_tools,
+    rhea_tools,
+    swisslipids_tools,
+)
 from sparql_llm.config import settings
 from sparql_llm.indexing.index_resources import embedding_model, endpoints_metadata, init_vectordb, qdrant_client
 from sparql_llm.loaders.sparql_info_loader import GENERAL_INFO_DOC_TYPE
@@ -175,7 +184,9 @@ def get_mcp_app(enable_resources_info_tool: bool = True, enable_uniprot_tools: b
             " For simple questions on UniProtKB proteins, `search_proteins` and `get_protein` query the UniProt REST API "
             "directly, and the `show_*` and `search_proteins_table` tools show interactive views of proteins to the user. "
             "Other `show_*` tools show interactive views of gene expression (Bgee), biochemical reactions with their atom "
-            "map (Rhea), metabolites and reactions across databases and metabolic models (MetaNetX), and lipids (SwissLipids)."
+            "map (Rhea), metabolites and reactions across databases and metabolic models (MetaNetX), lipids (SwissLipids), "
+            "cell lines with their STR authentication (Cellosaurus), gene family history and conserved gene "
+            "neighbourhood (OMA), and ortholog groups with their phyletic profile (OrthoDB)."
         )
     # Create MCP server https://github.com/modelcontextprotocol/python-sdk
     # UniProt tools showing widgets are added through the MCP Apps extension

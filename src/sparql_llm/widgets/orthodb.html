@@ -1,0 +1,551 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      [hidden] {
+        display: none !important;
+      }
+      .badge {
+        font-size: 11px;
+        padding: 1px 7px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--muted);
+      }
+      .hierarchy {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+        margin-bottom: 10px;
+        font-size: 12px;
+      }
+      .og {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1px 8px;
+        cursor: pointer;
+        background: var(--bg);
+      }
+      .og:hover {
+        background: var(--hover);
+      }
+      .og.current {
+        border-color: var(--accent);
+        font-weight: 600;
+        cursor: default;
+      }
+      .og .muted {
+        font-weight: normal;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 10px;
+        background: var(--panel);
+      }
+      .card .value {
+        font-size: 18px;
+        font-weight: 600;
+      }
+      .card .label {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .gauge {
+        position: relative;
+        height: 6px;
+        border-radius: 3px;
+        margin-top: 4px;
+        background: linear-gradient(to right, #2da44e, #bf8700, #cf222e);
+      }
+      .gauge i {
+        position: absolute;
+        top: -3px;
+        width: 3px;
+        height: 12px;
+        background: var(--fg);
+        border-radius: 1px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+        gap: 12px;
+      }
+      @media (max-width: 640px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      h2 {
+        font-size: 13px;
+        font-weight: 600;
+        margin: 0 0 4px;
+      }
+      .toolbar {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 4px;
+      }
+      .toolbar input[type="search"] {
+        flex: 1;
+      }
+      .toolbar label {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .tree {
+        max-height: 420px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 12px;
+      }
+      :root[data-mode="fullscreen"] .tree {
+        max-height: calc(100vh - 300px);
+      }
+      .row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 110px 90px;
+        gap: 8px;
+        align-items: center;
+        padding: 1px 8px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .row:hover,
+      .row.selected {
+        background: var(--hover);
+      }
+      .row .name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .row .toggle {
+        display: inline-block;
+        width: 14px;
+        color: var(--muted);
+      }
+      .row.organism {
+        color: var(--fg);
+      }
+      .row.absent {
+        color: var(--muted);
+      }
+      .presence {
+        height: 8px;
+        border-radius: 4px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        overflow: hidden;
+      }
+      .presence span {
+        display: block;
+        height: 100%;
+      }
+      .copies i {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        margin-right: 2px;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+      .hist {
+        display: flex;
+        align-items: flex-end;
+        gap: 4px;
+        height: 90px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 2px;
+      }
+      .hist div {
+        flex: 1;
+        background: var(--accent);
+        border-radius: 3px 3px 0 0;
+        min-height: 1px;
+      }
+      .hist-labels {
+        display: flex;
+        gap: 4px;
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 10px;
+      }
+      .hist-labels span {
+        flex: 1;
+        text-align: center;
+      }
+      .ann-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-bottom: 4px;
+      }
+      .ann-tabs button {
+        font-size: 11px;
+        padding: 1px 6px;
+      }
+      .ann-tabs button.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .annotations {
+        max-height: 200px;
+        overflow: auto;
+        font-size: 12px;
+      }
+      .annotations div {
+        display: flex;
+        gap: 6px;
+        padding: 1px 0;
+        cursor: pointer;
+      }
+      .annotations div:hover {
+        background: var(--hover);
+      }
+      .annotations .n {
+        color: var(--muted);
+        min-width: 34px;
+        text-align: right;
+      }
+      .details {
+        margin-top: 10px;
+        padding: 8px 10px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        min-height: 38px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Loading ortholog group</h1>
+      <span id="badges"></span>
+      <span class="spacer"></span>
+      <button type="button" id="fullscreen">Full screen</button>
+    </header>
+    <div class="hierarchy" id="hierarchy"></div>
+    <div class="cards" id="cards"></div>
+    <div class="grid">
+      <div>
+        <div class="toolbar">
+          <h2 style="margin: 0">Phyletic profile</h2>
+          <input id="filter" type="search" placeholder="Find a clade or species" />
+          <label><input id="absent" type="checkbox" /> Only absences</label>
+        </div>
+        <div class="tree" id="tree"></div>
+      </div>
+      <div>
+        <h2>Species by number of copies</h2>
+        <div class="hist" id="hist"></div>
+        <div class="hist-labels" id="hist-labels"></div>
+        <h2>Functional annotations</h2>
+        <div class="ann-tabs" id="ann-tabs"></div>
+        <div class="annotations" id="annotations"></div>
+      </div>
+    </div>
+    <div class="details muted" id="details">Click a clade, a species, an annotation or a group of another level</div>
+
+    <script src="colors.js"></script>
+    <script src="viewers.js"></script>
+    <script type="module">
+      import {
+        App,
+        applyDocumentTheme,
+      } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@2.0.3/dist/src/app-with-deps.js";
+
+      // Connection to the host with the MCP Apps SDK
+      const app = new App(
+        { name: "OrthoDB ortholog group", version: "0.0.1" },
+        { availableDisplayModes: ["inline", "fullscreen"] },
+      );
+      const sendMessage = (text) => app.sendMessage({ role: "user", content: [{ type: "text", text }] });
+      const updateContext = (text) => app.updateModelContext({ content: [{ type: "text", text }] });
+
+      const $ = (id) => document.getElementById(id);
+      const ogUrl = (id) => `https://www.orthodb.org/?query=${id}`;
+      const ANNOTATION_URLS = {
+        "InterPro domains": (id) => `https://www.ebi.ac.uk/interpro/entry/InterPro/${id}/`,
+        "GO biological process": (id) => `https://www.ebi.ac.uk/QuickGO/term/${id}`,
+        "GO molecular function": (id) => `https://www.ebi.ac.uk/QuickGO/term/${id}`,
+        "GO cellular component": (id) => `https://www.ebi.ac.uk/QuickGO/term/${id}`,
+        EC: (id) => `https://enzyme.expasy.org/EC/${id}`,
+      };
+      let data;
+      let open = new Set();
+      let selected = null;
+      let annotationKind = null;
+      let nodes = new Map();
+
+      /** Presence color from the share of species with the gene, red when mostly lost */
+      const presenceColor = (share) => (share >= 0.9 ? "#2da44e" : share >= 0.5 ? "#bf8700" : "#cf222e");
+      const pct = (n, d) => `${Math.round((100 * n) / (d || 1))}%`;
+
+      function renderHeader() {
+        $("title").textContent = data.name;
+        $("badges").innerHTML =
+          `<span class="badge">${escapeHtml(data.level)}</span> <a data-url="${ogUrl(data.id)}">${data.id}</a>`;
+        $("hierarchy").innerHTML = data.hierarchy
+          .map((h, i) => {
+            const sep = i && h.relation !== "child" ? `<span class="muted">›</span>` : "";
+            const childStart =
+              h.relation === "child" && data.hierarchy[i - 1]?.relation !== "child"
+                ? `<span class="muted">splits into</span>`
+                : "";
+            return `${sep}${childStart}<span class="og ${h.relation === "current" ? "current" : ""}" data-og="${h.id}" title="${escapeHtml(`${h.id}: ${h.name}`)}">
+              ${escapeHtml(h.level)} <span class="muted">${escapeHtml(h.relation === "child" ? (h.name ?? "") : "")} ${h.genes}</span></span>`;
+          })
+          .join(" ");
+        const p = data.profile;
+        const a = data.architecture;
+        // Evolutionary rate drawn on 0 to 2, 1 is the average of the groups of the level
+        const rate = data.rate ?? null;
+        $("cards").innerHTML = [
+          [p.gene_count, "genes"],
+          [`${p.present_in}/${p.species_count}`, `species with the gene (${pct(p.present_in, p.species_count)})`],
+          [pct(p.single_copy, p.present_in), `single copy (${p.single_copy} species)`],
+          [p.multi_copy, "species with several copies"],
+          [
+            rate === null ? "-" : rate.toFixed(2),
+            `evolutionary rate${rate === null ? "" : `<div class="gauge"><i style="left:${Math.min(100, (rate / 2) * 100)}%"></i></div>`}`,
+          ],
+          [
+            a.protein_median_length ? `${a.protein_median_length} aa` : "-",
+            `median protein length ± ${a.protein_stdev_length ?? "-"}`,
+          ],
+          [a.exon_median_counts ?? "-", "median exons"],
+        ]
+          .map(
+            ([v, l]) =>
+              `<div class="card"><div class="value">${escapeHtml(v)}</div><div class="label">${l}</div></div>`,
+          )
+          .join("");
+      }
+
+      function renderHistogram() {
+        const entries = Object.entries(data.copies);
+        const max = Math.max(1, ...entries.map(([, n]) => n));
+        $("hist").innerHTML = entries
+          .map(
+            ([k, n]) =>
+              `<div style="height:${(100 * n) / max}%" title="${n} species with ${k} cop${k === "1" ? "y" : "ies"}"></div>`,
+          )
+          .join("");
+        $("hist-labels").innerHTML = entries.map(([k, n]) => `<span>${k}<br />${n}</span>`).join("");
+      }
+
+      /** Rows of the expanded clades, filtered by name or to the absences */
+      function renderTree() {
+        const text = $("filter").value.toLowerCase();
+        const onlyAbsent = $("absent").checked;
+        const rows = [];
+        const matches = (c) =>
+          c.name.toLowerCase().includes(text) ||
+          c.organisms.some((o) => o.name.toLowerCase().includes(text)) ||
+          c.children.some(matches);
+        const visit = (c, depth) => {
+          if (onlyAbsent && c.present === c.species) return;
+          if (text && !matches(c)) return;
+          nodes.set(c.id, c);
+          const expanded = open.has(c.id) || Boolean(text);
+          const share = c.present / (c.species || 1);
+          const hasKids = c.children.length || c.organisms.length;
+          rows.push(`<div class="row ${selected === c ? "selected" : ""}" data-clade="${c.id}" style="padding-left:${8 + depth * 14}px">
+            <span class="name"><span class="toggle">${hasKids ? (expanded ? "▾" : "▸") : ""}</span>${escapeHtml(c.name)}</span>
+            <span class="presence" title="${c.present} of ${c.species} species"><span style="width:${share * 100}%;background:${presenceColor(share)}"></span></span>
+            <span class="muted">${c.present}/${c.species} · ${c.genes}</span></div>`);
+          if (!expanded) return;
+          for (const child of c.children) visit(child, depth + 1);
+          for (const o of c.organisms) {
+            if (onlyAbsent && o.copies) continue;
+            if (text && !o.name.toLowerCase().includes(text) && !c.name.toLowerCase().includes(text)) continue;
+            nodes.set(o.id, o);
+            rows.push(`<div class="row organism ${o.copies ? "" : "absent"} ${selected === o ? "selected" : ""}" data-organism="${o.id}" style="padding-left:${22 + (depth + 1) * 14}px">
+              <span class="name"><i>${escapeHtml(o.name)}</i></span>
+              <span class="copies">${o.copies ? "<i></i>".repeat(Math.min(o.copies, 12)) : ""}</span>
+              <span class="muted">${o.copies ? `${o.copies} cop${o.copies > 1 ? "ies" : "y"}` : "absent"}</span></div>`);
+          }
+        };
+        if (data.clades) visit(data.clades, 0);
+        $("tree").innerHTML = rows.join("") || `<div class="muted" style="padding:6px">No clade</div>`;
+      }
+
+      function renderAnnotations() {
+        const kinds = Object.keys(data.annotations);
+        if (!kinds.includes(annotationKind)) annotationKind = kinds[0] ?? null;
+        $("ann-tabs").innerHTML = kinds
+          .map(
+            (k) =>
+              `<button type="button" data-kind="${escapeHtml(k)}" class="${k === annotationKind ? "active" : ""}">${escapeHtml(k)}</button>`,
+          )
+          .join("");
+        $("annotations").innerHTML = annotationKind
+          ? data.annotations[annotationKind]
+              .map(
+                (a, i) =>
+                  `<div data-annotation="${i}"><span class="n">${a.count ?? ""}</span><span>${escapeHtml(a.name)} <span class="muted">${escapeHtml(a.id)}</span></span></div>`,
+              )
+              .join("")
+          : `<span class="muted">No annotation</span>`;
+      }
+
+      function render() {
+        nodes = new Map();
+        renderHeader();
+        renderHistogram();
+        renderTree();
+        renderAnnotations();
+      }
+
+      function showDetails(item, html, context) {
+        selected = item;
+        renderTree();
+        $("details").classList.remove("muted");
+        $("details").innerHTML = html;
+        void updateContext(context);
+      }
+
+      function selectClade(c) {
+        const absent = c.species - c.present;
+        showDetails(
+          c,
+          `<div><b>${escapeHtml(c.name)}</b> <span class="muted">taxon ${c.id}</span></div>
+          <div>${c.present} of ${c.species} species with the gene (${pct(c.present, c.species)}), ${c.genes} genes, ${(c.genes / (c.present || 1)).toFixed(2)} per species</div>
+          <div class="actions"><button type="button" id="ask">Ask about it</button></div>`,
+          `The user selected ${c.name} in the phyletic profile of the OrthoDB group ${data.id} ${data.name} (${data.level}): present in ${c.present}/${c.species} species, ${c.genes} genes`,
+        );
+        $("ask").onclick = () =>
+          sendMessage(
+            absent > c.species / 4
+              ? `Why is ${data.name} (OrthoDB ${data.id}) missing in ${absent} of the ${c.species} ${c.name} species? Gene loss or incomplete annotation?`
+              : `How has ${data.name} (OrthoDB ${data.id}) evolved in ${c.name}, with ${c.genes} genes in ${c.present} species?`,
+          );
+      }
+
+      function selectOrganism(o) {
+        showDetails(
+          o,
+          `<div><b><i>${escapeHtml(o.name)}</i></b> <span class="muted">${o.id}</span></div>
+          <div>${o.copies ? `${o.copies} gene${o.copies > 1 ? "s" : ""} in the group` : "No gene in the group"}</div>
+          <div class="actions"><button type="button" id="ask">Ask about it</button></div>`,
+          `The user selected ${o.name} (${o.id}) in the OrthoDB group ${data.id} ${data.name}: ${o.copies} genes`,
+        );
+        $("ask").onclick = () =>
+          sendMessage(
+            o.copies
+              ? `What are the ${o.copies} ${data.name} genes of ${o.name} (OrthoDB ${data.id})?`
+              : `Why is there no ${data.name} gene in ${o.name} (OrthoDB ${data.id})?`,
+          );
+      }
+
+      function selectAnnotation(a) {
+        const url = ANNOTATION_URLS[annotationKind]?.(a.id);
+        showDetails(
+          a,
+          `<div><b>${escapeHtml(a.name)}</b> ${url ? `<a data-url="${url}">${escapeHtml(a.id)}</a>` : escapeHtml(a.id)}
+            <span class="muted">${escapeHtml(annotationKind)} · ${a.count ?? "?"} of ${data.profile.gene_count} genes</span></div>
+          <div class="actions"><button type="button" id="ask">Ask about it</button></div>`,
+          `The user selected the ${annotationKind} ${a.id} ${a.name} of the OrthoDB group ${data.id} ${data.name}`,
+        );
+        $("ask").onclick = () =>
+          sendMessage(`What does ${a.name} (${a.id}) tell about the function of ${data.name} across ${data.level}?`);
+      }
+
+      /** Group of another level, shown in place by calling the tool, else asked to the model */
+      async function openGroup(id) {
+        const h = data.hierarchy.find((x) => x.id === id);
+        $("title").textContent = `Loading ${h?.level ?? id}`;
+        try {
+          const result = await app.callServerTool({ name: "show_ortholog_group", arguments: { query: id } });
+          if (!result.structuredContent) throw new Error("no data");
+          show(result.structuredContent);
+          void updateContext(`The user opened the OrthoDB group ${id} ${data.name} at the ${data.level} level`);
+        } catch {
+          $("title").textContent = data.name;
+          void sendMessage(`Show the OrthoDB group ${id} (${h?.name ?? ""}, ${h?.level ?? ""})`);
+        }
+      }
+
+      function show(d) {
+        data = d;
+        selected = null;
+        // Root and its sub-clades open, and the clades with few species
+        open = new Set(data.clades ? [data.clades.id] : []);
+        if (data.clades?.species <= 40) for (const c of data.clades.children) open.add(c.id);
+        render();
+      }
+
+      document.body.addEventListener("click", (e) => {
+        const el = e.target.closest(
+          "[data-url], [data-prompt], [data-og], [data-clade], [data-organism], [data-kind], [data-annotation]",
+        );
+        if (!el) return;
+        const d = el.dataset;
+        if (d.url) void app.openLink({ url: d.url });
+        else if (d.prompt) void sendMessage(d.prompt);
+        else if (d.og && d.og !== data.id) void openGroup(d.og);
+        else if (d.clade) {
+          const c = nodes.get(d.clade);
+          if (open.has(c.id) && selected === c) open.delete(c.id);
+          else open.add(c.id);
+          selectClade(c);
+        } else if (d.organism) selectOrganism(nodes.get(d.organism));
+        else if (d.kind) {
+          annotationKind = d.kind;
+          renderAnnotations();
+        } else if (d.annotation) selectAnnotation(data.annotations[annotationKind][Number(d.annotation)]);
+      });
+      $("filter").oninput = renderTree;
+      $("absent").onchange = renderTree;
+      // Theme and display mode of the host as attributes on <html> for the CSS
+      function onContext(ctx) {
+        if (ctx.theme) applyDocumentTheme(ctx.theme);
+        if (ctx.displayMode) {
+          document.documentElement.dataset.mode = ctx.displayMode;
+          $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";
+        }
+      }
+      app.onhostcontextchanged = onContext;
+      // The host answers with the mode set, it may not send a context change
+      $("fullscreen").onclick = async () => {
+        const mode = document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen";
+        onContext({ displayMode: (await app.requestDisplayMode({ mode })).mode });
+      };
+
+      // Tool arguments, to call the tool again when the result has no `structuredContent`, as Claude Desktop
+      // gives to widgets restored after a reload of the chat https://github.com/modelcontextprotocol/ext-apps/issues/696
+      let toolArgs;
+      app.ontoolinput = (params) => (toolArgs = params.arguments);
+      app.ontoolresult = async (result) => {
+        if (!result.structuredContent && !result.isError && toolArgs) {
+          result = await app.callServerTool({ name: "show_ortholog_group", arguments: toolArgs }).catch(() => result);
+        }
+        if (!result.structuredContent) return ($("title").textContent = "No ortholog group");
+        show(result.structuredContent);
+      };
+
+      await app.connect();
+      // Full screen button only when the host offers it
+      const host = app.getHostContext() ?? {};
+      $("fullscreen").hidden = Boolean(
+        host.availableDisplayModes && !host.availableDisplayModes.includes("fullscreen"),
+      );
+      onContext(host);
+    </script>
+  </body>
+</html>

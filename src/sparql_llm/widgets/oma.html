@@ -1,0 +1,503 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      [hidden] {
+        display: none !important;
+      }
+      .badge {
+        font-size: 11px;
+        padding: 1px 7px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--muted);
+      }
+      .tabs {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 6px;
+      }
+      .tabs button.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .tabs input[type="search"] {
+        flex: 1;
+        min-width: 100px;
+        max-width: 260px;
+      }
+      .tabs label {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .panel {
+        max-height: 460px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 12px;
+      }
+      :root[data-mode="fullscreen"] .panel {
+        max-height: calc(100vh - 230px);
+      }
+      .row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 90px minmax(0, 1fr);
+        gap: 8px;
+        align-items: center;
+        padding: 1px 8px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .row:hover,
+      .row.selected {
+        background: var(--hover);
+      }
+      .row.query-path .name {
+        font-weight: 600;
+      }
+      .row .name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .row .toggle {
+        display: inline-block;
+        width: 14px;
+        color: var(--muted);
+      }
+      .events {
+        display: flex;
+        gap: 6px;
+      }
+      .dup {
+        color: #cf222e;
+      }
+      .loss {
+        color: var(--muted);
+      }
+      .genes {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        overflow: hidden;
+        max-height: 14px;
+      }
+      .genes i {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+      }
+      .genes i.query {
+        outline: 2px solid var(--fg);
+        outline-offset: 1px;
+      }
+      .genes i.ancestral {
+        border-radius: 50%;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .legend span {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .legend i {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+      }
+      /* Gene neighbourhood: one row per species, genes as arrows aligned on the gene of the family */
+      .synteny {
+        padding: 8px;
+      }
+      .srow {
+        display: grid;
+        grid-template-columns: 150px minmax(0, 1fr);
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+      .srow .species {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .track {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 4px;
+        position: relative;
+      }
+      .track::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 50%;
+        border-top: 1px solid var(--border);
+      }
+      .arrow {
+        position: relative;
+        height: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 11px;
+        overflow: hidden;
+        cursor: pointer;
+        clip-path: polygon(0 0, 82% 0, 100% 50%, 82% 100%, 0 100%);
+      }
+      .arrow.reverse {
+        clip-path: polygon(18% 0, 100% 0, 100% 100%, 18% 100%, 0 50%);
+      }
+      .arrow span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding: 0 10px;
+        text-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+      }
+      .arrow.focus {
+        outline: 2px solid var(--fg);
+      }
+      .arrow.selected {
+        filter: brightness(1.25);
+      }
+      .details {
+        margin-top: 10px;
+        padding: 8px 10px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        min-height: 38px;
+        overflow-wrap: anywhere;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Loading gene family</h1>
+      <span id="badges"></span>
+      <span class="muted" id="subtitle"></span>
+      <span class="spacer"></span>
+      <button type="button" id="fullscreen">Full screen</button>
+    </header>
+    <div class="tabs">
+      <button type="button" data-tab="history" class="active">Family history</button>
+      <button type="button" data-tab="synteny">Gene neighbourhood</button>
+      <span class="spacer"></span>
+      <input id="filter" type="search" placeholder="Find a clade or species" />
+      <label><input id="events" type="checkbox" /> Only duplications and losses</label>
+    </div>
+    <div class="panel" id="history"></div>
+    <div class="panel synteny" id="synteny" hidden></div>
+    <div class="legend" id="legend"></div>
+    <div class="details muted" id="details">Click a clade, a species or a gene for details</div>
+
+    <script src="colors.js"></script>
+    <script src="viewers.js"></script>
+    <script type="module">
+      import {
+        App,
+        applyDocumentTheme,
+      } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@2.0.3/dist/src/app-with-deps.js";
+
+      // Connection to the host with the MCP Apps SDK
+      const app = new App(
+        { name: "OMA gene family", version: "0.0.1" },
+        { availableDisplayModes: ["inline", "fullscreen"] },
+      );
+      const sendMessage = (text) => app.sendMessage({ role: "user", content: [{ type: "text", text }] });
+      const updateContext = (text) => app.updateModelContext({ content: [{ type: "text", text }] });
+
+      const $ = (id) => document.getElementById(id);
+      const PALETTE = [
+        "#0969da",
+        "#cf222e",
+        "#1a7f37",
+        "#8250df",
+        "#bf8700",
+        "#1b7c83",
+        "#bc4c00",
+        "#d63384",
+        "#57606a",
+        "#6f42c1",
+      ];
+      const omaUrl = (id) => `https://omabrowser.org/oma/vps/${id}/`;
+      let data;
+      let tab = "history";
+      let open = new Set();
+      let selected = null;
+      let nodes = new Map();
+      let queryPath = new Set();
+      let lineageColors = new Map();
+      let familyColors = new Map();
+
+      /** Paralog lineage of the first duplication below the root, e.g. HOG:F0782425.2c, colors the genes */
+      const subfamily = (lineage) => lineage.split(".").slice(0, 2).join(".");
+      const lineageColor = (lineage) => {
+        const key = subfamily(lineage);
+        if (!lineageColors.has(key)) lineageColors.set(key, PALETTE[lineageColors.size % PALETTE.length]);
+        return lineageColors.get(key);
+      };
+
+      /** Clades from the root to the species of the protein, opened first */
+      function findPath(n, target, path = []) {
+        if (n.genes.some((g) => g.omaid === data.protein.omaid)) return [...path, n.id];
+        for (const c of n.children) {
+          const found = findPath(c, target, [...path, n.id]);
+          if (found) return found;
+        }
+        return null;
+      }
+
+      const hasEvents = (n) => n.dups || n.losses.length || n.children.some(hasEvents);
+
+      function renderHistory() {
+        if (!data.tree) {
+          $("history").innerHTML =
+            `<div class="muted" style="padding:8px">The family is too large to show its species tree</div>`;
+          return;
+        }
+        const text = $("filter").value.toLowerCase();
+        const onlyEvents = $("events").checked;
+        const matches = (n) => n.name.toLowerCase().includes(text) || n.children.some(matches);
+        const rows = [];
+        const visit = (n, depth) => {
+          if (text && !matches(n)) return;
+          if (onlyEvents && !hasEvents(n)) return;
+          nodes.set(n.id, n);
+          const expanded = open.has(n.id) || Boolean(text) || onlyEvents;
+          const leaf = !n.children.length;
+          // Genes of species, else the ancestral genes of the clade
+          const squares = leaf
+            ? n.genes
+                .map(
+                  (g) =>
+                    `<i class="${g.omaid === data.protein.omaid ? "query" : ""}" style="background:${lineageColor(g.lineage)}" title="${escapeHtml(`${g.name ?? g.omaid} ${g.rel ?? ""}`)}"></i>`,
+                )
+                .join("")
+            : n.groups
+                .map((l) => `<i class="ancestral" style="background:${lineageColor(l)}" title="${escapeHtml(l)}"></i>`)
+                .join("");
+          rows.push(`<div class="row ${queryPath.has(n.id) ? "query-path" : ""} ${selected === n ? "selected" : ""}" data-node="${n.id}" style="padding-left:${8 + depth * 12}px">
+            <span class="name"><span class="toggle">${leaf ? "" : expanded ? "▾" : "▸"}</span>${leaf ? `<i>${escapeHtml(n.name)}</i>` : escapeHtml(n.name)}
+              <span class="muted">${leaf ? "" : n.count}</span></span>
+            <span class="events">${n.dups ? `<span class="dup" title="${n.dups} duplications">◆ ${n.dups}</span>` : ""}${
+              n.losses.length
+                ? `<span class="loss" title="${n.losses.length} lineages lost">✕ ${n.losses.length}</span>`
+                : ""
+            }</span>
+            <span class="genes">${squares}</span></div>`);
+          if (expanded) for (const c of n.children) visit(c, depth + 1);
+        };
+        visit(data.tree, 0);
+        $("history").innerHTML = rows.join("") || `<div class="muted" style="padding:8px">No clade</div>`;
+      }
+
+      function renderSynteny() {
+        // Families colored as in the row of the protein, others grey
+        familyColors = new Map();
+        const first = data.synteny[0];
+        for (const g of first?.genes ?? [])
+          if (!familyColors.has(g.family)) familyColors.set(g.family, PALETTE[familyColors.size % PALETTE.length]);
+        const firstFocus = first?.genes.find((g) => g.id === first.focus);
+        $("synteny").innerHTML =
+          data.synteny
+            .map((r, ri) => {
+              // Oriented like the protein in the first row
+              const focus = r.genes.find((g) => g.id === r.focus);
+              const flip = Boolean(focus && firstFocus && focus.strand !== firstFocus.strand);
+              const genes = flip ? [...r.genes].reverse() : r.genes;
+              // Aligned on the protein or its ortholog, in the middle column
+              const center = Math.max(0, genes.indexOf(focus));
+              const cells = Array.from({ length: 7 }, (_, i) => genes[center - 3 + i]);
+              return `<div class="srow"><div class="species" title="${escapeHtml(r.species)}"><i>${escapeHtml(r.species)}</i>
+                  <div class="muted">${r.code}${r.chromosome ? ` · chr ${escapeHtml(r.chromosome)}` : ""}</div></div>
+                <div class="track">${cells
+                  .map((g, i) => {
+                    if (!g) return "<span></span>";
+                    const forward = (g.strand === "+") !== flip;
+                    const color = familyColors.get(g.family) ?? "#8c959f";
+                    return `<div class="arrow ${forward ? "" : "reverse"} ${g.id === r.focus ? "focus" : ""} ${selected === g ? "selected" : ""}"
+                      style="background:${color}" data-gene="${ri}:${r.genes.indexOf(g)}" title="${escapeHtml(`${g.name ?? g.id}: ${g.description ?? ""}`)}">
+                      <span>${escapeHtml(g.name ?? g.id)}</span></div>`;
+                  })
+                  .join("")}</div></div>`;
+            })
+            .join("") || `<div class="muted">No gene neighbourhood</div>`;
+      }
+
+      function renderLegend() {
+        if (tab === "history") {
+          const counts = new Map();
+          const walk = (n) => {
+            for (const g of n.genes) counts.set(subfamily(g.lineage), (counts.get(subfamily(g.lineage)) ?? 0) + 1);
+            n.children.forEach(walk);
+          };
+          if (data.tree) walk(data.tree);
+          $("legend").innerHTML =
+            `<span><span class="dup">◆</span> duplications</span><span><span class="loss">✕</span> lost lineages</span>
+            <span>■ genes, ● ancestral genes, colored by paralog lineage:</span>${[...counts.entries()]
+              .slice(0, 10)
+              .map(
+                ([l, n]) =>
+                  `<span><i style="background:${lineageColor(l)}"></i>${escapeHtml(l.replace("HOG:", ""))} (${n})</span>`,
+              )
+              .join("")}`;
+        } else {
+          $("legend").innerHTML =
+            `<span>Colored by gene family (root HOG), as in the first row, grey when not near the gene in it. Outlined: ${escapeHtml(data.protein.name ?? data.protein.omaid)}</span>`;
+        }
+      }
+
+      function render() {
+        nodes = new Map();
+        for (const b of document.querySelectorAll("[data-tab]")) b.classList.toggle("active", b.dataset.tab === tab);
+        $("history").hidden = tab !== "history";
+        $("synteny").hidden = tab !== "synteny";
+        $("filter").hidden = $("events").parentElement.hidden = tab !== "history";
+        if (tab === "history") renderHistory();
+        else renderSynteny();
+        renderLegend();
+      }
+
+      function showDetails(item, html, context) {
+        selected = item;
+        render();
+        $("details").classList.remove("muted");
+        $("details").innerHTML = html;
+        void updateContext(context);
+      }
+
+      function selectNode(n) {
+        const family = data.protein.name ?? data.protein.omaid;
+        const genes = n.genes
+          .map(
+            (g) =>
+              `<a data-url="${omaUrl(g.omaid)}" title="${escapeHtml(g.lineage)}">${escapeHtml(g.name ?? g.omaid)}</a>${g.rel ? ` <span class="muted">${g.rel}</span>` : ""}`,
+          )
+          .join(", ");
+        showDetails(
+          n,
+          `<div><b>${escapeHtml(n.name)}</b> <span class="muted">taxon ${n.id} · ${n.count} genes${n.children.length ? ` · ${n.groups.length} ancestral genes` : ""}</span></div>
+          ${n.dups ? `<div class="dup">${n.dups} duplications in this clade</div>` : ""}
+          ${n.losses.length ? `<div>Lost lineages: ${escapeHtml(n.losses.join(", "))}</div>` : ""}
+          ${genes ? `<div>Genes: ${genes}</div>` : ""}
+          <div class="actions"><button type="button" id="ask">Ask about it</button></div>`,
+          `The user selected ${n.name} in the OMA gene family of ${family} (${data.hog}): ${n.count} genes, ${n.dups} duplications, ${n.losses.length} losses`,
+        );
+        $("ask").onclick = () =>
+          sendMessage(
+            n.losses.length && !n.count
+              ? `Why was ${family} lost in ${n.name}?`
+              : n.dups
+                ? `What are the ${family} paralogs from the duplications in ${n.name}, and how did they diverge?`
+                : `How has ${family} evolved in ${n.name}?`,
+          );
+      }
+
+      function selectGene(g, row) {
+        showDetails(
+          g,
+          `<div><b>${escapeHtml(g.name ?? g.id)}</b> <a data-url="${omaUrl(g.id)}">${g.id}</a>
+            <span class="muted"><i>${escapeHtml(row.species)}</i> · ${g.strand} strand · ${g.start}-${g.end}</span></div>
+          <div>${escapeHtml(g.description ?? "")}</div>
+          <div class="muted">Family ${escapeHtml(g.family)}</div>
+          <div class="actions"><button type="button" id="ask">Ask about it</button>
+            ${promptButton("Its gene family", `Show the gene family of ${g.id} in OMA`)}</div>`,
+          `The user selected the gene ${g.name ?? g.id} (${g.id}, ${row.species}) next to ${data.protein.name} in the gene neighbourhood`,
+        );
+        $("ask").onclick = () =>
+          sendMessage(
+            `Why is ${g.name ?? g.id} (${g.description}) next to ${data.protein.name} in ${row.species}? Is this neighbourhood conserved?`,
+          );
+      }
+
+      document.body.addEventListener("click", (e) => {
+        const el = e.target.closest("[data-url], [data-prompt], [data-tab], [data-node], [data-gene]");
+        if (!el) return;
+        const d = el.dataset;
+        if (d.url) void app.openLink({ url: d.url });
+        else if (d.prompt) void sendMessage(d.prompt);
+        else if (d.tab) {
+          tab = d.tab;
+          render();
+        } else if (d.node) {
+          const n = nodes.get(d.node);
+          if (open.has(n.id) && selected === n) open.delete(n.id);
+          else open.add(n.id);
+          selectNode(n);
+        } else if (d.gene) {
+          const [ri, gi] = d.gene.split(":").map(Number);
+          selectGene(data.synteny[ri].genes[gi], data.synteny[ri]);
+        }
+      });
+      $("filter").oninput = render;
+      $("events").onchange = render;
+      // Theme and display mode of the host as attributes on <html> for the CSS
+      function onContext(ctx) {
+        if (ctx.theme) applyDocumentTheme(ctx.theme);
+        if (ctx.displayMode) {
+          document.documentElement.dataset.mode = ctx.displayMode;
+          $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";
+        }
+      }
+      app.onhostcontextchanged = onContext;
+      // The host answers with the mode set, it may not send a context change
+      $("fullscreen").onclick = async () => {
+        const mode = document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen";
+        onContext({ displayMode: (await app.requestDisplayMode({ mode })).mode });
+      };
+
+      // Tool arguments, to call the tool again when the result has no `structuredContent`, as Claude Desktop
+      // gives to widgets restored after a reload of the chat https://github.com/modelcontextprotocol/ext-apps/issues/696
+      let toolArgs;
+      app.ontoolinput = (params) => (toolArgs = params.arguments);
+      app.ontoolresult = async (result) => {
+        if (!result.structuredContent && !result.isError && toolArgs) {
+          result = await app.callServerTool({ name: "show_gene_family", arguments: toolArgs }).catch(() => result);
+        }
+        data = result.structuredContent;
+        if (!data) return ($("title").textContent = "No gene family");
+        const p = data.protein;
+        $("title").textContent = p.name ?? p.omaid;
+        $("badges").innerHTML =
+          `<a data-url="${omaUrl(p.omaid)}">${p.omaid}</a> <span class="badge">HOG rooted at ${escapeHtml(data.rootLevel ?? "?")}</span>
+          ${Object.entries(data.orthologs)
+            .map(([k, v]) => `<span class="badge" title="pairwise orthologs">${v} ${k}</span>`)
+            .join(" ")}`;
+        $("subtitle").textContent = `${p.description} · ${p.species}`;
+        // Opened: the path to the species of the protein, and the first levels
+        queryPath = new Set(data.tree ? (findPath(data.tree) ?? []) : []);
+        open = new Set([...queryPath, ...(data.tree ? [data.tree.id, ...data.tree.children.map((c) => c.id)] : [])]);
+        tab = data.tree ? "history" : "synteny";
+        render();
+      };
+
+      await app.connect();
+      // Full screen button only when the host offers it
+      const host = app.getHostContext() ?? {};
+      $("fullscreen").hidden = Boolean(
+        host.availableDisplayModes && !host.availableDisplayModes.includes("fullscreen"),
+      );
+      onContext(host);
+    </script>
+  </body>
+</html>

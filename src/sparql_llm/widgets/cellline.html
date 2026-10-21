@@ -1,0 +1,554 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="common.css" />
+    <style>
+      [hidden] {
+        display: none !important;
+      }
+      .badge {
+        font-size: 11px;
+        padding: 1px 7px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--muted);
+      }
+      .badge.bad {
+        color: #fff;
+        background: #cf222e;
+        border-color: #cf222e;
+      }
+      .warning {
+        border: 1px solid #cf222e;
+        background: color-mix(in srgb, #cf222e 10%, var(--bg));
+        border-radius: 8px;
+        padding: 6px 10px;
+        margin-bottom: 8px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 12px;
+      }
+      @media (max-width: 640px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      h2 {
+        font-size: 13px;
+        font-weight: 600;
+        margin: 10px 0 4px;
+      }
+      h2:first-child {
+        margin-top: 0;
+      }
+      .props td {
+        padding: 1px 8px 1px 0;
+        vertical-align: top;
+      }
+      .props td:first-child {
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+      }
+      .chips a {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0 7px;
+        font-size: 12px;
+      }
+      .chips a.self {
+        border-color: var(--accent);
+        font-weight: 600;
+      }
+      .arrow {
+        color: var(--muted);
+        margin: 2px 0;
+      }
+      /* Genome ancestry as one stacked bar */
+      .ancestry {
+        display: flex;
+        height: 16px;
+        border-radius: 4px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .legend span {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .legend i {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+      }
+      .matches {
+        max-height: 230px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .match {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 90px 40px;
+        gap: 6px;
+        align-items: center;
+        padding: 2px 8px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      .match:hover,
+      .match.selected {
+        background: var(--hover);
+      }
+      .match .name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .bar {
+        height: 8px;
+        border-radius: 4px;
+        background: var(--panel);
+        overflow: hidden;
+      }
+      .bar span {
+        display: block;
+        height: 100%;
+      }
+      .str {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 12px;
+        margin-top: 6px;
+      }
+      .str td,
+      .str th {
+        padding: 1px 6px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+      }
+      .str th {
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .allele {
+        display: inline-block;
+        min-width: 22px;
+        padding: 0 4px;
+        margin: 1px;
+        border-radius: 4px;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+        background: var(--panel);
+      }
+      .allele.hit {
+        background: color-mix(in srgb, #2da44e 25%, var(--bg));
+      }
+      .allele.miss {
+        background: color-mix(in srgb, #cf222e 30%, var(--bg));
+      }
+      .conflict {
+        color: #9a6700;
+        cursor: help;
+      }
+      .tabs {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        margin: 12px 0 6px;
+      }
+      .tabs button.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .list {
+        max-height: 240px;
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      table.rows {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 12px;
+      }
+      table.rows td,
+      table.rows th {
+        padding: 2px 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+      table.rows th {
+        position: sticky;
+        top: 0;
+        background: var(--panel);
+        color: var(--muted);
+        font-weight: 500;
+      }
+      table.rows tbody tr {
+        cursor: pointer;
+      }
+      table.rows tbody tr:hover,
+      table.rows tr.selected {
+        background: var(--hover);
+      }
+      .details {
+        margin-top: 10px;
+        padding: 8px 10px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        min-height: 38px;
+        overflow-wrap: anywhere;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Loading cell line</h1>
+      <span id="badges"></span>
+      <span class="muted" id="subtitle"></span>
+      <span class="spacer"></span>
+      <button type="button" id="fullscreen">Full screen</button>
+    </header>
+    <div class="warning" id="warning" hidden></div>
+    <div class="grid">
+      <div id="identity"></div>
+      <div id="authentication"></div>
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <div class="list">
+      <table class="rows">
+        <thead id="head"></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="details muted" id="details">Click a cell line, a STR match, a mutation or a comment for details</div>
+
+    <script src="colors.js"></script>
+    <script src="viewers.js"></script>
+    <script type="module">
+      import {
+        App,
+        applyDocumentTheme,
+      } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@2.0.3/dist/src/app-with-deps.js";
+
+      // Connection to the host with the MCP Apps SDK
+      const app = new App(
+        { name: "Cellosaurus cell line", version: "0.0.1" },
+        { availableDisplayModes: ["inline", "fullscreen"] },
+      );
+      const sendMessage = (text) => app.sendMessage({ role: "user", content: [{ type: "text", text }] });
+      const updateContext = (text) => app.updateModelContext({ content: [{ type: "text", text }] });
+
+      const $ = (id) => document.getElementById(id);
+      const ANCESTRY_COLORS = ["#cf222e", "#bf8700", "#1a7f37", "#0969da", "#8250df", "#bc4c00", "#1b7c83", "#8c959f"];
+      const cellUrl = (id) => `https://www.cellosaurus.org/${id}`;
+      const nciUrl = (id) => `https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncit/${id}`;
+      let data;
+      let match = null;
+      let tab = "mutations";
+      let selected = null;
+      let rows = [];
+
+      /** Tanabe score color, with the thresholds of the CLASTR website */
+      const scoreColor = (s) => (s >= 90 ? "#2da44e" : s >= 80 ? "#bf8700" : "#cf222e");
+      const cellChip = (c, cls = "") =>
+        `<a class="${cls}" data-cell="${c.id}" title="${c.id}">${escapeHtml(c.name)}</a>`;
+      const cellPrompt = (c) => `Show the cell line ${c.name} (${c.id}) in Cellosaurus`;
+
+      function renderIdentity() {
+        const props = [
+          ["Disease", data.diseases.map((d) => `<a data-url="${nciUrl(d.id)}">${escapeHtml(d.name)}</a>`).join(", ")],
+          ["Site", escapeHtml(data.site)],
+          ["Doubling time", escapeHtml(data.doublingTime)],
+          ["MSI", escapeHtml(data.msi)],
+          ["Transformed by", escapeHtml(data.transformants.join(", "))],
+          ["Synonyms", escapeHtml(data.synonyms.slice(0, 10).join(", "))],
+        ].filter(([, v]) => v);
+        const ancestry = data.ancestry.filter((a) => a.percentage > 0);
+        const more = data.childrenTotal - data.children.length;
+        $("identity").innerHTML = `
+          <table class="props">${props.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("")}</table>
+          ${
+            ancestry.length
+              ? `<h2>Genome ancestry</h2>
+            <div class="ancestry">${ancestry
+              .map(
+                (a, i) =>
+                  `<span title="${escapeHtml(`${a.population} ${a.percentage}%`)}" style="width:${a.percentage}%;background:${ANCESTRY_COLORS[i % ANCESTRY_COLORS.length]}"></span>`,
+              )
+              .join("")}</div>
+            <div class="legend">${ancestry
+              .map(
+                (a, i) =>
+                  `<span><i style="background:${ANCESTRY_COLORS[i % ANCESTRY_COLORS.length]}"></i>${escapeHtml(a.population)} ${a.percentage}%</span>`,
+              )
+              .join("")}</div>`
+              : ""
+          }
+          <h2>Hierarchy</h2>
+          ${data.parents.length ? `<div class="chips"><span class="muted">From</span>${data.parents.map((c) => cellChip(c)).join("")}</div><div class="arrow">↓</div>` : ""}
+          <div class="chips">${cellChip({ id: data.accession, name: data.name }, "self")}
+            ${data.sameOrigin.length ? `<span class="muted">Same individual:</span>${data.sameOrigin.map((c) => cellChip(c)).join("")}` : ""}</div>
+          ${
+            data.childrenTotal
+              ? `<div class="arrow">↓ ${data.childrenTotal} derived cell lines</div>
+            <div class="chips" style="max-height:110px;overflow:auto">${data.children.map((c) => cellChip(c)).join("")}${more > 0 ? `<span class="muted">+${more} more</span>` : ""}</div>`
+              : ""
+          }`;
+      }
+
+      function renderAuthentication() {
+        if (!data.markers.length) {
+          $("authentication").innerHTML = `<h2>STR profile</h2><div class="muted">No STR profile in Cellosaurus</div>`;
+          return;
+        }
+        const matchRows = data.matches
+          .map(
+            (
+              m,
+              i,
+            ) => `<div class="match ${match === m ? "selected" : ""}" data-match="${i}" title="${escapeHtml(m.problem ?? m.species ?? "")}">
+              <span class="name">${m.accession === data.accession ? "<b>" : ""}${escapeHtml(m.name)}${m.accession === data.accession ? "</b>" : ""}
+                <span class="muted">${m.accession}</span> ${m.problematic ? `<span class="badge bad">problematic</span>` : ""}</span>
+              <span class="bar"><span style="width:${m.score}%;background:${scoreColor(m.score)}"></span></span>
+              <span>${m.score.toFixed(1)}</span></div>`,
+          )
+          .join("");
+        // Alleles of the line, and of the selected match colored by whether they match
+        const alleles = (values, matched) =>
+          values
+            .map(
+              (a) =>
+                `<span class="allele ${matched === undefined ? "" : a.matched ? "hit" : "miss"}">${escapeHtml(a.value)}</span>`,
+            )
+            .join("");
+        const strRows = data.markers
+          .map((m) => {
+            const own = m.alleles
+              .split(",")
+              .filter(Boolean)
+              .map((value) => ({ value }));
+            const other = match?.markers[m.name];
+            const conflict = m.conflict
+              ? ` <span class="conflict" title="${escapeHtml(m.variants.map((v) => `${v.alleles}: ${v.sources.join(", ")}`).join("\n"))}">conflict</span>`
+              : "";
+            return `<tr><td>${escapeHtml(m.name)}</td><td>${alleles(own)}${conflict}</td>
+              ${match ? `<td>${other ? alleles(other, true) : `<span class="muted">-</span>`}</td>` : ""}</tr>`;
+          })
+          .join("");
+        $("authentication").innerHTML = `
+          <h2>Most similar STR profiles <span class="muted">(CLASTR, Tanabe score)</span></h2>
+          <div class="matches">${matchRows || `<div class="muted" style="padding:4px 8px">No similar profile</div>`}</div>
+          <h2>STR profile <span class="muted">${escapeHtml(data.strSources.slice(0, 6).join(", "))}</span></h2>
+          <table class="str"><tr><th>Marker</th><th>${escapeHtml(data.name)}</th>${match ? `<th>${escapeHtml(match.name)}</th>` : ""}</tr>${strRows}</table>`;
+      }
+
+      // Tabs: rows of each list, with their columns
+      const TABS = {
+        mutations: {
+          label: () => `Mutations (${data.mutations.length})`,
+          head: ["Gene", "Mutation", "Zygosity", "Type"],
+          rows: () =>
+            data.mutations.map((m) => [m, [m.genes.join(", "), m.description ?? "", m.zygosity ?? "", m.type]]),
+        },
+        hla: {
+          label: () => `HLA typing (${data.hla.length})`,
+          head: ["Gene", "Alleles", "Source"],
+          rows: () => data.hla.flatMap((h) => h.alleles.map((a) => [h, [a.gene, a.alleles, h.source]])),
+        },
+        comments: {
+          label: () => `Comments (${data.comments.length})`,
+          head: ["Category", "Comment"],
+          rows: () => data.comments.map((c) => [c, [c.category, c.value]]),
+        },
+      };
+
+      function renderList() {
+        rows = TABS[tab].rows();
+        $("tabs").innerHTML = Object.entries(TABS)
+          .map(
+            ([k, t]) =>
+              `<button type="button" data-tab="${k}" class="${k === tab ? "active" : ""}">${t.label()}</button>`,
+          )
+          .join("");
+        $("head").innerHTML = `<tr>${TABS[tab].head.map((h) => `<th>${h}</th>`).join("")}</tr>`;
+        $("rows").innerHTML =
+          rows
+            .map(
+              ([item, cells], i) =>
+                `<tr data-i="${i}" class="${selected === item ? "selected" : ""}">${cells.map((c) => `<td>${escapeHtml(c)}</td>`).join("")}</tr>`,
+            )
+            .join("") || `<tr><td class="muted" colspan="4">None</td></tr>`;
+      }
+
+      function showDetails(item, html, context) {
+        selected = item;
+        renderList();
+        $("details").classList.remove("muted");
+        $("details").innerHTML = html;
+        void updateContext(context);
+      }
+
+      function selectMatch(m) {
+        match = m;
+        renderAuthentication();
+        const same = m.accession === data.accession;
+        showDetails(
+          m,
+          `<div><b>${escapeHtml(m.name)}</b> <a data-url="${cellUrl(m.accession)}">${m.accession}</a>
+            <span class="muted">${escapeHtml(m.species ?? "")} · score ${m.score.toFixed(1)}</span></div>
+          ${m.problem ? `<div class="error">${escapeHtml(m.problem)}</div>` : ""}
+          <div class="actions"><button type="button" id="ask">Ask about it</button>
+            ${same ? "" : promptButton("Show this cell line", cellPrompt({ id: m.accession, name: m.name }))}</div>`,
+          `The user selected ${m.name} (${m.accession}), STR similarity ${m.score.toFixed(1)} with ${data.name} (${data.accession})${m.problematic ? `, problematic: ${m.problem}` : ""}`,
+        );
+        $("ask").onclick = () =>
+          sendMessage(
+            same
+              ? `Is my ${data.name} (${data.accession}) cell line authentic, based on its STR profile?`
+              : `Why does ${m.name} (${m.accession}) have a STR profile similar to ${data.name} (${data.accession}), score ${m.score.toFixed(1)}?`,
+          );
+      }
+
+      function selectCell(id, name) {
+        showDetails(
+          { id },
+          `<div><b>${escapeHtml(name)}</b> <a data-url="${cellUrl(id)}">${id}</a></div>
+          <div class="actions">${promptButton("Show this cell line", cellPrompt({ id, name }))}</div>`,
+          `The user selected the cell line ${name} (${id}), related to ${data.name} (${data.accession})`,
+        );
+      }
+
+      /** Mutation of a gene, with the protein variants viewer zoomed on its residue when known, e.g. p.Gly12Ser */
+      function selectMutation(m) {
+        const position = m.description?.match(/p\.[A-Z][a-z]{2}(\d+)/)?.[1];
+        const species = data.species[0]?.name.split(" (")[0] ?? "";
+        const viewers = m.genes
+          .slice(0, 2)
+          .map((g) =>
+            promptButton(
+              `${g} variants`,
+              `Show the variants of the ${species} protein ${g}${position ? `, zoomed on residue ${position}` : ""}`,
+            ),
+          )
+          .join("");
+        showDetails(
+          m,
+          `<div><b>${escapeHtml(m.genes.join(", "))}</b> ${escapeHtml(m.description ?? m.type)}
+            <span class="muted">${escapeHtml(m.zygosity ?? "")}</span>
+            ${m.clinvar ? `<a data-url="https://www.ncbi.nlm.nih.gov/clinvar/variation/${m.clinvar.replace(/^VCV0*/, "")}/">ClinVar</a>` : ""}</div>
+          <div class="chips">${m.pubmed.map((id) => `<a data-url="https://pubmed.ncbi.nlm.nih.gov/${id}/">PubMed ${id}</a>`).join("")}</div>
+          <div class="actions"><button type="button" id="ask">Ask about it</button>${viewers}</div>`,
+          `The user selected the mutation ${m.genes.join(", ")} ${m.description} (${m.zygosity}) of ${data.name} (${data.accession})`,
+        );
+        $("ask").onclick = () =>
+          sendMessage(
+            `What is the effect of the ${m.genes.join(", ")} ${m.description ?? m.type} mutation in ${data.name} (${data.accession})?`,
+          );
+      }
+
+      function selectRow(item) {
+        if (tab === "mutations") return selectMutation(item);
+        const text =
+          tab === "hla"
+            ? item.alleles.map((a) => `${a.gene} ${a.alleles}`).join(", ")
+            : `${item.category}: ${item.value}`;
+        showDetails(
+          item,
+          `<div>${escapeHtml(text)}</div><div class="actions"><button type="button" id="ask">Ask about it</button></div>`,
+          `The user selected in ${data.name} (${data.accession}): ${text}`,
+        );
+        $("ask").onclick = () => sendMessage(`What does this mean for experiments with ${data.name}: ${text}?`);
+      }
+
+      document.body.addEventListener("click", (e) => {
+        const el = e.target.closest("[data-url], [data-prompt], [data-cell], [data-match], [data-tab], tr[data-i]");
+        if (!el) return;
+        const { url, prompt, cell, match: m, tab: t, i } = el.dataset;
+        if (url) void app.openLink({ url });
+        else if (prompt) void sendMessage(prompt);
+        else if (cell && cell !== data.accession) selectCell(cell, el.textContent);
+        else if (m !== undefined) selectMatch(data.matches[Number(m)]);
+        else if (t) {
+          tab = t;
+          renderList();
+        } else if (i !== undefined) selectRow(rows[Number(i)][0]);
+      });
+      // Theme and display mode of the host as attributes on <html> for the CSS
+      function onContext(ctx) {
+        if (ctx.theme) applyDocumentTheme(ctx.theme);
+        if (ctx.displayMode) {
+          document.documentElement.dataset.mode = ctx.displayMode;
+          $("fullscreen").textContent = ctx.displayMode === "fullscreen" ? "Exit full screen" : "Full screen";
+        }
+      }
+      app.onhostcontextchanged = onContext;
+      // The host answers with the mode set, it may not send a context change
+      $("fullscreen").onclick = async () => {
+        const mode = document.documentElement.dataset.mode === "fullscreen" ? "inline" : "fullscreen";
+        onContext({ displayMode: (await app.requestDisplayMode({ mode })).mode });
+      };
+
+      // Tool arguments, to call the tool again when the result has no `structuredContent`, as Claude Desktop
+      // gives to widgets restored after a reload of the chat https://github.com/modelcontextprotocol/ext-apps/issues/696
+      let toolArgs;
+      app.ontoolinput = (params) => (toolArgs = params.arguments);
+      app.ontoolresult = async (result) => {
+        if (!result.structuredContent && !result.isError && toolArgs) {
+          result = await app.callServerTool({ name: "show_cell_line", arguments: toolArgs }).catch(() => result);
+        }
+        data = result.structuredContent;
+        if (!data) return ($("title").textContent = "Cell line not found");
+        $("title").textContent = data.name;
+        $("badges").innerHTML = `<a data-url="${cellUrl(data.accession)}">${data.accession}</a>
+          <span class="badge">${escapeHtml(data.category ?? "")}</span>${data.problematic ? ` <span class="badge bad">problematic</span>` : ""}`;
+        $("subtitle").textContent = [
+          data.species.map((s) => s.name).join(", "),
+          data.sex,
+          data.age && `${data.age} old`,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        if (data.problematic) {
+          $("warning").hidden = false;
+          $("warning").innerHTML = `<b>Problematic cell line.</b> ${escapeHtml(data.problematic)}
+            ${data.registrations.length ? `<div class="muted">${escapeHtml(data.registrations.join("; "))}</div>` : ""}`;
+        }
+        // Compared first with the most similar other cell line
+        match = data.matches.find((m) => m.accession !== data.accession) ?? null;
+        tab = data.mutations.length ? "mutations" : data.hla.length ? "hla" : "comments";
+        renderIdentity();
+        renderAuthentication();
+        renderList();
+      };
+
+      await app.connect();
+      // Full screen button only when the host offers it
+      const host = app.getHostContext() ?? {};
+      $("fullscreen").hidden = Boolean(
+        host.availableDisplayModes && !host.availableDisplayModes.includes("fullscreen"),
+      );
+      onContext(host);
+    </script>
+  </body>
+</html>

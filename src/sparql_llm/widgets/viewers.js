@@ -20,6 +20,8 @@ const PROTEIN_VIEWERS = {
     "3D structure",
     (p, r) => `Show the 3D structure of ${proteinLabel(p)}${r ? `, highlighting ${residuesLabel(r)}` : ""}`,
   ],
+  family: ["Gene family", (p) => `Show the history of the gene family of ${proteinLabel(p)} in OMA`],
+  orthodb: ["Ortholog group", (p) => `Show the OrthoDB ortholog group of ${proteinLabel(p)}`],
 };
 
 /** Viewers of a list of proteins of one organism */
