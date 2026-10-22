@@ -30,7 +30,7 @@ from sparql_llm import (  # noqa: F401
 from sparql_llm.config import settings
 from sparql_llm.indexing.index_resources import embedding_model, endpoints_metadata, init_vectordb, qdrant_client
 from sparql_llm.loaders.sparql_info_loader import GENERAL_INFO_DOC_TYPE
-from sparql_llm.uniprot_tools import add_uniprot_tools
+from sparql_llm.uniprot_tools import READ_ONLY, add_uniprot_tools
 from sparql_llm.uniprot_tools import apps as uniprot_apps
 from sparql_llm.utils import logger, query_sparql
 from sparql_llm.validate_sparql import validate_sparql
@@ -190,8 +190,16 @@ def get_mcp_app(enable_resources_info_tool: bool = True, enable_uniprot_tools: b
         )
     # Create MCP server https://github.com/modelcontextprotocol/python-sdk
     # UniProt tools showing widgets are added through the MCP Apps extension
+    # Title, description and website are sent in `serverInfo` for clients to show in their connectors UI
     mcp = MCPServer(
         "Expasy MCP",
+        title="Expasy",
+        description=(
+            "Query bioinformatics resources of the SIB Swiss Institute of Bioinformatics such as UniProt, Bgee, "
+            "Rhea, OMA, OrthoDB, Cellosaurus, SwissLipids and MetaNetX, through their SPARQL endpoints and "
+            "interactive views of proteins, gene expression, reactions, lipids, cell lines and orthologs."
+        ),
+        website_url="https://expasy.org/chat",
         instructions=instructions,
         version=__version__,
         debug=True,
@@ -247,14 +255,14 @@ Returns:
         + SPARQL_QUERY_GUIDELINES
     )
 
-    @mcp.tool(description=search_sparql_examples_desc)
+    @mcp.tool(description=search_sparql_examples_desc, annotations=READ_ONLY)
     async def search_sparql_examples(question: str, steps: list[str]) -> SparqlExamplesSearchResults:
         docs = search_docs(
             list(embedding_model.embed([question, *steps])), Filter(must=[doc_type_condition(EXAMPLES_DOC_TYPE)])
         )
         return {"query_examples": [to_query_example(doc) for doc in docs]}
 
-    @mcp.tool()
+    @mcp.tool(annotations=READ_ONLY)
     async def search_sparql_classes(classes: list[str]) -> ClassesSchemaSearchResults:
         """Search classes and their schema (predicates and the types of their values) in the SPARQL endpoints.
 
@@ -271,7 +279,7 @@ Returns:
 
     if enable_resources_info_tool:
 
-        @mcp.tool()
+        @mcp.tool(annotations=READ_ONLY)
         async def search_resources(question: str) -> ResourcesInfoSearchResults:
             """Search general information about the resources and SPARQL endpoints indexed by this MCP server.
 
@@ -288,7 +296,7 @@ Returns:
             )
             return {"resources_info": [to_resource_info(doc) for doc in docs]}
 
-    @mcp.tool()
+    @mcp.tool(annotations=READ_ONLY)
     def execute_sparql_query(sparql_query: str, endpoint_url: str) -> SparqlQueryResults | str:
         """Execute a SPARQL query against a SPARQL endpoint.
 

@@ -12,7 +12,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 from typing_extensions import TypedDict
 
-from sparql_llm.uniprot_tools import CDN, apps, get, http_client, text_result, widget_html
+from sparql_llm.uniprot_tools import CDN, READ_ONLY, apps, get, http_client, text_result, widget_html
 
 BGEE_API = "https://www.bgee.org/api/"
 # Bgee data types, as named by the expression calls of a gene
@@ -157,7 +157,7 @@ async def summary_calls(client: httpx.AsyncClient, gene_ids: list[str], species_
     return (await bgee(client, params))["expressionData"]["expressionCalls"]
 
 
-@apps.tool(resource_uri="ui://bgee/expression.html")
+@apps.tool(resource_uri="ui://bgee/expression.html", annotations=READ_ONLY)
 async def show_gene_expression(
     genes: list[str],
     species_id: int = 9606,

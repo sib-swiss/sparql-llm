@@ -16,7 +16,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 from typing_extensions import TypedDict
 
-from sparql_llm.uniprot_tools import CDN, apps, get, http_client, text_result, widget_html
+from sparql_llm.uniprot_tools import CDN, READ_ONLY, apps, get, http_client, text_result, widget_html
 
 SWISSLIPIDS_API = "https://www.swisslipids.org/api/index.php"
 SWISSLIPIDS_SPARQL = "https://beta.sparql.swisslipids.org/sparql/"
@@ -243,7 +243,7 @@ def none_if(v: str | None, *empty: str) -> str | None:
     return None if not v or v in empty else v
 
 
-@apps.tool(resource_uri="ui://swisslipids/lipid.html")
+@apps.tool(resource_uri="ui://swisslipids/lipid.html", annotations=READ_ONLY)
 async def show_lipid(query: str) -> CallToolResult:
     """Show a lipid of SwissLipids to the user: its place in the lipid hierarchy (category > class > species >
     molecular subspecies > structural subspecies > isomeric subspecies) as a graph with its parents and children,

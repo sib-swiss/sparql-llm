@@ -17,6 +17,7 @@ from typing_extensions import TypedDict
 
 from sparql_llm.uniprot_tools import (
     CDN,
+    READ_ONLY,
     UNIPROT_API,
     SearchRow,
     apps,
@@ -168,7 +169,7 @@ def side_text(ps: list[Participant]) -> str:
     return " + ".join(f"{p['coef'] + ' ' if p['coef'] else ''}{p['name']} ({p['id']})" for p in ps)
 
 
-@apps.tool(resource_uri="ui://rhea/reaction.html")
+@apps.tool(resource_uri="ui://rhea/reaction.html", annotations=READ_ONLY)
 async def show_reaction(reaction: str) -> CallToolResult:
     """Show a Rhea biochemical reaction to the user: its atom map (atoms of each reactant colored in the products,
     with atom numbers), the equation with the structures of the participants, EC numbers, directions,

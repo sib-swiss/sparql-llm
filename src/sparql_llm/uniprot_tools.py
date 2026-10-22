@@ -21,7 +21,7 @@ import httpx
 from mcp.server.apps import Apps, ResourceCsp
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
-from mcp.types import CallToolResult, TextContent
+from mcp.types import CallToolResult, TextContent, ToolAnnotations
 from typing_extensions import TypedDict
 
 UNIPROT_API = "https://rest.uniprot.org/uniprotkb"
@@ -35,6 +35,8 @@ CDN = "https://cdn.jsdelivr.net"
 # UniProt queries not cached yet can take tens of seconds, and the API sometimes answers 503
 TIMEOUT = 60
 ATTEMPTS = 3
+# All tools only read data from external APIs and SPARQL endpoints, hosts list them as read-only tools
+READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 
 # Feature types shown, grouped in categories like ProtVista tracks
 FeatureCategory = Literal[
@@ -509,8 +511,8 @@ async def get_protein(accession: str) -> Protein:
 
 def add_uniprot_tools(mcp: MCPServer) -> None:
     """Add the regular UniProt tools to a MCP server, the MCP Apps ones are added with `extensions=[apps]`"""
-    mcp.add_tool(search_proteins)
-    mcp.add_tool(get_protein)
+    mcp.add_tool(search_proteins, annotations=READ_ONLY)
+    mcp.add_tool(get_protein, annotations=READ_ONLY)
 
 
 # MCP Apps tools, showing their result in a widget
@@ -538,7 +540,7 @@ def matching(values: Iterable[str], terms: list[str] | None) -> list[str]:
     return sorted({v for v in values if any(t in v.lower() for t in terms)})
 
 
-@apps.tool(resource_uri="ui://uniprot/features.html")
+@apps.tool(resource_uri="ui://uniprot/features.html", annotations=READ_ONLY)
 async def show_protein_features(
     accession: str,
     start: int | None = None,
@@ -615,7 +617,7 @@ def pdb_entries(e: dict[str, Any]) -> list[PdbEntry]:
     return sorted(entries, key=lambda p: p["resolution"] or 99)
 
 
-@apps.tool(resource_uri="ui://uniprot/structure.html")
+@apps.tool(resource_uri="ui://uniprot/structure.html", annotations=READ_ONLY)
 async def show_protein_structure(
     accession: str,
     pdb_id: str | None = None,
@@ -710,7 +712,7 @@ def counts(values: list[Any], top: int = 8) -> str:
     return ", ".join(f"{k}: {n}" for k, n in Counter(values).most_common(top))
 
 
-@apps.tool(resource_uri="ui://uniprot/table.html")
+@apps.tool(resource_uri="ui://uniprot/table.html", annotations=READ_ONLY)
 async def search_proteins_table(query: str, max_rows: int = 1000) -> CallToolResult:
     """Search UniProtKB and show all results to the user in a sortable table, with facets for reviewed status,
     organism and annotation score. Only a summary is returned: the user can select rows in the table and send them back
@@ -838,7 +840,7 @@ def variant_rank(v: Variant) -> tuple[bool, ...]:
     return ("UniProt" in v["evidence"], pathogenic, bool(v["significance"]), bool(v["diseases"]), bool(v["dbsnp"]))
 
 
-@apps.tool(resource_uri="ui://uniprot/variants.html")
+@apps.tool(resource_uri="ui://uniprot/variants.html", annotations=READ_ONLY)
 async def show_protein_variants(
     accession: str,
     start: int | None = None,
@@ -1004,7 +1006,7 @@ def matrix_protein(e: dict[str, Any], terms: dict[str, Term]) -> MatrixProtein:
     return MatrixProtein(accession=e["primaryAccession"], gene=gene_name(e), name=protein_name(e), terms=annotations)
 
 
-@apps.tool(resource_uri="ui://uniprot/matrix.html")
+@apps.tool(resource_uri="ui://uniprot/matrix.html", annotations=READ_ONLY)
 async def show_annotation_matrix(
     genes: list[str],
     organism_id: int = 9606,
@@ -1202,7 +1204,7 @@ def feedback_edges(regulations: list[Regulation], graph: Graph, depth: dict[str,
     return [Feedback(source=r["source"], target=r["target"], loop=loop) for r, loop in loops[:30]]
 
 
-@apps.tool(resource_uri="ui://uniprot/network.html")
+@apps.tool(resource_uri="ui://uniprot/network.html", annotations=READ_ONLY)
 async def show_protein_network(
     genes: list[str],
     source: str | None = None,

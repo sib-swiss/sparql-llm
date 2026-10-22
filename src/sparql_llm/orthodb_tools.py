@@ -16,7 +16,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 from typing_extensions import TypedDict
 
-from sparql_llm.uniprot_tools import CDN, apps, get, http_client, text_result, widget_html
+from sparql_llm.uniprot_tools import CDN, READ_ONLY, apps, get, http_client, text_result, widget_html
 
 ORTHODB_API = "https://data.orthodb.org/current"
 OG_ID = re.compile(r"^\s*(\d+at\d+)\s*$")
@@ -190,7 +190,7 @@ def annotations_of(g: dict[str, Any]) -> dict[str, list[Annotation]]:
     }
 
 
-@apps.tool(resource_uri="ui://orthodb/orthodb.html")
+@apps.tool(resource_uri="ui://orthodb/orthodb.html", annotations=READ_ONLY)
 async def show_ortholog_group(query: str, level: str | None = None) -> CallToolResult:
     """Show the OrthoDB ortholog group of a protein to the user: its phyletic profile (in how many species of each
     clade it is present, and with how many copies), evolutionary descriptors (single or multi copy, evolutionary rate,

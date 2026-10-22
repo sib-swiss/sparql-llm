@@ -15,7 +15,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 from typing_extensions import TypedDict
 
-from sparql_llm.uniprot_tools import CDN, apps, get, http_client, text_result, widget_html
+from sparql_llm.uniprot_tools import CDN, READ_ONLY, apps, get, http_client, text_result, widget_html
 
 CELLOSAURUS_API = "https://api.cellosaurus.org"
 CLASTR_API = "https://www.cellosaurus.org/str-search/api/query"
@@ -227,7 +227,7 @@ async def str_matches(client: httpx.AsyncClient, markers: list[StrMarker], speci
     return matches
 
 
-@apps.tool(resource_uri="ui://cellosaurus/cellline.html")
+@apps.tool(resource_uri="ui://cellosaurus/cellline.html", annotations=READ_ONLY)
 async def show_cell_line(cell_line: str) -> CallToolResult:
     """Show a cell line of Cellosaurus to the user: identity (species, sex, age, disease, site), warnings when it is
     contaminated or misidentified, its parent, children and lines from the same individual, genome ancestry, mutations,

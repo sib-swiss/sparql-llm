@@ -15,7 +15,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 from typing_extensions import TypedDict
 
-from sparql_llm.uniprot_tools import CDN, apps, http_client, text_result, widget_html
+from sparql_llm.uniprot_tools import CDN, READ_ONLY, apps, http_client, text_result, widget_html
 
 MNX_SPARQL = "https://rdf.metanetx.org/sparql"
 MNX_WEB = "https://www.metanetx.org"
@@ -410,7 +410,7 @@ def xrefs_text(xrefs: list[Xref]) -> str:
     return "\n".join(f"- {db}: {', '.join(ids[:12])}{' ...' if len(ids) > 12 else ''}" for db, ids in by_db.items())
 
 
-@apps.tool(resource_uri="ui://metanetx/metanetx.html")
+@apps.tool(resource_uri="ui://metanetx/metanetx.html", annotations=READ_ONLY)
 async def show_metanetx(query: str) -> CallToolResult:
     """Show a chemical or a reaction of MetaNetX (MNXref namespace reconciling metabolic databases) to the user:
     a graph of its identifiers in ChEBI, KEGG, BiGG, SEED, MetaCyc, Rhea, HMDB, LIPID MAPS, SwissLipids, Reactome,

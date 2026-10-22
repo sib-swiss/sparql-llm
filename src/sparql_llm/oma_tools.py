@@ -17,7 +17,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 from typing_extensions import TypedDict
 
-from sparql_llm.uniprot_tools import CDN, apps, get, http_client, text_result, widget_html
+from sparql_llm.uniprot_tools import CDN, READ_ONLY, apps, get, http_client, text_result, widget_html
 
 OMA_API = "https://omabrowser.org/api"
 OMA_WEB = "https://omabrowser.org"
@@ -231,7 +231,7 @@ async def fetch_synteny(client: httpx.AsyncClient, proteins: list[dict[str, Any]
     return rows
 
 
-@apps.tool(resource_uri="ui://oma/oma.html")
+@apps.tool(resource_uri="ui://oma/oma.html", annotations=READ_ONLY)
 async def show_gene_family(protein: str) -> CallToolResult:
     """Show the history of the gene family of a protein from the OMA orthology database to the user: the species tree
     of its Hierarchical Orthologous Group (HOG) with the duplications and losses in each clade and the genes of each
