@@ -366,6 +366,9 @@
         const counts = Object.fromEntries(TYPES.map((t) => [t, 0]));
         for (const t of Object.values(data.terms)) counts[t.type]++;
         $("type").innerHTML = TYPES.map((t) => `<option value="${t}">${t} (${counts[t]})</option>`).join("");
+        // Annotation type and search given to the tool
+        if (data.filters?.type) $("type").value = data.filters.type;
+        $("filter").value = data.filters?.search ?? "";
         // One protein: every term, else terms shared by at least 2
         $("min").value = data.proteins.length > 1 ? 2 : 1;
         render();

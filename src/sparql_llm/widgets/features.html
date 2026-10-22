@@ -335,6 +335,10 @@
         $("link").onclick = () =>
           app.openLink({ url: `https://www.uniprot.org/uniprotkb/${entry.accession}/feature-viewer` });
         view = entry.zoom ? regionWindow(entry.zoom, entry.length) : [1, entry.length];
+        // Only the categories given to the tool shown when the viewer opens, if the entry has some of them
+        const shown = entry.filters?.categories ?? [];
+        const present = new Set(entry.features.map((f) => f.category));
+        if (shown.some((c) => present.has(c))) for (const c of present) if (!shown.includes(c)) hidden.add(c);
         renderChips();
         render();
         showRange();

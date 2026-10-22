@@ -347,6 +347,10 @@
         $("source").value = source;
         for (const c of new Set(shownFeatures().map((f) => f.category)))
           $("category").insertAdjacentHTML("beforeend", `<option>${escapeHtml(c)}</option>`);
+        // Filters of the features list given to the tool, all categories when the entry has none of it
+        $("category").value = entry.filters?.category ?? "";
+        if ($("category").selectedIndex < 0) $("category").value = "";
+        $("filter").value = entry.filters?.search ?? "";
         if (entry.positions.length) active = { positions: entry.positions };
         renderFeatures();
         load().catch((err) => {

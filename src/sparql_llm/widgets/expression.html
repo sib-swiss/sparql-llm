@@ -417,6 +417,14 @@
             ? data.genes.map((g, i) => `<option value="${i}">Sort by ${escapeHtml(g.name)}</option>`).join("")
             : ""
         }<option value="name">Sort by name</option>`;
+        // Filters given to the tool, all data types when the genes have no call of the one given
+        const filters = data.filters ?? {};
+        $("view").value = filters.systems ? "systems" : "calls";
+        $("type").value = filters.dataType ?? "";
+        if ($("type").selectedIndex < 0) $("type").value = "";
+        $("gold").checked = Boolean(filters.gold);
+        $("absent").checked = filters.absent ?? true;
+        $("filter").value = filters.search ?? "";
         render();
       };
 

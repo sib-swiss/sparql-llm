@@ -12,10 +12,10 @@ import asyncio
 import heapq
 import re
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from itertools import pairwise
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 from mcp.server.apps import Apps, ResourceCsp
@@ -37,7 +37,10 @@ TIMEOUT = 60
 ATTEMPTS = 3
 
 # Feature types shown, grouped in categories like ProtVista tracks
-CATEGORIES = {
+FeatureCategory = Literal[
+    "Domains & regions", "Sites", "PTMs", "Processing", "Topology", "Secondary structure", "Variants"
+]
+CATEGORIES: dict[FeatureCategory, list[str]] = {
     "Domains & regions": [
         "Domain",
         "Repeat",
@@ -62,8 +65,23 @@ MAX_VARIANTS = 4000
 GO_EXPERIMENTAL = {"EXP", "IDA", "IPI", "IMP", "IGI", "IEP", "HTP", "HDA", "HMP", "HGI", "HEP"}
 # Annotation types of the matrix, GO aspects by the prefix of their term
 GO_ASPECTS = {"P": "GO biological process", "F": "GO molecular function", "C": "GO cellular component"}
+AnnotationType = Literal[
+    "GO biological process", "GO molecular function", "GO cellular component", "Keyword", "Reactome pathway"
+]
 # Keywords of the enzymes whose modification sites are trusted: OmniPath also has text-mined sites of non-enzymes
 ENZYME_KEYWORDS = {"KW-0418", "KW-0904"}  # Kinase, Protein phosphatase
+# Clinical significance classes of the variant explorer, the most severe first, with the values of each
+SIGNIFICANCE_CLASSES = {
+    "Pathogenic": {"Pathogenic", "Disease"},
+    "Likely pathogenic": {"Likely pathogenic"},
+    "Uncertain": {"Variant of uncertain significance"},
+    "Likely benign": {"Likely benign"},
+    "Benign": {"Benign"},
+}
+Classification = Literal[
+    "Pathogenic", "Likely pathogenic", "Uncertain", "Likely benign", "Benign", "Other", "Not classified"
+]
+VariantEvidence = Literal["UniProt", "Large scale study", "ClinVar", "PubMed"]
 UNIPROT_ACCESSION = re.compile(r"^[OPQ]\d[A-Z\d]{3}\d$|^[A-NR-Z]\d([A-Z][A-Z\d]{2}\d){1,2}$")
 
 apps = Apps()
@@ -101,9 +119,15 @@ class Range(TypedDict):
     end: int
 
 
+class FeatureFilters(TypedDict):
+    categories: list[str]
+    """Categories shown when the viewer opens, all when empty"""
+
+
 class FeaturesViewData(FeaturesData):
     zoom: Range | None
     """Residues zoomed on and highlighted when the viewer opens"""
+    filters: FeatureFilters
 
 
 class AlphaFoldModel(TypedDict):
@@ -123,12 +147,20 @@ class PdbEntry(TypedDict):
     chains: str | None
 
 
+class StructureFilters(TypedDict):
+    """Filters of the features list when the viewer opens"""
+
+    category: str | None
+    search: str
+
+
 class StructureData(FeaturesData):
     alphafold: AlphaFoldModel | None
     pdb: list[PdbEntry]
     source: str
     """`alphafold` or the ID of the PDB entry shown"""
     positions: list[int]
+    filters: StructureFilters
 
 
 class SearchRow(TypedDict):
@@ -158,6 +190,8 @@ class Variant(TypedDict):
     """Row in the viewer: the new amino acid, `*` for stops, `d` for other changes"""
     consequence: str
     significance: list[str]
+    classification: str
+    """Most severe class of its clinical significances, giving its color"""
     diseases: list[str]
     evidence: list[str]
     """UniProt (curated), Large scale study, ClinVar, PubMed"""
@@ -170,6 +204,17 @@ class Variant(TypedDict):
     """Highest allele frequency in populations"""
 
 
+class VariantFilters(TypedDict):
+    """Facet values checked when the explorer opens, none checked means no filter"""
+
+    consequence: list[str]
+    significance: list[str]
+    """Classifications"""
+    evidence: list[str]
+    disease: list[str]
+    search: str
+
+
 class VariantsData(EntryInfo):
     features: list[Feature]
     """Domains, repeats and motifs, to position the variants"""
@@ -177,6 +222,7 @@ class VariantsData(EntryInfo):
     total: int
     zoom: Range | None
     """Residues zoomed on and highlighted when the explorer opens"""
+    filters: VariantFilters
 
 
 class Term(TypedDict):
@@ -194,12 +240,20 @@ class MatrixProtein(TypedDict):
     """Term IDs with their evidence: 3 experimental, 2 curated or computational, 1 electronic (GO only)"""
 
 
+class MatrixFilters(TypedDict):
+    """Annotation type and search text of the terms when the matrix opens"""
+
+    type: str | None
+    search: str
+
+
 class MatrixData(TypedDict):
     organism: str | None
     proteins: list[MatrixProtein]
     terms: dict[str, Term]
     missing: list[str]
     """Genes without a reviewed entry"""
+    filters: MatrixFilters
 
 
 class Link(TypedDict):
@@ -478,27 +532,45 @@ def in_range(v: Variant | Feature, r: Range | None) -> bool:
     return r is not None and v["start"] <= r["end"] and v["end"] >= r["start"]
 
 
+def matching(values: Iterable[str], terms: list[str] | None) -> list[str]:
+    """Values containing one of the terms, case insensitive, to check them in the facets of a widget"""
+    terms = [t.lower() for t in terms or []]
+    return sorted({v for v in values if any(t in v.lower() for t in terms)})
+
+
 @apps.tool(resource_uri="ui://uniprot/features.html")
-async def show_protein_features(accession: str, start: int | None = None, end: int | None = None) -> CallToolResult:
+async def show_protein_features(
+    accession: str,
+    start: int | None = None,
+    end: int | None = None,
+    categories: list[FeatureCategory] | None = None,
+) -> CallToolResult:
     """Show the sequence features of a UniProtKB entry (e.g. P31749) to the user in an interactive track viewer,
     zoomable along the sequence: domains, sites, PTMs, signal peptides, topology, secondary structure and variants.
     To focus on a region, give its UniProt residue positions in `start` and `end` (e.g. 102 and 234 for a domain, or
-    only `start` for a single residue such as a mutation): the viewer opens zoomed on it, with the region highlighted"""
+    only `start` for a single residue such as a mutation): the viewer opens zoomed on it, with the region highlighted.
+    To show only some feature `categories` (e.g. ["PTMs", "Sites"]), give them: the others are hidden when the viewer
+    opens, the user can show them again"""
     async with http_client() as client:
         e = await fetch_entry(client, accession)
     info, features = entry_info(e), features_of(e)
     zoom = residue_range(start, end, info["length"])
+    filters = FeatureFilters(categories=list(dict.fromkeys(categories or [])))
     text = f"Shown to the user: {len(features)} features of {entry_title(info)}"
+    # Categories given shown, all of them when the entry has none, as in the viewer
+    features_shown = [f for f in features if f["category"] in filters["categories"]] or features
+    if len(features_shown) < len(features):
+        text += f"\nCategories shown: {', '.join(filters['categories'])}, the others are hidden"
     if zoom:
         # Features overlapping the region first, the chain spans the whole sequence
         region = range_label(zoom)
-        inside = [f for f in features if in_range(f, zoom) and f["type"] != "Chain"]
+        inside = [f for f in features_shown if in_range(f, zoom) and f["type"] != "Chain"]
         text += (
-            f"\nZoomed on {region}, highlighted, with {len(inside)} features overlapping "
-            f"them:\n{features_text(inside) or '- none'}\nAll features:"
+            f"\nZoomed on {region}, highlighted, with {len(inside)} features shown overlapping "
+            f"them:\n{features_text(inside) or '- none'}\nAll features shown:"
         )
-    text += f"\n{features_text(features)}"
-    return text_result(text, FeaturesViewData(**info, features=features, zoom=zoom))
+    text += f"\n{features_text(features_shown)}"
+    return text_result(text, FeaturesViewData(**info, features=features, zoom=zoom, filters=filters))
 
 
 async def fetch_alphafold(client: httpx.AsyncClient, accession: str) -> AlphaFoldModel | None:
@@ -545,11 +617,17 @@ def pdb_entries(e: dict[str, Any]) -> list[PdbEntry]:
 
 @apps.tool(resource_uri="ui://uniprot/structure.html")
 async def show_protein_structure(
-    accession: str, pdb_id: str | None = None, positions: list[int] | None = None
+    accession: str,
+    pdb_id: str | None = None,
+    positions: list[int] | None = None,
+    category: FeatureCategory | None = None,
+    search: str | None = None,
 ) -> CallToolResult:
     """Show the 3D structure of a UniProtKB entry to the user in Mol*: the AlphaFold model colored by pLDDT
     confidence, or a PDB entry with `pdb_id`. Its features and variants are listed next to it, clicking one highlights
-    its residues. `positions` are UniProt residue numbers highlighted first, e.g. the position of a mutation"""
+    its residues. `positions` are UniProt residue numbers highlighted first, e.g. the position of a mutation.
+    The features listed can be filtered when the viewer opens, by `category` (e.g. "PTMs") and a `search` text found
+    in their type, description or positions (e.g. "phospho"), the user can change them"""
     async with http_client() as client:
         e, alphafold = await asyncio.gather(fetch_entry(client, accession), fetch_alphafold(client, accession))
         # Confidence of the highlighted residues
@@ -564,9 +642,16 @@ async def show_protein_structure(
     if not source:
         raise ToolError(f"No AlphaFold model or PDB entry for {accession}")
     positions = positions or []
+    filters = StructureFilters(category=category, search=search or "")
     # PDB entries the user can switch to in the widget
     data = StructureData(
-        **info, features=features, alphafold=alphafold, pdb=pdb[:100], source=source, positions=positions
+        **info,
+        features=features,
+        alphafold=alphafold,
+        pdb=pdb[:100],
+        source=source,
+        positions=positions,
+        filters=filters,
     )
 
     # Summary: structure shown, confidence, features at the highlighted positions, other structures
@@ -589,6 +674,20 @@ async def show_protein_structure(
             f"{p['id'].upper()} ({p['method']}, {p['resolution'] or '-'} A, {p['chains']})" for p in pdb[:15]
         )
         lines.append(f"PDB entries ({len(pdb)}): {best}")
+    if category or search:
+        # Features listed in the widget with these filters, which never lists secondary structure and the chain
+        listed = [
+            f
+            for f in features
+            if f["category"] != "Secondary structure"
+            and f["type"] != "Chain"
+            and (not category or f["category"] == category)
+            and (search or "").lower() in f"{f['type']} {feature_label(f)}".lower()
+        ]
+        given = [f"category {category}"] if category else []
+        given += [f"search '{search}'"] if search else []
+        lines.append(f"Features listed filtered by {', '.join(given)}: {len(listed)}")
+        lines.append(features_text(listed, 10) or "- none")
     lines.append("The user can click the features listed in the widget to highlight their residues.")
     return text_result("\n".join(lines), data)
 
@@ -685,13 +784,15 @@ def variant_of(v: dict[str, Any]) -> Variant:
         if ok
     ]
     frequencies = [f["frequency"] for f in v.get("populationFrequencies", []) if f.get("frequency")]
+    significance = list(dict.fromkeys(c["type"] for c in v.get("clinicalSignificances", [])))
     return Variant(
         start=start,
         end=int(v.get("end") or start),
         change=change,
         aa=new if consequence == "missense" and new and len(new) == 1 else "*" if consequence == "stop gained" else "d",
         consequence="other" if consequence == "-" else consequence,
-        significance=list(dict.fromkeys(c["type"] for c in v.get("clinicalSignificances", []))),
+        significance=significance,
+        classification=classification(significance),
         diseases=list(dict.fromkeys(a["name"] for a in v.get("association", [])))[:5],
         evidence=evidence,
         clinvar=clinvar[:5],
@@ -702,6 +803,35 @@ def variant_of(v: dict[str, Any]) -> Variant:
     )
 
 
+def classification(significance: list[str]) -> str:
+    """Most severe class of the clinical significances of a variant"""
+    if not significance:
+        return "Not classified"
+    return next((c for c, values in SIGNIFICANCE_CLASSES.items() if values & set(significance)), "Other")
+
+
+def variant_matches(v: Variant, f: VariantFilters) -> bool:
+    """Variant with one of the values checked in each facet, and the search text, as filtered in the explorer"""
+    facets = [
+        (f["consequence"], [v["consequence"]]),
+        (f["significance"], [v["classification"]]),
+        (f["evidence"], v["evidence"]),
+        (f["disease"], v["diseases"]),
+    ]
+    text = " ".join([v["change"], v["dbsnp"] or "", v["uniprot"] or "", *v["diseases"], *v["clinvar"]]).lower()
+    return all(not checked or set(checked) & set(values) for checked, values in facets) and f["search"].lower() in text
+
+
+def variants_label(variants: list[Variant], top: int = 30) -> str:
+    """Most documented variants, with their significance and diseases"""
+    return "; ".join(
+        f"{v['change']} ({', '.join(v['significance']) or 'no significance'}"
+        + (f", {', '.join(v['diseases'][:2])}" if v["diseases"] else "")
+        + ")"
+        for v in sorted(variants, key=variant_rank, reverse=True)[:top]
+    )
+
+
 def variant_rank(v: Variant) -> tuple[bool, ...]:
     """Most documented first: curated, pathogenic, with a clinical significance, a disease, a dbSNP ID"""
     pathogenic = any("athogenic" in s or s == "Disease" for s in v["significance"])
@@ -709,20 +839,52 @@ def variant_rank(v: Variant) -> tuple[bool, ...]:
 
 
 @apps.tool(resource_uri="ui://uniprot/variants.html")
-async def show_protein_variants(accession: str, start: int | None = None, end: int | None = None) -> CallToolResult:
+async def show_protein_variants(
+    accession: str,
+    start: int | None = None,
+    end: int | None = None,
+    significance: list[Classification] | None = None,
+    consequence: list[str] | None = None,
+    evidence: list[VariantEvidence] | None = None,
+    disease: list[str] | None = None,
+    search: str | None = None,
+) -> CallToolResult:
     """Show the disease and natural variants of a UniProtKB entry (e.g. P04637) to the user in an interactive
     explorer: variants positioned on the sequence next to domains, filterable by consequence, clinical significance,
     evidence and disease, with links to ClinVar, dbSNP and publications.
     To focus on a region, give its UniProt residue positions in `start` and `end` (e.g. 102 and 234 for a domain, or
-    only `start` for a single residue): the explorer opens zoomed on it, with the region highlighted"""
+    only `start` for a single residue): the explorer opens zoomed on it, with the region highlighted.
+    To show only some variants, give filters checked when the explorer opens, that the user can change: clinical
+    `significance` classes (e.g. ["Pathogenic", "Likely pathogenic"]), `consequence` types (e.g. ["missense",
+    "stop gained", "frameshift"]), `evidence` sources, `disease` names or parts of them (e.g. ["Li-Fraumeni"]), and a
+    `search` text found in the change, diseases, dbSNP or ClinVar IDs (e.g. "R175"). A variant is shown when it has one
+    of the values given in each filter"""
     async with http_client() as client:
         e, raw = await asyncio.gather(fetch_entry(client, accession), fetch_variants(client, accession))
     info = entry_info(e)
     zoom = residue_range(start, end, info["length"])
-    # Variants of the region kept first when there are too many to send
-    variants = sorted((variant_of(v) for v in raw), key=lambda v: (in_range(v, zoom), *variant_rank(v)), reverse=True)[
-        :MAX_VARIANTS
+    all_variants = [variant_of(v) for v in raw]
+    # Consequences and diseases given resolved to the values of the variants, checked in the facets
+    filters = VariantFilters(
+        consequence=matching({v["consequence"] for v in all_variants}, consequence),
+        significance=list(dict.fromkeys(significance or [])),
+        evidence=list(dict.fromkeys(evidence or [])),
+        disease=matching({d for v in all_variants for d in v["diseases"]}, disease),
+        search=search or "",
+    )
+    unmatched = [
+        f"{facet} {term}"
+        for facet, terms, found in [
+            ("consequence", consequence, filters["consequence"]),
+            ("disease", disease, filters["disease"]),
+        ]
+        for term in terms or []
+        if not matching(found, [term])
     ]
+    # Variants of the region and matching the filters kept first when there are too many to send
+    variants = sorted(
+        all_variants, key=lambda v: (in_range(v, zoom), variant_matches(v, filters), *variant_rank(v)), reverse=True
+    )[:MAX_VARIANTS]
     variants.sort(key=lambda v: v["start"])
     domains = [f for f in features_of(e) if f["type"] in ("Domain", "Repeat", "Zinc finger", "DNA binding", "Motif")]
 
@@ -743,21 +905,40 @@ async def show_protein_variants(accession: str, start: int | None = None, end: i
             "The user can filter the variants and click them for details and links to ClinVar and dbSNP.",
         ]
     )
-    if zoom:
-        # Variants of the region, the most documented first
-        inside = sorted((v for v in variants if in_range(v, zoom)), key=variant_rank, reverse=True)
-        listed = "; ".join(
-            f"{v['change']} ({', '.join(v['significance']) or 'no significance'}"
-            + (f", {', '.join(v['diseases'][:2])}" if v["diseases"] else "")
-            + ")"
-            for v in inside[:30]
-        )
+    # Variants shown with the filters checked
+    matched = [v for v in variants if variant_matches(v, filters)]
+    checked = [
+        f"{facet} {', '.join(values)}"
+        for facet, values in [
+            ("significance", filters["significance"]),
+            ("consequence", filters["consequence"]),
+            ("evidence", filters["evidence"]),
+            ("disease", filters["disease"]),
+        ]
+        if values
+    ] + ([f"search '{filters['search']}'"] if filters["search"] else [])
+    if unmatched:
+        text += f"\nNo variant with the {'; '.join(unmatched)}, these filters are not checked"
+    if checked:
+        listed = variants_label(matched)
         text += (
-            f"\nZoomed on {range_label(zoom)}, highlighted, with {len(inside)} variants in it"
+            f"\nFilters checked in the explorer: {'; '.join(checked)}. {len(matched)} variants shown"
+            + (f", the most documented: {listed}" if listed else "")
+            + f"\nConsequences shown: {counts([v['consequence'] for v in matched]) or 'none'}"
+        )
+    if zoom:
+        # Variants shown in the region, the most documented first
+        inside = [v for v in matched if in_range(v, zoom)]
+        listed = variants_label(inside)
+        text += (
+            f"\nZoomed on {range_label(zoom)}, highlighted, with {len(inside)} variants shown in it"
             + (f", the most documented: {listed}" if listed else "")
             + f"\nClinical significance in it: {counts([s for v in inside for s in v['significance']]) or 'none'}"
         )
-    return text_result(text, VariantsData(**info, features=domains, variants=variants, total=len(raw), zoom=zoom))
+    return text_result(
+        text,
+        VariantsData(**info, features=domains, variants=variants, total=len(raw), zoom=zoom, filters=filters),
+    )
 
 
 def go_level(evidence_type: str) -> int:
@@ -824,10 +1005,17 @@ def matrix_protein(e: dict[str, Any], terms: dict[str, Term]) -> MatrixProtein:
 
 
 @apps.tool(resource_uri="ui://uniprot/matrix.html")
-async def show_annotation_matrix(genes: list[str], organism_id: int = 9606) -> CallToolResult:
+async def show_annotation_matrix(
+    genes: list[str],
+    organism_id: int = 9606,
+    annotation_type: AnnotationType | None = None,
+    search: str | None = None,
+) -> CallToolResult:
     """Show a heatmap of the reviewed UniProtKB entries of a gene list (e.g. ["TP53", "MDM2", "CDKN1A"]) by their
     GO terms, keywords or Reactome pathways to the user, for a quick functional overview of the list.
-    `organism_id` is the NCBI taxonomy ID, human by default"""
+    `organism_id` is the NCBI taxonomy ID, human by default. The matrix opens on the `annotation_type` given, GO
+    biological process by default, with the terms filtered by a `search` text found in their ID or name (e.g.
+    "apoptosis"), the user can change them"""
     async with http_client() as client:
         entries, missing = await fetch_genes(client, genes, organism_id, "go,keyword,xref_reactome")
     terms: dict[str, Term] = {}
@@ -846,8 +1034,24 @@ async def show_annotation_matrix(genes: list[str], organism_id: int = 9606) -> C
             if n > 1
         )
         lines.append(f"Most shared, {kind}: {top or 'none'}")
+    filters = MatrixFilters(type=annotation_type, search=search or "")
+    if annotation_type or search:
+        kind = annotation_type or GO_ASPECTS["P"]
+        found = [
+            t
+            for t in terms.values()
+            if t["type"] == kind and (search or "").lower() in f"{t['id']} {t['name']}".lower()
+        ]
+        lines.append(
+            f"Opened on {kind}"
+            + (f", terms filtered by '{search}': {len(found)} terms" if search else "")
+            + (f", {'; '.join(t['name'] for t in found[:15])}" if search and found else "")
+        )
     lines.append("The user can switch annotation types and click terms or proteins to ask about them.")
-    return text_result("\n".join(lines), MatrixData(organism=organism, proteins=proteins, terms=terms, missing=missing))
+    return text_result(
+        "\n".join(lines),
+        MatrixData(organism=organism, proteins=proteins, terms=terms, missing=missing, filters=filters),
+    )
 
 
 NETWORK_FIELDS = "cc_interaction,xref_reactome,keyword"

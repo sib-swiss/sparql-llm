@@ -4,7 +4,7 @@
 """
 
 import asyncio
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 from mcp.server.apps import ResourceCsp
@@ -17,6 +17,7 @@ from sparql_llm.uniprot_tools import CDN, apps, get, http_client, text_result, w
 BGEE_API = "https://www.bgee.org/api/"
 # Bgee data types, as named by the expression calls of a gene
 DATA_TYPES = ["RNA-Seq", "single-cell RNA-Seq", "Affymetrix", "in situ hybridization", "EST"]
+DataType = Literal["RNA-Seq", "single-cell RNA-Seq", "Affymetrix", "in situ hybridization", "EST"]
 # Data types of the organ systems summary call, keyed by their enum
 SUMMARY_TYPES = {
     "RNA_SEQ": "RNA-Seq",
@@ -58,11 +59,24 @@ class ExpressionGene(TypedDict):
     """Expressed calls in organ systems, by condition key"""
 
 
+class ExpressionFilters(TypedDict):
+    """Filters of the heatmap when it opens"""
+
+    systems: bool
+    """Organ systems instead of all anatomical entities and cell types"""
+    dataType: str | None
+    gold: bool
+    absent: bool
+    """Not expressed calls shown"""
+    search: str
+
+
 class ExpressionData(TypedDict):
     species: dict[str, Any]
     genes: list[ExpressionGene]
     conditions: dict[str, Condition]
     missing: list[str]
+    filters: ExpressionFilters
 
 
 async def bgee(client: httpx.AsyncClient, params: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -144,11 +158,22 @@ async def summary_calls(client: httpx.AsyncClient, gene_ids: list[str], species_
 
 
 @apps.tool(resource_uri="ui://bgee/expression.html")
-async def show_gene_expression(genes: list[str], species_id: int = 9606) -> CallToolResult:
+async def show_gene_expression(
+    genes: list[str],
+    species_id: int = 9606,
+    organ_systems: bool = False,
+    data_type: DataType | None = None,
+    gold_only: bool = False,
+    show_absent: bool = True,
+    search: str | None = None,
+) -> CallToolResult:
     """Show where genes are expressed to the user, as a heatmap of anatomical entities and cell types by gene colored
     by the Bgee expression score (0-100), with organ systems, data types (RNA-Seq, scRNA-Seq, Affymetrix, in situ,
     EST), call quality and absence of expression. `genes` are gene symbols or Ensembl IDs (e.g. ["TP53", "MDM2"]),
-    of the species with NCBI taxonomy ID `species_id`, human by default (mouse is 10090, zebrafish 7955)"""
+    of the species with NCBI taxonomy ID `species_id`, human by default (mouse is 10090, zebrafish 7955).
+    Filters set when the heatmap opens, the user can change them: `organ_systems` to show organ systems instead of
+    all anatomical entities, only the calls with a `data_type`, `gold_only` quality calls, `show_absent` false to hide
+    not expressed calls, and a `search` text found in the anatomical entities and cell types (e.g. "brain")"""
     if not genes:
         raise ToolError("Give at least one gene")
     async with http_client() as client:
@@ -213,12 +238,29 @@ async def show_gene_expression(genes: list[str], species_id: int = 9606) -> Call
         )
         if absent:
             lines.append(f"- Not expressed in: {', '.join(conditions[k]['anatName'] for k in absent[:15])}")
+    filters = ExpressionFilters(
+        systems=organ_systems, dataType=data_type, gold=gold_only, absent=show_absent, search=search or ""
+    )
+    given = [
+        label
+        for label, on in [
+            ("organ systems shown", organ_systems),
+            (f"only {data_type} data", bool(data_type)),
+            ("only gold quality calls", gold_only),
+            ("not expressed calls hidden", not show_absent),
+            (f"anatomical entities matching '{search}'", bool(search)),
+        ]
+        if on
+    ]
+    if given:
+        lines.append(f"\nFilters set in the heatmap: {', '.join(given)}")
     lines.append(
         "\nThe user can switch between organ systems and all anatomical entities, filter by data type and quality, "
         "and click a condition or a gene to ask about it."
     )
     return text_result(
-        "\n".join(lines), ExpressionData(species=species, genes=out, conditions=conditions, missing=missing)
+        "\n".join(lines),
+        ExpressionData(species=species, genes=out, conditions=conditions, missing=missing, filters=filters),
     )
 
 

@@ -238,18 +238,17 @@
       // Residues displayed, kept when the viewer is rendered again
       let view;
 
-      // Clinical significance classes, the most severe of a variant gives its color
+      // Clinical significance classes, the most severe of a variant, classified by the server, gives its color
       const CLASSES = [
-        ["Pathogenic", "#b42318", (s) => s === "Pathogenic" || s === "Disease"],
-        ["Likely pathogenic", "#f97066", (s) => s === "Likely pathogenic"],
-        ["Uncertain", "#f79009", (s) => s === "Variant of uncertain significance"],
-        ["Likely benign", "#66b85a", (s) => s === "Likely benign"],
-        ["Benign", "#2e7d32", (s) => s === "Benign"],
-        ["Other", "#8c959f", () => true],
-        ["Not classified", "#c4c9d0", () => false],
+        ["Pathogenic", "#b42318"],
+        ["Likely pathogenic", "#f97066"],
+        ["Uncertain", "#f79009"],
+        ["Likely benign", "#66b85a"],
+        ["Benign", "#2e7d32"],
+        ["Other", "#8c959f"],
+        ["Not classified", "#c4c9d0"],
       ];
-      const classOf = (v) =>
-        v.significance.length ? CLASSES.find(([, , test]) => v.significance.some(test))[0] : "Not classified";
+      const classOf = (v) => v.classification;
       const colorOf = (v) => CLASSES.find(([name]) => name === classOf(v))[1];
 
       // Facets, a variant matches one when any of its values is checked (none checked means no filter)
@@ -290,7 +289,8 @@
           const list = [...counts].sort((a, b) => (order ? order.indexOf(a[0]) - order.indexOf(b[0]) : b[1] - a[1]));
           if (!list.length) continue;
           $("facets").insertAdjacentHTML("beforeend", `<h2>${titles[key]}</h2>`);
-          for (const [value, n] of list.slice(0, key === "disease" ? 15 : undefined)) {
+          // Top diseases, and the ones checked
+          for (const [value, n] of list.filter(([x], i) => key !== "disease" || i < 15 || facets[key].has(x))) {
             const color = key === "significance" && CLASSES.find(([name]) => name === value)[1];
             const label = document.createElement("label");
             label.innerHTML = `<input type="checkbox" ${facets[key].has(value) ? "checked" : ""} />
@@ -541,6 +541,10 @@
         $("link").onclick = () =>
           app.openLink({ url: `https://www.uniprot.org/uniprotkb/${entry.accession}/variant-viewer` });
         view = entry.zoom ? regionWindow(entry.zoom, entry.length) : [1, entry.length];
+        // Filters given to the tool checked when the explorer opens
+        const { search = "", ...given } = entry.filters ?? {};
+        for (const key of Object.keys(facets)) facets[key] = new Set(given[key] ?? []);
+        $("filter").value = search;
         renderViewer();
         render();
         showRange();
