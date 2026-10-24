@@ -42,6 +42,8 @@ dependencies = [
     "pandas >=2.2.3",
     "typing-extensions >=4.16.0",
     "defusedxml>=0.7.1",
+    "pydantic >=2.13.5",
+    "pydantic-settings >=2.15.0",
 ]
 
 [project.optional-dependencies]
@@ -62,8 +64,6 @@ agent = [
     # Dependencies to deploy the API
     "fastapi >=0.141.1",
     "uvicorn[standard] >=0.54.0",
-    "pydantic >=2.13.5",
-    "pydantic-settings >=2.15.0",
     "jinja2 >=3.1.6",
     "sentry-sdk[fastapi] >=2.71.0", # Error reporting at the SIB
     # Extract potential entities from text without LLM
