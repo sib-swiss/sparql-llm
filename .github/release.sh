@@ -19,6 +19,8 @@ git tag -a "v$VERSION" -m "Release v$VERSION"
 git push origin "v$VERSION"
 
 rm -rf dist
+# Widgets are git ignored, bundle them to ship them in the package
+(cd widgets && npm ci && npm run build)
 uv build
 uv publish
 

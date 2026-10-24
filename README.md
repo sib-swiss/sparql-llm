@@ -63,7 +63,7 @@ UniProt tools calling the [UniProt REST API](https://rest.uniprot.org) directly,
 - **🔎 `search_proteins`**: search UniProtKB entries (accession, name, genes, organism)
 - **🧬 `get_protein`**: get a UniProtKB entry by accession (name, organism, function, sequence)
 
-UniProt tools showing interactive widgets to the user, for clients supporting [MCP Apps](https://modelcontextprotocol.io/specification/draft/extensions/apps). The widget gets the full data, the model only gets a text summary. Widgets are in [`widgets/`](src/sparql_llm/widgets):
+UniProt tools showing interactive widgets to the user, for clients supporting [MCP Apps](https://modelcontextprotocol.io/specification/draft/extensions/apps). The widget gets the full data, the model only gets a text summary. Widgets are in [`widgets/`](widgets), each bundled with its dependencies in a single HTML file in `src/sparql_llm/widgets/` with `cd widgets && npm ci && npm run build` (done by the Dockerfile when building the image):
 
 - **`show_protein_features`**: [Nightingale](https://github.com/ebi-webcomponents/nightingale) tracks of domains, sites, PTMs, processing, topology, secondary structure and variants, zoomable along the sequence. Given `start` and `end` residues (e.g. 102 and 234, or only `start` for a mutation), the viewer opens zoomed on the region, highlighted on all tracks. Given `categories` (e.g. `["PTMs"]`), only them are shown when it opens
 - **`show_protein_structure`**: AlphaFold model colored by pLDDT, or a PDB entry, in Mol\* ([PDBe Molstar](https://github.com/molstar/pdbe-molstar)), next to the features list: clicking one highlights its residues. Residues can be highlighted from the start, e.g. a mutation, and the list filtered by `category` and `search`
@@ -338,7 +338,7 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 
    > You can change the UI around the chat in `chat-with-context/demo/index.html`
 
-4. **Start** the vector database and web server locally for development, with code from the `src` folder mounted in the container and automatic API reload on changes to the code:
+4. **Start** the vector database and web server locally for development, with code from the `src` folder mounted in the container and automatic API reload on changes to the code (the widgets are bundled when building the image, rebuild it with `--build` after changing them):
 
    ```bash
    docker compose up

@@ -113,6 +113,10 @@ sparql-llm = "sparql_llm.mcp_server:cli"
 [tool.hatch.version]
 path = "src/sparql_llm/__init__.py"
 
+# Widgets bundled by `npm run build` in `widgets/`, git ignored but shipped in the package
+[tool.hatch.build]
+artifacts = ["src/sparql_llm/widgets/*.html"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/sparql_llm"]
 

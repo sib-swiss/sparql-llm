@@ -217,13 +217,13 @@
         applyDocumentTheme,
         applyHostFonts,
         applyHostStyleVariables,
-      } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@2.0.3/dist/src/app-with-deps.js";
+      } from "@modelcontextprotocol/ext-apps/app-with-deps";
       // Nightingale web components, the manager syncs zoom and highlight between them
-      import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-manager@5.11.0/+esm";
-      import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-navigation@5.11.0/+esm";
-      import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-sequence@5.11.0/+esm";
-      import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-track@5.11.1/+esm";
-      import "https://cdn.jsdelivr.net/npm/@nightingale-elements/nightingale-variation-canvas@5.11.1/+esm";
+      import "@nightingale-elements/nightingale-manager";
+      import "@nightingale-elements/nightingale-navigation";
+      import "@nightingale-elements/nightingale-sequence";
+      import "@nightingale-elements/nightingale-track";
+      import "@nightingale-elements/nightingale-variation-canvas";
 
       // Connection to the host with the MCP Apps SDK
       const app = new App(

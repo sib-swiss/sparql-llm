@@ -1,0 +1,22 @@
+{
+  "name": "sparql-llm-widgets",
+  "private": true,
+  "description": "MCP Apps widgets of the sparql-llm MCP server, each bundled in a self-contained HTML file in src/sparql_llm/widgets",
+  "type": "module",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "^2.0.3",
+    "@nightingale-elements/nightingale-manager": "^5.11.0",
+    "@nightingale-elements/nightingale-navigation": "^5.11.0",
+    "@nightingale-elements/nightingale-sequence": "^5.11.0",
+    "@nightingale-elements/nightingale-track": "^5.11.1",
+    "@nightingale-elements/nightingale-variation-canvas": "^5.11.1",
+    "cytoscape": "^3.33.1"
+  },
+  "devDependencies": {
+    "vite": "^8.3.5",
+    "vite-plugin-singlefile": "^2.3.4"
+  }
+}

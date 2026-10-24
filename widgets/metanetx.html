@@ -236,14 +236,14 @@
 
     <script src="colors.js"></script>
     <script src="viewers.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.33.1/dist/cytoscape.min.js"></script>
     <script type="module">
       import {
         App,
         applyDocumentTheme,
         applyHostFonts,
         applyHostStyleVariables,
-      } from "https://cdn.jsdelivr.net/npm/@modelcontextprotocol/ext-apps@2.0.3/dist/src/app-with-deps.js";
+      } from "@modelcontextprotocol/ext-apps/app-with-deps";
+      import cytoscape from "cytoscape";
 
       // Connection to the host with the MCP Apps SDK
       const app = new App({ name: "MetaNetX", version: "0.0.1" }, { availableDisplayModes: ["inline", "fullscreen"] });

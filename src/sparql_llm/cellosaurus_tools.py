@@ -10,12 +10,11 @@ import re
 from typing import Any
 
 import httpx
-from mcp.server.apps import ResourceCsp
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 from typing_extensions import TypedDict
 
-from sparql_llm.uniprot_tools import CDN, READ_ONLY, apps, get, http_client, text_result, widget_html
+from sparql_llm.uniprot_tools import READ_ONLY, apps, get, http_client, text_result, widget_html
 
 CELLOSAURUS_API = "https://api.cellosaurus.org"
 CLASTR_API = "https://www.cellosaurus.org/str-search/api/query"
@@ -334,5 +333,4 @@ apps.add_html_resource(
     "ui://cellosaurus/cellline.html",
     widget_html("cellline.html"),
     title="Cellosaurus cell line",
-    csp=ResourceCsp(resource_domains=[CDN]),
 )

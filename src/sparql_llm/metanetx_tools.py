@@ -15,7 +15,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 from typing_extensions import TypedDict
 
-from sparql_llm.uniprot_tools import CDN, READ_ONLY, apps, http_client, text_result, widget_html
+from sparql_llm.uniprot_tools import READ_ONLY, apps, http_client, text_result, widget_html
 
 MNX_SPARQL = "https://rdf.metanetx.org/sparql"
 MNX_WEB = "https://www.metanetx.org"
@@ -518,5 +518,5 @@ apps.add_html_resource(
     "ui://metanetx/metanetx.html",
     widget_html("metanetx.html"),
     title="MetaNetX chemical or reaction",
-    csp=ResourceCsp(resource_domains=[CDN, MNX_WEB]),
+    csp=ResourceCsp(resource_domains=[MNX_WEB]),
 )

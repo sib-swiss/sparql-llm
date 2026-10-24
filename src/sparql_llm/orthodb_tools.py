@@ -11,12 +11,11 @@ from collections import Counter
 from typing import Any
 
 import httpx
-from mcp.server.apps import ResourceCsp
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 from typing_extensions import TypedDict
 
-from sparql_llm.uniprot_tools import CDN, READ_ONLY, apps, get, http_client, text_result, widget_html
+from sparql_llm.uniprot_tools import READ_ONLY, apps, get, http_client, text_result, widget_html
 
 ORTHODB_API = "https://data.orthodb.org/current"
 OG_ID = re.compile(r"^\s*(\d+at\d+)\s*$")
@@ -269,5 +268,4 @@ apps.add_html_resource(
     "ui://orthodb/orthodb.html",
     widget_html("orthodb.html"),
     title="OrthoDB ortholog group",
-    csp=ResourceCsp(resource_domains=[CDN]),
 )

@@ -3,14 +3,14 @@
 - Regular tools returning data to the model: `search_proteins` and `get_protein`
 - Tools showing MCP Apps widgets: sequence features, 3D structure with features, search results table,
   variant explorer and annotation matrix. The widget gets the full data in `structuredContent`, the model only gets
-  a text summary. Widgets are in `widgets/`, local scripts and stylesheets they reference are inlined when served.
+  a text summary. Widgets are bundled from the `widgets/` folder at the root of the repository by `npm run build`.
 
 Regular tools are added with `add_uniprot_tools(mcp)`, MCP Apps tools with `MCPServer(extensions=[apps])`.
 """
 
 import asyncio
-import base64
 import heapq
+import os
 import re
 from collections import Counter
 from collections.abc import Iterable, Mapping
@@ -31,7 +31,9 @@ PROTEINS_API = "https://www.ebi.ac.uk/proteins/api"
 OMNIPATH_API = "https://omnipathdb.org"
 # IntAct evidences of an interaction, in the PSI-MITAB format, queried with MIQL
 INTACT_MIQL = "https://www.ebi.ac.uk/Tools/webservices/psicquic/intact/webservices/current/search/query"
-WIDGETS = Path(__file__).parent / "widgets"
+# Widgets bundled from `widgets/`, the Docker image has them outside of `src` which compose mounts
+WIDGETS = Path(os.getenv("WIDGETS_DIR") or Path(__file__).parent / "widgets")
+# The 3D structure widget loads Mol* from the CDN, too heavy to bundle in the widget
 CDN = "https://cdn.jsdelivr.net"
 # UniProt queries not cached yet can take tens of seconds, and the API sometimes answers 503
 TIMEOUT = 60
@@ -1448,34 +1450,18 @@ def network_text(data: NetworkData) -> str:
     return "\n".join(lines)
 
 
-LOGO_TYPES = {"svg": "image/svg+xml", "png": "image/png"}
-
-
-def logo_uri(name: str) -> str:
-    """Logo in `widgets/logos/` as a data URI, images from other origins are blocked in widgets"""
-    data = base64.b64encode((WIDGETS / "logos" / name).read_bytes()).decode()
-    return f"data:{LOGO_TYPES[name.rsplit('.', 1)[1]]};base64,{data}"
-
-
 def widget_html(name: str) -> str:
-    """Widget HTML with the local scripts, stylesheets and logos it references inlined"""
-    html = (WIDGETS / name).read_text()
-    html = re.sub(r'src="logos/([\w-]+\.\w+)"', lambda m: f'src="{logo_uri(m[1])}"', html)
-    html = re.sub(
-        r'<script src="(\w+\.js)"></script>', lambda m: f"<script>\n{(WIDGETS / m[1]).read_text()}</script>", html
-    )
-    return re.sub(
-        r'<link rel="stylesheet" href="(\w+\.css)" />',
-        lambda m: f"<style>\n{(WIDGETS / m[1]).read_text()}</style>",
-        html,
-    )
+    """Widget HTML bundled with its dependencies by `npm run build` in the `widgets/` folder"""
+    path = WIDGETS / name
+    if not path.exists():
+        raise FileNotFoundError(f"{path} not found, build the widgets with `cd widgets && npm ci && npm run build`")
+    return path.read_text()
 
 
 apps.add_html_resource(
     "ui://uniprot/features.html",
     widget_html("features.html"),
     title="UniProt sequence features",
-    csp=ResourceCsp(resource_domains=[CDN]),
 )
 apps.add_html_resource(
     "ui://uniprot/structure.html",
@@ -1490,23 +1476,19 @@ apps.add_html_resource(
     "ui://uniprot/table.html",
     widget_html("table.html"),
     title="UniProt search results",
-    csp=ResourceCsp(resource_domains=[CDN]),
 )
 apps.add_html_resource(
     "ui://uniprot/variants.html",
     widget_html("variants.html"),
     title="UniProt variant explorer",
-    csp=ResourceCsp(resource_domains=[CDN]),
 )
 apps.add_html_resource(
     "ui://uniprot/matrix.html",
     widget_html("matrix.html"),
     title="UniProt annotation matrix",
-    csp=ResourceCsp(resource_domains=[CDN]),
 )
 apps.add_html_resource(
     "ui://uniprot/network.html",
     widget_html("network.html"),
     title="Protein pathway and interaction network",
-    csp=ResourceCsp(resource_domains=[CDN]),
 )

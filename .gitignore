@@ -24,6 +24,8 @@ nohup.out
 .DS_Store
 
 node_modules/
+# Widgets bundled from `widgets/` by `npm run build`
+src/sparql_llm/widgets/
 
 # src/expasy-agent/src/expasy_agent/webapp
 tutorial/public/logo_*.png

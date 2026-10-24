@@ -10,13 +10,11 @@ import re
 from typing import Any
 
 import httpx
-from mcp.server.apps import ResourceCsp
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 from typing_extensions import TypedDict
 
 from sparql_llm.uniprot_tools import (
-    CDN,
     READ_ONLY,
     UNIPROT_API,
     SearchRow,
@@ -245,5 +243,4 @@ apps.add_html_resource(
     "ui://rhea/reaction.html",
     widget_html("reaction.html"),
     title="Rhea reaction and atom map",
-    csp=ResourceCsp(resource_domains=[CDN]),
 )

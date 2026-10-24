@@ -4,6 +4,8 @@ data/
 __pycache__/
 .*_cache
 dist/
-node_modules/
+**/node_modules/
+# Widgets are bundled in the Dockerfile
+src/sparql_llm/widgets/
 .DS_Store
 .fastembed_cache/
