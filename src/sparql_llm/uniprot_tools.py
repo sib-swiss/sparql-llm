@@ -9,6 +9,7 @@ Regular tools are added with `add_uniprot_tools(mcp)`, MCP Apps tools with `MCPS
 """
 
 import asyncio
+import base64
 import heapq
 import re
 from collections import Counter
@@ -1447,9 +1448,19 @@ def network_text(data: NetworkData) -> str:
     return "\n".join(lines)
 
 
+LOGO_TYPES = {"svg": "image/svg+xml", "png": "image/png", "webp": "image/webp"}
+
+
+def logo_uri(name: str) -> str:
+    """Logo in `widgets/logos/` as a data URI, images from other origins are blocked in widgets"""
+    data = base64.b64encode((WIDGETS / "logos" / name).read_bytes()).decode()
+    return f"data:{LOGO_TYPES[name.rsplit('.', 1)[1]]};base64,{data}"
+
+
 def widget_html(name: str) -> str:
-    """Widget HTML with the local scripts and stylesheets it references inlined"""
+    """Widget HTML with the local scripts, stylesheets and logos it references inlined"""
     html = (WIDGETS / name).read_text()
+    html = re.sub(r'src="logos/([\w-]+\.\w+)"', lambda m: f'src="{logo_uri(m[1])}"', html)
     html = re.sub(
         r'<script src="(\w+\.js)"></script>', lambda m: f"<script>\n{(WIDGETS / m[1]).read_text()}</script>", html
     )

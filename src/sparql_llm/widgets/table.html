@@ -141,6 +141,7 @@
   </head>
   <body>
     <header>
+      <a class="logo" id="logo" title="Open in UniProt"><img class="tall" src="logos/uniprot.svg" alt="UniProt" /></a>
       <h1 id="title">Loading results</h1>
       <span class="muted" id="subtitle"></span>
       <span class="spacer"></span>
@@ -404,6 +405,8 @@
         if (!data) return ($("title").textContent = "No results");
         rows = data.rows;
         $("title").textContent = data.query;
+        $("logo").onclick = () =>
+          app.openLink({ url: `https://www.uniprot.org/uniprotkb?query=${encodeURIComponent(data.query)}` });
         render();
       };
 

@@ -159,6 +159,7 @@
   </head>
   <body>
     <header>
+      <a class="logo" id="logo" title="Open in SwissLipids"><img src="logos/swisslipids.png" alt="SwissLipids" /></a>
       <h1 id="title">Loading lipid</h1>
       <span id="badges"></span>
       <span class="muted" id="subtitle"></span>
@@ -563,6 +564,7 @@
         data = result.structuredContent;
         if (!data) return ($("title").textContent = "Lipid not found");
         $("title").textContent = data.abbreviation ?? data.name;
+        $("logo").onclick = () => app.openLink({ url: lipidUrl(data.id) });
         $("subtitle").textContent = data.abbreviation && data.abbreviation !== data.name ? data.name : "";
         $("badges").innerHTML =
           `<span class="badge" style="color:${LEVELS[data.level] ?? "inherit"}">${escapeHtml(data.level ?? "")}</span>

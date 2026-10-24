@@ -192,6 +192,7 @@
   </head>
   <body>
     <header>
+      <a class="logo" id="logo" title="Open in Rhea"><img src="logos/rhea.png" alt="Rhea" /></a>
       <h1 id="title">Loading reaction</h1>
       <span id="badges"></span>
       <span class="spacer"></span>
@@ -306,6 +307,7 @@
 
       function render() {
         $("title").textContent = data.id;
+        $("logo").onclick = () => app.openLink({ url: rheaUrl(data.id) });
         $("badges").innerHTML = [
           data.direction === "none" ? "undefined direction" : data.direction,
           data.status,

@@ -167,10 +167,10 @@
   </head>
   <body>
     <header>
+      <a class="logo" id="logo" title="Open in UniProt"><img class="tall" src="logos/uniprot.svg" alt="UniProt" /></a>
       <h1 id="title">Loading variants</h1>
       <span class="muted" id="subtitle"></span>
       <span class="spacer"></span>
-      <a id="link">UniProt</a>
       <button type="button" id="fullscreen">Full screen</button>
     </header>
     <div class="layout">
@@ -538,7 +538,7 @@
         $("title").textContent = `${entry.gene ?? entry.id} · ${entry.name ?? ""}`;
         const shown = entry.total > entry.variants.length ? `${entry.variants.length} of ${entry.total}` : entry.total;
         $("subtitle").textContent = `${entry.accession} · ${entry.organism} · ${entry.length} aa · ${shown} variants`;
-        $("link").onclick = () =>
+        $("logo").onclick = () =>
           app.openLink({ url: `https://www.uniprot.org/uniprotkb/${entry.accession}/variant-viewer` });
         view = entry.zoom ? regionWindow(entry.zoom, entry.length) : [1, entry.length];
         // Filters given to the tool checked when the explorer opens

@@ -155,6 +155,7 @@
   </head>
   <body>
     <header>
+      <a class="logo" id="logo" title="Open in Bgee"><img src="logos/bgee.svg" alt="Bgee" /></a>
       <h1 id="title">Loading expression</h1>
       <span class="muted" id="subtitle"></span>
       <span class="spacer"></span>
@@ -404,10 +405,13 @@
         data = result.structuredContent;
         if (!data) return ($("title").textContent = "No expression data");
         const names = data.genes.map((g) => g.name);
+        // Bgee page of the gene when there is only one
+        const bgeeUrl = data.genes.length === 1 ? `https://www.bgee.org/gene/${data.genes[0].id}` : "https://www.bgee.org";
+        $("logo").onclick = () => app.openLink({ url: bgeeUrl });
         $("title").textContent = `Expression of ${names.length > 4 ? `${names.length} genes` : names.join(", ")}`;
         const missing = data.missing.length ? ` · not found: ${data.missing.join(", ")}` : "";
         $("subtitle").textContent =
-          `${data.species.name}${data.species.commonName ? ` (${data.species.commonName})` : ""} · Bgee${missing}`;
+          `${data.species.name}${data.species.commonName ? ` (${data.species.commonName})` : ""}${missing}`;
         const present = new Set(data.genes.flatMap((g) => Object.values(g.calls).flatMap((c) => c.dataTypes)));
         $("type").innerHTML = `<option value="">All data types</option>${DATA_TYPES.filter((t) => present.has(t))
           .map((t) => `<option>${t}</option>`)

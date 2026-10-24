@@ -223,6 +223,7 @@
   </head>
   <body>
     <header>
+      <a class="logo" id="logo" title="Open in Cellosaurus"><img src="logos/cellosaurus.png" alt="Cellosaurus" /></a>
       <h1 id="title">Loading cell line</h1>
       <span id="badges"></span>
       <span class="muted" id="subtitle"></span>
@@ -524,6 +525,7 @@
         data = result.structuredContent;
         if (!data) return ($("title").textContent = "Cell line not found");
         $("title").textContent = data.name;
+        $("logo").onclick = () => app.openLink({ url: cellUrl(data.accession) });
         $("badges").innerHTML = `<a data-url="${cellUrl(data.accession)}">${data.accession}</a>
           <span class="badge">${escapeHtml(data.category ?? "")}</span>${data.problematic ? ` <span class="badge bad">problematic</span>` : ""}`;
         $("subtitle").textContent = [

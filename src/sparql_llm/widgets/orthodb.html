@@ -234,6 +234,7 @@
   </head>
   <body>
     <header>
+      <a class="logo" id="logo" title="Open in OrthoDB"><img src="logos/orthodb.png" alt="OrthoDB" /></a>
       <h1 id="title">Loading ortholog group</h1>
       <span id="badges"></span>
       <span class="spacer"></span>
@@ -300,6 +301,7 @@
 
       function renderHeader() {
         $("title").textContent = data.name;
+        $("logo").onclick = () => app.openLink({ url: ogUrl(data.id) });
         $("badges").innerHTML =
           `<span class="badge">${escapeHtml(data.level)}</span> <a data-url="${ogUrl(data.id)}">${data.id}</a>`;
         $("hierarchy").innerHTML = data.hierarchy

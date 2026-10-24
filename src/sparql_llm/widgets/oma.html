@@ -192,6 +192,7 @@
   </head>
   <body>
     <header>
+      <a class="logo" id="logo" title="Open in OMA"><img src="logos/oma.svg" alt="OMA" /></a>
       <h1 id="title">Loading gene family</h1>
       <span id="badges"></span>
       <span class="muted" id="subtitle"></span>
@@ -482,6 +483,7 @@
         if (!data) return ($("title").textContent = "No gene family");
         const p = data.protein;
         $("title").textContent = p.name ?? p.omaid;
+        $("logo").onclick = () => app.openLink({ url: omaUrl(p.omaid) });
         $("badges").innerHTML =
           `<a data-url="${omaUrl(p.omaid)}">${p.omaid}</a> <span class="badge">HOG rooted at ${escapeHtml(data.rootLevel ?? "?")}</span>
           ${Object.entries(data.orthologs)

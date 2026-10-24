@@ -209,6 +209,7 @@
   </head>
   <body>
     <header>
+      <a class="logo" id="logo" title="Open in MetaNetX"><img src="logos/metanetx.webp" alt="MetaNetX" />MetaNetX</a>
       <h1 id="title">Loading MetaNetX</h1>
       <span id="badges"></span>
       <span class="spacer"></span>
@@ -611,7 +612,8 @@
         data = result.structuredContent;
         if (!data) return ($("title").textContent = "Not found in MetaNetX");
         $("title").textContent = data.kind === "chemical" ? `${data.id} ${data.name}` : data.id;
-        $("badges").innerHTML = `<span class="badge">${data.kind}</span> <a data-url="${mnxUrl(data.id)}">MetaNetX</a>`;
+        $("badges").innerHTML = `<span class="badge">${data.kind}</span>`;
+        $("logo").onclick = () => app.openLink({ url: mnxUrl(data.id) });
         const dbs = [...new Set(data.xrefs.map((x) => x.db))].sort();
         $("db").innerHTML =
           `<option value="">All databases (${dbs.length})</option>${dbs.map((d) => `<option>${escapeHtml(d)}</option>`).join("")}`;
