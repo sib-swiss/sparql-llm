@@ -1448,7 +1448,7 @@ def network_text(data: NetworkData) -> str:
     return "\n".join(lines)
 
 
-LOGO_TYPES = {"svg": "image/svg+xml", "png": "image/png", "webp": "image/webp"}
+LOGO_TYPES = {"svg": "image/svg+xml", "png": "image/png"}
 
 
 def logo_uri(name: str) -> str:

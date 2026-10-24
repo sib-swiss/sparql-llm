@@ -37,14 +37,26 @@ header {
   flex-wrap: wrap;
   margin-bottom: 10px;
 }
+/* Logo and title kept on one row, a long title wrapping next to the logo, aligned on the title for the rest */
+.heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.heading h1 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 /* Logo of the resource, top left of the header, opening the entry on its website */
 .logo {
   align-self: center;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-weight: 700;
-  color: #333;
+  color: var(--fg);
 }
 .logo img {
   display: block;
@@ -54,11 +66,9 @@ header {
 .logo img.tall {
   height: 30px;
 }
-/* Light background in dark mode, as most logos have dark text */
-:root[data-theme="dark"] .logo {
-  background: #fff;
-  border-radius: 4px;
-  padding: 2px 5px;
+/* Logos with black text inverted in dark mode, the hue rotation keeps their colors */
+:root[data-theme="dark"] .logo.invert img {
+  filter: invert(1) hue-rotate(180deg);
 }
 h1 {
   margin: 0;
