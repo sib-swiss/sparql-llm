@@ -14,7 +14,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 from typing_extensions import TypedDict
 
-from sparql_llm.uniprot_tools import (
+from sparql_llm.tools.uniprot import (
     READ_ONLY,
     UNIPROT_API,
     SearchRow,

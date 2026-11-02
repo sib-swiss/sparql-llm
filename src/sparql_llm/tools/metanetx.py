@@ -15,7 +15,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 from typing_extensions import TypedDict
 
-from sparql_llm.uniprot_tools import READ_ONLY, apps, http_client, text_result, widget_html
+from sparql_llm.tools.uniprot import READ_ONLY, apps, http_client, text_result, widget_html
 
 MNX_SPARQL = "https://rdf.metanetx.org/sparql"
 MNX_WEB = "https://www.metanetx.org"

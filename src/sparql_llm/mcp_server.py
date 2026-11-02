@@ -16,22 +16,23 @@ from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 from rdflib.plugins.sparql import prepareQuery
 from typing_extensions import NotRequired, TypedDict
 
-# Widget tools of other SIB resources are registered on the UniProt MCP Apps extension when imported
-from sparql_llm import (  # noqa: F401
-    __version__,
-    bgee_tools,
-    cellosaurus_tools,
-    metanetx_tools,
-    oma_tools,
-    orthodb_tools,
-    rhea_tools,
-    swisslipids_tools,
-)
+from sparql_llm import __version__
 from sparql_llm.config import settings
 from sparql_llm.indexing.index_resources import embedding_model, endpoints_metadata, init_vectordb, qdrant_client
 from sparql_llm.loaders.sparql_info_loader import GENERAL_INFO_DOC_TYPE
-from sparql_llm.uniprot_tools import READ_ONLY, add_uniprot_tools
-from sparql_llm.uniprot_tools import apps as uniprot_apps
+
+# Widget tools of other SIB resources are registered on the UniProt MCP Apps extension when imported
+from sparql_llm.tools import (  # noqa: F401
+    bgee,
+    cellosaurus,
+    metanetx,
+    oma,
+    orthodb,
+    rhea,
+    swisslipids,
+)
+from sparql_llm.tools.uniprot import READ_ONLY, add_uniprot_tools
+from sparql_llm.tools.uniprot import apps as uniprot_apps
 from sparql_llm.utils import logger, query_sparql
 from sparql_llm.validate_sparql import validate_sparql
 

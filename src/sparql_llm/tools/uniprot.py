@@ -32,7 +32,7 @@ OMNIPATH_API = "https://omnipathdb.org"
 # IntAct evidences of an interaction, in the PSI-MITAB format, queried with MIQL
 INTACT_MIQL = "https://www.ebi.ac.uk/Tools/webservices/psicquic/intact/webservices/current/search/query"
 # Widgets bundled from `widgets/`, the Docker image has them outside of `src` which compose mounts
-WIDGETS = Path(os.getenv("WIDGETS_DIR") or Path(__file__).parent / "widgets")
+WIDGETS = Path(os.getenv("WIDGETS_DIR") or Path(__file__).parent.parent / "widgets")
 # The 3D structure widget loads Mol* from the CDN, too heavy to bundle in the widget
 CDN = "https://cdn.jsdelivr.net"
 # UniProt queries not cached yet can take tens of seconds, and the API sometimes answers 503

@@ -11,7 +11,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import CallToolResult
 from typing_extensions import TypedDict
 
-from sparql_llm.uniprot_tools import READ_ONLY, apps, get, http_client, text_result, widget_html
+from sparql_llm.tools.uniprot import READ_ONLY, apps, get, http_client, text_result, widget_html
 
 BGEE_API = "https://www.bgee.org/api/"
 # Bgee data types, as named by the expression calls of a gene
