@@ -7,6 +7,10 @@ from sparql_llm import (
 )
 from sparql_llm.utils import get_schema_for_endpoint
 
+OMA_ENDPOINT = "https://sparql.omabrowser.org/sparql/"
+# The OMA endpoint does not serve its VoID description anymore, it is available at the well-known location
+OMA_VOID_URL = "https://sparql.omabrowser.org/.well-known/void"
+
 
 def test_sparql_examples_loader_uniprot():
     """Test the SPARQL queries examples loader with the UniProt endpoint."""
@@ -67,7 +71,11 @@ WHERE {
         ?ratOrganism obo:RO_0002162 taxon:10116 .
     }
 }"""
-    issues = validate_sparql_with_void(sparql_query, "https://sparql.omabrowser.org/sparql/")
+    issues = validate_sparql_with_void(
+        sparql_query,
+        OMA_ENDPOINT,
+        endpoints_void_dict={OMA_ENDPOINT: get_schema_for_endpoint(OMA_ENDPOINT, OMA_VOID_URL)},
+    )
     print("\n".join(issues))
     assert len(issues) == 3
 
