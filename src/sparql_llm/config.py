@@ -175,6 +175,28 @@ It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC
     app_public_host: str = "chat.expasy.org"
     """The public host name where the application is deployed, used for MCP transport security settings."""
 
+    app_description: str = (
+        "Query bioinformatics resources of the SIB Swiss Institute of Bioinformatics such as UniProt, Bgee, "
+        "Rhea, OMA, OrthoDB, Cellosaurus, SwissLipids and MetaNetX, through their SPARQL endpoints and "
+        "interactive views of proteins, gene expression, reactions, lipids, cell lines and orthologs."
+    )
+    """Description of the service, shown in the API docs and sent to MCP clients."""
+
+    app_website_url: str = "https://expasy.org/chat"
+    """Website of the service, sent to MCP clients and used as source of the general information documents."""
+
+    mcp_title: str = "Expasy"
+    """Title of the MCP server shown by MCP clients."""
+
+    enable_uniprot_tools: bool = True
+    """Whether to add the tools of SIB resources to the MCP server: UniProt REST API and interactive widgets (`show_*`)."""
+
+    resources_metadata_file: str = "expasy_resources_metadata.csv"
+    """CSV catalog of resources indexed as general information, skipped if empty or missing."""
+
+    system_prompt_intro: str = prompts.INTRODUCTION_PROMPT
+    """Start of the system prompts, defining the assistant and the scope of questions it answers."""
+
     # Public API key used by the frontend to access the chatbot and prevent abuse from bots
     chat_api_key: str = ""
     # Secret API key used by admins to access log file easily from the API
@@ -253,7 +275,7 @@ class Configuration:
     )
 
     system_prompt: str = field(
-        default=prompts.RESOLUTION_PROMPT,
+        default=settings.system_prompt_intro + prompts.RESOLUTION_INSTRUCTIONS,
         metadata={
             "description": "The system prompt to use for the agent's interactions."
             "This prompt sets the context and behavior for the agent."

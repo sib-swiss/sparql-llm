@@ -176,7 +176,7 @@ def get_mcp_app(enable_resources_info_tool: bool = True, enable_uniprot_tools: b
     e.g. `mcp.streamable_http_app(stateless_http=True, json_response=True, transport_security=get_transport_security())`
     """
     instructions = (
-        "Provide tools that helps users to access biological data resources from the Swiss Institute of Bioinformatics (SIB) through the SPARQL query language. "
+        f"Provide tools that helps users to access {settings.app_topics} from the {settings.app_org} through the SPARQL query language. "
         "To answer a question: search relevant query examples with `search_sparql_examples`, or relevant classes with "
         "`search_sparql_classes`, then run the query with `execute_sparql_query`."
     )
@@ -193,14 +193,10 @@ def get_mcp_app(enable_resources_info_tool: bool = True, enable_uniprot_tools: b
     # UniProt tools showing widgets are added through the MCP Apps extension
     # Title, description and website are sent in `serverInfo` for clients to show in their connectors UI
     mcp = MCPServer(
-        "Expasy MCP",
-        title="Expasy",
-        description=(
-            "Query bioinformatics resources of the SIB Swiss Institute of Bioinformatics such as UniProt, Bgee, "
-            "Rhea, OMA, OrthoDB, Cellosaurus, SwissLipids and MetaNetX, through their SPARQL endpoints and "
-            "interactive views of proteins, gene expression, reactions, lipids, cell lines and orthologs."
-        ),
-        website_url="https://expasy.org/chat",
+        f"{settings.mcp_title} MCP",
+        title=settings.mcp_title,
+        description=settings.app_description,
+        website_url=settings.app_website_url,
         instructions=instructions,
         version=__version__,
         debug=True,
@@ -474,13 +470,13 @@ def _format_doc(doc: ScoredPoint) -> str:
 def cli() -> None:
     """Run the MCP server with appropriate transport."""
     parser = argparse.ArgumentParser(
-        description="A Model Context Protocol (MCP) server for BioData resources at the SIB."
+        description=f"A Model Context Protocol (MCP) server for the SPARQL endpoints of the {settings.app_org}."
     )
     parser.add_argument("--http", action="store_true", help="Use Streamable HTTP transport")
     parser.add_argument("--port", type=int, default=8888, help="Port to run the server on")
     # parser.add_argument("settings_filepath", type=str, nargs="?", default="sparql-mcp.json", help="Path to settings file")
     args = parser.parse_args()
-    mcp = get_mcp_app()
+    mcp = get_mcp_app(enable_uniprot_tools=settings.enable_uniprot_tools)
     # settings = Settings.from_file(args.settings_filepath)
     if args.http:
         mcp.run(

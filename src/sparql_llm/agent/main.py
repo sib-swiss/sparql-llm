@@ -42,7 +42,7 @@ if settings.sentry_url:
     )
 
 
-mcp = get_mcp_app()
+mcp = get_mcp_app(enable_uniprot_tools=settings.enable_uniprot_tools)
 
 
 @contextlib.asynccontextmanager
@@ -54,8 +54,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title=settings.app_name,
-    description="""This service helps users to use resources from the Swiss Institute of Bioinformatics,
-such as SPARQL endpoints, to get information about proteins, genes, and other biological entities.""",
+    description=settings.app_description,
     version="1.0.0",
     lifespan=lifespan,
 )

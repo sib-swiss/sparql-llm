@@ -225,15 +225,16 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
     # Add some documents for general information about the resources
     docs += SparqlInfoLoader(
         settings.endpoints,
-        source_iri="https://www.expasy.org/",
+        source_iri=settings.app_website_url,
         service_label=settings.app_name,
         org_label=f"from the {settings.app_org}",
     ).load()
 
-    try:
-        docs += load_expasy_resources_infos()
-    except Exception as _e:
-        print("Skipping loading Expasy resources metadata")
+    if settings.resources_metadata_file:
+        try:
+            docs += load_expasy_resources_infos(settings.resources_metadata_file)
+        except Exception as _e:
+            print(f"Skipping loading resources metadata from {settings.resources_metadata_file}")
 
     print(f"Generating embeddings for {len(docs)} documents")
     start_time = time.time()

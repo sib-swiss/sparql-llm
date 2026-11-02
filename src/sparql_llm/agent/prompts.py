@@ -10,22 +10,19 @@ Do not answer general knowledge or personal questions, only answer questions abo
 """
 
 
-EXTRACTION_PROMPT = (
-    INTRODUCTION_PROMPT
-    + """Given a user question extracts the following:
+# Instructions are prefixed with the `system_prompt_intro` setting, defaulting to INTRODUCTION_PROMPT
+EXTRACTION_INSTRUCTIONS = """Given a user question extracts the following:
 
 - The intent of the question: either "access_resources" (query available resources to answer biomedical questions), or "general_informations" (available resources, infos about the resources)
 - High level concepts and potential classes that could be found in the SPARQL endpoints and used to answer the question
 - Potential entities and instances of classes that could be found in the SPARQL endpoints and used to answer the question
 - Split the question in standalone smaller parts that will be used for finding relevant examples using semantic search (if the question is already 1 step, leave empty)
 """
-)
+EXTRACTION_PROMPT = INTRODUCTION_PROMPT + EXTRACTION_INSTRUCTIONS
 # Split the question in standalone smaller parts that could be used to build the final query
 
 
-RESOLUTION_PROMPT = (
-    INTRODUCTION_PROMPT
-    + """Depending on the user request and provided context, you may provide general information about the resources available at the SIB,
+RESOLUTION_INSTRUCTIONS = """Depending on the user request and provided context, you may provide general information about the available resources,
 help the user to formulate a query to run on a SPARQL endpoint.
 
 Always derive your answer from the context provided, do not use informations that is not in the context.
@@ -35,7 +32,7 @@ If answering with a query:
 - Use DISTINCT as much as possible, and consider using LIMIT 100 to avoid timeout and oversized responses.
 - Briefly explain the query.
 """
-)
+RESOLUTION_PROMPT = INTRODUCTION_PROMPT + RESOLUTION_INSTRUCTIONS
 
 # If using tool calls:
 # help the user to formulate a query to run on a SPARQL endpoint, or execute a previously formulated SPARQL query and communicates its results.
