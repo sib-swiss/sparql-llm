@@ -41,7 +41,7 @@ if [ "$1" = "build" ]; then
 
 elif [ "$1" = "clean" ]; then
     echo "🧹 Cleaning up the vector database"
-    ssh_cmd "git pull ; rm -rf data/qdrant data/endpoints_metadata.json ; podman-compose -f compose.prod.yml down ; pkill -9 aardvark-dns 2>/dev/null || true ; rm -rf /run/user/1001/containers/networks/aardvark-dns ; podman-compose -f compose.prod.yml up --force-recreate -d"
+    ssh_cmd "git pull ; podman-compose -f compose.prod.yml build ; podman-compose -f compose.prod.yml down ; rm -rf data/qdrant data/endpoints_metadata.json ; pkill -9 aardvark-dns 2>/dev/null || true ; rm -rf /run/user/1001/containers/networks/aardvark-dns ; podman-compose -f compose.prod.yml up --force-recreate -d"
 
 elif [ "$1" = "logs" ]; then
     ssh_cmd "podman-compose -f compose.prod.yml logs api"
