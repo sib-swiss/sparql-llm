@@ -33,82 +33,89 @@ class Settings(BaseSettings):
 
     # The list of endpoints that will be indexed and supported by the service
     endpoints: list[SparqlEndpointLinks] = [
+#         {
+#             # The label of the endpoint for clearer display
+#             "label": "UniProt",
+#             # The URL of the SPARQL endpoint from which most informations will be extracted
+#             "endpoint_url": "https://sparql.uniprot.org/sparql/",
+#             "description": "UniProt is a comprehensive resource for protein sequence and annotation data.",
+#             # If VoID description or SPARQL query examples are not available in the endpoint, you can provide a VoID file (local or remote)
+#             "void_file": "./tests/void_uniprot.ttl",
+#             # "void_file": "https://sparql.uniprot.org/.well-known/void/",
+#             # "examples_file": "../sparql-llm/tests/examples_uniprot.ttl",
+#             # Optional, a homepage from which we can extract more information using the JSON-LD context
+#             # "homepage_url": "https://www.uniprot.org/",
+#             # "ontology": "https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl",
+#         },
+#         {
+#             "label": "Bgee",
+#             "description": "Bgee is a database for retrieval and comparison of gene expression patterns across multiple animal species.",
+#             "endpoint_url": "https://www.bgee.org/sparql/",
+#             "homepage_url": "https://www.bgee.org/",
+#             # "ontology": "http://purl.org/genex",
+#         },
+#         {
+#             "label": "Orthology MAtrix (OMA)",
+#             "endpoint_url": "https://sparql.omabrowser.org/sparql/",
+#             "homepage_url": "https://omabrowser.org/",
+#             # "ontology": "http://purl.org/net/orth",
+#             "description": "OMA is a method and database for the inference of orthologs among complete genomes.",
+#         },
+#         {
+#             "label": "HAMAP",
+#             "endpoint_url": "https://hamap.expasy.org/sparql/",
+#             "homepage_url": "https://hamap.expasy.org/",
+#             "description": "HAMAP is a system for the classification and annotation of protein sequences. It consists of a collection of manually curated family profiles for protein classification, and associated, manually created annotation rules that specify annotations that apply to family members.",
+#         },
+#         {
+#             "label": "SwissLipids",
+#             "endpoint_url": "https://beta.sparql.swisslipids.org/",
+#             "homepage_url": "https://www.swisslipids.org",
+#             "description": "SwissLipids is an expert curated resource that provides a framework for the integration of lipid and lipidomic data with biological knowledge and models.",
+#         },
+#         {
+#             "label": "Rhea",
+#             "endpoint_url": "https://sparql.rhea-db.org/sparql/",
+#             "homepage_url": "https://www.rhea-db.org/",
+#             "description": "Rhea is an expert-curated knowledgebase of chemical and transport reactions of biological interest - and the standard for enzyme and transporter annotation in UniProtKB.",
+#         },
+#         {
+#             "label": "Cellosaurus",
+#             "endpoint_url": "https://sparql.cellosaurus.org/sparql",
+#             "homepage_url": "https://cellosaurus.org/",
+#             "description": "Cellosaurus is a knowledge resource on cell lines.",
+#         },
+#         {
+#             "label": "OrthoDB",
+#             "endpoint_url": "https://sparql.orthodb.org/sparql/",
+#             "homepage_url": "https://www.orthodb.org/",
+#             "description": "The hierarchical catalog of orthologs mapping genomics to functional data",
+#         },
+#         {
+#             "label": "METRIN-KG ",
+#             "endpoint_url": "https://kg.earthmetabolome.org/metrin/api/",
+#             "description": """METRIN-KG is a knowledge graph developed under the Earth Metabolome Initiative that integrates data on plant metabolomes, measurable plant traits, and their biotic interactions.
+# It provides a unified, searchable framework that connects chemical profiles of plants with ecological and biological attributes.""",
+#             # "homepage_url": "https://dbgi.eu/",
+#         },
+#         {
+#             "label": "MetaNetX",
+#             "endpoint_url": "https://rdf.metanetx.org/sparql/",
+#             "homepage_url": "https://www.metanetx.org/",
+#         },
+#         {
+#             "label": "SIBiLS",
+#             "endpoint_url": "https://sparql.sibils.org/sparql",
+#             "description": """SIBiLS (Swiss Institute of Bioinformatics Literature Services) provide personalized Information Retrieval in the biological literature.
+# It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC supplementary files.""",
+#             # "homepage_url": "https://sibils.org/",
+#         },
         {
-            # The label of the endpoint for clearer display
-            "label": "UniProt",
-            # The URL of the SPARQL endpoint from which most informations will be extracted
-            "endpoint_url": "https://sparql.uniprot.org/sparql/",
-            "description": "UniProt is a comprehensive resource for protein sequence and annotation data.",
-            # If VoID description or SPARQL query examples are not available in the endpoint, you can provide a VoID file (local or remote)
-            "void_file": "./tests/void_uniprot.ttl",
-            # "void_file": "https://sparql.uniprot.org/.well-known/void/",
-            # "examples_file": "../sparql-llm/tests/examples_uniprot.ttl",
-            # Optional, a homepage from which we can extract more information using the JSON-LD context
-            # "homepage_url": "https://www.uniprot.org/",
-            # "ontology": "https://ftp.uniprot.org/pub/databases/uniprot/current_release/rdf/core.owl",
-        },
-        {
-            "label": "Bgee",
-            "description": "Bgee is a database for retrieval and comparison of gene expression patterns across multiple animal species.",
-            "endpoint_url": "https://www.bgee.org/sparql/",
-            "homepage_url": "https://www.bgee.org/",
-            # "ontology": "http://purl.org/genex",
-        },
-        {
-            "label": "Orthology MAtrix (OMA)",
-            "endpoint_url": "https://sparql.omabrowser.org/sparql/",
-            "homepage_url": "https://omabrowser.org/",
-            # "ontology": "http://purl.org/net/orth",
-            "description": "OMA is a method and database for the inference of orthologs among complete genomes.",
-        },
-        {
-            "label": "HAMAP",
-            "endpoint_url": "https://hamap.expasy.org/sparql/",
-            "homepage_url": "https://hamap.expasy.org/",
-            "description": "HAMAP is a system for the classification and annotation of protein sequences. It consists of a collection of manually curated family profiles for protein classification, and associated, manually created annotation rules that specify annotations that apply to family members.",
-        },
-        {
-            "label": "SwissLipids",
-            "endpoint_url": "https://beta.sparql.swisslipids.org/",
-            "homepage_url": "https://www.swisslipids.org",
-            "description": "SwissLipids is an expert curated resource that provides a framework for the integration of lipid and lipidomic data with biological knowledge and models.",
-        },
-        {
-            "label": "Rhea",
-            "endpoint_url": "https://sparql.rhea-db.org/sparql/",
-            "homepage_url": "https://www.rhea-db.org/",
-            "description": "Rhea is an expert-curated knowledgebase of chemical and transport reactions of biological interest - and the standard for enzyme and transporter annotation in UniProtKB.",
-        },
-        {
-            "label": "Cellosaurus",
-            "endpoint_url": "https://sparql.cellosaurus.org/sparql",
-            "homepage_url": "https://cellosaurus.org/",
-            "description": "Cellosaurus is a knowledge resource on cell lines.",
-        },
-        {
-            "label": "OrthoDB",
-            "endpoint_url": "https://sparql.orthodb.org/sparql/",
-            "homepage_url": "https://www.orthodb.org/",
-            "description": "The hierarchical catalog of orthologs mapping genomics to functional data",
-        },
-        {
-            "label": "METRIN-KG ",
-            "endpoint_url": "https://kg.earthmetabolome.org/metrin/api/",
-            "description": """METRIN-KG is a knowledge graph developed under the Earth Metabolome Initiative that integrates data on plant metabolomes, measurable plant traits, and their biotic interactions.
-It provides a unified, searchable framework that connects chemical profiles of plants with ecological and biological attributes.""",
-            # "homepage_url": "https://dbgi.eu/",
-        },
-        {
-            "label": "MetaNetX",
-            "endpoint_url": "https://rdf.metanetx.org/sparql/",
-            "homepage_url": "https://www.metanetx.org/",
-        },
-        {
-            "label": "SIBiLS",
-            "endpoint_url": "https://sparql.sibils.org/sparql",
-            "description": """SIBiLS (Swiss Institute of Bioinformatics Literature Services) provide personalized Information Retrieval in the biological literature.
-It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC supplementary files.""",
-            # "homepage_url": "https://sibils.org/",
+            "label": "IDSM",
+            "endpoint_url": "https://idsm.elixir-czech.cz/sparql/endpoint/idsm",
+            "description": """IDSM is an integrated data source providing comprehensive information on small molecules, including their chemical structures, identifiers, properties, biological activities, and relationships to compounds, drugs, and other biological entities, aggregated from multiple established chemical and biomedical databases.""",
+            "homepage_url": "https://idsm.elixir-czech.cz",
+            "examples_file": "./data/idsm.ttl",
         },
         # Error querying NExtProt
         # {
@@ -140,7 +147,7 @@ It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC
     # Sparse embeddings are only used for the entities resolution
     sparse_embedding_model: str = "Qdrant/bm25"
     # sparse_embedding_model: str = "prithivida/Splade_PP_en_v1"
-    docs_collection_name: str = "expasy"
+    docs_collection_name: str = "elixir-impact-docs"
     entities_collection_name: str = "entities"
 
     # Default settings for the agent that can be changed at runtime
@@ -155,12 +162,9 @@ It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC
 
     # List of example questions to display in the chat UI
     example_questions: list[str] = [
-        "Which SIB resources are supported by ExpasyGPT? ",
-        "Where is the ACE2 gene expressed in humans?",
-        "List primate genes expressed in the fruit fly eye",
-        "What are the rat orthologs of the human HBB gene?",
-        "What is the HGNC symbol for the P68871 protein?",
-        "Anatomical entities where the INS zebrafish gene is expressed and their gene GO annotations",
+        "Which Rhea reactions involve any germacrene compound?",
+        "Which taxa produce sesterterpenes?",
+        "Which sesterterpenes have no DrugBank record?",
     ]
 
     app_name: str = "ExpasyGPT"

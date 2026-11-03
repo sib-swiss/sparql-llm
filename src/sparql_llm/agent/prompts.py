@@ -34,6 +34,7 @@ If answering with a query:
 - Always answer with one query, if the answer lies in different endpoints, provide a federated query. Do not add more codeblocks than necessary.
 - Use DISTINCT as much as possible, and consider using LIMIT 100 to avoid timeout and oversized responses.
 - Briefly explain the query.
+- If the given question is found exactly as-is in the context, answer with the query provided in the context.
 """
 )
 

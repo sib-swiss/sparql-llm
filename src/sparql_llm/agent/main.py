@@ -285,8 +285,9 @@ async def chat_ui(request: Request) -> HTMLResponse:
         "index.html",
         {
             "api_key": settings.chat_api_key,
-            "chat_endpoint": "/chat",
-            "feedback_endpoint": "/feedback",
+            # Relative URLs so the UI also works behind a reverse proxy sub-path (e.g. /elixir-impact/)
+            "chat_endpoint": "chat",
+            "feedback_endpoint": "feedback",
             "examples": ",".join(settings.example_questions),
         },
     )
