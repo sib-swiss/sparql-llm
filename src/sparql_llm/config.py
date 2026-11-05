@@ -162,9 +162,9 @@ class Settings(BaseSettings):
 
     # List of example questions to display in the chat UI
     example_questions: list[str] = [
+        "How to retrieve the preferred label from PubChem for the Wikidata entry (Q18216)?",
+        "How are molecules similar to aspirin distributed across molecular-mass bands?",
         "Which Rhea reactions involve any germacrene compound?",
-        "Which taxa produce sesterterpenes?",
-        "Which sesterterpenes have no DrugBank record?",
     ]
 
     app_name: str = "ExpasyGPT"

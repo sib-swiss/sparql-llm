@@ -3,12 +3,57 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ELIXIR IMPACT · SPARQL-LLM</title>
+    <title>Using SPARQL-LLM on the ELIXIR IMPACT project</title>
     <meta
       name="description"
-      content="Chat assistant of the ELIXIR IMPACT project to query life science data with SPARQL-LLM."
+      content="SPARQL-LLM use case in the ELIXIR IMPACT project: ask questions in natural language over IDSM and its federated knowledge graphs."
     />
     <link rel="icon" type="image/png" href="assets/sib-logo--jUM9mer.png" />
+    <style>
+      /* Not in the purged Tailwind build: landing intro layout and the IDSM federation graphic */
+      .intro {
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+      @media (min-width: 832px) {
+        .intro {
+          padding-left: 0;
+          padding-right: 0;
+        }
+      }
+      .intro-cols {
+        display: grid;
+        gap: 0 1.5rem;
+        align-items: center;
+      }
+      .intro-cols p:first-child {
+        margin-top: 0;
+      }
+      .intro-cols p:last-child {
+        margin-bottom: 0;
+      }
+      @media (min-width: 768px) {
+        .intro-cols {
+          grid-template-columns: minmax(0, 1fr) 320px;
+        }
+      }
+      .federation {
+        width: 100%;
+        max-width: 360px;
+        margin: 0.5rem auto 0;
+      }
+      .federation svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .federation figcaption {
+        margin-top: 0.25rem;
+        text-align: center;
+        font-size: 0.75rem;
+        color: #64748b;
+      }
+    </style>
 
 
 
@@ -39,39 +84,82 @@
         </a>
       </nav>
 
-      <div class="text-left text-sm mb-5 prose max-w-3xl mx-auto pb-5 border-b">
+      <div class="intro text-left text-sm mb-5 prose max-w-3xl mx-auto pb-5 border-b">
         <h2 class="text-xl text-center font-semibold border-b pb-2">
-          ELIXIR IMPACT
+          Using SPARQL-LLM on the ELIXIR IMPACT project
           <div
             class="inline-block ml-3 px-3 py-1 bg-red-600 text-white text-sm font-semibold rounded-full justify-center items-center"
           >
             Beta
           </div>
         </h2>
-        <p>
-          Life sciences are increasingly relying on sophisticated data-driven approaches, including artificial
-          intelligence (AI), to address challenges in public health, personalised medicine and biological research.
-          However, progress is held back by fragmented data, limited integration of specialised datasets and
-          computational methods, and restricted access to sensitive health information.
-        </p>
-        <p>
-          <strong>ELIXIR IMPACT</strong> addresses these challenges by bringing together the internationally recognised
-          expertise of ELIXIR Czech Republic (led by IOCB Prague) and ELIXIR Switzerland (led by SIB Swiss Institute of
-          Bioinformatics, Lausanne). Together, we are building a robust platform that integrates molecular, metabolic and
-          clinical data with state-of-the-art AI technologies.
-        </p>
-        <p>
-          The project places special emphasis on developing methods and tools for data interoperability, secure sharing
-          of sensitive information, and the application of AI in clinical and biomedical practice. Its successful
-          implementation will strengthen the leading role of both Czechia and Switzerland in the European Research Area.
-        </p>
-        <p>
-          This assistant is powered by
-          <a href="https://dl.acm.org/doi/full/10.1145/3847195" target="_blank">SPARQL-LLM</a>, which turns questions in
-          natural language into SPARQL queries over the
-          <a href="https://idsm.elixir-czech.cz" target="_blank">IDSM</a> knowledge graph, using its metadata and example
-          queries.
-        </p>
+        <div class="intro-cols">
+          <div>
+            <p>
+              <a
+                href="https://dl.acm.org/doi/full/10.1145/3847195"
+                target="_blank"
+                title="SPARQL-LLM: Real-Time SPARQL Query Generation from Natural Language Questions"
+                ><strong>SPARQL-LLM</strong></a
+              >
+              generates SPARQL queries from natural language questions, executes them against the relevant endpoints
+              and summarizes the results.
+            </p>
+            <p>
+              In this use case, it is applied to <a href="https://idsm.elixir-czech.cz" target="_blank"><strong>IDSM</strong></a>, the
+              Integrated Database of Small Molecules. IDSM brings together the chemistry and bioactivity sources inside
+              the circle, and its federated queries reach the endpoints around it.
+            </p>
+            <p>
+              IDSM is one of the resources of <a href="https://www.elixir-czech.cz/elixir-impact-2026-2028" target="_blank"><strong>ELIXIR IMPACT</strong></a>, a project of ELIXIR Czech Republic (IOCB
+              Prague) and ELIXIR Switzerland (SIB Swiss Institute of Bioinformatics) that combines molecular, metabolic
+              and clinical data with AI.
+            </p>
+          </div>
+          <figure class="federation not-prose">
+            <svg viewBox="0 0 420 300" role="img" aria-labelledby="federation-title">
+              <title id="federation-title">
+                IDSM hosts PubChem, ChEMBL, ChEBI, DrugBank, MoNA and MeSH, and federates SPARQL queries with
+                WikiPathways, UniProt, Rhea, identifiers.org, GlyCosmos and Wikidata
+              </title>
+              <g stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 4" stroke-linecap="round">
+                <line x1="210" y1="150" x2="210" y2="28" />
+                <line x1="210" y1="150" x2="345" y2="95" />
+                <line x1="210" y1="150" x2="345" y2="205" />
+                <line x1="210" y1="150" x2="210" y2="272" />
+                <line x1="210" y1="150" x2="75" y2="205" />
+                <line x1="210" y1="150" x2="75" y2="95" />
+              </g>
+              <g fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5">
+                <rect x="142" y="11" width="136" height="34" rx="17" />
+                <rect x="299" y="78" width="92" height="34" rx="17" />
+                <rect x="309" y="188" width="72" height="34" rx="17" />
+                <rect x="138" y="255" width="144" height="34" rx="17" />
+                <rect x="20" y="188" width="110" height="34" rx="17" />
+                <rect x="27" y="78" width="96" height="34" rx="17" />
+              </g>
+              <g fill="#334155" font-size="15" font-weight="600" text-anchor="middle" dominant-baseline="central">
+                <text x="210" y="28">WikiPathways</text>
+                <text x="345" y="95">UniProt</text>
+                <text x="345" y="205">Rhea</text>
+                <text x="210" y="272">identifiers.org</text>
+                <text x="75" y="205">GlyCosmos</text>
+                <text x="75" y="95">Wikidata</text>
+              </g>
+              <circle cx="210" cy="150" r="74" fill="#1e293b" />
+              <g text-anchor="middle" dominant-baseline="central">
+                <text x="210" y="112" fill="#ffffff" font-size="22" font-weight="700">IDSM</text>
+                <line x1="180" y1="130" x2="240" y2="130" stroke="#475569" stroke-width="1" />
+                <g fill="#cbd5e1" font-size="12.5" font-weight="500">
+                  <text x="210" y="148">PubChem · ChEMBL</text>
+                  <text x="210" y="167">ChEBI · DrugBank</text>
+                  <text x="210" y="186">MoNA · MeSH</text>
+                </g>
+              </g>
+            </svg>
+            <figcaption>IDSM and its Federated SPARQL Endpoints</figcaption>
+          </figure>
+        </div>
       </div>
 
       <div class="flex-grow mx-5">
