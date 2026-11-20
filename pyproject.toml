@@ -1,5 +1,5 @@
 [project]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 name = "sparql-llm"
 description = "Reusable components and complete chat system to improve Large Language Models (LLMs) capabilities when generating SPARQL queries for a given set of endpoints, using Retrieval-Augmented Generation (RAG) and SPARQL query validation from the endpoint schema."
 readme = "README.md"
@@ -21,7 +21,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -35,8 +34,9 @@ dependencies = [
     "beautifulsoup4 >=4.15.0",
     "curies >=0.11.0",
     "mcp >=2.2.0,<3",
-    "qdrant-client >=1.19.1",
-    "fastembed >=0.8.1",
+    # Embedded vector store with hybrid search, embeddings computed locally with ONNX
+    "lancedb >=0.41.0",
+    "fastembed >=0.9.1",
     "langchain-core >=1.6.5",
     "markdownify >=1.2.3",
     "pandas >=2.2.3",
@@ -56,7 +56,6 @@ agent = [
     # "langchain-groq >=0.2.4",
     # "langchain-together >=0.3.0",
     # NOTE: langchain-mcp-adapters removed, it does not support mcp v2 yet, we use mcp.Client directly
-    # "langchain-qdrant @ git+https://github.com/langchain-ai/langchain.git#subdirectory=libs/partners/qdrant",
     # "langchain-huggingface", # This will install torch and many heavy nvidia dependencies
     # "langchain-deepseek >=0.1.1",
     # "langchain-anthropic >=0.1.23",
@@ -155,7 +154,7 @@ module = "tests.*"
 disallow_untyped_defs = false
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 line-length = 120
 exclude = [
     "notebooks",

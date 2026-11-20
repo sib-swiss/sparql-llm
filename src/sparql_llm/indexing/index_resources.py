@@ -1,37 +1,23 @@
-import time
+import logging
 
 import httpx
 import pandas as pd
 from bs4 import BeautifulSoup
-from fastembed import TextEmbedding
 from langchain_core.documents import Document
 from markdownify import markdownify
-from qdrant_client import QdrantClient, models
-from qdrant_client.http.models import Distance, VectorParams
 from rdflib import RDF, Dataset, Namespace
 
 from sparql_llm import SparqlExamplesLoader, SparqlInfoLoader, SparqlVoidShapesLoader
 from sparql_llm.config import SparqlEndpointLinks, settings
 from sparql_llm.loaders.sparql_info_loader import GENERAL_INFO_DOC_TYPE
-from sparql_llm.utils import EndpointsMetadataManager
+from sparql_llm.utils import EndpointsMetadataManager, logger
+from sparql_llm.vectordb import count_docs, index_docs, index_model
 
 SCHEMA = Namespace("http://schema.org/")
 
 
 # Global instance, metadata loads lazily on first property access
 endpoints_metadata = EndpointsMetadataManager(settings.endpoints, settings.auto_init)
-
-# TODO: Getting `TypeError: cannot pickle '_thread.RLock' object` when doing `QdrantVectorStore.from_existing_collection(client=qdrant_client)`
-qdrant_client = (
-    QdrantClient(url=settings.vectordb_url, prefer_grpc=True, timeout=600)
-    if settings.vectordb_url.startswith(("http", "https"))
-    else QdrantClient(path=settings.vectordb_url)
-)
-
-embedding_model = TextEmbedding(
-    settings.embedding_model,
-    # providers=["CUDAExecutionProvider"], # Replace the fastembed dependency with fastembed-gpu to use your GPUs
-)
 
 
 def load_schemaorg_description(endpoint: SparqlEndpointLinks) -> list[Document]:
@@ -236,53 +222,36 @@ The UniProt consortium is headed by Alex Bateman, Alan Bridge and Cathy Wu, supp
         except Exception as _e:
             print(f"Skipping loading resources metadata from {settings.resources_metadata_file}")
 
-    print(f"Generating embeddings for {len(docs)} documents")
-    start_time = time.time()
+    index_docs(docs)
 
-    # Initialize the collection
-    if qdrant_client.collection_exists(settings.docs_collection_name):
-        qdrant_client.delete_collection(settings.docs_collection_name)
-    qdrant_client.create_collection(
-        collection_name=settings.docs_collection_name,
-        vectors_config=VectorParams(size=embedding_model.embedding_size, distance=Distance.COSINE),
-    )
 
-    # Generate embeddings with the fastembed `TextEmbedding` instance and upload directly to Qdrant in batches
-    # https://qdrant.tech/documentation/fastembed/fastembed-rerankers/
-    batch_size = 500
-    total_docs = len(docs)
-    for batch_start in range(0, total_docs, batch_size):
-        batch_end = min(batch_start + batch_size, total_docs)
-        batch_docs = docs[batch_start:batch_end]
-        # Generate embeddings for this batch
-        embeddings = embedding_model.embed([doc.page_content for doc in batch_docs])
-        qdrant_client.upsert(
-            collection_name=settings.docs_collection_name,
-            points=models.Batch(
-                ids=list(range(batch_start + 1, batch_end + 1)),
-                vectors=[emb.tolist() for emb in embeddings],
-                payloads=[doc.metadata for doc in batch_docs],
-            ),
-        )
-        print(f"Indexed documents {batch_start + 1}-{batch_end}")
-
-    print(
-        f"Done generating and indexing {total_docs} documents into the vectordb in {time.time() - start_time} seconds"
-    )
-
-    # Using langchain vectorstore wrapper
-    # from langchain_qdrant import QdrantVectorStore
-    # vectorstore = QdrantVectorStore(
-    #     client=qdrant_client,
-    #     collection_name=settings.docs_collection_name,
-    #     embedding=make_dense_encoder(settings.embedding_model),
-    #     # sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
-    #     # retrieval_mode=RetrievalMode.HYBRID,
-    # )
-    # vectorstore.add_documents(docs)
+def ensure_index() -> None:
+    """Build the index when it is missing, empty, or built with another embedding model (or always with
+    `force_index`), kept otherwise. Never built with `auto_init` false, e.g. with multiple workers that would all
+    build it"""
+    try:
+        docs_count = count_docs()
+        model = index_model()
+        if model and model != settings.embedding_model:
+            logger.info(f"Index built with {model}, rebuilding it with {settings.embedding_model}")
+        if settings.auto_init and (settings.force_index or not docs_count or model != settings.embedding_model):
+            logger.info("📊 Building the index...")
+            init_vectordb()
+        elif not docs_count:
+            logger.warning(
+                f"⚠️ The index in {settings.lancedb_path} is empty, build it with:\n"
+                "uv run python -m sparql_llm.indexing.index_resources"
+            )
+        else:
+            logger.info(f"✅ Using the index in {settings.lancedb_path} with {docs_count} documents")
+    except Exception as e:
+        # The server still starts, the search tools return an error until the index is built
+        logger.error(f"⚠️ Error checking or building the index: {e}")
 
 
 if __name__ == "__main__":
+    # Show the indexing logs, the `sparql_llm` logger has no handler
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     init_vectordb()
 
 

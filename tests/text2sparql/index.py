@@ -1,12 +1,13 @@
+import json
 import os
 import time
 
 import pandas as pd
-from api import DATASETS_ENDPOINTS, embedding_model, get_dataset_id_from_iri, qdrant_client
+from api import DATASETS_ENDPOINTS, Text2SparqlDoc, get_dataset_id_from_iri, table_name
 from endpoint_schema import EndpointSchema
 from langchain_core.documents import Document
-from qdrant_client import models
-from qdrant_client.http.models import Distance, VectorParams
+
+from sparql_llm.vectordb import db
 
 QUERIES_FILE = os.path.join(os.path.abspath(os.path.dirname(__file__)), "queries.csv")
 
@@ -22,7 +23,9 @@ def init_vectordb(
     docs: list[Document] = []
 
     # Index example queries
-    examples = ["Generated-CK", "Text2SPARQL-ck"] if "corporate" in dataset_iri else ["QALD-9+", "LC-QuAD", "Text2SPARQL-db"]
+    examples = (
+        ["Generated-CK", "Text2SPARQL-ck"] if "corporate" in dataset_iri else ["QALD-9+", "LC-QuAD", "Text2SPARQL-db"]
+    )
     # examples = ["Generated-CK"] if "corporate" in dataset_iri else ["QALD-9+", "LC-QuAD"]
 
     queries = pd.read_csv(QUERIES_FILE)
@@ -79,23 +82,9 @@ def init_vectordb(
     print(f"Generating embeddings for {len(docs)} documents")
     start_time = time.time()
 
-    embeddings = list(embedding_model.embed([d.page_content for d in docs]))
-
-    collection_name = f"text2sparql-{get_dataset_id_from_iri(dataset_iri)}"
-    # Ensure collection exists before upserting
-    if not qdrant_client.collection_exists(collection_name):
-        qdrant_client.create_collection(
-            collection_name=collection_name,
-            vectors_config=VectorParams(size=embedding_model.embedding_size, distance=Distance.COSINE),
-        )
-
-    qdrant_client.upsert(
-        collection_name=collection_name,
-        points=models.Batch(
-            ids=list(range(1, len(docs) + 1)),
-            vectors=[emb.tolist() for emb in embeddings],
-            payloads=[doc.metadata for doc in docs],
-        ),
+    table = db().create_table(table_name(dataset_iri), schema=Text2SparqlDoc, mode="overwrite")
+    table.add(
+        [{"doc_type": d.metadata["doc_type"], "text": d.page_content, "payload": json.dumps(d.metadata)} for d in docs]
     )
 
     print(f"Done generating and indexing {len(docs)} documents into the vectordb in {time.time() - start_time} seconds")

@@ -124,24 +124,21 @@ It covers 4 collections: MEDLINE, PubMedCentral (PMC), Plazi treatments, and PMC
         # },
     ]
 
-    # Settings for the vector store and embeddings
-    # ⚠️ changing the embedding models require to reindex the data
-    # vectordb_url: str = "http://vectordb:6334/"
-    vectordb_url: str = "data/vectordb"
+    # Embedded LanceDB vector store, searched with hybrid search (dense vectors and BM25 full-text search)
+    # ⚠️ changing the embedding model requires to reindex the data, done at startup when `auto_init` is true
+    lancedb_path: str = "data/lancedb"
+    docs_table: str = "docs"
+    entities_table: str = "entities"
     # https://qdrant.github.io/fastembed/examples/Supported_Models/#supported-text-embedding-models
     # embedding_model: str = "BAAI/bge-small-en-v1.5"
     # embedding_model: str = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
     embedding_model: str = "intfloat/multilingual-e5-large"
+    # Downloaded embedding models, kept across restarts (fastembed only downloads a model missing from it)
+    fastembed_cache_path: str = "data/fastembed"
 
     force_index: bool = False
     # Automatically initialize the vector store client, should be False when deploying in prod with multiple workers
     auto_init: bool = True
-
-    # Sparse embeddings are only used for the entities resolution
-    sparse_embedding_model: str = "Qdrant/bm25"
-    # sparse_embedding_model: str = "prithivida/Splade_PP_en_v1"
-    docs_collection_name: str = "expasy"
-    entities_collection_name: str = "entities"
 
     # Default settings for the agent that can be changed at runtime
     default_llm_model: str = "openrouter/openai/gpt-5.2"

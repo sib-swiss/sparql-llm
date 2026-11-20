@@ -16,16 +16,14 @@ from typing import Any
 import httpx
 import pytrec_eval
 from langchain_core.documents import Document
-from qdrant_client import models as qdrant_models
-from qdrant_client.http.models import Distance, VectorParams
 from sklearn.model_selection import KFold
 
 # from sklearn.model_selection import KFold
 from sparql_llm import SparqlExamplesLoader, SparqlVoidShapesLoader
 from sparql_llm.config import settings
-from sparql_llm.indexing.index_resources import embedding_model, qdrant_client
 from sparql_llm.utils import EndpointsMetadataManager, query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries
+from sparql_llm.vectordb import index_docs
 
 file_time_prefix = time.strftime("%Y%m%d_%H%M")
 bench_folder = os.path.join("data", "benchmarks")
@@ -67,9 +65,6 @@ files = [
 # NOTE: for dev reduce the size of test examples
 # LIMIT_FOR_DEV = 4
 LIMIT_FOR_DEV = None
-
-# DOCS_COLLECTION_NAME=biodata_benchmark
-vector_collection = "expasy"
 
 models = [
     # "openrouter/openai/gpt-4o",
@@ -301,25 +296,8 @@ def main() -> None:
             fold_num = fold_idx + 1
             print(f"\n--- Running test fold {fold_num} with {len(examples_fold[1])} examples ---\n")
 
-            # Initialize the vector store collection with the training examples (fold[0])
-            if qdrant_client.collection_exists(vector_collection):
-                qdrant_client.delete_collection(vector_collection)
-            qdrant_client.create_collection(
-                collection_name=vector_collection,
-                vectors_config=VectorParams(size=embedding_model.embedding_size, distance=Distance.COSINE),
-            )
-
-            # Generate embeddings and add documents to vectordb
-            docs_to_index = examples_fold[0] + docs_classes
-            embeddings = list(embedding_model.embed([d.page_content for d in docs_to_index]))
-            qdrant_client.upsert(
-                collection_name=vector_collection,
-                points=qdrant_models.Batch(
-                    ids=list(range(1, len(docs_to_index) + 1)),
-                    vectors=[emb.tolist() for emb in embeddings],
-                    payloads=[doc.metadata for doc in docs_to_index],
-                ),
-            )
+            # Index the training examples (fold[0]) and the classes, replacing the docs searched by the agent
+            index_docs(examples_fold[0] + docs_classes)
 
             test_examples = examples_fold[1]
             if LIMIT_FOR_DEV:

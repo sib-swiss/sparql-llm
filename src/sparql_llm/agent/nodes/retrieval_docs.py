@@ -1,23 +1,23 @@
 """Document retrieval using semantic similarity search."""
 
+from typing import Any
+
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
-from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 
 from sparql_llm.agent.state import State, StepOutput
 from sparql_llm.agent.utils import get_msg_text
 from sparql_llm.config import Configuration, settings
-from sparql_llm.indexing.index_resources import embedding_model, qdrant_client
+from sparql_llm.vectordb import search_docs
 
-# TODO: use grouping? https://qdrant.tech/documentation/concepts/search/#grouping-api
-# Which tools can I use for enrichment analysis?
+EXAMPLES_FILTER = "doc_type = 'SPARQL endpoints query examples'"
 
 
 async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[StepOutput | HumanMessage]]:
     """Retrieve documents based on the latest message in the state.
 
     This function takes the current state and configuration, uses the latest query
-    from the state to retrieve relevant documents using qdrant_client, and returns
+    from the state to retrieve relevant documents with hybrid search, and returns
     the retrieved documents.
 
     Args:
@@ -25,115 +25,32 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[StepO
         config (RunnableConfig | None, optional): Configuration for the retrieval process.
 
     Returns:
-        dict[str, list[ScoredPoint]]: A dictionary with a single key "retrieved_docs"
-        containing a list of retrieved ScoredPoint objects.
+        dict[str, list[StepOutput | HumanMessage]]: The retrieved documents formatted in a message, and the steps.
     """
     configuration = Configuration.from_runnable_config(config)
     user_question = get_msg_text(state.messages[-1])
-    docs: list[ScoredPoint] = []
-
-    # Prepare all search queries
-    search_queries: list[str] = []
+    limit = configuration.search_kwargs.get("k", settings.default_number_of_retrieved_docs)
 
     if state.structured_question.intent == "general_information":
-        # For general information, search with user question
-        search_queries.append(user_question)
-        search_filter = Filter(
-            must=[
-                FieldCondition(
-                    key="doc_type",
-                    match=MatchValue(value="General information"),
-                )
-            ]
-        )
-        limit = configuration.search_kwargs.get("k", settings.default_number_of_retrieved_docs)
-
-        # Generate embeddings for all queries at once
-        for search_embedding in embedding_model.embed(search_queries):
-            try:
-                docs.extend(
-                    doc
-                    for doc in qdrant_client.query_points(
-                        query=search_embedding,
-                        collection_name=settings.docs_collection_name,
-                        limit=limit,
-                        query_filter=search_filter,
-                    ).points
-                    if doc.payload
-                )
-            except Exception as _e:
-                # If error, probably due to no results, so retry without filter
-                docs.extend(
-                    doc
-                    for doc in qdrant_client.query_points(
-                        query=search_embedding,
-                        collection_name=settings.docs_collection_name,
-                        limit=limit,
-                    ).points
-                    if doc.payload
-                )
+        docs = search_docs([user_question], "doc_type = 'General information'", limit)
     else:
-        limit = configuration.search_kwargs.get("k", settings.default_number_of_retrieved_docs)
-        if len(state.structured_question.question_steps) > 3:
-            # If there are many steps, we reduce the number of retrieved docs per step to avoid too many docs
-            limit = max(1, limit // 2)
-
-        # Get relevant query examples
-        for search_embedding in embedding_model.embed([user_question, *state.structured_question.question_steps]):
-            docs.extend(
-                doc
-                for doc in qdrant_client.query_points(
-                    query=search_embedding,
-                    collection_name=settings.docs_collection_name,
-                    limit=limit,
-                    query_filter=Filter(
-                        must=[
-                            FieldCondition(
-                                key="doc_type",
-                                match=MatchValue(value="SPARQL endpoints query examples"),
-                            )
-                        ]
-                    ),
-                ).points
-                # Make sure we don't add duplicate docs
-                if doc.payload
-                and doc.payload.get("answer")
-                not in {existing_doc.payload.get("answer") if existing_doc.payload else None for existing_doc in docs}
-            )
-
-        limit = configuration.search_kwargs.get("k", settings.default_number_of_retrieved_docs)
-        if len(state.structured_question.extracted_classes) > 3:
-            limit = max(1, limit // 2)
-        # Get other relevant documentation (classes schemas, general information)
-        for search_embedding in embedding_model.embed(state.structured_question.extracted_classes):
-            docs.extend(
-                doc
-                for doc in qdrant_client.query_points(
-                    query=search_embedding,
-                    collection_name=settings.docs_collection_name,
-                    limit=limit,
-                    query_filter=Filter(
-                        must_not=[
-                            FieldCondition(
-                                key="doc_type",
-                                match=MatchValue(value="SPARQL endpoints query examples"),
-                            )
-                        ]
-                    ),
-                ).points
-                if doc.payload
-                and doc.payload.get("answer")
-                not in {existing_doc.payload.get("answer") if existing_doc.payload else None for existing_doc in docs}
-            )
+        # If there are many steps or classes, reduce the number of retrieved docs for each to avoid too many docs
+        steps = state.structured_question.question_steps
+        # Relevant query examples
+        docs = search_docs([user_question, *steps], EXAMPLES_FILTER, max(1, limit // 2) if len(steps) > 3 else limit)
+        # Other relevant documentation (classes schemas, general information)
+        classes = state.structured_question.extracted_classes
+        if classes:
+            docs += search_docs(classes, f"NOT ({EXAMPLES_FILTER})", max(1, limit // 2) if len(classes) > 3 else limit)
 
     # Sort docs by score (highest score first)
-    docs.sort(key=lambda x: x.score, reverse=True)
+    docs.sort(key=lambda x: x["_relevance_score"], reverse=True)
 
     # Create substeps for each doc type
     substeps: list[StepOutput] = []
-    docs_by_type: dict[str, list[ScoredPoint]] = {}
+    docs_by_type: dict[str, list[dict[str, Any]]] = {}
     for doc in docs:
-        doc_type = doc.payload.get("doc_type", "Miscellaneous") if doc.payload else "Miscellaneous"
+        doc_type = doc["doc_type"] or "Miscellaneous"
         if doc_type not in docs_by_type:
             docs_by_type[doc_type] = []
         docs_by_type[doc_type].append(doc)
@@ -160,43 +77,23 @@ async def retrieve(state: State, config: RunnableConfig) -> dict[str, list[StepO
 ## Document formatting
 
 
-def _format_doc(doc: ScoredPoint) -> str:
-    """Format a single document.
-
-    Args:
-        doc (ScoredPoint): The document to format.
-
-    Returns:
-        str: The formatted document.
-    """
-    if not doc.payload:
-        return ""
-    page_content = doc.payload.get("question", "")
-    if doc.payload.get("answer"):
+def _format_doc(doc: dict[str, Any]) -> str:
+    """Format a single document, with its answer in a code block for query examples and classes schemas."""
+    if doc["answer"]:
         doc_lang = ""
         endpoint_url = ""
-        doc_type = str(doc.payload.get("doc_type", "")).lower()
+        doc_type = doc["doc_type"].lower()
         if "query" in doc_type:
-            doc_lang = f"sparql\n#+ endpoint: {doc.payload.get('endpoint_url', 'undefined')}"
+            doc_lang = f"sparql\n#+ endpoint: {doc['endpoint_url'] or 'undefined'}"
         elif "schema" in doc_type:
             doc_lang = "shex"
-            endpoint_url = f" ({doc.payload.get('endpoint_url', 'undefined endpoint')})"
-        return f"\n{page_content}{endpoint_url}:\n\n```{doc_lang}\n{doc.payload.get('answer')}\n```\n"
+            endpoint_url = f" ({doc['endpoint_url'] or 'undefined endpoint'})"
+        return f"\n{doc['question']}{endpoint_url}:\n\n```{doc_lang}\n{doc['answer']}\n```\n"
+    return f"\n{doc['question']}\n"
 
-    return f"\n{page_content}\n"
 
-
-def format_docs(docs: list[ScoredPoint] | None) -> str:
-    """Format a list of documents.
-
-    This function takes a list of ScoredPoint objects and formats them into a string.
-
-    Args:
-        docs (Optional[list[ScoredPoint]]): A list of ScoredPoint objects to format, or None.
-
-    Returns:
-        str: A string containing the formatted documents.
-    """
+def format_docs(docs: list[dict[str, Any]] | None) -> str:
+    """Format a list of retrieved documents."""
     if not docs:
         return ""
     return "\n\n---\n\n".join(_format_doc(doc) for doc in docs)

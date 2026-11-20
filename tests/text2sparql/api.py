@@ -6,21 +6,47 @@ import time
 from typing import Any
 
 import fastapi
-from fastembed import TextEmbedding
+from lancedb.pydantic import LanceModel
 from langchain_core.messages import HumanMessage, SystemMessage
-from qdrant_client import QdrantClient
-from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from sparql_llm.agent.utils import load_chat_model
 from sparql_llm.config import Configuration, settings
 from sparql_llm.utils import query_sparql
 from sparql_llm.validate_sparql import extract_sparql_queries, validate_sparql
+from sparql_llm.vectordb import db, embedder
 
 app = fastapi.FastAPI(title="SPARQL-LLM TEXT2SPARQL API")
 
 
 def get_dataset_id_from_iri(dataset_iri: str) -> str:
     return dataset_iri.split("/")[-2]
+
+
+# Query examples and classes of a dataset, in its own LanceDB table
+class Text2SparqlDoc(LanceModel):
+    doc_type: str
+    # Embedded: question of a query example, or name of a class
+    text: str = embedder.SourceField()
+    # Metadata of the document given to the model, as JSON
+    payload: str
+    vector: list[float] = embedder.VectorField()
+
+
+def table_name(dataset_iri: str) -> str:
+    return f"text2sparql-{get_dataset_id_from_iri(dataset_iri)}"
+
+
+def search(dataset_iri: str, question: str, doc_type: str) -> list[dict[str, Any]]:
+    """Vector search of the documents of a type in the table of a dataset, returns their metadata"""
+    hits = (
+        db()
+        .open_table(table_name(dataset_iri))
+        .search(question)
+        .where(f"doc_type = '{doc_type}'", prefilter=True)
+        .limit(settings.default_number_of_retrieved_docs)
+        .to_list()
+    )
+    return [json.loads(hit["payload"]) for hit in hits]
 
 
 # TODO: refactor to use different endbpoints instead of different graphs
@@ -76,9 +102,6 @@ Your response must follow these rules:
     - Use only the endpoint provided in the context to execute the query. Do not use any other endpoints.
 """
 
-embedding_model = TextEmbedding(settings.embedding_model)
-qdrant_client = QdrantClient(url=settings.vectordb_url, prefer_grpc=True)
-
 # Statistics
 question_num = 0
 statistics: Any = {
@@ -105,41 +128,12 @@ async def get_answer(question: str, dataset: str):
     if dataset not in DATASETS_ENDPOINTS:
         raise fastapi.HTTPException(404, "Unknown dataset ...")
     endpoint_url = DATASETS_ENDPOINTS[dataset]
-    # Retrieve relevant queries
-    question_embeddings = next(iter(embedding_model.embed([question])))
-    retrieved_queries = qdrant_client.query_points(
-        collection_name=f"text2sparql-{get_dataset_id_from_iri(dataset)}",
-        query=question_embeddings,
-        limit=settings.default_number_of_retrieved_docs,
-        query_filter=Filter(
-            must=[
-                FieldCondition(
-                    key="doc_type",
-                    match=MatchValue(value="SPARQL endpoints query examples"),
-                )
-            ]
-        ),
-    )
-
-    # Retrieve relevant classes
-    retrieved_classes = qdrant_client.query_points(
-        collection_name=f"text2sparql-{get_dataset_id_from_iri(dataset)}",
-        query=question_embeddings,
-        limit=settings.default_number_of_retrieved_docs,
-        query_filter=Filter(
-            must=[
-                FieldCondition(
-                    key="doc_type",
-                    match=MatchValue(value="classes"),
-                )
-            ]
-        ),
-    )
-
-    # Initial interaction with the chat model
-    relevant_queries = "\n\n".join(json.dumps(doc.payload, indent=2) for doc in retrieved_queries.points)
-    relevant_classes = "\n\n".join(doc.payload["desc"] for doc in retrieved_classes.points)  # type: ignore
-    # print(f"📚️ Retrieved {len(retrieved_queries.points)} relevant queries and {len(retrieved_classes.points)} relevant classes")
+    # Retrieve relevant queries and classes
+    retrieved_queries = search(dataset, question, "SPARQL endpoints query examples")
+    retrieved_classes = search(dataset, question, "classes")
+    relevant_queries = "\n\n".join(json.dumps(doc, indent=2) for doc in retrieved_queries)
+    relevant_classes = "\n\n".join(doc["desc"] for doc in retrieved_classes)
+    # print(f"📚️ Retrieved {len(retrieved_queries)} relevant queries and {len(retrieved_classes)} relevant classes")
     client = load_chat_model(Configuration(model=MODEL))
     messages = [
         SystemMessage(

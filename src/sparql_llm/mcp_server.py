@@ -3,8 +3,8 @@ import fcntl
 import json
 import pathlib
 import time
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
+from typing import Any, NotRequired
 
 import httpx
 from mcp.server.context import CallNext, HandlerResult, ServerRequestContext
@@ -12,13 +12,12 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import BaseModel
-from qdrant_client.models import FieldCondition, Filter, MatchValue, ScoredPoint
 from rdflib.plugins.sparql import prepareQuery
-from typing_extensions import NotRequired, TypedDict
+from typing_extensions import TypedDict
 
 from sparql_llm import __version__
 from sparql_llm.config import settings
-from sparql_llm.indexing.index_resources import embedding_model, endpoints_metadata, init_vectordb, qdrant_client
+from sparql_llm.indexing.index_resources import endpoints_metadata, ensure_index
 from sparql_llm.loaders.sparql_info_loader import GENERAL_INFO_DOC_TYPE
 
 # Widget tools of other SIB resources are registered on the UniProt MCP Apps extension when imported
@@ -35,6 +34,7 @@ from sparql_llm.tools.uniprot import READ_ONLY, add_uniprot_tools
 from sparql_llm.tools.uniprot import apps as uniprot_apps
 from sparql_llm.utils import logger, query_sparql
 from sparql_llm.validate_sparql import validate_sparql
+from sparql_llm.vectordb import search_docs
 
 # What are the rat orthologs of the human TP53?
 # TODO: MCP integrated https://github.com/modelcontextprotocol/python-sdk/pull/1007
@@ -144,7 +144,7 @@ async def log_tool_calls(ctx: ServerRequestContext[Any, Any], call_next: CallNex
         params = ctx.params or {}
         client = ctx.session.client_params.client_info if ctx.session.client_params else None
         entry = {
-            "timestamp": datetime.fromtimestamp(started_at, tz=timezone.utc).isoformat(),
+            "timestamp": datetime.fromtimestamp(started_at, tz=UTC).isoformat(),
             "latency": round(time.time() - started_at, 3),
             "tool": params.get("name"),
             "args": params.get("arguments"),
@@ -200,7 +200,7 @@ def get_mcp_app(enable_resources_info_tool: bool = True, enable_uniprot_tools: b
         instructions=instructions,
         version=__version__,
         debug=True,
-        dependencies=["mcp", "qdrant_client", "fastembed", "sparql-llm"],
+        dependencies=["sparql-llm"],
         extensions=[uniprot_apps] if enable_uniprot_tools else [],
         middleware=[log_tool_calls],
     )
@@ -209,29 +209,8 @@ def get_mcp_app(enable_resources_info_tool: bool = True, enable_uniprot_tools: b
     if settings.mcp_logs_filepath:
         pathlib.Path(settings.mcp_logs_filepath).parent.mkdir(parents=True, exist_ok=True)
 
-    # Check if the docs collection exists and has data, initialize if not
-    # In prod with multiple workers, auto_init should be set to False to avoid race conditions
-    try:
-        collection_needs_init = (
-            settings.force_index
-            or not qdrant_client.collection_exists(settings.docs_collection_name)
-            or not qdrant_client.get_collection(settings.docs_collection_name).points_count
-        )
-        if settings.auto_init and collection_needs_init:
-            logger.info("📊 Initializing vectordb...")
-            init_vectordb()
-        elif not settings.auto_init and collection_needs_init:
-            logger.warning(
-                f"⚠️ Collection '{settings.docs_collection_name}' does not exist or is empty. Run the following command to initialize it:\n"
-                "docker compose -f compose.prod.yml exec api uv run src/sparql_llm/indexing/index_resources.py"
-            )
-        else:
-            logger.info(
-                f"✅ Collection '{settings.docs_collection_name}' exists with {qdrant_client.get_collection(settings.docs_collection_name).points_count} points. Skipping initialization."
-            )
-    except Exception as e:
-        logger.error(f"⚠️ Error checking or initializing vectordb: {e}")
-        # Continue without initialization to avoid blocking the app startup
+    # Build the index when missing. In prod with multiple workers, auto_init should be False to avoid race conditions
+    ensure_index()
 
     # potential_entities: Potential entities and instances of classes
 
@@ -254,9 +233,7 @@ Returns:
 
     @mcp.tool(description=search_sparql_examples_desc, annotations=READ_ONLY)
     async def search_sparql_examples(question: str, steps: list[str]) -> SparqlExamplesSearchResults:
-        docs = search_docs(
-            list(embedding_model.embed([question, *steps])), Filter(must=[doc_type_condition(EXAMPLES_DOC_TYPE)])
-        )
+        docs = search_index([question, *steps], EXAMPLES_DOC_TYPE)
         return {"query_examples": [to_query_example(doc) for doc in docs]}
 
     @mcp.tool(annotations=READ_ONLY)
@@ -269,9 +246,7 @@ Returns:
         Returns:
             Relevant classes schemas in ShEx format, with the endpoint where the class is found
         """
-        docs = search_docs(
-            list(embedding_model.embed(classes)), Filter(must=[doc_type_condition(CLASSES_SCHEMA_DOC_TYPE)])
-        )
+        docs = search_index(classes, CLASSES_SCHEMA_DOC_TYPE)
         return {"classes_schemas": [to_class_schema(doc) for doc in docs]}
 
     if enable_resources_info_tool:
@@ -288,9 +263,7 @@ Returns:
             Returns:
                 Relevant information about the resources (description, endpoints, metadata)
             """
-            docs = search_docs(
-                list(embedding_model.embed([question])), Filter(must=[doc_type_condition(GENERAL_INFO_DOC_TYPE)])
-            )
+            docs = search_index([question], GENERAL_INFO_DOC_TYPE)
             return {"resources_info": [to_resource_info(doc) for doc in docs]}
 
     @mcp.tool(annotations=READ_ONLY)
@@ -372,99 +345,34 @@ Returns:
 
     return mcp
 
-    # # https://modelcontextprotocol.io/docs/concepts/resources
-    # @mcp.resource("examples://{question}")
-    # async def get_examples(question: str) -> str:
-    #     """Get relevant SPARQL query examples and other documents to help the user write a SPARQL query."""
-    #     embeddings = list(embedding_model.embed([question]))
-    #     docs = search_docs(embeddings, Filter(must=[doc_type_condition(EXAMPLES_DOC_TYPE)])) + search_docs(
-    #         embeddings, Filter(must_not=[doc_type_condition(EXAMPLES_DOC_TYPE)])
-    #     )
-    #     return PROMPT_TOOL_SPARQL.format(docs_count=str(len(docs)), formatted_docs=format_docs(docs))
-    # @mcp.resource("schema://{endpoint}/cls/{uri}")
-    # def get_class_schema(endpoint: str, uri: str) -> str:
-    #     """Get the schema of a class given its URI."""
-    #     return format_docs(retrieve_docs(uri))
-
 
 def is_graph_query(sparql_query: str) -> bool:
     """Check if a query returns an RDF graph (CONSTRUCT or DESCRIBE) rather than SPARQL JSON results."""
     return prepareQuery(sparql_query).algebra.name in ("ConstructQuery", "DescribeQuery")
 
 
-def doc_type_condition(doc_type: str) -> FieldCondition:
-    """Qdrant condition matching documents of a given type."""
-    return FieldCondition(key="doc_type", match=MatchValue(value=doc_type))
-
-
-def search_docs(embeddings: list[Any], query_filter: Filter) -> list[ScoredPoint]:
-    """Search the vectordb for each embedding, deduplicating documents by their answer."""
-    docs: list[ScoredPoint] = []
-    seen_answers: set[str] = set()
-    for embedding in embeddings:
-        for doc in qdrant_client.query_points(
-            query=embedding,
-            collection_name=settings.docs_collection_name,
-            limit=settings.default_number_of_retrieved_docs,
-            query_filter=query_filter,
-        ).points:
-            answer = doc.payload.get("answer") if doc.payload else None
-            if answer and answer not in seen_answers:
-                seen_answers.add(answer)
-                docs.append(doc)
-    return docs
+def search_index(queries: list[str], doc_type: str) -> list[dict[str, Any]]:
+    """Search the documents of a type, with an error for the model when the index is not built"""
+    try:
+        return search_docs(queries, f"doc_type = '{doc_type}'")
+    except LookupError as e:
+        raise ToolError(f"{e}, use `execute_sparql_query` directly") from e
 
 
 # Convert retrieved documents payloads to the tools structured output
-def to_query_example(doc: ScoredPoint) -> QueryExample:
-    payload = doc.payload or {}
-    return {
-        "question": str(payload.get("question", "")),
-        "query": str(payload.get("answer", "")),
-        "endpoint_url": str(payload.get("endpoint_url", "")),
-    }
+def to_query_example(doc: dict[str, Any]) -> QueryExample:
+    return {"question": doc["question"], "query": doc["answer"], "endpoint_url": doc["endpoint_url"]}
 
 
-def to_class_schema(doc: ScoredPoint) -> ClassSchema:
-    payload = doc.payload or {}
-    return {
-        "label": str(payload.get("question", "")),
-        "iri": str(payload.get("iri", "")),
-        "shex": str(payload.get("answer", "")),
-        "endpoint_url": str(payload.get("endpoint_url", "")),
-    }
+def to_class_schema(doc: dict[str, Any]) -> ClassSchema:
+    return {"label": doc["question"], "iri": doc["iri"], "shex": doc["answer"], "endpoint_url": doc["endpoint_url"]}
 
 
-def to_resource_info(doc: ScoredPoint) -> ResourceInfo:
-    payload = doc.payload or {}
-    info: ResourceInfo = {"question": str(payload.get("question", "")), "answer": str(payload.get("answer", ""))}
-    if payload.get("endpoint_url"):
-        info["endpoint_url"] = str(payload["endpoint_url"])
+def to_resource_info(doc: dict[str, Any]) -> ResourceInfo:
+    info: ResourceInfo = {"question": doc["question"], "answer": doc["answer"]}
+    if doc["endpoint_url"]:
+        info["endpoint_url"] = doc["endpoint_url"]
     return info
-
-
-def format_docs(docs: list[ScoredPoint]) -> str:
-    """Format a list of documents."""
-    return "\n".join(_format_doc(doc) for doc in docs)
-
-
-def _format_doc(doc: ScoredPoint) -> str:
-    """Format a single document, with special formatting based on doc type (sparql, schema)."""
-    if not doc.payload:
-        return ""
-    if doc.payload.get("answer"):
-        doc_lang = ""
-        doc_type = str(doc.payload.get("doc_type", "")).lower()
-        if "query" in doc_type:
-            doc_lang = f"sparql\n#+ endpoint: {doc.payload.get('endpoint_url', 'undefined')}"
-        elif "schema" in doc_type:
-            doc_lang = "shex"
-        return f"{doc.payload['question']}:\n\n```{doc_lang}\n{doc.payload.get('answer')}\n```"
-    # Generic formatting:
-    # meta = "".join(f" {k}={v!r}" for k, v in doc.payload.items())
-    # if meta:
-    #     meta = f" {meta}"
-    return "".join(f" {k}={v!r}" for k, v in doc.payload.items())
 
 
 def cli() -> None:

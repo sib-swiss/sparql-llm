@@ -93,7 +93,7 @@ uvicorn_logger.setLevel(logging.WARNING)
 api_url = "http://localhost:8000"
 logger.info(f"""💬 Chat UI at {api_url}
   ⚡️ Streamable HTTP MCP server started on {api_url}/mcp
-  🔎 Using similarity search service on {settings.vectordb_url}
+  🔎 Using the LanceDB index in {settings.lancedb_path}
 """)
 
 

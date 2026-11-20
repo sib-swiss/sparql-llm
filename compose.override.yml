@@ -1,10 +1,5 @@
 services:
 
-  vectordb:
-    ports:
-      - 6333:6333
-      - 6334:6334
-
   api:
     ports:
       - 8000:8000

@@ -64,37 +64,3 @@ RESOLUTION_PROMPT = INTRODUCTION_PROMPT + RESOLUTION_INSTRUCTIONS
 
 # SYSTEM_PROMPT = """You are a helpful AI assistant."""
 # System time: {system_time}
-
-
-# # We build a big prompt with the most relevant queries retrieved from similarity search engine (could be increased)
-# prompt = f"{STARTUP_PROMPT}\n\n"
-# state = State(messages=request.messages)
-# config = RunnableConfig()
-
-# # TODO: use langchain retriever to also add sparse embeddings Qdrant/bm25 for the query to work
-# state.retrieved_docs = (await retrieve(state, config))["retrieved_docs"]
-# prompt += format_docs(state.retrieved_docs)
-
-
-# # query_embeddings = next(iter(embedding_model.embed([question])))
-# # # 1. Get the most relevant examples SPARQL queries from the search engine
-# # for query_hit in query_hits:
-# #     prompt += f"{query_hit.payload['question']}:\n\n```sparql\n# {query_hit.payload['endpoint_url']}\n{query_hit.payload['answer']}\n```\n\n"
-# #     # prompt += f"{query_hit.payload['question']}\nQuery to run in SPARQL endpoint {query_hit.payload['endpoint_url']}\n\n{query_hit.payload['answer']}\n\n"
-
-# # # 2. Get the most relevant documents other than SPARQL query examples from the search engine (ShEx shapes, general infos)
-# # # TODO: vectordb.search_groups(
-# # # https://qdrant.tech/documentation/concepts/search/#search-groups
-# # # TODO: hybrid search? https://qdrant.github.io/fastembed/examples/Hybrid_Search/#about-qdrant
-# # # we might want to group by iri for shex docs https://qdrant.tech/documentation/concepts/hybrid-queries/?q=hybrid+se#grouping
-# # # https://qdrant.tech/documentation/concepts/search/#search-groups
-
-# # prompt += "Here is some additional information that could be useful to answer the user question:\n\n"
-# # # for docs_hit in docs_hits.groups:
-# # for docs_hit in docs_hits:
-# #     if docs_hit.payload["doc_type"] == "SPARQL endpoints classes schema":
-# #         prompt += f"ShEx shape for {docs_hit.payload['question']} in {docs_hit.payload['endpoint_url']}:\n```\n{docs_hit.payload['answer']}\n```\n\n"
-# #     # elif docs_hit.payload["doc_type"] == "Ontology":
-# #     #     prompt += f"Relevant part of the ontology for {docs_hit.payload['endpoint_url']}:\n```turtle\n{docs_hit.payload['question']}\n```\n\n"
-# #     else:
-# #         prompt += f"Information about: {docs_hit.payload['question']}\nRelated to SPARQL endpoint {docs_hit.payload['endpoint_url']}\n\n{docs_hit.payload['answer']}\n\n"

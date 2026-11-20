@@ -11,7 +11,7 @@ This section is for if you want to run the package and reusable components in de
 > Requirements:
 >
 > - [x] [`uv`](https://docs.astral.sh/uv/getting-started/installation/), to easily handle scripts and virtual environments
-> - [x] docker, to deploy the qdrant vector db and the server
+> - [x] docker, to deploy the server
 
 ## 📥️ Setup
 

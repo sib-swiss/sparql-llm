@@ -1,21 +1,16 @@
 import argparse
+import logging
 import time
 from typing import Any
 
-from fastembed import SparseTextEmbedding, TextEmbedding
 from langchain_core.documents import Document
-from qdrant_client import models
 
-from sparql_llm.config import settings
-from sparql_llm.indexing.index_resources import qdrant_client
 from sparql_llm.utils import query_sparql
+from sparql_llm.vectordb import index_entities
 
 # NOTE: Run the script to extract entities from endpoints and generate embeddings for them (long):
-# ssh adsicore
-# cd /mnt/scratch/sparql-llm
-# docker compose -f compose.dev.yml up vectordb
-# cd src/expasy-agent
-# nohup VECTORDB_URL=http://localhost:6334 uv run --extra gpu src/sparql_llm/indexing/index_entities.py --gpu &
+# Replace the fastembed dependency with fastembed-gpu to generate the embeddings on GPUs
+# nohup uv run src/sparql_llm/indexing/index_entities.py --gpu &
 
 
 def retrieve_index_data(entity: dict, docs: list[Document], pagination: (int, int) = None) -> Any:  # type: ignore
@@ -255,92 +250,12 @@ def generate_embeddings_for_entities(gpu: bool = False) -> None:
         f"Done querying SPARQL endpoints in {(time.time() - start_time) / 60:.2f} minutes, generating embeddings for {len(docs)} entities..."
     )
 
-    if qdrant_client.collection_exists(settings.entities_collection_name):
-        qdrant_client.delete_collection(settings.entities_collection_name)
-
-    # Process documents in batches to handle millions of entities efficiently
-    embedding_model = TextEmbedding(settings.embedding_model, providers=["CUDAExecutionProvider"] if gpu else None)
-    sparse_embedding_model = SparseTextEmbedding(settings.sparse_embedding_model)
-
-    # Initialize collection in Qdrant vectordb with hybrid retrieval mode (dense and sparse vectors)
-    # With indexes loaded on disk to avoid OOM errors when indexing large collections
-    qdrant_client.create_collection(
-        collection_name=settings.entities_collection_name,
-        vectors_config=models.VectorParams(
-            size=embedding_model.embedding_size,
-            distance=models.Distance.COSINE,
-            on_disk=True,
-        ),
-        hnsw_config=models.HnswConfigDiff(on_disk=True),
-        sparse_vectors_config={"sparse": models.SparseVectorParams()},
-    )
-
-    batch_size = 1000  # Adjust based on your GPU memory and document size
-    total_docs = len(docs)
-
-    for batch_start in range(0, total_docs, batch_size):
-        batch_end = min(batch_start + batch_size, total_docs)
-        batch_docs = docs[batch_start:batch_end]
-
-        # Generate embeddings for this batch
-        batch_texts = [doc.page_content for doc in batch_docs]
-        embeddings = embedding_model.embed(batch_texts)
-        sparse_embeddings = sparse_embedding_model.embed(batch_texts)
-
-        # Prepare batch for upsert
-        batch_vectors = [emb.tolist() for emb in embeddings]
-        batch_sparse_vectors = [
-            models.SparseVector(indices=sparse_emb.indices.tolist(), values=sparse_emb.values.tolist())
-            for sparse_emb in sparse_embeddings
-        ]
-        batch_payloads = [doc.metadata for doc in batch_docs]
-
-        # Prepare points with both dense and sparse vectors
-        points = [
-            models.PointStruct(
-                id=batch_start + idx + 1,
-                vector={
-                    "": batch_vectors[idx],
-                    "sparse": batch_sparse_vectors[idx],
-                },
-                payload=batch_payloads[idx],
-            )
-            for idx in range(len(batch_docs))
-        ]
-
-        # Upsert batch to Qdrant
-        qdrant_client.upsert(
-            collection_name=settings.entities_collection_name,
-            points=points,
-        )
-
-        # Progress reporting
-        progress = (batch_end / total_docs) * 100
-        elapsed = (time.time() - start_time) / 60
-        print(f"Progress: {batch_end}/{total_docs} ({progress:.1f}%) - {elapsed:.2f} minutes elapsed")
-
-    print(
-        f"Done generating and indexing embeddings in collection {settings.entities_collection_name} for {len(docs)} entities in {(time.time() - start_time) / 60:.2f} minutes"
-    )
-
-    # Alternative: Use langchain-qdrant for indexing with hybrid retrieval
-    # from langchain_qdrant import FastEmbedSparse, QdrantVectorStore, RetrievalMode
-    # vectordb = QdrantVectorStore(
-    #     client=qdrant_client,
-    #     # url=settings.vectordb_url,
-    #     collection_name=settings.entities_collection_name,
-    #     embedding=make_dense_encoder(settings.embedding_model, gpu),
-    #     sparse_embedding=FastEmbedSparse(model_name=settings.sparse_embedding_model),
-    #     retrieval_mode=RetrievalMode.HYBRID,
-    # )
-    # vectordb.add_documents(docs, batch_size=64)
-    # TODO: Check how much times it takes with default batch size of 64
-    # vectordb.add_documents(docs, batch_size=256)
-    # Done generating and indexing embeddings in collection entities for 7 960 941 entities in 204.51 minutes
+    index_entities(docs, gpu)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--gpu", action="store_true", help="Use GPU when generating the embeddings")
     args = parser.parse_args()
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     generate_embeddings_for_entities(args.gpu)

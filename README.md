@@ -32,7 +32,7 @@ The components are designed to work either independently or as part of a full ch
 - **Metadata Extraction**: Functions to extract and load relevant metadata from SPARQL endpoints. These loaders are compatible with [LangChain](https://python.langchain.com) but are flexible enough to be used independently, providing metadata as JSON for custom vector store integration.
 - **SPARQL Query Validation**: A function to automatically parse and validate federated SPARQL queries against the VoID description of the target endpoints.
 - **MCP server** with tools to help LLM write SPARQL queries for a set of endpoints
-- **Deployable Chat System**: A reusable and containerized system for deploying an LLM-based chat service with a web UI, API, and vector database. This system helps users write SPARQL queries by leveraging endpoint metadata (WIP).
+- **Deployable Chat System**: A reusable and containerized system for deploying an LLM-based chat service with a web UI, API, and embedded vector store. This system helps users write SPARQL queries by leveraging endpoint metadata (WIP).
 - **Live Example**: Configuration for **[expasy.org/chat](https://expasy.org/chat)**, an LLM-powered chat system supporting SPARQL query generation for endpoints maintained by the [SIB](https://www.sib.swiss/).
 
 > [!TIP]
@@ -174,7 +174,7 @@ Example `mcp.json` file to add and configure the MCP server in a client (e.g. VS
 
 ### Installation
 
-> Requires Python >=3.10
+> Requires Python >=3.11
 
 ```bash
 pip install sparql-llm
@@ -338,7 +338,7 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 
    > You can change the UI around the chat in `chat-with-context/demo/index.html`
 
-4. **Start** the vector database and web server locally for development, with code from the `src` folder mounted in the container and automatic API reload on changes to the code (the widgets are bundled when building the image, rebuild it with `--build` after changing them):
+4. **Start** the web server locally for development, with code from the `src` folder mounted in the container and automatic API reload on changes to the code (the widgets are bundled when building the image, rebuild it with `--build` after changing them):
 
    ```bash
    docker compose up
@@ -346,7 +346,6 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 
    * Chat web UI available at http://localhost:8000
    * OpenAPI Swagger UI available at http://localhost:8000/docs
-   * Vector database dashboard UI available at http://localhost:6333/dashboard
 
    **In production**, you will need to make some changes to the `compose.prod.yml` file to adapt it to your server/proxy setup:
 
@@ -360,7 +359,7 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
    docker compose -f compose.prod.yml exec api uv run src/sparql_llm/indexing/index_resources.py
    ```
 
-   > All data from the containers are stored persistently in the `data` folder (e.g. vectordb indexes and endpoints metadata)
+   > All data from the containers are stored persistently in the `data` folder (e.g. LanceDB index, embedding models and endpoints metadata)
 
    > Conversations are logged in `data/logs/requests.jsonl`, one JSON line per request (group lines on `sessionId` to rebuild multi-turn conversations): full messages, steps, generated SPARQL query, tokens, cost and runtime. Those logs can be explored with [chat-logs-viewer](https://github.com/sib-swiss/chat-logs-viewer). Change the path with the `REQUESTS_LOGS_FILEPATH` env variable.
 
@@ -377,11 +376,10 @@ Requirements: Docker, nodejs (to build the frontend), and optionally [`uv`](http
 > **Experimental entities indexing**: it can take a lot of time to generate embeddings for millions of entities. So we recommend to run the script to generate embeddings on a machine with GPU (does not need to be a powerful one, but at least with a GPU, checkout [fastembed GPU docs](https://qdrant.github.io/fastembed/examples/FastEmbed_GPU/) to install the GPU drivers and dependencies)
 >
 > ```sh
-> docker compose up vectordb -d
-> VECTORDB_URL=http://localhost:6334 nohup uv run --extra gpu src/sparql_llm/indexing/index_entities.py --gpu &
+> nohup uv run src/sparql_llm/indexing/index_entities.py --gpu &
 > ```
 >
->Then move the entities collection containing the embeddings in `data/qdrant/collections/entities` before starting the stack
+> Then move the entities table containing the embeddings in `data/lancedb/entities.lance` before starting the stack
 
 ### 🥇 Benchmarks
 
@@ -401,7 +399,7 @@ There are a few benchmarks available for the system:
 
   ```sh
   docker compose up -d
-  VECTORDB_URL=http://localhost:6334 uv run tests/benchmark_biodata.py
+  uv run tests/benchmark_biodata.py
   ```
 
 ## 🧑‍🏫 Tutorial

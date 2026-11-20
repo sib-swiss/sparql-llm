@@ -1,27 +1,10 @@
 services:
 
-  vectordb:
-    # https://hub.docker.com/r/qdrant/qdrant/tags
-    image: docker.io/qdrant/qdrant:v1.15.1
-    # image: qdrant/qdrant:v1.9.2-unprivileged # Unprivileged don't work when mounting a volume
-    restart: unless-stopped
-    volumes:
-      - ./data/qdrant:/qdrant/storage
-      # - ./qdrant_config.yml:/qdrant/config/production.yaml
-    environment:
-      - QDRANT__TELEMETRY_DISABLED=true
-      - QDRANT_ALLOW_RECOVERY_MODE=true
-    # command: ./qdrant --config-path /qdrant/config/production.yaml
-
   api:
     build: .
     restart: unless-stopped
-    depends_on:
-      - vectordb
-    environment:
-      - VECTORDB_URL=http://vectordb:6334/
     volumes:
-      - ./.fastembed_cache:/tmp/fastembed_cache
+      # LanceDB index, embedding models, endpoints metadata and logs
       - ./data:/app/data
       - ./src:/app/src
     env_file:

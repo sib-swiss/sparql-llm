@@ -40,23 +40,19 @@ if [ "$1" = "build" ]; then
     ssh_cmd "git pull ; podman-compose -f compose.prod.yml up --force-recreate --build -d"
 
 elif [ "$1" = "clean" ]; then
-    echo "🧹 Cleaning up the vector database"
-    ssh_cmd "git pull ; podman-compose -f compose.prod.yml build ; podman-compose -f compose.prod.yml down ; rm -rf data/qdrant data/endpoints_metadata.json ; pkill -9 aardvark-dns 2>/dev/null || true ; rm -rf /run/user/1001/containers/networks/aardvark-dns ; podman-compose -f compose.prod.yml up --force-recreate -d"
+    echo "🧹 Cleaning up the index"
+    ssh_cmd "git pull ; podman-compose -f compose.prod.yml build ; podman-compose -f compose.prod.yml down ; rm -rf data/lancedb data/endpoints_metadata.json ; pkill -9 aardvark-dns 2>/dev/null || true ; rm -rf /run/user/1001/containers/networks/aardvark-dns ; podman-compose -f compose.prod.yml up --force-recreate -d"
 
 elif [ "$1" = "logs" ]; then
     ssh_cmd "podman-compose -f compose.prod.yml logs api"
 
 elif [ "$1" = "index" ]; then
-    echo "🔎 Indexing endpoints in the vector database"
+    echo "🔎 Indexing endpoints"
     ssh_cmd "podman-compose -f compose.prod.yml exec api uv run src/sparql_llm/indexing/index_resources.py"
 
 elif [ "$1" = "import-entities-index" ]; then
     echo "Import entities embeddings from adsicore which has GPU to generate them"
-    scp -r adsicore:/mnt/scratch/sparql-llm/data/qdrant/collections/entities ./data/qdrant/collections/entities
-    # ssh adsicore "tar cJf - /mnt/scratch/sparql-llm/data/qdrant/collections/entities" | tar xJf - -C ./data/qdrant/collections/entities
-
-    # scp -r adsicore:/mnt/scratch/sparql-llm/data/qdrant/collections/entities expasychatpodman:/var/containers/podman/sparql-llm/data/qdrant/collections/entities
-    # zip -r data/entities.zip data/qdrant/collections/entities
+    scp -r adsicore:/mnt/scratch/sparql-llm/data/lancedb/entities.lance ./data/lancedb/entities.lance
 
 elif [ "$1" = "ddl-logs" ]; then
     mkdir -p data/prod
@@ -75,10 +71,6 @@ else
     # Clean up network state before deploying to avoid DNS issues
     ssh_cmd "git pull ; podman-compose -f compose.prod.yml down ; pkill -9 aardvark-dns 2>/dev/null || true ; rm -rf /run/user/1001/containers/networks/aardvark-dns ; podman-compose -f compose.prod.yml up --force-recreate -d"
 fi
-
-# Fix connectivities issues between api and vectordb (which happens sometimes with podman compose)
-# podman exec -it api bash
-# podman inspect vectordb | grep IPAddress
 
 # See service that starts the podman-compose:
 # systemctl --user cat podman-compose@sparql-llm.service
