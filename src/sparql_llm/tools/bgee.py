@@ -4,7 +4,7 @@
 """
 
 import asyncio
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 import httpx
 from mcp.server.mcpserver.exceptions import ToolError
@@ -165,7 +165,7 @@ async def show_gene_expression(
     gold_only: bool = False,
     show_absent: bool = True,
     search: str | None = None,
-) -> CallToolResult:
+) -> Annotated[CallToolResult, ExpressionData]:
     """Show where genes are expressed to the user, as a heatmap of anatomical entities and cell types by gene colored
     by the Bgee expression score (0-100), with organ systems, data types (RNA-Seq, scRNA-Seq, Affymetrix, in situ,
     EST), call quality and absence of expression. `genes` are gene symbols or Ensembl IDs (e.g. ["TP53", "MDM2"]),

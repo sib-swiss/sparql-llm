@@ -8,7 +8,7 @@ with its pairwise orthologs, and its gene neighbourhood conserved across species
 import asyncio
 import re
 import xml.etree.ElementTree as ET
-from typing import Any
+from typing import Annotated, Any
 
 import httpx
 from defusedxml import ElementTree as SafeET
@@ -231,7 +231,7 @@ async def fetch_synteny(client: httpx.AsyncClient, proteins: list[dict[str, Any]
 
 
 @apps.tool(resource_uri="ui://oma/oma.html", annotations=READ_ONLY)
-async def show_gene_family(protein: str) -> CallToolResult:
+async def show_gene_family(protein: str) -> Annotated[CallToolResult, FamilyData]:
     """Show the history of the gene family of a protein from the OMA orthology database to the user: the species tree
     of its Hierarchical Orthologous Group (HOG) with the duplications and losses in each clade and the genes of each
     species colored by paralog lineage (like the OMA iHam viewer), its pairwise orthologs (1:1, 1:n...), and its gene

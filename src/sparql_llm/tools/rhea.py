@@ -7,7 +7,7 @@ Rhea (CDK depiction of the RXNMapper mapping), with its EC numbers, directions, 
 import asyncio
 import base64
 import re
-from typing import Any
+from typing import Annotated, Any
 
 import httpx
 from mcp.server.mcpserver.exceptions import ToolError
@@ -168,7 +168,7 @@ def side_text(ps: list[Participant]) -> str:
 
 
 @apps.tool(resource_uri="ui://rhea/reaction.html", annotations=READ_ONLY)
-async def show_reaction(reaction: str) -> CallToolResult:
+async def show_reaction(reaction: str) -> Annotated[CallToolResult, ReactionData]:
     """Show a Rhea biochemical reaction to the user: its atom map (atoms of each reactant colored in the products,
     with atom numbers), the equation with the structures of the participants, EC numbers, directions,
     cross-references (GO, KEGG, MetaCyc, Reactome, M-CSA) and the reviewed UniProtKB enzymes catalyzing it.

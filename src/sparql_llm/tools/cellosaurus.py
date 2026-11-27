@@ -7,7 +7,7 @@ ancestry, mutations, HLA typing, and its STR profile next to the cell lines with
 
 import asyncio
 import re
-from typing import Any
+from typing import Annotated, Any
 
 import httpx
 from mcp.server.mcpserver.exceptions import ToolError
@@ -227,7 +227,7 @@ async def str_matches(client: httpx.AsyncClient, markers: list[StrMarker], speci
 
 
 @apps.tool(resource_uri="ui://cellosaurus/cellline.html", annotations=READ_ONLY)
-async def show_cell_line(cell_line: str) -> CallToolResult:
+async def show_cell_line(cell_line: str) -> Annotated[CallToolResult, CellLineData]:
     """Show a cell line of Cellosaurus to the user: identity (species, sex, age, disease, site), warnings when it is
     contaminated or misidentified, its parent, children and lines from the same individual, genome ancestry, mutations,
     HLA typing, and its STR profile next to the cell lines with the most similar profiles (CLASTR), to check its

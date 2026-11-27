@@ -8,7 +8,7 @@ into at the next levels.
 import asyncio
 import re
 from collections import Counter
-from typing import Any
+from typing import Annotated, Any
 
 import httpx
 from mcp.server.mcpserver.exceptions import ToolError
@@ -190,7 +190,7 @@ def annotations_of(g: dict[str, Any]) -> dict[str, list[Annotation]]:
 
 
 @apps.tool(resource_uri="ui://orthodb/orthodb.html", annotations=READ_ONLY)
-async def show_ortholog_group(query: str, level: str | None = None) -> CallToolResult:
+async def show_ortholog_group(query: str, level: str | None = None) -> Annotated[CallToolResult, OrthoGroupData]:
     """Show the OrthoDB ortholog group of a protein to the user: its phyletic profile (in how many species of each
     clade it is present, and with how many copies), evolutionary descriptors (single or multi copy, evolutionary rate,
     protein length, exons), functional annotations (InterPro, GO, EC, KEGG), and the groups of the broader levels and

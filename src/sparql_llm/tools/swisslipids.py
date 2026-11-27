@@ -8,7 +8,7 @@ classes, and where it was found (tissues, cellular components).
 
 import asyncio
 import re
-from typing import Any
+from typing import Annotated, Any
 
 import httpx
 from mcp.server.mcpserver.exceptions import ToolError
@@ -243,7 +243,7 @@ def none_if(v: str | None, *empty: str) -> str | None:
 
 
 @apps.tool(resource_uri="ui://swisslipids/lipid.html", annotations=READ_ONLY)
-async def show_lipid(query: str) -> CallToolResult:
+async def show_lipid(query: str) -> Annotated[CallToolResult, LipidData]:
     """Show a lipid of SwissLipids to the user: its place in the lipid hierarchy (category > class > species >
     molecular subspecies > structural subspecies > isomeric subspecies) as a graph with its parents and children,
     its structure and properties, its chains, the Rhea reactions it is involved in with their enzymes in UniProtKB,

@@ -7,7 +7,7 @@ genome-scale metabolic models containing them.
 
 import asyncio
 import re
-from typing import Any
+from typing import Annotated, Any
 
 import httpx
 from mcp.server.apps import ResourceCsp
@@ -411,7 +411,7 @@ def xrefs_text(xrefs: list[Xref]) -> str:
 
 
 @apps.tool(resource_uri="ui://metanetx/metanetx.html", annotations=READ_ONLY)
-async def show_metanetx(query: str) -> CallToolResult:
+async def show_metanetx(query: str) -> Annotated[CallToolResult, MetaNetXData]:
     """Show a chemical or a reaction of MetaNetX (MNXref namespace reconciling metabolic databases) to the user:
     a graph of its identifiers in ChEBI, KEGG, BiGG, SEED, MetaCyc, Rhea, HMDB, LIPID MAPS, SwissLipids, Reactome,
     VMH... with how each one is reconciled (same structure, other protonation or stereo, obsolete). Chemicals also show

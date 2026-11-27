@@ -16,7 +16,7 @@ from collections import Counter
 from collections.abc import Iterable, Mapping
 from itertools import pairwise
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 import httpx
 from mcp.server.apps import Apps, ResourceCsp
@@ -355,7 +355,11 @@ class NetworkData(TypedDict):
 
 
 def text_result(text: str, data: Mapping[str, Any]) -> CallToolResult:
-    """Summary for the model, full data for the widget"""
+    """Summary for the model, full data for the widget.
+
+    Tools returning it are annotated `-> Annotated[CallToolResult, XData]`, so the SDK publishes the schema of
+    `XData` as `outputSchema` and validates the data against it.
+    """
     return CallToolResult(content=[TextContent(type="text", text=text)], structured_content=dict(data))
 
 
@@ -549,7 +553,7 @@ async def show_protein_features(
     start: int | None = None,
     end: int | None = None,
     categories: list[FeatureCategory] | None = None,
-) -> CallToolResult:
+) -> Annotated[CallToolResult, FeaturesViewData]:
     """Show the sequence features of a UniProtKB entry (e.g. P31749) to the user in an interactive track viewer,
     zoomable along the sequence: domains, sites, PTMs, signal peptides, topology, secondary structure and variants.
     To focus on a region, give its UniProt residue positions in `start` and `end` (e.g. 102 and 234 for a domain, or
@@ -627,7 +631,7 @@ async def show_protein_structure(
     positions: list[int] | None = None,
     category: FeatureCategory | None = None,
     search: str | None = None,
-) -> CallToolResult:
+) -> Annotated[CallToolResult, StructureData]:
     """Show the 3D structure of a UniProtKB entry to the user in Mol*: the AlphaFold model colored by pLDDT
     confidence, or a PDB entry with `pdb_id`. Its features and variants are listed next to it, clicking one highlights
     its residues. `positions` are UniProt residue numbers highlighted first, e.g. the position of a mutation.
@@ -716,7 +720,7 @@ def counts(values: list[Any], top: int = 8) -> str:
 
 
 @apps.tool(resource_uri="ui://uniprot/table.html", annotations=READ_ONLY)
-async def search_proteins_table(query: str, max_rows: int = 1000) -> CallToolResult:
+async def search_proteins_table(query: str, max_rows: int = 1000) -> Annotated[CallToolResult, TableData]:
     """Search UniProtKB and show all results to the user in a sortable table, with facets for reviewed status,
     organism and annotation score. Only a summary is returned: the user can select rows in the table and send them back
     to you. Query syntax: `gene_exact:INS`, `protein_name:kinase`, `organism_id:9606` (one species),
@@ -853,7 +857,7 @@ async def show_protein_variants(
     evidence: list[VariantEvidence] | None = None,
     disease: list[str] | None = None,
     search: str | None = None,
-) -> CallToolResult:
+) -> Annotated[CallToolResult, VariantsData]:
     """Show the disease and natural variants of a UniProtKB entry (e.g. P04637) to the user in an interactive
     explorer: variants positioned on the sequence next to domains, filterable by consequence, clinical significance,
     evidence and disease, with links to ClinVar, dbSNP and publications.
@@ -1015,7 +1019,7 @@ async def show_annotation_matrix(
     organism_id: int = 9606,
     annotation_type: AnnotationType | None = None,
     search: str | None = None,
-) -> CallToolResult:
+) -> Annotated[CallToolResult, MatrixData]:
     """Show a heatmap of the reviewed UniProtKB entries of a gene list (e.g. ["TP53", "MDM2", "CDKN1A"]) by their
     GO terms, keywords or Reactome pathways to the user, for a quick functional overview of the list.
     `organism_id` is the NCBI taxonomy ID, human by default. The matrix opens on the `annotation_type` given, GO
@@ -1214,7 +1218,7 @@ async def show_protein_network(
     target: str | None = None,
     organism_id: int = 9606,
     max_linkers: int = 5,
-) -> CallToolResult:
+) -> Annotated[CallToolResult, NetworkData]:
     """Show an interactive graph connecting a list of proteins to the user, distinguishing 3 kinds of sourced
     relationships: directed regulations (activation, inhibition) from OmniPath with their resources, references and
     modification sites, physical interactions from IntAct (via UniProtKB), and Reactome pathway membership.
