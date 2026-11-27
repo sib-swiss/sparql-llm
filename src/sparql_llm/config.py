@@ -58,6 +58,8 @@ class Settings(BaseSettings):
             "label": "Orthology MAtrix (OMA)",
             "endpoint_url": "https://sparql.omabrowser.org/sparql/",
             "homepage_url": "https://omabrowser.org/",
+            # The endpoint no longer serves its VoID description, so we take it from the well-known location
+            "void_file": "https://sparql.omabrowser.org/.well-known/void",
             # "ontology": "http://purl.org/net/orth",
             "description": "OMA is a method and database for the inference of orthologs among complete genomes.",
         },
